@@ -28,5 +28,8 @@
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^9.1.2"
+  },
+  "dependencies": {
+    "@dnd-kit/modifiers": "^9.0.0"
   }
 }

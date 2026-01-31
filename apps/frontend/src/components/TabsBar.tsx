@@ -2,13 +2,126 @@ import { useTabsStore } from '../store/useTabsStore';
 import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { ConfirmDialog } from './ConfirmDialog';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Sortable Tab Component
+interface SortableTabProps {
+  tabId: string;
+  tab: any;
+  isActive: boolean;
+  onTabClick: (tabId: string) => void;
+  onCloseTab: (e: React.MouseEvent, tabId: string) => void;
+  getTabTitle: (tabId: string) => string;
+}
+
+const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle }: SortableTabProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tabId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => onTabClick(tabId)}
+      title={getTabTitle(tabId)}
+      className={`
+        group flex items-center gap-2 px-4 border-r border-gray-300 cursor-grab active:cursor-grabbing
+        transition-colors duration-150 flex-shrink-0 min-w-[120px] max-w-[200px] h-full
+        ${isActive 
+          ? 'bg-white text-gray-900 border-b-2 border-b-blue-500' 
+          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        }
+      `}
+    >
+      {/* Tab label with dirty indicator */}
+      <span className="flex-1 truncate select-none text-sm flex items-center gap-1">
+        {tab.isDirty && (
+          <span className="text-orange-500 font-bold text-xs" title="Unsaved changes">
+            ●
+          </span>
+        )}
+        <span className="truncate">
+          {tab.label}
+        </span>
+      </span>
+      
+      {/* Close button */}
+      <button
+        onClick={(e) => onCloseTab(e, tabId)}
+        className={`
+          flex-shrink-0 p-0.5 rounded hover:bg-gray-300 transition-colors
+          ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+        `}
+        aria-label={`Close ${tab.label}`}
+      >
+        <X size={14} className="text-gray-600" />
+      </button>
+    </div>
+  );
+};
 
 export const TabsBar = () => {
-  const { tabs, tabOrder, activeTabId, activateTab, closeTab, openNewTab } = useTabsStore();
+  const { tabs, tabOrder, activeTabId, activateTab, closeTab, openNewTab, reorderTabs } = useTabsStore();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [tabToClose, setTabToClose] = useState<string | null>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
+  
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+  
+  // Handle drag end
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = tabOrder.indexOf(active.id as string);
+      const newIndex = tabOrder.indexOf(over.id as string);
+      
+      const newOrder = arrayMove(tabOrder, oldIndex, newIndex);
+      reorderTabs(newOrder);
+    }
+  };
   
   // Check if scrolling is needed and update scroll button visibility
   const checkScrollButtons = () => {
@@ -162,107 +275,91 @@ export const TabsBar = () => {
   };
   
   return (
-    <div className="bg-gray-100 border-b border-gray-300 flex items-center h-10 relative">
-      {/* Left scroll button */}
-      {showLeftScroll && (
-        <button
-          onClick={() => scrollTabs('left')}
-          className="absolute left-0 z-10 h-full px-3 bg-gray-100 hover:bg-gray-200 transition-colors border-r border-gray-300 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
-          aria-label="Scroll left"
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      modifiers={[restrictToHorizontalAxis]}
+    >
+      <div className="bg-gray-100 border-b border-gray-300 flex items-center h-10 relative">
+        {/* Left scroll button */}
+        {showLeftScroll && (
+          <button
+            onClick={() => scrollTabs('left')}
+            className="absolute left-0 z-10 h-full px-3 bg-gray-100 hover:bg-gray-200 transition-colors border-r border-gray-300 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={16} className="text-gray-600" />
+          </button>
+        )}
+        
+        {/* Tabs container with horizontal scroll - scrollbar hidden */}
+        <div 
+          ref={tabsContainerRef}
+          className="flex-1 flex items-stretch overflow-x-auto overflow-y-hidden h-full scrollbar-hide"
+          style={{
+            scrollbarWidth: 'none', // Firefox
+            msOverflowStyle: 'none', // IE/Edge
+          }}
         >
-          <ChevronLeft size={16} className="text-gray-600" />
-        </button>
-      )}
-      
-      {/* Tabs container with horizontal scroll - scrollbar hidden */}
-      <div 
-        ref={tabsContainerRef}
-        className="flex-1 flex items-stretch overflow-x-auto overflow-y-hidden h-full scrollbar-hide"
-        style={{
-          scrollbarWidth: 'none', // Firefox
-          msOverflowStyle: 'none', // IE/Edge
-        }}
-      >
-        {tabOrder.map((tabId) => {
-          const tab = tabs[tabId];
-          if (!tab) return null;
-          
-          const isActive = tabId === activeTabId;
-          
-          return (
-            <div
-              key={tabId}
-              onClick={() => handleTabClick(tabId)}
-              title={getTabTitle(tabId)}
-              className={`
-                group flex items-center gap-2 px-4 border-r border-gray-300 cursor-pointer
-                transition-colors duration-150 flex-shrink-0 min-w-[120px] max-w-[200px] h-full
-                ${isActive 
-                  ? 'bg-white text-gray-900 border-b-2 border-b-blue-500' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }
-              `}
-            >
-              {/* Tab label with dirty indicator */}
-              <span className="flex-1 truncate select-none text-sm flex items-center gap-1">
-                {tab.isDirty && (
-                  <span className="text-orange-500 font-bold text-xs" title="Unsaved changes">
-                    ●
-                  </span>
-                )}
-                <span className="truncate">
-                  {tab.label}
-                </span>
-              </span>
+          <SortableContext
+            items={tabOrder}
+            strategy={horizontalListSortingStrategy}
+          >
+            {tabOrder.map((tabId) => {
+              const tab = tabs[tabId];
+              if (!tab) return null;
               
-              {/* Close button */}
-              <button
-                onClick={(e) => handleCloseTab(e, tabId)}
-                className={`
-                  flex-shrink-0 p-0.5 rounded hover:bg-gray-300 transition-colors
-                  ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
-                `}
-                aria-label={`Close ${tab.label}`}
-              >
-                <X size={14} className="text-gray-600" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      
-      {/* Right scroll button */}
-      {showRightScroll && (
+              const isActive = tabId === activeTabId;
+              
+              return (
+                <SortableTab
+                  key={tabId}
+                  tabId={tabId}
+                  tab={tab}
+                  isActive={isActive}
+                  onTabClick={handleTabClick}
+                  onCloseTab={handleCloseTab}
+                  getTabTitle={getTabTitle}
+                />
+              );
+            })}
+          </SortableContext>
+        </div>
+        
+        {/* Right scroll button */}
+        {showRightScroll && (
+          <button
+            onClick={() => scrollTabs('right')}
+            className="absolute right-[42px] border-r z-10 h-full px-3 bg-gray-100 hover:bg-gray-200 transition-colors border-l border-gray-300 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={16} className="text-gray-600" />
+          </button>
+        )}
+        
+        {/* New tab button */}
         <button
-          onClick={() => scrollTabs('right')}
-          className="absolute right-[42px] border-r z-10 h-full px-3 bg-gray-100 hover:bg-gray-200 transition-colors border-l border-gray-300 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
-          aria-label="Scroll right"
+          onClick={handleNewTab}
+          className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 transition-colors border-gray-300 h-full"
+          aria-label="New tab"
+          title="New tab (Ctrl/Cmd + T)"
         >
-          <ChevronRight size={16} className="text-gray-600" />
+          <Plus size={18} className="text-gray-600" />
         </button>
-      )}
-      
-      {/* New tab button */}
-      <button
-        onClick={handleNewTab}
-        className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 transition-colors border-gray-300 h-full"
-        aria-label="New tab"
-        title="New tab (Ctrl/Cmd + T)"
-      >
-        <Plus size={18} className="text-gray-600" />
-      </button>
-      
-      {/* Confirmation dialog for closing tabs with unsaved changes */}
-      <ConfirmDialog
-        isOpen={tabToClose !== null}
-        onClose={cancelCloseTab}
-        onConfirm={confirmCloseTab}
-        title="Unsaved Changes"
-        message={`Tab "${tabs[tabToClose || '']?.label || ''}" has unsaved changes. Are you sure you want to close it?`}
-        confirmText="Close Tab"
-        cancelText="Cancel"
-        variant="warning"
-      />
-    </div>
+        
+        {/* Confirmation dialog for closing tabs with unsaved changes */}
+        <ConfirmDialog
+          isOpen={tabToClose !== null}
+          onClose={cancelCloseTab}
+          onConfirm={confirmCloseTab}
+          title="Unsaved Changes"
+          message={`Tab "${tabs[tabToClose || '']?.label || ''}" has unsaved changes. Are you sure you want to close it?`}
+          confirmText="Close Tab"
+          cancelText="Cancel"
+          variant="warning"
+        />
+      </div>
+    </DndContext>
   );
 };
