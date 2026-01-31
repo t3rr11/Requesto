@@ -228,9 +228,10 @@ export const CollectionItem = ({
                 />
 
                 <div
-                  className={`px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ml-6 ${
+                  className={`px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ${
                     activeSavedRequestId === request.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
                   }`}
+                  style={{ paddingLeft: '32px' }}
                   onClick={() => onSelectRequest(request)}
                   onContextMenu={e => onRequestContextMenu(e, request)}
                   draggable
