@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useEffect, useState, useMemo } from 'react';
+import { forwardRef, useImperativeHandle, useEffect, useState, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './Button';
@@ -19,12 +19,25 @@ export interface RequestResponseViewRef {
 }
 
 const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function RequestResponseView(_, ref) {
-  const { setLoading, setResponse, setError, setCurrentSavedRequestId, currentRequestData, setCurrentRequestData, addConsoleLog, response, loading, error } = useRequestStore();
+  const {
+    setLoading,
+    setResponse,
+    setError,
+    setCurrentSavedRequestId,
+    currentRequestData,
+    setCurrentRequestData,
+    addConsoleLog,
+    response,
+    loading,
+    error,
+  } = useRequestStore();
   const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
-  const { openSaveRequest } = useUIStore();
+  const { openSaveRequest, requestPanelWidth, setRequestPanelWidth } = useUIStore();
   const [initialFormState, setInitialFormState] = useState<string | null>(null);
-  
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const { control, watch, setValue, getValues, reset } = useForm<RequestFormData>({
     resolver: zodResolver(requestFormSchema),
     defaultValues: {
@@ -38,6 +51,36 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
 
   const formValues = watch();
   const savedRequestId = watch('savedRequestId');
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !containerRef.current) return;
+
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = e.clientX - containerRect.left;
+      const clampedWidth = Math.max(300, Math.min(newWidth, containerRect.width - 300));
+      setRequestPanelWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setRequestPanelWidth]);
 
   // Check if form has changes compared to initial state
   const hasChanges = useMemo(() => {
@@ -60,14 +103,15 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
   // Load request from store when currentRequestData changes
   useEffect(() => {
     if (currentRequestData) {
-      const loadedHeaders = currentRequestData.headers && Object.keys(currentRequestData.headers).length > 0
-        ? Object.entries(currentRequestData.headers).map(([key, value], index) => ({
-            id: Date.now().toString() + index,
-            key,
-            value,
-            enabled: true,
-          }))
-        : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
+      const loadedHeaders =
+        currentRequestData.headers && Object.keys(currentRequestData.headers).length > 0
+          ? Object.entries(currentRequestData.headers).map(([key, value], index) => ({
+              id: Date.now().toString() + index,
+              key,
+              value,
+              enabled: true,
+            }))
+          : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
 
       const formData = {
         method: currentRequestData.method,
@@ -86,20 +130,22 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
   useEffect(() => {
     const currentSavedId = savedRequestId;
     const storeSavedId = currentRequestData?.savedRequestId;
-    
+
     // Only update if the store has a different savedRequestId than the form
     if (storeSavedId !== undefined && currentSavedId !== storeSavedId) {
       setValue('savedRequestId', storeSavedId);
-      
+
       // Update initial form state to mark as saved
       const values = getValues();
-      setInitialFormState(JSON.stringify({
-        method: values.method,
-        url: values.url,
-        headers: values.headers,
-        body: values.body,
-        savedRequestId: storeSavedId,
-      }));
+      setInitialFormState(
+        JSON.stringify({
+          method: values.method,
+          url: values.url,
+          headers: values.headers,
+          body: values.body,
+          savedRequestId: storeSavedId,
+        })
+      );
     }
   }, [currentRequestData?.savedRequestId, savedRequestId, setValue, getValues]);
 
@@ -232,9 +278,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       body: values.body.trim() || undefined,
     };
 
-    const collection = collections.find(c => 
-      c.requests.some(r => r.id === values.savedRequestId)
-    );
+    const collection = collections.find(c => c.requests.some(r => r.id === values.savedRequestId));
 
     // If collection not found (request was deleted), treat as new request
     if (!collection) {
@@ -245,10 +289,10 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         body: requestData.body,
         savedRequestId: undefined,
       });
-      
+
       // Clear the saved request ID from form to avoid future confusion
       setValue('savedRequestId', undefined);
-      
+
       openSaveRequest();
       return;
     }
@@ -260,88 +304,97 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         headers: requestData.headers,
         body: requestData.body,
       });
-      
+
       // Update initial state to match current form state (disables save button)
-      setInitialFormState(JSON.stringify({
-        method: values.method,
-        url: values.url,
-        headers: values.headers,
-        body: values.body,
-        savedRequestId: values.savedRequestId,
-      }));
+      setInitialFormState(
+        JSON.stringify({
+          method: values.method,
+          url: values.url,
+          headers: values.headers,
+          body: values.body,
+          savedRequestId: values.savedRequestId,
+        })
+      );
     } catch (error) {
       showAlert('Update Failed', 'Failed to update the request. Please try again.', 'error');
       console.error('Failed to update request:', error);
     }
   };
 
-  useImperativeHandle(ref, () => ({
-    loadRequest: (item: { method: string; url: string; headers?: Record<string, string>; body?: string }) => {
-      const loadedHeaders = item.headers && Object.keys(item.headers).length > 0
-        ? Object.entries(item.headers).map(([key, value], index) => ({
-            id: Date.now().toString() + index,
-            key,
-            value,
-            enabled: true,
-          }))
-        : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
+  useImperativeHandle(
+    ref,
+    () => ({
+      loadRequest: (item: { method: string; url: string; headers?: Record<string, string>; body?: string }) => {
+        const loadedHeaders =
+          item.headers && Object.keys(item.headers).length > 0
+            ? Object.entries(item.headers).map(([key, value], index) => ({
+                id: Date.now().toString() + index,
+                key,
+                value,
+                enabled: true,
+              }))
+            : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
 
-      const formData = {
-        method: item.method,
-        url: item.url,
-        headers: loadedHeaders,
-        body: item.body || '',
-        savedRequestId: undefined,
-      };
+        const formData = {
+          method: item.method,
+          url: item.url,
+          headers: loadedHeaders,
+          body: item.body || '',
+          savedRequestId: undefined,
+        };
 
-      reset(formData);
-      setInitialFormState(JSON.stringify(formData));
-    },
-    getCurrentRequest: () => {
-      const values = getValues();
-      if (!values.url.trim()) {
-        return null;
-      }
-
-      const requestHeaders: Record<string, string> = {};
-      values.headers.forEach(h => {
-        if (h.enabled && h.key.trim()) {
-          requestHeaders[h.key] = h.value;
+        reset(formData);
+        setInitialFormState(JSON.stringify(formData));
+      },
+      getCurrentRequest: () => {
+        const values = getValues();
+        if (!values.url.trim()) {
+          return null;
         }
-      });
 
-      return {
-        method: values.method,
-        url: values.url.trim(),
-        headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
-        body: values.body.trim() || undefined,
-      };
-    },
-    setSavedRequestId: (id: string | undefined) => {
-      setValue('savedRequestId', id);
-      const values = getValues();
-      setInitialFormState(JSON.stringify({
-        method: values.method,
-        url: values.url,
-        headers: values.headers,
-        body: values.body,
-        savedRequestId: id,
-      }));
-    },
-    clearRequest: () => {
-      const formData = {
-        method: 'GET' as const,
-        url: '',
-        headers: [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
-        body: '',
-        savedRequestId: undefined,
-      };
-      reset(formData);
-      setInitialFormState(null);
-      setResponse(null);
-      setError(null);
-    },
-  }), [getValues, reset, setValue, setResponse, setError]);
+        const requestHeaders: Record<string, string> = {};
+        values.headers.forEach(h => {
+          if (h.enabled && h.key.trim()) {
+            requestHeaders[h.key] = h.value;
+          }
+        });
+
+        return {
+          method: values.method,
+          url: values.url.trim(),
+          headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
+          body: values.body.trim() || undefined,
+        };
+      },
+      setSavedRequestId: (id: string | undefined) => {
+        setValue('savedRequestId', id);
+        const values = getValues();
+        setInitialFormState(
+          JSON.stringify({
+            method: values.method,
+            url: values.url,
+            headers: values.headers,
+            body: values.body,
+            savedRequestId: id,
+          })
+        );
+      },
+      clearRequest: () => {
+        const formData = {
+          method: 'GET' as const,
+          url: '',
+          headers: [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
+          body: '',
+          savedRequestId: undefined,
+        };
+        reset(formData);
+        setInitialFormState(null);
+        setResponse(null);
+        setError(null);
+      },
+    }),
+    [getValues, reset, setValue, setResponse, setError]
+  );
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -354,15 +407,26 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       </div>
 
       {/* Main Content - Split View */}
-      <div className="flex-1 flex overflow-hidden">
-        <RequestForm
-          control={control}
-          onSend={handleSend}
-          loading={loading}
-          urlValue={formValues.url}
-          headers={formValues.headers}
-          onHeadersChange={(headers) => setValue('headers', headers)}
-        />
+      <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
+        <div
+          className="flex flex-col border-r border-gray-200 bg-white relative"
+          style={{ width: `${requestPanelWidth}px` }}
+        >
+          <RequestForm
+            control={control}
+            onSend={handleSend}
+            loading={loading}
+            urlValue={formValues.url}
+            headers={formValues.headers}
+            onHeadersChange={headers => setValue('headers', headers)}
+          />
+          {/* Resize Handle */}
+          <div
+            className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 cursor-ew-resize transition-colors z-10"
+            onMouseDown={handleMouseDown}
+            title="Drag to resize"
+          />
+        </div>
         <ResponsePanel response={response} loading={loading} error={error} />
       </div>
     </div>

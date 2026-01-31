@@ -24,9 +24,9 @@ export const FolderItem = ({
   onRequestContextMenu,
   onDeleteFolder,
 }: FolderItemProps) => {
-  const { activeRequestId, expandedFolders, toggleFolder, addFolder, moveRequest, moveFolder } = useCollectionsStore();
+  const { activeRequestId, addFolder, moveRequest, moveFolder } = useCollectionsStore();
   const { newFolderInput, folderName, setNewFolderInput, setFolderName } = useCollectionsSidebarStore();
-  const { openNewRequest } = useUIStore();
+  const { openNewRequest, expandedFolders, toggleFolder, expandFolder } = useUIStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   
@@ -37,6 +37,12 @@ export const FolderItem = ({
   const handleSaveFolder = async () => {
     if (!newFolderInput || !folderName.trim()) return;
     await addFolder(newFolderInput.collectionId, folderName.trim(), newFolderInput.parentId);
+    
+    // Auto-expand the parent after creating folder
+    if (newFolderInput.parentId) {
+      expandFolder(newFolderInput.parentId);
+    }
+    
     setNewFolderInput(null);
   };
   

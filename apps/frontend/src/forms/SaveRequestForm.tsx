@@ -127,7 +127,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Get User by ID"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -140,7 +140,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
                 id="collection-select"
                 value={collectionId}
                 onChange={(e) => setCollectionId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Select a collection</option>
                 {collections.map((col) => (
@@ -183,7 +183,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
           <button
             type="submit"
             disabled={loading || collections.length === 0 || !currentRequest?.url?.trim()}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : 'Save Request'}
           </button>

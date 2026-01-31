@@ -39,7 +39,7 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
   const [activeTab, setActiveTab] = useState<RequestTab>('headers');
 
   return (
-    <div className="flex-1 flex flex-col border-r border-gray-200 bg-white">
+    <div className="flex-1 flex flex-col bg-white">
       {/* Request Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex gap-2">

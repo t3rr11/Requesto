@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { Folder as FolderIcon, FolderPlus, Plus, Edit, Trash2 } from 'lucide-react';
 import { useUIStore } from '../store/useUIStore';
 import { useCollectionsStore, SavedRequest } from '../store/useCollectionsStore';
@@ -9,7 +10,9 @@ import { RenameForm } from '../forms/RenameForm';
 import { CollectionItem } from './CollectionItem';
 
 export const CollectionsSidebar = () => {
-  const { isSidebarOpen, openNewCollection } = useUIStore();
+  const { isSidebarOpen, sidebarWidth, setSidebarWidth, openNewCollection } = useUIStore();
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const {
     collections,
     loading,
@@ -34,6 +37,35 @@ export const CollectionsSidebar = () => {
     renameCollection,
     setRenameCollection,
   } = useCollectionsSidebarStore();
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing || !sidebarRef.current) return;
+
+      const newWidth = e.clientX;
+      const clampedWidth = Math.max(200, Math.min(newWidth, 600));
+      setSidebarWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setSidebarWidth]);
 
   const handleSelectRequest = (request: SavedRequest) => {
     setActiveRequest(request.id);
@@ -182,7 +214,11 @@ export const CollectionsSidebar = () => {
   if (!isSidebarOpen) return null;
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 flex flex-col h-full">
+    <div 
+      ref={sidebarRef}
+      className="bg-white border-r border-gray-200 flex flex-col h-full relative"
+      style={{ width: `${sidebarWidth}px` }}
+    >
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center justify-between mb-3">
@@ -315,6 +351,13 @@ export const CollectionsSidebar = () => {
           placeholder="Enter collection name..."
         />
       )}
+
+      {/* Resize Handle */}
+      <div
+        className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 cursor-ew-resize transition-colors"
+        onMouseDown={handleMouseDown}
+        title="Drag to resize"
+      />
     </div>
   );
 };

@@ -128,7 +128,7 @@ export function HeadersEditor({ headers, onHeadersChange, disabled = false }: He
                         value={header.key}
                         onChange={e => updateHeader(header.id, 'key', e.target.value)}
                         placeholder="Key"
-                        className="w-full px-2 py-1 text-sm focus:outline-none focus:bg-gray-50 bg-transparent border-none"
+                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none"
                         disabled={disabled}
                       />
                     </td>
@@ -138,7 +138,7 @@ export function HeadersEditor({ headers, onHeadersChange, disabled = false }: He
                         value={header.value}
                         onChange={e => updateHeader(header.id, 'value', e.target.value)}
                         placeholder="Value"
-                        className="w-full px-2 py-1 text-sm focus:outline-none focus:bg-gray-50 bg-transparent border-none"
+                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none"
                         disabled={disabled}
                       />
                     </td>

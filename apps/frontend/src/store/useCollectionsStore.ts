@@ -38,16 +38,12 @@ interface CollectionsState {
   collections: Collection[];
   activeCollectionId: string | null;
   activeRequestId: string | null;
-  expandedCollections: Set<string>;
-  expandedFolders: Set<string>;
   loading: boolean;
   
   // Actions
   setCollections: (collections: Collection[]) => void;
   setActiveCollection: (id: string | null) => void;
   setActiveRequest: (id: string | null) => void;
-  toggleCollection: (id: string) => void;
-  toggleFolder: (id: string) => void;
   loadCollections: () => Promise<void>;
   addFolder: (collectionId: string, name: string, parentId?: string) => Promise<void>;
   deleteCollection: (id: string) => Promise<void>;
@@ -63,8 +59,6 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   collections: [],
   activeCollectionId: null,
   activeRequestId: null,
-  expandedCollections: new Set<string>(),
-  expandedFolders: new Set<string>(),
   loading: false,
   
   setCollections: (collections) => set({ collections }),
@@ -72,26 +66,6 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   setActiveCollection: (id) => set({ activeCollectionId: id }),
   
   setActiveRequest: (id) => set({ activeRequestId: id }),
-  
-  toggleCollection: (id) => set((state) => {
-    const newExpanded = new Set(state.expandedCollections);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
-    }
-    return { expandedCollections: newExpanded };
-  }),
-  
-  toggleFolder: (id) => set((state) => {
-    const newExpanded = new Set(state.expandedFolders);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
-    }
-    return { expandedFolders: newExpanded };
-  }),
   
   loadCollections: async () => {
     set({ loading: true });
@@ -109,17 +83,6 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
     try {
       await collectionsApi.addFolder(collectionId, { name, parentId });
       await get().loadCollections();
-      
-      // Auto-expand the parent
-      if (parentId) {
-        set((state) => ({
-          expandedFolders: new Set(state.expandedFolders).add(parentId),
-        }));
-      } else {
-        set((state) => ({
-          expandedCollections: new Set(state.expandedCollections).add(collectionId),
-        }));
-      }
     } catch (error) {
       console.error('Failed to create folder:', error);
       throw error;

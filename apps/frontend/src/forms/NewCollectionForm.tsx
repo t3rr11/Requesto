@@ -63,7 +63,7 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="My API Collection"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             autoFocus
           />
         </div>
@@ -78,7 +78,7 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Collection for testing user APIs"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
         </div>
 
@@ -93,7 +93,7 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating...' : 'Create Collection'}
           </button>

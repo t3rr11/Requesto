@@ -25,9 +25,9 @@ export const CollectionItem = ({
   onRequestContextMenu,
   onCollectionContextMenu,
 }: CollectionItemProps) => {
-  const { activeRequestId, expandedCollections, toggleCollection, addFolder, moveRequest } = useCollectionsStore();
+  const { activeRequestId, addFolder, moveRequest } = useCollectionsStore();
   const { newFolderInput, folderName, setNewFolderInput, setFolderName } = useCollectionsSidebarStore();
-  const { openNewRequest } = useUIStore();
+  const { openNewRequest, expandedCollections, toggleCollection, expandCollection } = useUIStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   
@@ -40,6 +40,15 @@ export const CollectionItem = ({
   const handleSaveFolder = async () => {
     if (!newFolderInput || !folderName.trim()) return;
     await addFolder(newFolderInput.collectionId, folderName.trim(), newFolderInput.parentId);
+    
+    // Auto-expand the parent after creating folder
+    if (newFolderInput.parentId) {
+      const { expandFolder } = useUIStore.getState();
+      expandFolder(newFolderInput.parentId);
+    } else {
+      expandCollection(collection.id);
+    }
+    
     setNewFolderInput(null);
   };
   

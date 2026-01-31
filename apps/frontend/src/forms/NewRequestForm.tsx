@@ -115,7 +115,7 @@ export const NewRequestForm = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Request"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 autoFocus
               />
             </div>
@@ -128,7 +128,7 @@ export const NewRequestForm = ({
                 id="request-method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {HTTP_METHODS.map((m) => (
                   <option key={m} value={m}>
@@ -149,7 +149,7 @@ export const NewRequestForm = ({
                   setCollectionId(e.target.value);
                   setFolderId(''); // Reset folder when collection changes
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {collections.map((collection) => (
                   <option key={collection.id} value={collection.id}>
@@ -168,7 +168,7 @@ export const NewRequestForm = ({
                   id="request-folder"
                   value={folderId}
                   onChange={(e) => setFolderId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">-- Root Level --</option>
                   {availableFolders.map((folder) => (
@@ -197,7 +197,7 @@ export const NewRequestForm = ({
           <button
             type="submit"
             disabled={loading || collections.length === 0}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating...' : 'Create Request'}
           </button>
