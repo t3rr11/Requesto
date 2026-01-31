@@ -8,6 +8,7 @@ interface KeyboardShortcutsContentProps {
 export const KeyboardShortcutsContent: React.FC<KeyboardShortcutsContentProps> = ({ onClose }) => {
   const shortcuts = [
     { keys: ['Ctrl', 'Enter'], description: 'Send request' },
+    { keys: ['Ctrl', 'S'], description: 'Save request' },
     { keys: ['Esc'], description: 'Close modals' },
   ];
 
