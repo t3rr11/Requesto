@@ -1,0 +1,198 @@
+import { create } from 'zustand';
+import { collectionsApi } from '../helpers/api/collections';
+
+export interface SavedRequest {
+  id: string;
+  name: string;
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  collectionId: string;
+  folderId?: string;
+  order?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  parentId?: string;
+  collectionId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  folders: Folder[];
+  requests: SavedRequest[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface CollectionsState {
+  collections: Collection[];
+  activeCollectionId: string | null;
+  activeRequestId: string | null;
+  expandedCollections: Set<string>;
+  expandedFolders: Set<string>;
+  loading: boolean;
+  
+  // Actions
+  setCollections: (collections: Collection[]) => void;
+  setActiveCollection: (id: string | null) => void;
+  setActiveRequest: (id: string | null) => void;
+  toggleCollection: (id: string) => void;
+  toggleFolder: (id: string) => void;
+  loadCollections: () => Promise<void>;
+  addFolder: (collectionId: string, name: string, parentId?: string) => Promise<void>;
+  deleteCollection: (id: string) => Promise<void>;
+  deleteFolder: (collectionId: string, folderId: string) => Promise<void>;
+  deleteRequest: (collectionId: string, requestId: string) => Promise<void>;
+  updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
+  updateRequest: (collectionId: string, requestId: string, updates: Partial<SavedRequest>) => Promise<void>;
+  moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
+  moveFolder: (sourceCollectionId: string, folderId: string, targetCollectionId: string, targetParentId?: string) => Promise<void>;
+}
+
+export const useCollectionsStore = create<CollectionsState>((set, get) => ({
+  collections: [],
+  activeCollectionId: null,
+  activeRequestId: null,
+  expandedCollections: new Set<string>(),
+  expandedFolders: new Set<string>(),
+  loading: false,
+  
+  setCollections: (collections) => set({ collections }),
+  
+  setActiveCollection: (id) => set({ activeCollectionId: id }),
+  
+  setActiveRequest: (id) => set({ activeRequestId: id }),
+  
+  toggleCollection: (id) => set((state) => {
+    const newExpanded = new Set(state.expandedCollections);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    return { expandedCollections: newExpanded };
+  }),
+  
+  toggleFolder: (id) => set((state) => {
+    const newExpanded = new Set(state.expandedFolders);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    return { expandedFolders: newExpanded };
+  }),
+  
+  loadCollections: async () => {
+    set({ loading: true });
+    try {
+      const data = await collectionsApi.getAll();
+      set({ collections: data });
+    } catch (error) {
+      console.error('Failed to load collections:', error);
+    } finally {
+      set({ loading: false });
+    }
+  },
+  
+  addFolder: async (collectionId, name, parentId) => {
+    try {
+      await collectionsApi.addFolder(collectionId, { name, parentId });
+      await get().loadCollections();
+      
+      // Auto-expand the parent
+      if (parentId) {
+        set((state) => ({
+          expandedFolders: new Set(state.expandedFolders).add(parentId),
+        }));
+      } else {
+        set((state) => ({
+          expandedCollections: new Set(state.expandedCollections).add(collectionId),
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to create folder:', error);
+      throw error;
+    }
+  },
+  
+  deleteCollection: async (id) => {
+    try {
+      await collectionsApi.delete(id);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to delete collection:', error);
+      throw error;
+    }
+  },
+  
+  deleteFolder: async (collectionId, folderId) => {
+    try {
+      await collectionsApi.deleteFolder(collectionId, folderId);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to delete folder:', error);
+      throw error;
+    }
+  },
+  
+  deleteRequest: async (collectionId, requestId) => {
+    try {
+      await collectionsApi.deleteRequest(collectionId, requestId);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to delete request:', error);
+      throw error;
+    }
+  },
+  
+  updateCollection: async (id, updates) => {
+    try {
+      await collectionsApi.update(id, updates);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to update collection:', error);
+      throw error;
+    }
+  },
+  
+  updateRequest: async (collectionId, requestId, updates) => {
+    try {
+      await collectionsApi.updateRequest(collectionId, requestId, updates);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to update request:', error);
+      throw error;
+    }
+  },
+
+  moveRequest: async (sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder) => {
+    try {
+      await collectionsApi.moveRequest(sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to move request:', error);
+      throw error;
+    }
+  },
+
+  moveFolder: async (sourceCollectionId, folderId, targetCollectionId, targetParentId) => {
+    try {
+      await collectionsApi.moveFolder(sourceCollectionId, folderId, targetCollectionId, targetParentId);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to move folder:', error);
+      throw error;
+    }
+  },
+}));

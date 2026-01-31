@@ -1,0 +1,23 @@
+{
+  "name": "localman-backend",
+  "version": "0.1.0",
+  "description": "Backend API proxy for Localman",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.0",
+    "@fastify/cors": "^9.0.1",
+    "@fastify/static": "^6.12.0",
+    "axios": "^1.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "@types/better-sqlite3": "^7.6.9",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0"
+  }
+}

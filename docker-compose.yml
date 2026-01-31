@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  localman:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3001"
+    volumes:
+      - localman-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+    restart: unless-stopped
+
+volumes:
+  localman-data:

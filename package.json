@@ -1,0 +1,32 @@
+{
+  "name": "localman",
+  "version": "0.1.0",
+  "description": "A lightweight, self-hosted API client",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w localman-backend\" \"npm run dev -w localman-frontend\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
+    "dev:backend": "npm run dev -w localman-backend",
+    "dev:frontend": "npm run dev -w localman-frontend",
+    "build": "npm run build -w localman-backend && npm run build -w localman-frontend",
+    "build:backend": "npm run build -w localman-backend",
+    "build:frontend": "npm run build -w localman-frontend",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down"
+  },
+  "keywords": [
+    "api",
+    "client",
+    "postman",
+    "rest",
+    "http"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
