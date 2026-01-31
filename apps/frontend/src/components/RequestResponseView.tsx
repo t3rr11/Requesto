@@ -9,17 +9,20 @@ import { useRequestStore } from '../store/useRequestStore';
 import { useCollectionsStore } from '../store/useCollectionsStore';
 import { useAlertStore } from '../store/useAlertStore';
 import { requestApi } from '../helpers/api/request';
+import { useUIStore } from '../store/useUIStore';
 
 export interface RequestResponseViewRef {
   loadRequest: (item: { method: string; url: string; headers?: Record<string, string>; body?: string }) => void;
   getCurrentRequest: () => { method: string; url: string; headers?: Record<string, string>; body?: string } | null;
   setSavedRequestId: (id: string | undefined) => void;
+  clearRequest: () => void;
 }
 
 const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function RequestResponseView(_, ref) {
-  const { setLoading, setResponse, setError, setCurrentSavedRequestId, currentRequestData, addConsoleLog, response, loading, error } = useRequestStore();
+  const { setLoading, setResponse, setError, setCurrentSavedRequestId, currentRequestData, setCurrentRequestData, addConsoleLog, response, loading, error } = useRequestStore();
   const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
+  const { openSaveRequest } = useUIStore();
   const [initialFormState, setInitialFormState] = useState<string | null>(null);
   
   const { control, watch, setValue, getValues, reset } = useForm<RequestFormData>({
@@ -38,7 +41,12 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
 
   // Check if form has changes compared to initial state
   const hasChanges = useMemo(() => {
-    if (!savedRequestId || !initialFormState) return false;
+    // For new requests (no savedRequestId), enable save if URL is present
+    if (!savedRequestId) {
+      return formValues.url.trim().length > 0;
+    }
+    // For saved requests, check if form differs from initial state
+    if (!initialFormState) return false;
     const currentState = JSON.stringify({
       method: formValues.method,
       url: formValues.url,
@@ -74,6 +82,27 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
     }
   }, [currentRequestData, reset]);
 
+  // Sync savedRequestId from store to form (for when request is saved/renamed)
+  useEffect(() => {
+    const currentSavedId = savedRequestId;
+    const storeSavedId = currentRequestData?.savedRequestId;
+    
+    // Only update if the store has a different savedRequestId than the form
+    if (storeSavedId !== undefined && currentSavedId !== storeSavedId) {
+      setValue('savedRequestId', storeSavedId);
+      
+      // Update initial form state to mark as saved
+      const values = getValues();
+      setInitialFormState(JSON.stringify({
+        method: values.method,
+        url: values.url,
+        headers: values.headers,
+        body: values.body,
+        savedRequestId: storeSavedId,
+      }));
+    }
+  }, [currentRequestData?.savedRequestId, savedRequestId, setValue, getValues]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -88,8 +117,8 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       // Ctrl/Cmd + S to save request
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        const currentSavedRequestId = getValues('savedRequestId');
-        if (currentSavedRequestId && hasChanges && !loading) {
+        const currentUrl = getValues('url');
+        if (hasChanges && !loading && currentUrl.trim()) {
           handleSave();
         }
       }
@@ -164,7 +193,30 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
 
   const handleSave = async () => {
     const values = getValues();
-    if (!values.url.trim() || !values.savedRequestId) return;
+    if (!values.url.trim()) return;
+
+    // If no savedRequestId, open save dialog to create new request
+    if (!values.savedRequestId) {
+      // Build headers object
+      const requestHeaders: Record<string, string> = {};
+      values.headers.forEach(h => {
+        if (h.enabled && h.key.trim()) {
+          requestHeaders[h.key.trim()] = h.value;
+        }
+      });
+
+      // Update currentRequestData with the latest form values before opening dialog
+      setCurrentRequestData({
+        method: values.method,
+        url: values.url.trim(),
+        headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
+        body: values.body.trim() || undefined,
+        savedRequestId: undefined,
+      });
+
+      openSaveRequest();
+      return;
+    }
 
     const requestHeaders: Record<string, string> = {};
     values.headers.forEach(h => {
@@ -184,8 +236,20 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       c.requests.some(r => r.id === values.savedRequestId)
     );
 
+    // If collection not found (request was deleted), treat as new request
     if (!collection) {
-      showAlert('Collection Not Found', 'Could not find the collection for this request.', 'error');
+      setCurrentRequestData({
+        method: requestData.method,
+        url: requestData.url,
+        headers: requestData.headers,
+        body: requestData.body,
+        savedRequestId: undefined,
+      });
+      
+      // Clear the saved request ID from form to avoid future confusion
+      setValue('savedRequestId', undefined);
+      
+      openSaveRequest();
       return;
     }
 
@@ -264,18 +328,29 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         savedRequestId: id,
       }));
     },
-  }), [getValues, reset, setValue]);
+    clearRequest: () => {
+      const formData = {
+        method: 'GET' as const,
+        url: '',
+        headers: [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
+        body: '',
+        savedRequestId: undefined,
+      };
+      reset(formData);
+      setInitialFormState(null);
+      setResponse(null);
+      setError(null);
+    },
+  }), [getValues, reset, setValue, setResponse, setError]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* Top Bar - Breadcrumb and Save */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between h-14">
         <RequestBreadcrumb savedRequestId={savedRequestId} />
-        {savedRequestId && (
-          <Button onClick={handleSave} size="sm" disabled={loading || !hasChanges}>
-            Save
-          </Button>
-        )}
+        <Button onClick={handleSave} size="sm" disabled={loading || !hasChanges}>
+          Save
+        </Button>
       </div>
 
       {/* Main Content - Split View */}

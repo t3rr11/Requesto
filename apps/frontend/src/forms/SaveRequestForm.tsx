@@ -2,6 +2,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { Dialog } from '../components/Dialog';
 import { collectionsApi } from '../helpers/api/collections';
 import { useCollectionsStore } from '../store/useCollectionsStore';
+import { useRequestStore } from '../store/useRequestStore';
 
 interface SaveRequestFormProps {
   isOpen: boolean;
@@ -16,7 +17,8 @@ interface SaveRequestFormProps {
 }
 
 export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: SaveRequestFormProps) => {
-  const { collections } = useCollectionsStore();
+  const { collections, setActiveRequest } = useCollectionsStore();
+  const { setCurrentSavedRequestId, setCurrentRequestData, currentRequestData } = useRequestStore();
   const [name, setName] = useState('');
   const [collectionId, setCollectionId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,15 +59,33 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
       return;
     }
 
+    if (!currentRequest.url.trim()) {
+      setError('Request URL is required');
+      return;
+    }
+
     setLoading(true);
     try {
-      await collectionsApi.addRequest(collectionId, {
+      const savedRequest = await collectionsApi.addRequest(collectionId, {
         name: name.trim(),
         method: currentRequest.method,
         url: currentRequest.url,
         headers: currentRequest.headers,
         body: currentRequest.body,
       });
+      
+      // Update the UI to reflect this is now a saved request
+      setActiveRequest(savedRequest.id);
+      setCurrentSavedRequestId(savedRequest.id);
+      
+      // Update currentRequestData to include the savedRequestId
+      if (currentRequestData) {
+        setCurrentRequestData({
+          ...currentRequestData,
+          savedRequestId: savedRequest.id,
+        });
+      }
+      
       setName('');
       onSuccess();
       onClose();
@@ -136,7 +156,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
                 <div className="font-medium text-gray-700 mb-2">Request Preview:</div>
                 <div className="space-y-1 text-gray-600">
                   <div>
-                    <span className="font-semibold">{currentRequest.method}</span> {currentRequest.url}
+                    <span className="font-semibold">{currentRequest.method}</span> {currentRequest.url || <span className="text-red-500">No URL specified</span>}
                   </div>
                   {currentRequest.headers && Object.keys(currentRequest.headers).length > 0 && (
                     <div className="text-xs">
@@ -162,7 +182,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
           </button>
           <button
             type="submit"
-            disabled={loading || collections.length === 0}
+            disabled={loading || collections.length === 0 || !currentRequest?.url?.trim()}
             className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : 'Save Request'}

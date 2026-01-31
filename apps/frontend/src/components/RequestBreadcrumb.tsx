@@ -8,6 +8,11 @@ export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
   const { collections, activeRequestId } = useCollectionsStore();
 
   const getBreadcrumbInfo = () => {
+    // If no savedRequestId, this is a new unsaved request
+    if (!savedRequestId) {
+      return { collectionName: null, requestName: 'Untitled Request' };
+    }
+
     const requestId = savedRequestId || activeRequestId;
     
     if (!requestId) {

@@ -21,7 +21,7 @@ export const DialogManager = () => {
   } = useUIStore();
   const { incrementEnvironmentCounter } = useEnvironmentStore();
   const { loadCollections } = useCollectionsStore();
-  const { currentSavedRequestId } = useRequestStore();
+  const { currentRequestData } = useRequestStore();
 
   const handleEnvironmentChange = () => {
     incrementEnvironmentCounter();
@@ -31,12 +31,6 @@ export const DialogManager = () => {
     await loadCollections();
   };
 
-  // Get current request data from RequestBuilder if available
-  const getCurrentRequestData = () => {
-    // This would ideally be managed by a separate store
-    // For now, we'll return null and handle it in the form
-    return null;
-  };
   return (
     <>
       {isEnvironmentManagerOpen && (
@@ -61,7 +55,12 @@ export const DialogManager = () => {
         isOpen={isSaveRequestOpen}
         onClose={closeAllDialogs}
         onSuccess={handleCollectionsChange}
-        currentRequest={getCurrentRequestData()}
+        currentRequest={currentRequestData ? {
+          method: currentRequestData.method,
+          url: currentRequestData.url,
+          headers: currentRequestData.headers,
+          body: currentRequestData.body,
+        } : null}
       />
 
       <NewRequestForm
