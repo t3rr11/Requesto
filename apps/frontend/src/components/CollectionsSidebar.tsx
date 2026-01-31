@@ -22,6 +22,7 @@ export const CollectionsSidebar = () => {
     deleteRequest,
     updateCollection,
     updateRequest,
+    updateFolder,
   } = useCollectionsStore();
   const { openRequestTab } = useTabsStore();
   const {
@@ -32,10 +33,14 @@ export const CollectionsSidebar = () => {
     setRequestContextMenu,
     collectionContextMenu,
     setCollectionContextMenu,
+    folderContextMenu,
+    setFolderContextMenu,
     renameRequest,
     setRenameRequest,
     renameCollection,
     setRenameCollection,
+    renameFolder,
+    setRenameFolder,
   } = useCollectionsSidebarStore();
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -136,6 +141,12 @@ export const CollectionsSidebar = () => {
     setCollectionContextMenu({ x: e.clientX, y: e.clientY, collectionId, collectionName });
   };
 
+  const handleFolderContextMenu = (e: React.MouseEvent, collectionId: string, folderId: string, folderName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFolderContextMenu({ x: e.clientX, y: e.clientY, collectionId, folderId, folderName });
+  };
+
   const handleRenameRequest = (request: SavedRequest) => {
     setRenameRequest({ request });
     setRequestContextMenu(null);
@@ -144,6 +155,11 @@ export const CollectionsSidebar = () => {
   const handleRenameCollection = (collectionId: string, collectionName: string) => {
     setRenameCollection({ id: collectionId, name: collectionName });
     setCollectionContextMenu(null);
+  };
+
+  const handleRenameFolder = (collectionId: string, folderId: string, folderName: string) => {
+    setRenameFolder({ collectionId, id: folderId, name: folderName });
+    setFolderContextMenu(null);
   };
 
   const handleSaveRequestRename = async (newName: string) => {
@@ -158,6 +174,13 @@ export const CollectionsSidebar = () => {
 
     await updateCollection(renameCollection.id, { name: newName });
     setRenameCollection(null);
+  };
+
+  const handleSaveFolderRename = async (newName: string) => {
+    if (!renameFolder) return;
+
+    await updateFolder(renameFolder.collectionId, renameFolder.id, { name: newName });
+    setRenameFolder(null);
   };
 
   const handleDeleteRequestFromContext = async () => {
@@ -191,6 +214,21 @@ export const CollectionsSidebar = () => {
       },
     });
     setCollectionContextMenu(null);
+  };
+
+  const handleDeleteFolderFromContext = async () => {
+    if (!folderContextMenu) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Folder',
+      message: 'Are you sure you want to delete this folder and all its contents? This action cannot be undone.',
+      onConfirm: async () => {
+        await deleteFolder(folderContextMenu.collectionId, folderContextMenu.folderId);
+        closeConfirmDialog();
+      },
+    });
+    setFolderContextMenu(null);
   };
 
   const handleNewRequest = () => {
@@ -256,6 +294,7 @@ export const CollectionsSidebar = () => {
                 onDeleteFolder={handleDeleteFolder}
                 onRequestContextMenu={handleRequestContextMenu}
                 onCollectionContextMenu={handleCollectionContextMenu}
+                onFolderContextMenu={handleFolderContextMenu}
               />
             ))}
           </div>
@@ -319,6 +358,27 @@ export const CollectionsSidebar = () => {
         />
       )}
 
+      {/* Folder Context Menu */}
+      {folderContextMenu && (
+        <ContextMenu
+          position={{ x: folderContextMenu.x, y: folderContextMenu.y }}
+          items={[
+            {
+              label: 'Rename',
+              icon: <Edit className="w-4 h-4" />,
+              onClick: () => handleRenameFolder(folderContextMenu.collectionId, folderContextMenu.folderId, folderContextMenu.folderName),
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="w-4 h-4" />,
+              onClick: handleDeleteFolderFromContext,
+              danger: true,
+            },
+          ]}
+          onClose={() => setFolderContextMenu(null)}
+        />
+      )}
+
       {/* Rename Request Form */}
       {renameRequest && (
         <RenameForm
@@ -341,6 +401,19 @@ export const CollectionsSidebar = () => {
           title="Rename Collection"
           label="Collection Name"
           placeholder="Enter collection name..."
+        />
+      )}
+
+      {/* Rename Folder Form */}
+      {renameFolder && (
+        <RenameForm
+          isOpen={true}
+          onClose={() => setRenameFolder(null)}
+          onSave={handleSaveFolderRename}
+          currentName={renameFolder.name}
+          title="Rename Folder"
+          label="Folder Name"
+          placeholder="Enter folder name..."
         />
       )}
 

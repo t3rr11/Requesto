@@ -51,6 +51,7 @@ interface CollectionsState {
   deleteRequest: (collectionId: string, requestId: string) => Promise<void>;
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
   updateRequest: (collectionId: string, requestId: string, updates: Partial<SavedRequest>) => Promise<void>;
+  updateFolder: (collectionId: string, folderId: string, updates: Partial<Folder>) => Promise<void>;
   moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
   moveFolder: (sourceCollectionId: string, folderId: string, targetCollectionId: string, targetParentId?: string) => Promise<void>;
 }
@@ -135,6 +136,16 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
       await get().loadCollections();
     } catch (error) {
       console.error('Failed to update request:', error);
+      throw error;
+    }
+  },
+
+  updateFolder: async (collectionId, folderId, updates) => {
+    try {
+      await collectionsApi.updateFolder(collectionId, folderId, updates);
+      await get().loadCollections();
+    } catch (error) {
+      console.error('Failed to update folder:', error);
       throw error;
     }
   },

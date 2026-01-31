@@ -15,6 +15,7 @@ interface CollectionItemProps {
   onDeleteFolder: (collectionId: string, folderId: string, e: React.MouseEvent) => void;
   onRequestContextMenu: (e: React.MouseEvent, request: SavedRequest) => void;
   onCollectionContextMenu: (e: React.MouseEvent, collectionId: string, collectionName: string) => void;
+  onFolderContextMenu: (e: React.MouseEvent, collectionId: string, folderId: string, folderName: string) => void;
 }
 
 export const CollectionItem = ({
@@ -25,6 +26,7 @@ export const CollectionItem = ({
   onDeleteFolder,
   onRequestContextMenu,
   onCollectionContextMenu,
+  onFolderContextMenu,
 }: CollectionItemProps) => {
   const { addFolder, moveRequest } = useCollectionsStore();
   const { getActiveTab } = useTabsStore();
@@ -197,6 +199,7 @@ export const CollectionItem = ({
               onDeleteRequest={onDeleteRequest}
               onRequestContextMenu={onRequestContextMenu}
               onDeleteFolder={onDeleteFolder}
+              onFolderContextMenu={onFolderContextMenu}
             />
           ))}
 

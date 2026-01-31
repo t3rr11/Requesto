@@ -26,11 +26,25 @@ interface CollectionContextMenu {
   collectionName: string;
 }
 
+interface FolderContextMenu {
+  x: number;
+  y: number;
+  collectionId: string;
+  folderId: string;
+  folderName: string;
+}
+
 interface RenameRequest {
   request: SavedRequest;
 }
 
 interface RenameCollection {
+  id: string;
+  name: string;
+}
+
+interface RenameFolder {
+  collectionId: string;
   id: string;
   name: string;
 }
@@ -52,12 +66,16 @@ interface CollectionsSidebarState {
   setRequestContextMenu: (menu: RequestContextMenu | null) => void;
   collectionContextMenu: CollectionContextMenu | null;
   setCollectionContextMenu: (menu: CollectionContextMenu | null) => void;
+  folderContextMenu: FolderContextMenu | null;
+  setFolderContextMenu: (menu: FolderContextMenu | null) => void;
   
   // Rename forms
   renameRequest: RenameRequest | null;
   setRenameRequest: (rename: RenameRequest | null) => void;
   renameCollection: RenameCollection | null;
   setRenameCollection: (rename: RenameCollection | null) => void;
+  renameFolder: RenameFolder | null;
+  setRenameFolder: (rename: RenameFolder | null) => void;
 }
 
 export const useCollectionsSidebarStore = create<CollectionsSidebarState>((set) => ({
@@ -83,9 +101,15 @@ export const useCollectionsSidebarStore = create<CollectionsSidebarState>((set) 
   collectionContextMenu: null,
   setCollectionContextMenu: (menu) => set({ collectionContextMenu: menu }),
   
+  folderContextMenu: null,
+  setFolderContextMenu: (menu) => set({ folderContextMenu: menu }),
+  
   renameRequest: null,
   setRenameRequest: (rename) => set({ renameRequest: rename }),
   
   renameCollection: null,
   setRenameCollection: (rename) => set({ renameCollection: rename }),
+  
+  renameFolder: null,
+  setRenameFolder: (rename) => set({ renameFolder: rename }),
 }));

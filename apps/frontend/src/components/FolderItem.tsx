@@ -14,6 +14,7 @@ interface FolderItemProps {
   onDeleteRequest: (collectionId: string, requestId: string, e: React.MouseEvent) => void;
   onRequestContextMenu: (e: React.MouseEvent, request: SavedRequest) => void;
   onDeleteFolder: (collectionId: string, folderId: string, e: React.MouseEvent) => void;
+  onFolderContextMenu: (e: React.MouseEvent, collectionId: string, folderId: string, folderName: string) => void;
 }
 
 export const FolderItem = ({
@@ -24,6 +25,7 @@ export const FolderItem = ({
   onDeleteRequest,
   onRequestContextMenu,
   onDeleteFolder,
+  onFolderContextMenu,
 }: FolderItemProps) => {
   const { addFolder, moveRequest, moveFolder } = useCollectionsStore();
   const { getActiveTab } = useTabsStore();
@@ -104,6 +106,7 @@ export const FolderItem = ({
         }`}
         style={{ paddingLeft }}
         onClick={() => toggleFolder(folder.id)}
+        onContextMenu={(e) => onFolderContextMenu(e, collection.id, folder.id, folder.name)}
         draggable
         onDragStart={(e) => {
           e.stopPropagation();
@@ -202,6 +205,7 @@ export const FolderItem = ({
               onDeleteRequest={onDeleteRequest}
               onRequestContextMenu={onRequestContextMenu}
               onDeleteFolder={onDeleteFolder}
+              onFolderContextMenu={onFolderContextMenu}
             />
           ))}
 
