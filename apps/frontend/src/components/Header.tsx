@@ -1,23 +1,13 @@
 import { useEffect } from 'react';
 import { useUIStore } from '../store/useUIStore';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { ListCollapse, Menu } from 'lucide-react';
 
 export const Header = () => {
-  const { 
-    isSidebarOpen, 
-    toggleSidebar, 
-    isConsoleOpen, 
-    toggleConsole,
-    openEnvironmentManager,
-    openKeyboardShortcuts,
-  } = useUIStore();
-  
-  const { 
-    environmentsData, 
-    environmentChangeCounter,
-    loadEnvironments, 
-    setActiveEnvironment 
-  } = useEnvironmentStore();
+  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, openEnvironmentManager, openKeyboardShortcuts } =
+    useUIStore();
+
+  const { environmentsData, environmentChangeCounter, loadEnvironments, setActiveEnvironment } = useEnvironmentStore();
 
   useEffect(() => {
     loadEnvironments();
@@ -30,15 +20,13 @@ export const Header = () => {
           <button
             onClick={toggleSidebar}
             className="p-2 hover:bg-blue-500 rounded transition-colors"
-            title={isSidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+            title={isSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            {isSidebarOpen ? <Menu className="w-5 h-5" /> : <ListCollapse className="w-5 h-5" />}
           </button>
-          
+
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Localman Logo" className="w-9 h-9" />
+            <img src="/logo.png" alt="Localman Logo" className="w-8 h-8" />
             <h1 className="text-xl font-bold">Localman</h1>
           </div>
         </div>
@@ -49,7 +37,7 @@ export const Header = () => {
             <label className="text-sm text-blue-200">Environment:</label>
             <select
               value={environmentsData.activeEnvironmentId || ''}
-              onChange={(e) => setActiveEnvironment(e.target.value)}
+              onChange={e => setActiveEnvironment(e.target.value)}
               className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded border border-blue-400 hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-white"
             >
               {environmentsData.environments.map(env => (
@@ -64,8 +52,18 @@ export const Header = () => {
               title="Manage Environments"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
             </button>
           </div>
@@ -77,7 +75,12 @@ export const Header = () => {
             title="Keyboard Shortcuts"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </button>
 
@@ -85,10 +88,15 @@ export const Header = () => {
           <button
             onClick={toggleConsole}
             className={`p-1.5 rounded transition-colors ${isConsoleOpen ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
-            title={isConsoleOpen ? "Hide Console" : "Show Console"}
+            title={isConsoleOpen ? 'Hide Console' : 'Show Console'}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
             </svg>
           </button>
         </div>
