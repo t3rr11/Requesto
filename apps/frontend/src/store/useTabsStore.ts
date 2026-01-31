@@ -208,13 +208,13 @@ export const useTabsStore = create<TabsState>((set, get) => ({
     const state = get();
     const { tabs, tabOrder, activeTabId } = state;
     
-    // Don't close if it's the last tab - just reset it instead
+    // Don't close if it's the last tab - create a new empty tab instead
     if (tabOrder.length === 1) {
-      const emptyTab = createNewTab({ id: tabId });
+      const emptyTab = createNewTab();
       set({
-        tabs: { [tabId]: emptyTab },
-        tabOrder: [tabId],
-        activeTabId: tabId,
+        tabs: { [emptyTab.id]: emptyTab },
+        tabOrder: [emptyTab.id],
+        activeTabId: emptyTab.id,
       });
       return;
     }
