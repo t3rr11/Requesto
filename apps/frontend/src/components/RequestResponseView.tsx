@@ -366,7 +366,9 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
             title="Drag to resize"
           />
         </div>
-        <ResponsePanel />
+        <div style={{ pointerEvents: isResizing ? 'none' : 'auto' }} className="flex-1 flex flex-col overflow-hidden">
+          <ResponsePanel />
+        </div>
       </div>
     </div>
   );

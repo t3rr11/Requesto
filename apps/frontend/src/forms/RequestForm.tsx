@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Control, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import Editor from '@monaco-editor/react';
 import { Button } from '../components/Button';
 import { HeadersEditor } from '../components/HeadersEditor';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const requestFormSchema = z.object({
   method: z.string(),
@@ -37,12 +38,73 @@ interface RequestFormProps {
 
 export function RequestForm({ control, onSend, loading, urlValue, headers, onHeadersChange }: RequestFormProps) {
   const [activeTab, setActiveTab] = useState<RequestTab>('headers');
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftScroll, setShowLeftScroll] = useState(false);
+  const [showRightScroll, setShowRightScroll] = useState(false);
+
+  // Check if scrolling is needed and update scroll button visibility
+  const checkScrollButtons = () => {
+    const container = tabsContainerRef.current;
+    if (!container) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setShowLeftScroll(scrollLeft > 0);
+    setShowRightScroll(scrollLeft + clientWidth < scrollWidth - 1);
+  };
+
+  // Check scroll buttons on mount and when container resizes
+  useEffect(() => {
+    checkScrollButtons();
+    const container = tabsContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', checkScrollButtons);
+    window.addEventListener('resize', checkScrollButtons);
+
+    // Use ResizeObserver to detect container size changes
+    const resizeObserver = new ResizeObserver(checkScrollButtons);
+    resizeObserver.observe(container);
+
+    return () => {
+      container.removeEventListener('scroll', checkScrollButtons);
+      window.removeEventListener('resize', checkScrollButtons);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    const container = tabsContainerRef.current;
+    if (!container) return;
+
+    const scrollAmount = 100;
+    const newScrollLeft =
+      direction === 'left' ? container.scrollLeft - scrollAmount : container.scrollLeft + scrollAmount;
+
+    container.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
+  };
+
+  // Handle wheel scroll for horizontal scrolling
+  useEffect(() => {
+    const container = tabsContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Only handle horizontal scroll if there's horizontal overflow
+      if (container.scrollWidth > container.clientWidth) {
+        e.preventDefault();
+        container.scrollLeft += e.deltaY;
+      }
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col bg-white">
       {/* Request Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-hidden">
           <div className="flex flex-1">
             <Controller
               name="method"
@@ -84,13 +146,31 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
       </div>
 
       {/* Request Tabs */}
-      <div className="border-b border-gray-200 bg-gray-50">
-        <div className="flex px-6 h-[48px]">
+      <div className="border-b border-gray-200 bg-gray-50 relative h-[48px]">
+        {/* Left scroll button */}
+        {showLeftScroll && (
+          <button
+            onClick={() => scrollTabs('left')}
+            className="absolute left-0 top-0 z-10 h-full px-3 bg-gray-50 hover:bg-gray-100 transition-colors border-r border-gray-300 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={16} className="text-gray-600" />
+          </button>
+        )}
+
+        <div
+          ref={tabsContainerRef}
+          className="flex px-6 h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
+          style={{
+            scrollbarWidth: 'none', // Firefox
+            msOverflowStyle: 'none', // IE/Edge
+          }}
+        >
           {(['params', 'auth', 'headers', 'body', 'scripts', 'settings'] as RequestTab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
+              className={`flex-shrink-0 px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
                 activeTab === tab
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -100,6 +180,17 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
             </button>
           ))}
         </div>
+
+        {/* Right scroll button */}
+        {showRightScroll && (
+          <button
+            onClick={() => scrollTabs('right')}
+            className="absolute right-0 top-0 z-10 h-full px-3 bg-gray-50 hover:bg-gray-100 transition-colors border-l border-gray-300 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={16} className="text-gray-600" />
+          </button>
+        )}
       </div>
 
       {/* Request Tab Content */}
