@@ -2,7 +2,7 @@ import { useState, FormEvent, useEffect } from 'react';
 import { Dialog } from '../components/Dialog';
 import { collectionsApi } from '../helpers/api/collections';
 import { useCollectionsStore } from '../store/useCollectionsStore';
-import { useRequestStore } from '../store/useRequestStore';
+import { useTabsStore } from '../store/useTabsStore';
 
 interface SaveRequestFormProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ interface SaveRequestFormProps {
 
 export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: SaveRequestFormProps) => {
   const { collections, setActiveRequest } = useCollectionsStore();
-  const { setCurrentSavedRequestId, setCurrentRequestData, currentRequestData } = useRequestStore();
+  const { markTabAsSaved, updateTabLabel, activeTabId } = useTabsStore();
   const [name, setName] = useState('');
   const [collectionId, setCollectionId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,14 +76,11 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
       
       // Update the UI to reflect this is now a saved request
       setActiveRequest(savedRequest.id);
-      setCurrentSavedRequestId(savedRequest.id);
       
-      // Update currentRequestData to include the savedRequestId
-      if (currentRequestData) {
-        setCurrentRequestData({
-          ...currentRequestData,
-          savedRequestId: savedRequest.id,
-        });
+      // Mark the active tab as saved
+      if (activeTabId) {
+        markTabAsSaved(activeTabId, savedRequest.id, collectionId);
+        updateTabLabel(activeTabId, name.trim());
       }
       
       setName('');

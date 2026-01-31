@@ -2,6 +2,7 @@ import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, 
 import { Folder, Collection, SavedRequest, useCollectionsStore } from '../store/useCollectionsStore';
 import { useCollectionsSidebarStore } from '../store/useCollectionsSidebarStore';
 import { useUIStore } from '../store/useUIStore';
+import { useTabsStore } from '../store/useTabsStore';
 import { getMethodColor } from '../helpers/collectionHelpers';
 import { useState } from 'react';
 
@@ -24,7 +25,10 @@ export const FolderItem = ({
   onRequestContextMenu,
   onDeleteFolder,
 }: FolderItemProps) => {
-  const { activeRequestId, addFolder, moveRequest, moveFolder } = useCollectionsStore();
+  const { addFolder, moveRequest, moveFolder } = useCollectionsStore();
+  const { getActiveTab } = useTabsStore();
+  const activeTab = getActiveTab();
+  const activeSavedRequestId = activeTab?.savedRequestId || ''; // Only highlight if tab has a saved request
   const { newFolderInput, folderName, setNewFolderInput, setFolderName } = useCollectionsSidebarStore();
   const { openNewRequest, expandedFolders, toggleFolder, expandFolder } = useUIStore();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -229,7 +233,7 @@ export const FolderItem = ({
               
               <div
                 className={`px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ${
-                  activeRequestId === request.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                  activeSavedRequestId === request.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
                 }`}
                 style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}
                 onClick={() => onSelectRequest(request)}

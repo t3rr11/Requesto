@@ -7,7 +7,7 @@ import { NewRequestForm } from '../forms/NewRequestForm';
 import { useUIStore } from '../store/useUIStore';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { useCollectionsStore } from '../store/useCollectionsStore';
-import { useRequestStore } from '../store/useRequestStore';
+import { useTabsStore } from '../store/useTabsStore';
 
 export const DialogManager = () => {
   const {
@@ -21,7 +21,9 @@ export const DialogManager = () => {
   } = useUIStore();
   const { incrementEnvironmentCounter } = useEnvironmentStore();
   const { loadCollections } = useCollectionsStore();
-  const { currentRequestData } = useRequestStore();
+  const { getActiveTab } = useTabsStore();
+  
+  const activeTab = getActiveTab();
 
   const handleEnvironmentChange = () => {
     incrementEnvironmentCounter();
@@ -55,11 +57,11 @@ export const DialogManager = () => {
         isOpen={isSaveRequestOpen}
         onClose={closeAllDialogs}
         onSuccess={handleCollectionsChange}
-        currentRequest={currentRequestData ? {
-          method: currentRequestData.method,
-          url: currentRequestData.url,
-          headers: currentRequestData.headers,
-          body: currentRequestData.body,
+        currentRequest={activeTab ? {
+          method: activeTab.request.method,
+          url: activeTab.request.url,
+          headers: activeTab.request.headers,
+          body: activeTab.request.body,
         } : null}
       />
 

@@ -10,6 +10,7 @@ import { useCollectionsStore } from '../store/useCollectionsStore';
 import { useAlertStore } from '../store/useAlertStore';
 import { requestApi } from '../helpers/api/request';
 import { useUIStore } from '../store/useUIStore';
+import { useTabsStore } from '../store/useTabsStore';
 
 export interface RequestResponseViewRef {
   loadRequest: (item: { method: string; url: string; headers?: Record<string, string>; body?: string }) => void;
@@ -19,24 +20,17 @@ export interface RequestResponseViewRef {
 }
 
 const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function RequestResponseView(_, ref) {
-  const {
-    setLoading,
-    setResponse,
-    setError,
-    setCurrentSavedRequestId,
-    currentRequestData,
-    setCurrentRequestData,
-    addConsoleLog,
-    response,
-    loading,
-    error,
-  } = useRequestStore();
+  const { getActiveTab, updateTabRequest, setTabResponse, setTabLoading, setTabError, markTabAsSaved, activeTabId } =
+    useTabsStore();
+
+  const { addConsoleLog } = useRequestStore();
   const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { openSaveRequest, requestPanelWidth, setRequestPanelWidth } = useUIStore();
-  const [initialFormState, setInitialFormState] = useState<string | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const activeTab = getActiveTab();
 
   const { control, watch, setValue, getValues, reset } = useForm<RequestFormData>({
     resolver: zodResolver(requestFormSchema),
@@ -84,70 +78,55 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
 
   // Check if form has changes compared to initial state
   const hasChanges = useMemo(() => {
-    // For new requests (no savedRequestId), enable save if URL is present
-    if (!savedRequestId) {
-      return formValues.url.trim().length > 0;
-    }
-    // For saved requests, check if form differs from initial state
-    if (!initialFormState) return false;
-    const currentState = JSON.stringify({
-      method: formValues.method,
-      url: formValues.url,
-      headers: formValues.headers,
-      body: formValues.body,
-      savedRequestId: formValues.savedRequestId,
+    // Use the active tab's isDirty state
+    return activeTab?.isDirty || false;
+  }, [activeTab]);
+
+  // Load active tab's request into form when tab changes
+  useEffect(() => {
+    if (!activeTab) return;
+
+    const loadedHeaders =
+      activeTab.request.headers && Object.keys(activeTab.request.headers).length > 0
+        ? Object.entries(activeTab.request.headers).map(([key, value], index) => ({
+            id: Date.now().toString() + index,
+            key,
+            value,
+            enabled: true,
+          }))
+        : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
+
+    const formData = {
+      method: activeTab.request.method,
+      url: activeTab.request.url,
+      headers: loadedHeaders,
+      body: activeTab.request.body || '',
+      savedRequestId: activeTab.savedRequestId,
+    };
+
+    reset(formData);
+  }, [activeTab?.id, reset]); // Only reload when tab ID changes
+
+  // Sync form changes back to active tab
+  useEffect(() => {
+    if (!activeTab || !activeTabId) return;
+
+    // Build headers object
+    const requestHeaders: Record<string, string> = {};
+    formValues.headers.forEach(h => {
+      if (h.enabled && h.key.trim()) {
+        requestHeaders[h.key.trim()] = h.value;
+      }
     });
-    return currentState !== initialFormState;
-  }, [formValues, savedRequestId, initialFormState]);
 
-  // Load request from store when currentRequestData changes
-  useEffect(() => {
-    if (currentRequestData) {
-      const loadedHeaders =
-        currentRequestData.headers && Object.keys(currentRequestData.headers).length > 0
-          ? Object.entries(currentRequestData.headers).map(([key, value], index) => ({
-              id: Date.now().toString() + index,
-              key,
-              value,
-              enabled: true,
-            }))
-          : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
-
-      const formData = {
-        method: currentRequestData.method,
-        url: currentRequestData.url,
-        headers: loadedHeaders,
-        body: currentRequestData.body || '',
-        savedRequestId: currentRequestData.savedRequestId,
-      };
-
-      reset(formData);
-      setInitialFormState(JSON.stringify(formData));
-    }
-  }, [currentRequestData, reset]);
-
-  // Sync savedRequestId from store to form (for when request is saved/renamed)
-  useEffect(() => {
-    const currentSavedId = savedRequestId;
-    const storeSavedId = currentRequestData?.savedRequestId;
-
-    // Only update if the store has a different savedRequestId than the form
-    if (storeSavedId !== undefined && currentSavedId !== storeSavedId) {
-      setValue('savedRequestId', storeSavedId);
-
-      // Update initial form state to mark as saved
-      const values = getValues();
-      setInitialFormState(
-        JSON.stringify({
-          method: values.method,
-          url: values.url,
-          headers: values.headers,
-          body: values.body,
-          savedRequestId: storeSavedId,
-        })
-      );
-    }
-  }, [currentRequestData?.savedRequestId, savedRequestId, setValue, getValues]);
+    // Update the tab's request data
+    updateTabRequest(activeTabId, {
+      method: formValues.method,
+      url: formValues.url.trim(),
+      headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
+      body: formValues.body.trim() || undefined,
+    });
+  }, [formValues.method, formValues.url, formValues.headers, formValues.body, activeTabId, updateTabRequest]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -156,7 +135,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         const currentUrl = getValues('url');
-        if (!loading && currentUrl.trim()) {
+        if (!activeTab?.isLoading && currentUrl.trim()) {
           handleSend();
         }
       }
@@ -164,7 +143,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         const currentUrl = getValues('url');
-        if (hasChanges && !loading && currentUrl.trim()) {
+        if (hasChanges && !activeTab?.isLoading && currentUrl.trim()) {
           handleSave();
         }
       }
@@ -172,9 +151,11 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [loading, getValues, hasChanges]);
+  }, [activeTab?.isLoading, getValues, hasChanges]);
 
   const handleSend = async () => {
+    if (!activeTab || !activeTabId) return;
+
     const values = getValues();
     if (!values.url.trim()) {
       return;
@@ -195,11 +176,8 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       body: values.body.trim() || undefined,
     };
 
-    setCurrentSavedRequestId(undefined);
-    setValue('savedRequestId', undefined);
-
-    setLoading(true);
-    setError(null);
+    setTabLoading(activeTabId, true);
+    setTabError(activeTabId, null);
 
     const startTime = Date.now();
     addConsoleLog({
@@ -214,7 +192,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       const response = await requestApi.send(requestData);
       const duration = Date.now() - startTime;
 
-      setResponse(response);
+      setTabResponse(activeTabId, response);
       addConsoleLog({
         id: (Date.now() + 1).toString(),
         timestamp: Date.now(),
@@ -225,7 +203,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         duration,
       });
     } catch (error: any) {
-      setError(error.message || 'Failed to send request');
+      setTabError(activeTabId, error.message || 'Failed to send request');
       addConsoleLog({
         id: (Date.now() + 1).toString(),
         timestamp: Date.now(),
@@ -233,37 +211,17 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         message: error.message || 'Failed to send request',
       });
     } finally {
-      setLoading(false);
+      setTabLoading(activeTabId, false);
     }
   };
 
   const handleSave = async () => {
+    if (!activeTab || !activeTabId) return;
+
     const values = getValues();
     if (!values.url.trim()) return;
 
-    // If no savedRequestId, open save dialog to create new request
-    if (!values.savedRequestId) {
-      // Build headers object
-      const requestHeaders: Record<string, string> = {};
-      values.headers.forEach(h => {
-        if (h.enabled && h.key.trim()) {
-          requestHeaders[h.key.trim()] = h.value;
-        }
-      });
-
-      // Update currentRequestData with the latest form values before opening dialog
-      setCurrentRequestData({
-        method: values.method,
-        url: values.url.trim(),
-        headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
-        body: values.body.trim() || undefined,
-        savedRequestId: undefined,
-      });
-
-      openSaveRequest();
-      return;
-    }
-
+    // Build headers object
     const requestHeaders: Record<string, string> = {};
     values.headers.forEach(h => {
       if (h.enabled && h.key.trim()) {
@@ -278,21 +236,17 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       body: values.body.trim() || undefined,
     };
 
+    // If no savedRequestId, open save dialog to create new request
+    if (!values.savedRequestId) {
+      openSaveRequest();
+      return;
+    }
+
     const collection = collections.find(c => c.requests.some(r => r.id === values.savedRequestId));
 
     // If collection not found (request was deleted), treat as new request
     if (!collection) {
-      setCurrentRequestData({
-        method: requestData.method,
-        url: requestData.url,
-        headers: requestData.headers,
-        body: requestData.body,
-        savedRequestId: undefined,
-      });
-
-      // Clear the saved request ID from form to avoid future confusion
       setValue('savedRequestId', undefined);
-
       openSaveRequest();
       return;
     }
@@ -305,16 +259,11 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         body: requestData.body,
       });
 
-      // Update initial state to match current form state (disables save button)
-      setInitialFormState(
-        JSON.stringify({
-          method: values.method,
-          url: values.url,
-          headers: values.headers,
-          body: values.body,
-          savedRequestId: values.savedRequestId,
-        })
-      );
+      // Mark tab as saved (clears dirty flag and updates original request)
+      markTabAsSaved(activeTabId, values.savedRequestId!, collection.id);
+
+      // Update form's savedRequestId
+      setValue('savedRequestId', values.savedRequestId);
     } catch (error) {
       showAlert('Update Failed', 'Failed to update the request. Please try again.', 'error');
       console.error('Failed to update request:', error);
@@ -344,7 +293,6 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         };
 
         reset(formData);
-        setInitialFormState(JSON.stringify(formData));
       },
       getCurrentRequest: () => {
         const values = getValues();
@@ -368,18 +316,10 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       },
       setSavedRequestId: (id: string | undefined) => {
         setValue('savedRequestId', id);
-        const values = getValues();
-        setInitialFormState(
-          JSON.stringify({
-            method: values.method,
-            url: values.url,
-            headers: values.headers,
-            body: values.body,
-            savedRequestId: id,
-          })
-        );
       },
       clearRequest: () => {
+        if (!activeTab || !activeTabId) return;
+
         const formData = {
           method: 'GET' as const,
           url: '',
@@ -388,12 +328,11 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
           savedRequestId: undefined,
         };
         reset(formData);
-        setInitialFormState(null);
-        setResponse(null);
-        setError(null);
+        setTabResponse(activeTabId, null);
+        setTabError(activeTabId, null);
       },
     }),
-    [getValues, reset, setValue, setResponse, setError]
+    [getValues, reset, setValue, setTabResponse, setTabError, activeTab, activeTabId]
   );
 
   return (
@@ -401,7 +340,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       {/* Top Bar - Breadcrumb and Save */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between h-14">
         <RequestBreadcrumb savedRequestId={savedRequestId} />
-        <Button onClick={handleSave} size="sm" disabled={loading || !hasChanges}>
+        <Button onClick={handleSave} size="sm" disabled={activeTab?.isLoading || !hasChanges}>
           Save
         </Button>
       </div>
@@ -415,7 +354,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
           <RequestForm
             control={control}
             onSend={handleSend}
-            loading={loading}
+            loading={activeTab?.isLoading || false}
             urlValue={formValues.url}
             headers={formValues.headers}
             onHeadersChange={headers => setValue('headers', headers)}
@@ -427,7 +366,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
             title="Drag to resize"
           />
         </div>
-        <ResponsePanel response={response} loading={loading} error={error} />
+        <ResponsePanel />
       </div>
     </div>
   );

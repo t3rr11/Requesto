@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Folder as FolderIcon, FolderPlus, Plus, Edit, Trash2 } from 'lucide-react';
 import { useUIStore } from '../store/useUIStore';
 import { useCollectionsStore, SavedRequest } from '../store/useCollectionsStore';
-import { useRequestStore } from '../store/useRequestStore';
 import { useCollectionsSidebarStore } from '../store/useCollectionsSidebarStore';
+import { useTabsStore } from '../store/useTabsStore';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ContextMenu } from './ContextMenu';
 import { RenameForm } from '../forms/RenameForm';
@@ -23,7 +23,7 @@ export const CollectionsSidebar = () => {
     updateCollection,
     updateRequest,
   } = useCollectionsStore();
-  const { setResponse, setCurrentSavedRequestId, setCurrentRequestData, getRequestCache } = useRequestStore();
+  const { openRequestTab } = useTabsStore();
   const {
     confirmDialog,
     setConfirmDialog,
@@ -68,25 +68,21 @@ export const CollectionsSidebar = () => {
   }, [isResizing, setSidebarWidth]);
 
   const handleSelectRequest = (request: SavedRequest) => {
-    setActiveRequest(request.id);
-    setCurrentSavedRequestId(request.id);
-
-    // Load request into RequestBuilder
-    setCurrentRequestData({
-      method: request.method,
-      url: request.url,
-      headers: request.headers,
-      body: request.body,
+    // Open request in a tab (or focus existing tab)
+    openRequestTab({
       savedRequestId: request.id,
+      collectionId: request.collectionId,
+      request: {
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        body: request.body,
+      },
+      label: request.name,
     });
-
-    // Check for cached response
-    const cached = getRequestCache(request.id);
-    if (cached && cached.response) {
-      setResponse(cached.response);
-    } else {
-      setResponse(null);
-    }
+    
+    // Keep for backwards compatibility with any components still using this
+    setActiveRequest(request.id);
   };
 
   const handleDeleteCollection = async (id: string, e: React.MouseEvent) => {
@@ -198,17 +194,13 @@ export const CollectionsSidebar = () => {
   };
 
   const handleNewRequest = () => {
-    // Clear the current request form and active request
-    setActiveRequest(null);
-    setCurrentSavedRequestId(undefined);
-    setCurrentRequestData({
-      method: 'GET',
-      url: '',
-      headers: undefined,
-      body: undefined,
-      savedRequestId: undefined,
+    // Open a new empty tab
+    openRequestTab({
+      savedRequestId: '',
+      collectionId: '',
+      request: { method: 'GET', url: '' },
+      label: 'New Request'
     });
-    setResponse(null);
   };
 
   if (!isSidebarOpen) return null;

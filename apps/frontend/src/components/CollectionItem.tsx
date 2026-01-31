@@ -2,6 +2,7 @@ import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, 
 import { Collection, SavedRequest, useCollectionsStore } from '../store/useCollectionsStore';
 import { useCollectionsSidebarStore } from '../store/useCollectionsSidebarStore';
 import { useUIStore } from '../store/useUIStore';
+import { useTabsStore } from '../store/useTabsStore';
 import { FolderItem } from './FolderItem';
 import { getMethodColor } from '../helpers/collectionHelpers';
 import React, { useState } from 'react';
@@ -25,22 +26,25 @@ export const CollectionItem = ({
   onRequestContextMenu,
   onCollectionContextMenu,
 }: CollectionItemProps) => {
-  const { activeRequestId, addFolder, moveRequest } = useCollectionsStore();
+  const { addFolder, moveRequest } = useCollectionsStore();
+  const { getActiveTab } = useTabsStore();
+  const activeTab = getActiveTab();
+  const activeSavedRequestId = activeTab?.savedRequestId || '';
   const { newFolderInput, folderName, setNewFolderInput, setFolderName } = useCollectionsSidebarStore();
   const { openNewRequest, expandedCollections, toggleCollection, expandCollection } = useUIStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  
+
   const isExpanded = expandedCollections.has(collection.id);
-  
+
   const handleCreateFolder = (collectionId: string, parentId?: string) => {
     setNewFolderInput({ collectionId, parentId });
   };
-  
+
   const handleSaveFolder = async () => {
     if (!newFolderInput || !folderName.trim()) return;
     await addFolder(newFolderInput.collectionId, folderName.trim(), newFolderInput.parentId);
-    
+
     // Auto-expand the parent after creating folder
     if (newFolderInput.parentId) {
       const { expandFolder } = useUIStore.getState();
@@ -48,10 +52,10 @@ export const CollectionItem = ({
     } else {
       expandCollection(collection.id);
     }
-    
+
     setNewFolderInput(null);
   };
-  
+
   const handleCancelFolder = () => {
     setNewFolderInput(null);
   };
@@ -77,7 +81,7 @@ export const CollectionItem = ({
     setIsDragOver(false);
 
     const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
-    
+
     if (dragType === 'application/request') {
       const data = JSON.parse(e.dataTransfer.getData('application/request'));
       // Allow moving to root of same collection (e.g., from folder to collection root)
@@ -94,9 +98,7 @@ export const CollectionItem = ({
   };
 
   const rootFolders = (collection.folders || []).filter(f => !f.parentId);
-  const rootRequests = collection.requests
-    .filter(r => !r.folderId)
-    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  const rootRequests = collection.requests.filter(r => !r.folderId).sort((a, b) => (a.order || 0) - (b.order || 0));
   const totalItems = collection.requests.length;
 
   return (
@@ -206,16 +208,14 @@ export const CollectionItem = ({
               <div key={request.id}>
                 {/* Drop zone above */}
                 <div
-                  className={`transition-all ${
-                    dragOverIndex === index ? 'bg-blue-400 h-1' : 'h-0'
-                  }`}
-                  onDragOver={(e) => {
+                  className={`transition-all ${dragOverIndex === index ? 'bg-blue-400 h-1' : 'h-0'}`}
+                  onDragOver={e => {
                     e.preventDefault();
                     e.stopPropagation();
                     setDragOverIndex(index);
                   }}
                   onDragLeave={() => setDragOverIndex(null)}
-                  onDrop={async (e) => {
+                  onDrop={async e => {
                     e.preventDefault();
                     e.stopPropagation();
                     setDragOverIndex(null);
@@ -226,24 +226,27 @@ export const CollectionItem = ({
                     }
                   }}
                 />
-                
+
                 <div
                   className={`px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ml-6 ${
-                    activeRequestId === request.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                    activeSavedRequestId === request.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
                   }`}
                   onClick={() => onSelectRequest(request)}
                   onContextMenu={e => onRequestContextMenu(e, request)}
                   draggable
-                  onDragStart={(e) => {
+                  onDragStart={e => {
                     e.stopPropagation();
                     e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('application/request', JSON.stringify({
-                      requestId: request.id,
-                      collectionId: collection.id,
-                    }));
+                    e.dataTransfer.setData(
+                      'application/request',
+                      JSON.stringify({
+                        requestId: request.id,
+                        collectionId: collection.id,
+                      })
+                    );
                     (e.target as HTMLElement).style.opacity = '0.5';
                   }}
-                  onDragEnd={(e) => {
+                  onDragEnd={e => {
                     (e.target as HTMLElement).style.opacity = '1';
                     setDragOverIndex(null);
                   }}
@@ -263,20 +266,18 @@ export const CollectionItem = ({
                     <Trash2 className="w-3 h-3 text-gray-500" />
                   </button>
                 </div>
-                
+
                 {/* Drop zone below (for last item) */}
                 {index === rootRequests.length - 1 && (
                   <div
-                    className={`transition-all ${
-                      dragOverIndex === index + 1 ? 'bg-blue-400 h-1' : 'h-0'
-                    }`}
-                    onDragOver={(e) => {
+                    className={`transition-all ${dragOverIndex === index + 1 ? 'bg-blue-400 h-1' : 'h-0'}`}
+                    onDragOver={e => {
                       e.preventDefault();
                       e.stopPropagation();
                       setDragOverIndex(index + 1);
                     }}
                     onDragLeave={() => setDragOverIndex(null)}
-                    onDrop={async (e) => {
+                    onDrop={async e => {
                       e.preventDefault();
                       e.stopPropagation();
                       setDragOverIndex(null);

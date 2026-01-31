@@ -1,18 +1,21 @@
 import { useState } from 'react';
-import { ProxyResponse } from '../types';
-import { formatResponseBody, getStatusBadgeColor, formatBytes } from '../helpers/responseHelpers';
-import Editor from '@monaco-editor/react';
+import { getStatusBadgeColor, formatBytes } from '../helpers/responseHelpers';
+import { ResponseBody } from './response/ResponseBody';
+import { ResponseHeaders } from './response/ResponseHeaders';
+import { ResponseTests } from './response/ResponseTests';
+import { useTabsStore } from '../store/useTabsStore';
 
 type ResponseTab = 'body' | 'headers' | 'test-results';
 
-interface ResponsePanelProps {
-  response: ProxyResponse | null;
-  loading: boolean;
-  error: string | null;
-}
-
-export function ResponsePanel({ response, loading, error }: ResponsePanelProps) {
-  const [activeTab, setActiveTab] = useState<ResponseTab>('body');
+export function ResponsePanel() {
+  const { getActiveTab } = useTabsStore();
+  const activeTab = getActiveTab();
+  
+  const response = activeTab?.response || null;
+  const loading = activeTab?.isLoading || false;
+  const error = activeTab?.error || null;
+  
+  const [activeResponseTab, setActiveResponseTab] = useState<ResponseTab>('body');
   const responseSize = response?.body ? new Blob([response.body]).size : 0;
 
   if (loading) {
@@ -89,9 +92,9 @@ export function ResponsePanel({ response, loading, error }: ResponsePanelProps) 
           {(['body', 'headers', 'test-results'] as ResponseTab[]).map(tab => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => setActiveResponseTab(tab)}
               className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
-                activeTab === tab
+                activeResponseTab === tab
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
@@ -104,51 +107,9 @@ export function ResponsePanel({ response, loading, error }: ResponsePanelProps) 
 
       {/* Response Tab Content */}
       <div className="flex-1 overflow-auto">
-        {activeTab === 'body' && (
-          <div className="h-full p-6">
-            <div className="border border-gray-300 rounded overflow-hidden h-full">
-              <Editor
-                height="100%"
-                defaultLanguage="json"
-                value={formatResponseBody(response.body)}
-                theme="vs-light"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  tabSize: 2,
-                  readOnly: true,
-                  wordWrap: 'on',
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'headers' && (
-          <div className="p-6">
-            {Object.entries(response.headers).length > 0 ? (
-              <div className="space-y-2">
-                {Object.entries(response.headers).map(([key, value]) => (
-                  <div key={key} className="flex gap-4 text-sm border-b border-gray-100 pb-2">
-                    <span className="font-medium text-gray-700 min-w-[200px]">{key}</span>
-                    <span className="text-gray-600 flex-1 break-all">{value}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">No headers</p>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'test-results' && (
-          <div className="p-6 text-sm text-gray-600">
-            <div className="text-gray-400">No tests defined</div>
-          </div>
-        )}
+        {activeResponseTab === 'body' && <ResponseBody />}
+        {activeResponseTab === 'headers' && <ResponseHeaders />}
+        {activeResponseTab === 'test-results' && <ResponseTests />}
       </div>
     </div>
   );
