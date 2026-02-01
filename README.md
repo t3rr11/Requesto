@@ -2,6 +2,8 @@
 
 A lightweight, self-hosted API client (Postman alternative) that can be started via Docker and immediately used to test HTTP APIs through a web UI.
 
+![Localman Example](images/example.png)
+
 ## Features
 
 - Send HTTP requests (GET, POST, PUT, PATCH, DELETE)
@@ -51,7 +53,4 @@ npm run dev
 
 ## Documentation
 
-- **[Getting Started Guide](docs/archive/GETTING_STARTED.md)** - Installation and setup instructions
 - **[Project Plan](docs/PROJECT_PLAN.md)** - Detailed project roadmap and architecture
-- **[API Reference](docs/API_REFERENCE.md)** - Backend API documentation
-- **[Project Status](docs/archive/STATUS.md)** - Current progress and what's next
