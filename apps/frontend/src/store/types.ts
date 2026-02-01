@@ -76,6 +76,9 @@ export interface ConsoleLog {
   status?: number;
   duration?: number;
   message?: string;
+  // Full request/response data for detailed view
+  requestData?: ProxyRequest;
+  responseData?: ProxyResponse;
 }
 
 export interface AppState {

@@ -1,12 +1,27 @@
 import { useState, useRef, useEffect } from 'react';
 import { useUIStore } from '../store/useUIStore';
-import { useRequestStore } from '../store/useRequestStore';
-import { Terminal, X, ChevronUp, Trash2 } from 'lucide-react';
+import { useRequestStore, ConsoleLog } from '../store/useRequestStore';
+import {
+  Terminal,
+  X,
+  ChevronUp,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Send,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  Copy,
+  Check,
+} from 'lucide-react';
 
 export const ConsolePanel = () => {
   const { isConsoleOpen, toggleConsole, consoleHeight, setConsoleHeight } = useUIStore();
   const { consoleLogs, clearConsoleLogs } = useRequestStore();
   const [isResizing, setIsResizing] = useState(false);
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -16,6 +31,30 @@ export const ConsolePanel = () => {
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [consoleLogs, isConsoleOpen]);
+
+  const toggleLogExpanded = (logId: string) => {
+    setExpandedLogs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(logId)) {
+        newSet.delete(logId);
+      } else {
+        newSet.add(logId);
+      }
+      return newSet;
+    });
+  };
+
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedStates(prev => ({ ...prev, [key]: true }));
+      setTimeout(() => {
+        setCopiedStates(prev => ({ ...prev, [key]: false }));
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -53,34 +92,257 @@ export const ConsolePanel = () => {
   const getLogIcon = (type: string) => {
     switch (type) {
       case 'error':
-        return '❌';
+        return <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />;
       case 'request':
-        return '➡️';
+        return <Send className="w-4 h-4 text-blue-500 flex-shrink-0" />;
       case 'response':
-        return '✅';
+        return <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />;
       case 'info':
       default:
-        return 'ℹ️';
+        return <Info className="w-4 h-4 text-gray-500 flex-shrink-0" />;
     }
   };
 
   const getLogColor = (type: string) => {
     switch (type) {
       case 'error':
-        return 'text-red-600';
+        return 'text-red-400';
       case 'request':
-        return 'text-blue-600';
+        return 'text-blue-400';
       case 'response':
-        return 'text-green-600';
+        return 'text-green-400';
       case 'info':
       default:
-        return 'text-gray-600';
+        return 'text-gray-400';
     }
+  };
+
+  const getStatusColor = (status?: number) => {
+    if (!status) return 'text-gray-400';
+    if (status >= 200 && status < 300) return 'text-green-400';
+    if (status >= 300 && status < 400) return 'text-yellow-400';
+    if (status >= 400 && status < 500) return 'text-orange-400';
+    return 'text-red-400';
   };
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', { hour12: false });
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      fractionalSecondDigits: 3,
+    } as any);
+  };
+
+  const formatHeaders = (headers?: Record<string, string>) => {
+    if (!headers || Object.keys(headers).length === 0) return 'No headers';
+    return Object.entries(headers)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join('\n');
+  };
+
+  const renderLogDetails = (log: ConsoleLog) => {
+    const isExpanded = expandedLogs.has(log.id);
+
+    return (
+      <div key={log.id} className="border-b border-gray-800">
+        {/* Log Header */}
+        <div
+          className="py-2 px-3 hover:bg-gray-800 cursor-pointer flex items-center gap-3"
+          onClick={() => toggleLogExpanded(log.id)}
+        >
+          <span className="text-gray-500 text-xs font-mono select-none mt-0.5">{formatTime(log.timestamp)}</span>
+          {getLogIcon(log.type)}
+          <div className={`flex-1 ${getLogColor(log.type)}`}>
+            <div className="flex items-center gap-2">
+              {log.method && <span className="font-bold text-xs">{log.method}</span>}
+              {log.url && <span className="text-gray-300 text-xs truncate flex-1">{log.url}</span>}
+              {log.status !== undefined && (
+                <span className={`font-semibold text-sm ${getStatusColor(log.status)}`}>{log.status}</span>
+              )}
+              {log.duration !== undefined && <span className="text-gray-400 text-xs">{log.duration}ms</span>}
+            </div>
+            {log.message && !log.url && <div className="text-sm mt-1">{log.message}</div>}
+          </div>
+          <button className="text-gray-500 hover:text-gray-300 transition-colors">
+            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Expanded Details */}
+        {isExpanded && (
+          <div className="px-3 pb-3 pl-20 space-y-3 text-sm">
+            {/* Request Details */}
+            {log.requestData && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-blue-400 font-semibold pt-2">
+                  <span>Request</span>
+                </div>
+
+                {/* Request Headers */}
+                {log.requestData.headers && Object.keys(log.requestData.headers).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-xs font-semibold">Headers</span>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          copyToClipboard(formatHeaders(log.requestData?.headers), `req-headers-${log.id}`);
+                        }}
+                        className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                        title="Copy headers"
+                      >
+                        {copiedStates[`req-headers-${log.id}`] ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
+                      {Object.entries(log.requestData.headers).map(([key, value]) => (
+                        <div key={key} className="py-0.5">
+                          <span className="text-blue-300">{key}</span>
+                          <span className="text-gray-500">: </span>
+                          <span className="text-gray-300">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Request Body */}
+                {log.requestData.body && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-xs font-semibold">Body</span>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          copyToClipboard(log.requestData?.body || '', `req-body-${log.id}`);
+                        }}
+                        className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                        title="Copy body"
+                      >
+                        {copiedStates[`req-body-${log.id}`] ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
+                      <pre className="text-gray-300 whitespace-pre-wrap break-words">
+                        {(() => {
+                          try {
+                            return JSON.stringify(JSON.parse(log.requestData.body!), null, 2);
+                          } catch {
+                            return log.requestData.body;
+                          }
+                        })()}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Request Auth */}
+                {log.requestData.auth && log.requestData.auth.type !== 'none' && (
+                  <div className="space-y-1">
+                    <span className="text-gray-400 text-xs font-semibold">Auth</span>
+                    <div className="bg-gray-800 rounded p-2 font-mono text-xs">
+                      <span className="text-purple-400">{log.requestData.auth.type}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Response Details */}
+            {log.responseData && (
+              <div className="space-y-2 border-t border-gray-700 pt-3">
+                <div className="flex items-center gap-2 text-green-400 font-semibold">
+                  <span>Response</span>
+                  <span className={`text-xs ${getStatusColor(log.responseData.status)}`}>
+                    {log.responseData.status} {log.responseData.statusText}
+                  </span>
+                </div>
+
+                {/* Response Headers */}
+                {log.responseData.headers && Object.keys(log.responseData.headers).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-xs font-semibold">Headers</span>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          copyToClipboard(formatHeaders(log.responseData?.headers), `res-headers-${log.id}`);
+                        }}
+                        className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                        title="Copy headers"
+                      >
+                        {copiedStates[`res-headers-${log.id}`] ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
+                      {Object.entries(log.responseData.headers).map(([key, value]) => (
+                        <div key={key} className="py-0.5">
+                          <span className="text-green-300">{key}</span>
+                          <span className="text-gray-500">: </span>
+                          <span className="text-gray-300">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Response Body */}
+                {log.responseData.body && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-xs font-semibold">Body</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-gray-500 text-xs">{new Blob([log.responseData.body]).size} bytes</span>
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            copyToClipboard(log.responseData?.body || '', `res-body-${log.id}`);
+                          }}
+                          className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                          title="Copy body"
+                        >
+                          {copiedStates[`res-body-${log.id}`] ? (
+                            <Check className="w-3 h-3 text-green-400" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
+                      <pre className="text-gray-300 whitespace-pre-wrap break-words">
+                        {(() => {
+                          try {
+                            return JSON.stringify(JSON.parse(log.responseData.body), null, 2);
+                          } catch {
+                            return log.responseData.body;
+                          }
+                        })()}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!isConsoleOpen) {
@@ -152,7 +414,7 @@ export const ConsolePanel = () => {
       </div>
 
       {/* Logs Content */}
-      <div className="flex-1 overflow-y-auto p-2 font-mono text-xs">
+      <div className="flex-1 overflow-y-auto font-mono text-xs scrollbar-dark">
         {consoleLogs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">
             <div className="text-center">
@@ -163,28 +425,7 @@ export const ConsolePanel = () => {
           </div>
         ) : (
           <>
-            {consoleLogs.map(log => (
-              <div key={log.id} className="py-1 px-2 hover:bg-gray-800 rounded flex gap-3 items-start">
-                <span className="text-gray-500 select-none">{formatTime(log.timestamp)}</span>
-                <span className="select-none">{getLogIcon(log.type)}</span>
-                <div className={`flex-1 ${getLogColor(log.type)}`}>
-                  {log.method && log.url && (
-                    <div>
-                      <span className="font-bold">{log.method}</span> {log.url}
-                      {log.status !== undefined && (
-                        <span
-                          className={`ml-2 ${log.status >= 200 && log.status < 300 ? 'text-green-400' : 'text-red-400'}`}
-                        >
-                          {log.status}
-                        </span>
-                      )}
-                      {log.duration !== undefined && <span className="ml-2 text-gray-400">{log.duration}ms</span>}
-                    </div>
-                  )}
-                  {log.message && <div>{log.message}</div>}
-                </div>
-              </div>
-            ))}
+            {consoleLogs.map(log => renderLogDetails(log))}
             <div ref={logsEndRef} />
           </>
         )}

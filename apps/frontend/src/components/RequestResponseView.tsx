@@ -271,6 +271,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
       type: 'request',
       method: substitutedRequest.method,
       url: substitutedRequest.url,
+      requestData: substitutedRequest,
     });
 
     try {
@@ -286,6 +287,8 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         url: substitutedRequest.url,
         status: response.status,
         duration,
+        requestData: substitutedRequest,
+        responseData: response,
       });
     } catch (error: any) {
       setTabError(activeTabId, error.message || 'Failed to send request');
@@ -294,6 +297,9 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         timestamp: Date.now(),
         type: 'error',
         message: error.message || 'Failed to send request',
+        method: substitutedRequest.method,
+        url: substitutedRequest.url,
+        requestData: substitutedRequest,
       });
     } finally {
       setTabLoading(activeTabId, false);

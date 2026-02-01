@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ProxyResponse } from '../types';
+import { ProxyResponse, ProxyRequest } from '../types';
 
 export interface ConsoleLog {
   id: string;
@@ -10,6 +10,9 @@ export interface ConsoleLog {
   status?: number;
   duration?: number;
   message?: string;
+  // Full request/response data for detailed view
+  requestData?: ProxyRequest;
+  responseData?: ProxyResponse;
 }
 
 interface RequestState {
