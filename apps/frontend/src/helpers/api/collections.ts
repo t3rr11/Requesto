@@ -1,4 +1,5 @@
 import { Collection, SavedRequest, Folder } from '../../store/types';
+import { AuthConfig } from '../../types';
 
 const API_BASE = '/api';
 
@@ -56,6 +57,7 @@ export const collectionsApi = {
       url: string;
       headers?: Record<string, string>;
       body?: string;
+      auth?: AuthConfig;
       folderId?: string;
     }
   ): Promise<SavedRequest> => {
@@ -78,6 +80,7 @@ export const collectionsApi = {
       url?: string;
       headers?: Record<string, string>;
       body?: string;
+      auth?: AuthConfig;
       folderId?: string;
     }
   ): Promise<SavedRequest> => {

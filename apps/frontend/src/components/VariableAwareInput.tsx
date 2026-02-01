@@ -13,6 +13,7 @@ interface VariableAwareInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  type?: string;
 }
 
 interface TooltipState {
@@ -24,7 +25,7 @@ interface TooltipState {
   isSecret: boolean;
 }
 
-export function VariableAwareInput({ value, onChange, placeholder, disabled, className }: VariableAwareInputProps) {
+export function VariableAwareInput({ value, onChange, placeholder, disabled, className, type = 'text' }: VariableAwareInputProps) {
   const [tooltip, setTooltip] = useState<TooltipState>({
     show: false,
     x: 0,
@@ -207,7 +208,7 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
       {/* Actual input (transparent text) */}
       <input
         ref={inputRef}
-        type="text"
+        type={type}
         spellCheck="false"
         value={value}
         onChange={handleInputChange}

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { AuthConfig } from '../types';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const COLLECTIONS_FILE = path.join(DATA_DIR, 'collections.json');
@@ -11,6 +12,7 @@ export interface SavedRequest {
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  auth?: AuthConfig;
   collectionId: string;
   folderId?: string;
   order?: number;

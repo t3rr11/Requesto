@@ -3,6 +3,7 @@ import { Dialog } from '../components/Dialog';
 import { collectionsApi } from '../helpers/api/collections';
 import { useCollectionsStore } from '../store/useCollectionsStore';
 import { useTabsStore } from '../store/useTabsStore';
+import { AuthConfig } from '../types';
 
 interface SaveRequestFormProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface SaveRequestFormProps {
     url: string;
     headers?: Record<string, string>;
     body?: string;
+    auth?: AuthConfig;
   } | null;
 }
 
@@ -90,6 +92,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
         url: currentRequest.url,
         headers: currentRequest.headers,
         body: currentRequest.body,
+        auth: currentRequest.auth,
       });
       
       // Update the UI to reflect this is now a saved request

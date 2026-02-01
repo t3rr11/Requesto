@@ -3,12 +3,13 @@ import axios, { AxiosRequestConfig } from 'axios';
 import { ProxyRequest, ProxyResponse } from '../types';
 import { saveRequest, getHistory, clearHistory } from '../database/storage';
 import { getActiveEnvironment, substituteInRequest } from '../database/environments';
+import { applyAuthentication, getAxiosAuthConfig } from '../helpers/authHelpers';
 
 export async function proxyRoutes(server: FastifyInstance) {
   server.post<{ Body: ProxyRequest }>(
     '/proxy/request',
     async (request: FastifyRequest<{ Body: ProxyRequest }>, reply: FastifyReply) => {
-      const { method, url, headers, body } = request.body;
+      const { method, url, headers, body, auth } = request.body;
 
       // Validation
       if (!method || !url) {
@@ -21,15 +22,24 @@ export async function proxyRoutes(server: FastifyInstance) {
       const activeEnvironment = getActiveEnvironment();
       const substituted = substituteInRequest({ url, headers, body }, activeEnvironment);
 
+      // Apply authentication
+      const authenticated = applyAuthentication(auth, substituted.headers, substituted.url);
+
       const startTime = Date.now();
 
       try {
         const config: AxiosRequestConfig = {
           method: method.toLowerCase(),
-          url: substituted.url,
-          headers: substituted.headers || {},
+          url: authenticated.url,
+          headers: authenticated.headers || {},
           validateStatus: () => true, // Don't throw on any status code
         };
+
+        // Add digest auth if needed
+        const axiosAuth = getAxiosAuthConfig(auth);
+        if (axiosAuth) {
+          config.auth = axiosAuth;
+        }
 
         // Add body for methods that support it
         if (['post', 'put', 'patch'].includes(method.toLowerCase()) && substituted.body) {

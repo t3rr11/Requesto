@@ -49,6 +49,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       headers: [{ id: '1', key: '', value: '', enabled: true }],
       params: [{ id: '1', key: '', value: '', enabled: true }],
       body: '',
+      auth: { type: 'none' },
       savedRequestId: undefined,
     },
   });
@@ -123,6 +124,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       headers: loadedHeaders,
       params: loadedParams,
       body: activeTab.request.body || '',
+      auth: (activeTab.request as any).auth || { type: 'none' as const },
       savedRequestId: activeTab.savedRequestId,
     };
 
@@ -191,7 +193,8 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
       url: fullUrl,
       headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
       body: formValues.body.trim() || undefined,
-    });
+      auth: formValues.auth,
+    } as any);
   }, [formValues.method, formValues.url, formValues.headers, formValues.params, formValues.body, activeTabId, updateTabRequest]);
 
   // Keyboard shortcuts
@@ -243,6 +246,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
       url: fullUrl,
       headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
       body: values.body.trim() || undefined,
+      auth: values.auth,
     };
 
     // Check for undefined variables
@@ -318,6 +322,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
       url: fullUrl,
       headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
       body: values.body.trim() || undefined,
+      auth: values.auth,
     };
 
     // If no savedRequestId, open save dialog to create new request
@@ -341,6 +346,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         url: requestData.url,
         headers: requestData.headers,
         body: requestData.body,
+        auth: requestData.auth,
       });
 
       // Mark tab as saved (clears dirty flag and updates original request)
@@ -385,6 +391,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
           headers: loadedHeaders,
           params: loadedParams,
           body: item.body || '',
+          auth: (item as any).auth || { type: 'none' as const },
           savedRequestId: undefined,
         };
 
@@ -425,6 +432,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
           headers: [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
           params: [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }],
           body: '',
+          auth: { type: 'none' as const },
           savedRequestId: undefined,
         };
         reset(formData);
@@ -461,6 +469,8 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
             params={formValues.params}
             onParamsChange={params => setValue('params', params)}
             onUrlChange={url => setValue('url', url)}
+            auth={formValues.auth}
+            onAuthChange={auth => setValue('auth', auth)}
           />
           {/* Resize Handle */}
           <div

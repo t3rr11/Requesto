@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { collectionsApi } from '../helpers/api/collections';
+import { AuthConfig } from '../types';
 
 export interface SavedRequest {
   id: string;
@@ -8,6 +9,7 @@ export interface SavedRequest {
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  auth?: AuthConfig;
   collectionId: string;
   folderId?: string;
   order?: number;

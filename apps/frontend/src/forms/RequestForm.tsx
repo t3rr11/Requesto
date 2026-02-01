@@ -6,7 +6,9 @@ import { Button } from '../components/Button';
 import { HeadersEditor } from '../components/HeadersEditor';
 import { ParamsEditor } from '../components/ParamsEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
+import { AuthEditor } from '../components/AuthEditor';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { AuthConfig } from '../types';
 
 export const requestFormSchema = z.object({
   method: z.string(),
@@ -28,6 +30,25 @@ export const requestFormSchema = z.object({
     })
   ),
   body: z.string(),
+  auth: z.object({
+    type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest']),
+    basic: z.object({
+      username: z.string(),
+      password: z.string(),
+    }).optional(),
+    bearer: z.object({
+      token: z.string(),
+    }).optional(),
+    apiKey: z.object({
+      key: z.string(),
+      value: z.string(),
+      addTo: z.enum(['header', 'query']),
+    }).optional(),
+    digest: z.object({
+      username: z.string(),
+      password: z.string(),
+    }).optional(),
+  }),
   savedRequestId: z.string().optional(),
 });
 
@@ -76,9 +97,11 @@ interface RequestFormProps {
   params: RequestFormData['params'];
   onParamsChange: (params: RequestFormData['params']) => void;
   onUrlChange: (url: string) => void;
+  auth: AuthConfig;
+  onAuthChange: (auth: AuthConfig) => void;
 }
 
-export function RequestForm({ control, onSend, loading, urlValue, headers, onHeadersChange, params, onParamsChange, onUrlChange }: RequestFormProps) {
+export function RequestForm({ control, onSend, loading, urlValue, headers, onHeadersChange, params, onParamsChange, onUrlChange, auth, onAuthChange }: RequestFormProps) {
   const [activeTab, setActiveTab] = useState<RequestTab>('headers');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
@@ -282,10 +305,7 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
         )}
 
         {activeTab === 'auth' && (
-          <div className="text-sm text-gray-600">
-            <p className="mb-4">Configure authentication for this request.</p>
-            <div className="text-gray-400">Coming soon...</div>
-          </div>
+          <AuthEditor auth={auth} onAuthChange={onAuthChange} disabled={loading} />
         )}
 
         {activeTab === 'headers' && (

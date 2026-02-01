@@ -1,4 +1,4 @@
-import { ProxyResponse, ProxyRequest } from '../types';
+import { ProxyResponse, ProxyRequest, AuthConfig } from '../types';
 
 export interface Environment {
   id: string;
@@ -35,6 +35,7 @@ export interface SavedRequest {
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  auth?: AuthConfig;
   collectionId: string;
   folderId?: string;
   order?: number;
