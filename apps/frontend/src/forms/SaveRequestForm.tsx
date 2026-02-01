@@ -27,8 +27,26 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
   useEffect(() => {
     if (isOpen && currentRequest) {
       // Auto-generate a name from the request
-      const urlObj = new URL(currentRequest.url, 'http://placeholder');
-      const pathname = urlObj.pathname || '/';
+      // Extract pathname without URL encoding to preserve variables like {{baseUrl}}
+      let pathname = '/';
+      try {
+        const url = currentRequest.url.trim();
+        if (url) {
+          // Check if it's a full URL
+          if (url.match(/^https?:\/\//)) {
+            const urlObj = new URL(url);
+            pathname = urlObj.pathname;
+          } else {
+            // It's just a path or path with host, extract the path part
+            const pathMatch = url.match(/^(?:https?:\/\/)?[^/]*(\/[^?#]*)?/);
+            pathname = pathMatch?.[1] || '/';
+          }
+        }
+      } catch {
+        // If URL parsing fails, try to extract just the path
+        const pathMatch = currentRequest.url.match(/^(?:https?:\/\/)?[^/]*(\/[^?#]*)?/);
+        pathname = pathMatch?.[1] || currentRequest.url || '/';
+      }
       setName(`${currentRequest.method} ${pathname}`);
     }
   }, [isOpen, currentRequest]);

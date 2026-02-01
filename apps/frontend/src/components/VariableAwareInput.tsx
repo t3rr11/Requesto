@@ -208,13 +208,13 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
       <input
         ref={inputRef}
         type="text"
+        spellCheck="false"
         value={value}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
         className={`${className} relative bg-transparent caret-gray-900`}
-        style={{ color: value ? 'transparent' : undefined }}
       />
 
       {/* Highlighted content layer */}

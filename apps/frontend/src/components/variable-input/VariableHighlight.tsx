@@ -24,7 +24,7 @@ export function VariableHighlight({
     let lastIndex = 0;
     const regex = /\{\{([^}]+)\}\}/g;
     let match;
-    
+
     // Track instance indices for each variable key
     const variableInstances = new Map<string, number>();
 
@@ -37,7 +37,7 @@ export function VariableHighlight({
       // Add variable with highlighting
       const varKey = match[1].trim();
       const isDefined = enabledVariables.some(v => v.key === varKey);
-      
+
       // Get and increment instance index for this variable key
       const instanceIndex = variableInstances.get(varKey) || 0;
       variableInstances.set(varKey, instanceIndex + 1);
@@ -47,7 +47,9 @@ export function VariableHighlight({
           key={`var-${match.index}`}
           spellCheck="false"
           className={`rounded pointer-events-auto cursor-pointer ${
-            isDefined ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+            isDefined
+              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
           }`}
           onMouseEnter={e => onVariableHover(e, varKey)}
           onMouseLeave={onVariableLeave}
@@ -63,7 +65,7 @@ export function VariableHighlight({
     // Add remaining text (visible, normal text)
     if (lastIndex < value.length) {
       parts.push(
-        <span key={`text-${lastIndex}`} spellCheck="false">
+        <span key={`text-${lastIndex}`} spellCheck="false" className="text-transparent">
           {value.substring(lastIndex)}
         </span>
       );
