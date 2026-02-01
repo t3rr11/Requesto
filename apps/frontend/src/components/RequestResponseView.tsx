@@ -8,7 +8,9 @@ import { ResponsePanel } from './ResponsePanel';
 import { useRequestStore } from '../store/useRequestStore';
 import { useCollectionsStore } from '../store/useCollectionsStore';
 import { useAlertStore } from '../store/useAlertStore';
+import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { requestApi } from '../helpers/api/request';
+import { substituteInRequest, getUndefinedVariables } from '../helpers/environmentHelpers';
 import { useUIStore } from '../store/useUIStore';
 import { useTabsStore } from '../store/useTabsStore';
 
@@ -26,11 +28,18 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
   const { addConsoleLog } = useRequestStore();
   const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
+  const { environmentsData } = useEnvironmentStore();
   const { openSaveRequest, requestPanelWidth, setRequestPanelWidth } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const activeTab = getActiveTab();
+  
+  // Get the active environment
+  const activeEnvironment = useMemo(() => {
+    if (!environmentsData.activeEnvironmentId) return null;
+    return environmentsData.environments.find(e => e.id === environmentsData.activeEnvironmentId) || null;
+  }, [environmentsData]);
 
   const { control, watch, setValue, getValues, reset } = useForm<RequestFormData>({
     resolver: zodResolver(requestFormSchema),
@@ -176,6 +185,18 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       body: values.body.trim() || undefined,
     };
 
+    // Check for undefined variables
+    const undefinedVars = getUndefinedVariables(requestData, activeEnvironment);
+    if (undefinedVars.length > 0) {
+      const confirmed = confirm(
+        `The following variables are not defined in the active environment:\n\n${undefinedVars.map(v => `• {{${v}}}`).join('\n')}\n\nDo you want to send the request anyway?`
+      );
+      if (!confirmed) return;
+    }
+
+    // Substitute environment variables
+    const substitutedRequest = substituteInRequest(requestData, activeEnvironment);
+
     setTabLoading(activeTabId, true);
     setTabError(activeTabId, null);
 
@@ -184,12 +205,12 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       id: Date.now().toString(),
       timestamp: startTime,
       type: 'request',
-      method: requestData.method,
-      url: requestData.url,
+      method: substitutedRequest.method,
+      url: substitutedRequest.url,
     });
 
     try {
-      const response = await requestApi.send(requestData);
+      const response = await requestApi.send(substitutedRequest);
       const duration = Date.now() - startTime;
 
       setTabResponse(activeTabId, response);
@@ -197,8 +218,8 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
         id: (Date.now() + 1).toString(),
         timestamp: Date.now(),
         type: 'response',
-        method: requestData.method,
-        url: requestData.url,
+        method: substitutedRequest.method,
+        url: substitutedRequest.url,
         status: response.status,
         duration,
       });

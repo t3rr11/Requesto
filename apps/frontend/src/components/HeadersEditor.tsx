@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
+import { VariableAwareInput } from './VariableAwareInput';
 
 interface HeaderRow {
   id: string;
@@ -133,13 +134,12 @@ export function HeadersEditor({ headers, onHeadersChange, disabled = false }: He
                       />
                     </td>
                     <td className="py-2 px-1">
-                      <input
-                        type="text"
+                      <VariableAwareInput
                         value={header.value}
-                        onChange={e => updateHeader(header.id, 'value', e.target.value)}
+                        onChange={value => updateHeader(header.id, 'value', value)}
                         placeholder="Value"
-                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none"
                         disabled={disabled}
+                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none"
                       />
                     </td>
                     <td className="py-2 px-3 text-right">

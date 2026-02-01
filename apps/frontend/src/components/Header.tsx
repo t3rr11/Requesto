@@ -2,16 +2,16 @@ import { useEffect } from 'react';
 import { useUIStore } from '../store/useUIStore';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { ListCollapse, Menu } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
 export const Header = () => {
-  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, openEnvironmentManager, openKeyboardShortcuts } =
-    useUIStore();
-
-  const { environmentsData, environmentChangeCounter, loadEnvironments, setActiveEnvironment } = useEnvironmentStore();
+  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, openHelp } = useUIStore();
+  const { environmentsData, loadEnvironments, setActiveEnvironment } = useEnvironmentStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadEnvironments();
-  }, [environmentChangeCounter]);
+  }, []);
 
   return (
     <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg">
@@ -25,7 +25,7 @@ export const Header = () => {
             {isSidebarOpen ? <Menu className="w-5 h-5" /> : <ListCollapse className="w-5 h-5" />}
           </button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/requests')}>
             <img src="/logo.png" alt="Localman Logo" className="w-8 h-8" />
             <h1 className="text-xl font-bold">Localman</h1>
           </div>
@@ -35,19 +35,32 @@ export const Header = () => {
           {/* Environment Selector */}
           <div className="flex items-center gap-2">
             <label className="text-sm text-blue-200">Environment:</label>
-            <select
-              value={environmentsData.activeEnvironmentId || ''}
-              onChange={e => setActiveEnvironment(e.target.value)}
-              className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded border border-blue-400 hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-white"
-            >
-              {environmentsData.environments.map(env => (
-                <option key={env.id} value={env.id}>
-                  {env.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={environmentsData.activeEnvironmentId || ''}
+                onChange={e => setActiveEnvironment(e.target.value)}
+                className="px-3 py-1.5 pr-8 text-sm bg-blue-500 text-white rounded border border-blue-400 hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-white appearance-none cursor-pointer"
+              >
+                {environmentsData.environments.length === 0 && (
+                  <option value="">No environments</option>
+                )}
+                {environmentsData.environments.map(env => (
+                  <option key={env.id} value={env.id}>
+                    {env.name} ({env.variables.filter(v => v.enabled).length} vars)
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
             <button
-              onClick={openEnvironmentManager}
+              onClick={() => navigate('/environments')}
               className="p-1.5 hover:bg-blue-500 rounded transition-colors"
               title="Manage Environments"
             >
@@ -70,7 +83,7 @@ export const Header = () => {
 
           {/* Help Button */}
           <button
-            onClick={openKeyboardShortcuts}
+            onClick={openHelp}
             className="p-1.5 hover:bg-blue-500 rounded transition-colors"
             title="Keyboard Shortcuts"
           >

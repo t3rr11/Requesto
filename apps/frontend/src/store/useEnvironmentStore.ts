@@ -4,6 +4,7 @@ export interface EnvironmentVariable {
   key: string;
   value: string;
   enabled: boolean;
+  isSecret?: boolean;
 }
 
 export interface Environment {
@@ -19,11 +20,9 @@ export interface EnvironmentsData {
 
 interface EnvironmentState {
   environmentsData: EnvironmentsData;
-  environmentChangeCounter: number;
-  
+
   // Actions
   setEnvironmentsData: (data: EnvironmentsData) => void;
-  incrementEnvironmentCounter: () => void;
   loadEnvironments: () => Promise<void>;
   setActiveEnvironment: (id: string) => Promise<void>;
 }
@@ -33,14 +32,9 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
     activeEnvironmentId: null,
     environments: [],
   },
-  environmentChangeCounter: 0,
-  
-  setEnvironmentsData: (data) => set({ environmentsData: data }),
-  
-  incrementEnvironmentCounter: () => set((state) => ({ 
-    environmentChangeCounter: state.environmentChangeCounter + 1 
-  })),
-  
+
+  setEnvironmentsData: data => set({ environmentsData: data }),
+
   loadEnvironments: async () => {
     try {
       const res = await fetch('/api/environments');
@@ -52,7 +46,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       console.error('Failed to load environments:', error);
     }
   },
-  
+
   setActiveEnvironment: async (id: string) => {
     try {
       const res = await fetch('/api/environments/active', {
@@ -60,10 +54,9 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
       });
-      
+
       if (res.ok) {
         await get().loadEnvironments();
-        get().incrementEnvironmentCounter();
       }
     } catch (error) {
       console.error('Failed to set active environment:', error);

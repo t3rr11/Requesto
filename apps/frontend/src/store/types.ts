@@ -92,7 +92,6 @@ export interface AppState {
   
   // Environment state
   environmentsData: EnvironmentsData;
-  environmentChangeCounter: number;
   
   // Collections state
   collections: Collection[];
@@ -123,7 +122,6 @@ export interface AppActions {
   
   // Environment actions
   setEnvironmentsData: (data: EnvironmentsData) => void;
-  incrementEnvironmentCounter: () => void;
   
   // Collections actions
   setCollections: (collections: Collection[]) => void;

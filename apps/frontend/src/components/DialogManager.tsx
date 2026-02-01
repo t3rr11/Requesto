@@ -1,33 +1,25 @@
 import { Dialog } from './Dialog';
-import { EnvironmentManagerForm } from '../forms/EnvironmentManagerForm';
-import { KeyboardShortcutsContent } from '../forms/KeyboardShortcutsContent';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { SaveRequestForm } from '../forms/SaveRequestForm';
 import { NewRequestForm } from '../forms/NewRequestForm';
 import { useUIStore } from '../store/useUIStore';
-import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { useCollectionsStore } from '../store/useCollectionsStore';
 import { useTabsStore } from '../store/useTabsStore';
+import { HelpContent } from './HelpContent';
 
 export const DialogManager = () => {
   const {
-    isEnvironmentManagerOpen,
-    isKeyboardShortcutsOpen,
+    isHelpOpen,
     isNewCollectionOpen,
     isSaveRequestOpen,
     isNewRequestOpen,
     newRequestContext,
     closeAllDialogs,
   } = useUIStore();
-  const { incrementEnvironmentCounter } = useEnvironmentStore();
   const { loadCollections } = useCollectionsStore();
   const { getActiveTab } = useTabsStore();
   
   const activeTab = getActiveTab();
-
-  const handleEnvironmentChange = () => {
-    incrementEnvironmentCounter();
-  };
 
   const handleCollectionsChange = async () => {
     await loadCollections();
@@ -35,15 +27,9 @@ export const DialogManager = () => {
 
   return (
     <>
-      {isEnvironmentManagerOpen && (
-        <Dialog isOpen={true} onClose={closeAllDialogs} title="Environment Variables" size="full">
-          <EnvironmentManagerForm onEnvironmentChange={handleEnvironmentChange} />
-        </Dialog>
-      )}
-
-      {isKeyboardShortcutsOpen && (
-        <Dialog isOpen={true} onClose={closeAllDialogs} title="Keyboard Shortcuts" size="md">
-          <KeyboardShortcutsContent onClose={closeAllDialogs} />
+      {isHelpOpen && (
+        <Dialog isOpen={true} onClose={closeAllDialogs} title="Help" size="md">
+          <HelpContent onClose={closeAllDialogs} />
         </Dialog>
       )}
 

@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { Header } from './components/Header';
-import { MainLayout } from './components/layout/MainLayout';
-import { DialogManager } from './components/DialogManager';
 import { AlertDialog } from './components/AlertDialog';
 import { useAlertStore } from './store/useAlertStore';
 import { useCollectionsStore } from './store/useCollectionsStore';
 import { useEnvironmentStore } from './store/useEnvironmentStore';
+import { DialogManager } from './components/DialogManager';
+import { RequestPage } from './pages/RequestsPage';
+import { EnvironmentsPage } from './pages/EnvironmentsPage';
 
 function App() {
   const { isOpen: isAlertOpen, title: alertTitle, message: alertMessage, variant: alertVariant, closeAlert } = useAlertStore();
@@ -19,19 +21,27 @@ function App() {
   }, []);
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      <Header />
-      <MainLayout />
-      <DialogManager />
-      
-      <AlertDialog
-        isOpen={isAlertOpen}
-        onClose={closeAlert}
-        title={alertTitle}
-        message={alertMessage}
-        variant={alertVariant}
-      />
-    </div>
+    <BrowserRouter>
+      <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+        <Header />
+        
+        <Routes>
+          <Route path="/" element={<Navigate to="/requests" replace />} />
+          <Route path="/requests" element={<RequestPage />} />
+          <Route path="/environments" element={<EnvironmentsPage />} />
+        </Routes>
+
+        <DialogManager />
+        
+        <AlertDialog
+          isOpen={isAlertOpen}
+          onClose={closeAlert}
+          title={alertTitle}
+          message={alertMessage}
+          variant={alertVariant}
+        />
+      </div>
+    </BrowserRouter>
   );
 }
 

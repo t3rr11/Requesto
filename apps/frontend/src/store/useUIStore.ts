@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-interface UIState {
+interface UIState {  
   // Sidebar and console
   isSidebarOpen: boolean;
   sidebarWidth: number;
@@ -14,8 +14,7 @@ interface UIState {
   expandedFolders: Set<string>;
   
   // Dialog states
-  isEnvironmentManagerOpen: boolean;
-  isKeyboardShortcutsOpen: boolean;
+  isHelpOpen: boolean;
   isNewCollectionOpen: boolean;
   isSaveRequestOpen: boolean;
   isNewRequestOpen: boolean;
@@ -41,11 +40,8 @@ interface UIState {
   expandCollection: (id: string) => void;
   expandFolder: (id: string) => void;
   
-  openEnvironmentManager: () => void;
-  closeEnvironmentManager: () => void;
-  
-  openKeyboardShortcuts: () => void;
-  closeKeyboardShortcuts: () => void;
+  openHelp: () => void;
+  closeHelp: () => void;
   
   openNewCollection: () => void;
   closeNewCollection: () => void;
@@ -70,8 +66,7 @@ export const useUIStore = create<UIState>()(
       consoleHeight: 250,
       expandedCollections: new Set<string>(),
       expandedFolders: new Set<string>(),
-      isEnvironmentManagerOpen: false,
-      isKeyboardShortcutsOpen: false,
+      isHelpOpen: false,
       isNewCollectionOpen: false,
       isSaveRequestOpen: false,
       isNewRequestOpen: false,
@@ -115,11 +110,8 @@ export const useUIStore = create<UIState>()(
         expandedFolders: new Set(state.expandedFolders).add(id),
       })),
       
-      openEnvironmentManager: () => set({ isEnvironmentManagerOpen: true }),
-      closeEnvironmentManager: () => set({ isEnvironmentManagerOpen: false }),
-      
-      openKeyboardShortcuts: () => set({ isKeyboardShortcutsOpen: true }),
-      closeKeyboardShortcuts: () => set({ isKeyboardShortcutsOpen: false }),
+      openHelp: () => set({ isHelpOpen: true }),
+      closeHelp: () => set({ isHelpOpen: false }),
       
       openNewCollection: () => set({ isNewCollectionOpen: true }),
       closeNewCollection: () => set({ isNewCollectionOpen: false }),
@@ -134,8 +126,7 @@ export const useUIStore = create<UIState>()(
       closeNewRequest: () => set({ isNewRequestOpen: false, newRequestContext: null }),
       
       closeAllDialogs: () => set({
-        isEnvironmentManagerOpen: false,
-        isKeyboardShortcutsOpen: false,
+        isHelpOpen: false,
         isNewCollectionOpen: false,
         isSaveRequestOpen: false,
         isNewRequestOpen: false,

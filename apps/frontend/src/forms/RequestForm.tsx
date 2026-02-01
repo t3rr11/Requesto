@@ -4,6 +4,7 @@ import { z } from 'zod';
 import Editor from '@monaco-editor/react';
 import { Button } from '../components/Button';
 import { HeadersEditor } from '../components/HeadersEditor';
+import { VariableAwareInput } from '../components/VariableAwareInput';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const requestFormSchema = z.object({
@@ -104,42 +105,42 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
     <div className="flex-1 flex flex-col bg-white">
       {/* Request Bar */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex gap-2 overflow-hidden">
-          <div className="flex flex-1">
-            <Controller
-              name="method"
-              control={control}
-              render={({ field }) => (
-                <select
-                  {...field}
-                  className="px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm"
-                  disabled={loading}
-                >
-                  {HTTP_METHODS.map(m => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              )}
-            />
+        <div className="flex gap-3 items-center">
+          <Controller
+            name="method"
+            control={control}
+            render={({ field }) => (
+              <select
+                {...field}
+                className="px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm min-w-[100px]"
+                disabled={loading}
+              >
+                {HTTP_METHODS.map(m => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
 
+          <div className="flex-1">
             <Controller
               name="url"
               control={control}
               render={({ field }) => (
-                <input
-                  {...field}
-                  type="text"
-                  placeholder="Enter request URL"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md ml-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                <VariableAwareInput
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Enter request url"
                   disabled={loading}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               )}
             />
           </div>
 
-          <Button onClick={onSend} disabled={loading || !urlValue.trim()} loading={loading} size="sm">
+          <Button onClick={onSend} disabled={loading || !urlValue.trim()} loading={loading} size="md">
             Send
           </Button>
         </div>
