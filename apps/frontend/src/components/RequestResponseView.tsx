@@ -47,6 +47,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       method: 'GET',
       url: '',
       headers: [{ id: '1', key: '', value: '', enabled: true }],
+      params: [{ id: '1', key: '', value: '', enabled: true }],
       body: '',
       savedRequestId: undefined,
     },
@@ -105,16 +106,69 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
           }))
         : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
 
+    // Extract params from URL if present
+    const { baseUrl, params: extractedParams } = extractParamsFromUrl(activeTab.request.url);
+    const loadedParams = extractedParams.length > 0
+      ? extractedParams.map((p, index) => ({
+          id: (Date.now() + index + 1000).toString(),
+          key: p.key,
+          value: p.value,
+          enabled: true,
+        }))
+      : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }];
+
     const formData = {
       method: activeTab.request.method,
-      url: activeTab.request.url,
+      url: baseUrl, // Use base URL without query params
       headers: loadedHeaders,
+      params: loadedParams,
       body: activeTab.request.body || '',
       savedRequestId: activeTab.savedRequestId,
     };
 
     reset(formData);
   }, [activeTab?.id, reset]); // Only reload when tab ID changes
+
+/**
+ * Extract query parameters from URL and return both the base URL and params
+ */
+function extractParamsFromUrl(url: string): { baseUrl: string; params: { key: string; value: string }[] } {
+  try {
+    // Check if URL has a protocol, if not, try to parse as a relative URL
+    let urlObj: URL;
+    if (url.match(/^https?:\/\//i)) {
+      urlObj = new URL(url);
+    } else {
+      // For relative URLs or URLs without protocol, add a dummy base
+      urlObj = new URL(url, 'http://dummy');
+    }
+
+    const params: { key: string; value: string }[] = [];
+    urlObj.searchParams.forEach((value, key) => {
+      params.push({ key, value });
+    });
+
+    // Build base URL without query params
+    let baseUrl = url.split('?')[0];
+    
+    return { baseUrl, params };
+  } catch {
+    // If URL parsing fails, return as-is
+    return { baseUrl: url, params: [] };
+  }
+}
+
+/**
+ * Build URL from base URL and params
+ */
+function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value: string; enabled: boolean }>): string {
+  const enabledParams = params.filter(p => p.enabled && p.key.trim());
+  if (enabledParams.length === 0) return baseUrl;
+
+  const queryString = enabledParams.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}${queryString}`;
+}
 
   // Sync form changes back to active tab
   useEffect(() => {
@@ -128,14 +182,17 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       }
     });
 
+    // Build URL with params
+    const fullUrl = buildUrlWithParams(formValues.url.trim(), formValues.params);
+
     // Update the tab's request data
     updateTabRequest(activeTabId, {
       method: formValues.method,
-      url: formValues.url.trim(),
+      url: fullUrl,
       headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
       body: formValues.body.trim() || undefined,
     });
-  }, [formValues.method, formValues.url, formValues.headers, formValues.body, activeTabId, updateTabRequest]);
+  }, [formValues.method, formValues.url, formValues.headers, formValues.params, formValues.body, activeTabId, updateTabRequest]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -178,9 +235,12 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       }
     });
 
+    // Build URL with params
+    const fullUrl = buildUrlWithParams(values.url.trim(), values.params);
+
     const requestData = {
       method: values.method,
-      url: values.url.trim(),
+      url: fullUrl,
       headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
       body: values.body.trim() || undefined,
     };
@@ -250,9 +310,12 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       }
     });
 
+    // Build URL with params
+    const fullUrl = buildUrlWithParams(values.url.trim(), values.params);
+
     const requestData = {
       method: values.method,
-      url: values.url.trim(),
+      url: fullUrl,
       headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
       body: values.body.trim() || undefined,
     };
@@ -305,10 +368,22 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
               }))
             : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
 
+        // Extract params from URL if present
+        const { baseUrl, params: extractedParams } = extractParamsFromUrl(item.url);
+        const loadedParams = extractedParams.length > 0
+          ? extractedParams.map((p, index) => ({
+              id: (Date.now() + index + 1000).toString(),
+              key: p.key,
+              value: p.value,
+              enabled: true,
+            }))
+          : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }];
+
         const formData = {
           method: item.method,
-          url: item.url,
+          url: baseUrl, // Use base URL without query params
           headers: loadedHeaders,
+          params: loadedParams,
           body: item.body || '',
           savedRequestId: undefined,
         };
@@ -328,9 +403,12 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
           }
         });
 
+        // Build URL with params
+        const fullUrl = buildUrlWithParams(values.url.trim(), values.params);
+
         return {
           method: values.method,
-          url: values.url.trim(),
+          url: fullUrl,
           headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
           body: values.body.trim() || undefined,
         };
@@ -345,6 +423,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
           method: 'GET' as const,
           url: '',
           headers: [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
+          params: [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }],
           body: '',
           savedRequestId: undefined,
         };
@@ -379,6 +458,9 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
             urlValue={formValues.url}
             headers={formValues.headers}
             onHeadersChange={headers => setValue('headers', headers)}
+            params={formValues.params}
+            onParamsChange={params => setValue('params', params)}
+            onUrlChange={url => setValue('url', url)}
           />
           {/* Resize Handle */}
           <div

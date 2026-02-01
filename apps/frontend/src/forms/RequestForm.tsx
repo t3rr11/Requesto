@@ -4,6 +4,7 @@ import { z } from 'zod';
 import Editor from '@monaco-editor/react';
 import { Button } from '../components/Button';
 import { HeadersEditor } from '../components/HeadersEditor';
+import { ParamsEditor } from '../components/ParamsEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -11,6 +12,14 @@ export const requestFormSchema = z.object({
   method: z.string(),
   url: z.string().min(1, 'URL is required'),
   headers: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      value: z.string(),
+      enabled: z.boolean(),
+    })
+  ),
+  params: z.array(
     z.object({
       id: z.string(),
       key: z.string(),
@@ -28,6 +37,35 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'
 
 type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'scripts' | 'settings';
 
+/**
+ * Extract query parameters from URL and return both the base URL and params
+ */
+function extractParamsFromUrl(url: string): { baseUrl: string; params: { key: string; value: string }[] } {
+  try {
+    // Check if URL has a protocol, if not, try to parse as a relative URL
+    let urlObj: URL;
+    if (url.match(/^https?:\/\//i)) {
+      urlObj = new URL(url);
+    } else {
+      // For relative URLs or URLs without protocol, add a dummy base
+      urlObj = new URL(url, 'http://dummy');
+    }
+
+    const params: { key: string; value: string }[] = [];
+    urlObj.searchParams.forEach((value, key) => {
+      params.push({ key, value });
+    });
+
+    // Build base URL without query params
+    let baseUrl = url.split('?')[0];
+    
+    return { baseUrl, params };
+  } catch {
+    // If URL parsing fails, return as-is
+    return { baseUrl: url, params: [] };
+  }
+}
+
 interface RequestFormProps {
   control: Control<RequestFormData>;
   onSend: () => void;
@@ -35,13 +73,47 @@ interface RequestFormProps {
   urlValue: string;
   headers: RequestFormData['headers'];
   onHeadersChange: (headers: RequestFormData['headers']) => void;
+  params: RequestFormData['params'];
+  onParamsChange: (params: RequestFormData['params']) => void;
+  onUrlChange: (url: string) => void;
 }
 
-export function RequestForm({ control, onSend, loading, urlValue, headers, onHeadersChange }: RequestFormProps) {
+export function RequestForm({ control, onSend, loading, urlValue, headers, onHeadersChange, params, onParamsChange, onUrlChange }: RequestFormProps) {
   const [activeTab, setActiveTab] = useState<RequestTab>('headers');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
+
+  // Handler for URL changes - extract query params and update params state
+  const handleUrlChange = (newUrl: string) => {
+    const { baseUrl, params: extractedParams } = extractParamsFromUrl(newUrl);
+    
+    if (extractedParams.length > 0) {
+      // Merge extracted params with existing params
+      const existingParamKeys = new Set(params.map(p => p.key));
+      const newParams = [...params];
+      
+      extractedParams.forEach(extracted => {
+        if (!existingParamKeys.has(extracted.key)) {
+          newParams.push({
+            id: Date.now().toString() + Math.random(),
+            key: extracted.key,
+            value: extracted.value,
+            enabled: true,
+          });
+        }
+      });
+      
+      onParamsChange(newParams);
+      onUrlChange(baseUrl); // Update URL without query params
+    } else {
+      onUrlChange(newUrl);
+    }
+  };
+
+  // Calculate counts for enabled params and headers
+  const paramsCount = params.filter(p => p.enabled && p.key.trim()).length;
+  const headersCount = headers.filter(h => h.enabled && h.key.trim()).length;
 
   // Check if scrolling is needed and update scroll button visibility
   const checkScrollButtons = () => {
@@ -131,7 +203,7 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
               render={({ field }) => (
                 <VariableAwareInput
                   value={field.value}
-                  onChange={field.onChange}
+                  onChange={handleUrlChange}
                   placeholder="Enter request url"
                   disabled={loading}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
@@ -167,19 +239,28 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
             msOverflowStyle: 'none', // IE/Edge
           }}
         >
-          {(['params', 'auth', 'headers', 'body', 'scripts', 'settings'] as RequestTab[]).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-shrink-0 px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
-                activeTab === tab
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          {(['params', 'auth', 'headers', 'body', 'scripts', 'settings'] as RequestTab[]).map(tab => {
+            let label = tab.charAt(0).toUpperCase() + tab.slice(1);
+            if (tab === 'params' && paramsCount > 0) {
+              label += ` (${paramsCount})`;
+            } else if (tab === 'headers' && headersCount > 0) {
+              label += ` (${headersCount})`;
+            }
+            
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Right scroll button */}
@@ -197,10 +278,7 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
       {/* Request Tab Content */}
       <div className="flex-1 overflow-auto p-6">
         {activeTab === 'params' && (
-          <div className="text-sm text-gray-600">
-            <p className="mb-4">Query parameters will be added to the URL.</p>
-            <div className="text-gray-400">Coming soon...</div>
-          </div>
+          <ParamsEditor params={params} onParamsChange={onParamsChange} disabled={loading} />
         )}
 
         {activeTab === 'auth' && (
