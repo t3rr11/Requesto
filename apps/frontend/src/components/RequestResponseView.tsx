@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useEffect, useState, useMemo, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './Button';
@@ -275,21 +276,50 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
     });
 
     try {
-      const response = await requestApi.send(substitutedRequest);
-      const duration = Date.now() - startTime;
+      // Check if this is a streaming request
+      if (requestApi.isStreaming(substitutedRequest)) {
+        // Handle streaming separately with progressive updates
+        await requestApi.sendStreaming(substitutedRequest, (streamResponse) => {
+          // Use flushSync to force immediate render, bypassing React 18's automatic batching
+          flushSync(() => {
+            setTabResponse(activeTabId, streamResponse);
+          });
+        });
+        
+        const duration = Date.now() - startTime;
+        const finalResponse = getActiveTab()?.response;
+        
+        if (finalResponse) {
+          addConsoleLog({
+            id: (Date.now() + 1).toString(),
+            timestamp: Date.now(),
+            type: 'response',
+            method: substitutedRequest.method,
+            url: substitutedRequest.url,
+            status: finalResponse.status,
+            duration,
+            requestData: substitutedRequest,
+            responseData: finalResponse,
+          });
+        }
+      } else {
+        // Regular non-streaming request
+        const response = await requestApi.send(substitutedRequest);
+        const duration = Date.now() - startTime;
 
-      setTabResponse(activeTabId, response);
-      addConsoleLog({
-        id: (Date.now() + 1).toString(),
-        timestamp: Date.now(),
-        type: 'response',
-        method: substitutedRequest.method,
-        url: substitutedRequest.url,
-        status: response.status,
-        duration,
-        requestData: substitutedRequest,
-        responseData: response,
-      });
+        setTabResponse(activeTabId, response);
+        addConsoleLog({
+          id: (Date.now() + 1).toString(),
+          timestamp: Date.now(),
+          type: 'response',
+          method: substitutedRequest.method,
+          url: substitutedRequest.url,
+          status: response.status,
+          duration,
+          requestData: substitutedRequest,
+          responseData: response,
+        });
+      }
     } catch (error: any) {
       setTabError(activeTabId, error.message || 'Failed to send request');
       addConsoleLog({
@@ -450,9 +480,9 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
   );
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col flex-1 min-h-0 bg-gray-50">
       {/* Top Bar - Breadcrumb and Save */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between h-14">
+      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between h-14 flex-shrink-0">
         <RequestBreadcrumb savedRequestId={savedRequestId} />
         <Button onClick={handleSave} size="sm" disabled={activeTab?.isLoading || !hasChanges}>
           Save
@@ -460,7 +490,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
       </div>
 
       {/* Main Content - Split View */}
-      <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
+      <div ref={containerRef} className="flex-1 flex overflow-hidden relative min-h-0">
         <div
           className="flex flex-col border-r border-gray-200 bg-white relative"
           style={{ width: `${requestPanelWidth}px` }}
@@ -485,7 +515,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
             title="Drag to resize"
           />
         </div>
-        <div style={{ pointerEvents: isResizing ? 'none' : 'auto' }} className="flex-1 flex flex-col overflow-hidden">
+        <div style={{ pointerEvents: isResizing ? 'none' : 'auto' }} className="flex-1 flex flex-col overflow-hidden min-h-0">
           <ResponsePanel />
         </div>
       </div>

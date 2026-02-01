@@ -8,10 +8,10 @@ export const RequestPage = () => {
   const { isConsoleOpen, consoleHeight } = useUIStore();
 
   return (
-    <main className="flex-1 overflow-hidden flex relative">
+    <main className="flex-1 overflow-hidden flex relative min-h-0">
       <CollectionsSidebar />
       <div
-        className="flex-1 flex flex-col overflow-hidden"
+        className="flex-1 flex flex-col overflow-hidden min-h-0"
         style={{ paddingBottom: isConsoleOpen ? `${consoleHeight}px` : '32px' }}
       >
         <TabsBar />

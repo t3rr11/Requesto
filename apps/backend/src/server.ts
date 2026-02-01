@@ -4,6 +4,7 @@ import path from 'path';
 import { proxyRoutes } from './routes/proxy';
 import environmentRoutes from './routes/environments';
 import collectionsRoutes from './routes/collections';
+import { sseTestRoutes } from './routes/sse-test';
 
 const server = Fastify({
   logger: true,
@@ -20,6 +21,7 @@ async function start() {
     await server.register(proxyRoutes, { prefix: '/api' });
     await server.register(environmentRoutes, { prefix: '/api' });
     await server.register(collectionsRoutes, { prefix: '/api' });
+    await server.register(sseTestRoutes, { prefix: '/api' });
 
     // Health check
     server.get('/health', async () => {

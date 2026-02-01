@@ -16,9 +16,15 @@ export function ResponsePanel() {
   const error = activeTab?.error || null;
   
   const [activeResponseTab, setActiveResponseTab] = useState<ResponseTab>('body');
-  const responseSize = response?.body ? new Blob([response.body]).size : 0;
+  
+  // Check if this is a streaming response
+  const isStreaming = response && 'isStreaming' in response && response.isStreaming;
+  const responseSize = isStreaming 
+    ? new Blob([JSON.stringify(response.events)]).size 
+    : (response && 'body' in response && response.body ? new Blob([response.body]).size : 0);
 
-  if (loading) {
+  // Don't show loading screen if we're streaming and already have events coming in
+  if (loading && !(isStreaming && response.events.length > 0)) {
     return (
       <div className="flex-1 flex flex-col bg-white">
         <div className="border-b border-gray-200 px-6 bg-gray-50 flex items-center h-[48px]">
@@ -67,11 +73,13 @@ export function ResponsePanel() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
+    <div className="flex-1 flex flex-col bg-white min-h-0">
       {/* Response Header */}
-      <div className="border-b border-gray-200 px-6 bg-gray-50 flex items-center h-[48px]">
+      <div className="border-b border-gray-200 px-6 bg-gray-50 flex items-center h-[48px] flex-shrink-0">
         <div className="flex items-center justify-between w-full">
-          <h3 className="font-medium text-sm text-gray-900">Response</h3>
+          <h3 className="font-medium text-sm text-gray-900">
+            Response {isStreaming && <span className="text-blue-600">(SSE Stream)</span>}
+          </h3>
           <div className="flex items-center gap-3 text-sm">
             <span className={`px-2 py-1 rounded font-medium ${getStatusBadgeColor(response.status)}`}>
               {response.status} {response.statusText}
@@ -79,15 +87,21 @@ export function ResponsePanel() {
             <span className="text-gray-600">
               <span className="font-medium">Time:</span> {response.duration}ms
             </span>
-            <span className="text-gray-600">
-              <span className="font-medium">Size:</span> {formatBytes(responseSize)}
-            </span>
+            {isStreaming ? (
+              <span className="text-gray-600">
+                <span className="font-medium">Events:</span> {response.events.length}
+              </span>
+            ) : (
+              <span className="text-gray-600">
+                <span className="font-medium">Size:</span> {formatBytes(responseSize)}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
       {/* Response Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 flex-shrink-0">
         <div className="flex px-6">
           {(['body', 'headers', 'test-results'] as ResponseTab[]).map(tab => (
             <button
@@ -106,7 +120,7 @@ export function ResponsePanel() {
       </div>
 
       {/* Response Tab Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {activeResponseTab === 'body' && <ResponseBody />}
         {activeResponseTab === 'headers' && <ResponseHeaders />}
         {activeResponseTab === 'test-results' && <ResponseTests />}

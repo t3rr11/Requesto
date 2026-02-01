@@ -302,7 +302,7 @@ export const ConsolePanel = () => {
                 )}
 
                 {/* Response Body */}
-                {log.responseData.body && (
+                {log.responseData && 'body' in log.responseData && log.responseData.body && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 text-xs font-semibold">Body</span>
@@ -311,7 +311,7 @@ export const ConsolePanel = () => {
                         <button
                           onClick={e => {
                             e.stopPropagation();
-                            copyToClipboard(log.responseData?.body || '', `res-body-${log.id}`);
+                            copyToClipboard('body' in log.responseData! ? log.responseData.body || '' : '', `res-body-${log.id}`);
                           }}
                           className="text-gray-500 hover:text-gray-300 transition-colors p-1"
                           title="Copy body"
@@ -333,6 +333,21 @@ export const ConsolePanel = () => {
                             return log.responseData.body;
                           }
                         })()}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Streaming Events */}
+                {log.responseData && 'isStreaming' in log.responseData && log.responseData.isStreaming && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-xs font-semibold">SSE Events</span>
+                      <span className="text-gray-500 text-xs">{log.responseData.events.length} events</span>
+                    </div>
+                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
+                      <pre className="text-gray-300 whitespace-pre-wrap break-words">
+                        {JSON.stringify(log.responseData.events, null, 2)}
                       </pre>
                     </div>
                   </div>

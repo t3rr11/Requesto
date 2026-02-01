@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Tab, TabRequest, ProxyResponse } from '../types';
+import { Tab, TabRequest, ProxyResponse, StreamingResponse } from '../types';
 
 interface TabsState {
   // Normalized state
@@ -44,7 +44,7 @@ interface TabsState {
   /**
    * Set the response for a tab
    */
-  setTabResponse: (tabId: string, response: ProxyResponse | null) => void;
+  setTabResponse: (tabId: string, response: ProxyResponse | StreamingResponse | null) => void;
   
   /**
    * Set loading state for a tab

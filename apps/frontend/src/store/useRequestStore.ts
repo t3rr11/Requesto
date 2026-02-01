@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { ProxyResponse, ProxyRequest } from '../types';
+import { ProxyResponse, ProxyRequest, StreamingResponse } from '../types';
 
 export interface ConsoleLog {
   id: string;
@@ -12,7 +12,7 @@ export interface ConsoleLog {
   message?: string;
   // Full request/response data for detailed view
   requestData?: ProxyRequest;
-  responseData?: ProxyResponse;
+  responseData?: ProxyResponse | StreamingResponse;
 }
 
 interface RequestState {

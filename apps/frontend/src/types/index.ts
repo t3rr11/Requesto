@@ -44,6 +44,22 @@ export interface ProxyResponse {
   duration: number;
 }
 
+export interface SSEEvent {
+  id?: string;
+  event?: string;
+  data: string;
+  timestamp: number;
+}
+
+export interface StreamingResponse {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  events: SSEEvent[];
+  duration: number;
+  isStreaming: true;
+}
+
 // Tab-related types for tabs feature
 
 /**
@@ -64,7 +80,7 @@ export interface Tab {
   id: string; // Unique tab identifier
   label: string; // Display name (e.g., "GET users" or "New Request")
   request: TabRequest; // Current request configuration
-  response: ProxyResponse | null; // Last response for this tab
+  response: ProxyResponse | StreamingResponse | null; // Last response for this tab
   isDirty: boolean; // Has unsaved changes vs saved collection
   isLoading: boolean; // Is this tab's request currently in-flight
   error: string | null; // Last error for this tab
