@@ -40,7 +40,7 @@ export const EnvironmentsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const { showAlert } = useAlertStore();
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const lastSavedValuesRef = useRef<string>('');
   const navigate = useNavigate();

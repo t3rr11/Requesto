@@ -4,7 +4,7 @@ FROM node:20-alpine AS backend-build
 WORKDIR /app/backend
 
 COPY apps/backend/package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY apps/backend/ ./
 RUN npm run build
@@ -15,7 +15,7 @@ FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 
 COPY apps/frontend/package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY apps/frontend/ ./
 RUN npm run build
@@ -27,14 +27,14 @@ WORKDIR /app
 
 # Copy backend production dependencies and build
 COPY apps/backend/package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 COPY --from=backend-build /app/backend/dist ./dist
 
 # Copy frontend build
 COPY --from=frontend-build /app/frontend/dist ./public
 
-# Create data directory for SQLite
+# Create data directory for JSON storage
 RUN mkdir -p /app/data
 
 # Expose port

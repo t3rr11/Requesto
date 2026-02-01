@@ -108,7 +108,7 @@ export const sendStreamingRequest = async (
 
   const duration = Date.now() - startTime;
 
-  const finalResponse = {
+  const finalResponse: StreamingResponse = {
     status: response.status,
     statusText: response.statusText,
     headers,

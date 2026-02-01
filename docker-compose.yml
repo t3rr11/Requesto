@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3001"
+      - "3001:3001"
     volumes:
       - localman-data:/app/data
     environment:

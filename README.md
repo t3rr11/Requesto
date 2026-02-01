@@ -48,7 +48,7 @@ npm run dev
 
 - **Frontend**: React + TypeScript + Vite + TailwindCSS
 - **Backend**: Node.js + Fastify + TypeScript
-- **Database**: SQLite (better-sqlite3)
+- **Storage**: JSON file-based (collections.json, environments.json, history.json)
 - **Infrastructure**: Docker + docker-compose
 
 ## Documentation

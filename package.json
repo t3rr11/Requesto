@@ -14,7 +14,7 @@
     "build:backend": "npm run build -w localman-backend",
     "build:frontend": "npm run build -w localman-frontend",
     "docker:build": "docker-compose build",
-    "docker:up": "docker-compose up",
+    "docker:up": "docker-compose up --build",
     "docker:down": "docker-compose down"
   },
   "keywords": [
