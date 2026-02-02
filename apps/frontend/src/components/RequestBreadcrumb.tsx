@@ -32,7 +32,7 @@ export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
   const breadcrumbInfo = getBreadcrumbInfo();
 
   return (
-    <div className="flex items-center gap-2 text-sm text-gray-600">
+    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
       <span>Collections</span>
       {breadcrumbInfo.collectionName && (
         <>
@@ -41,7 +41,7 @@ export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
         </>
       )}
       <span>›</span>
-      <span className="text-gray-900 font-medium">{breadcrumbInfo.requestName}</span>
+      <span className="text-gray-900 dark:text-gray-100 font-medium">{breadcrumbInfo.requestName}</span>
     </div>
   );
 }

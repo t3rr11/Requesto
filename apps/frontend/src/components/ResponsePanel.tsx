@@ -26,11 +26,11 @@ export function ResponsePanel() {
   // Don't show loading screen if we're streaming and already have events coming in
   if (loading && !(isStreaming && response.events.length > 0)) {
     return (
-      <div className="flex-1 flex flex-col bg-white">
-        <div className="border-b border-gray-200 px-6 bg-gray-50 flex items-center h-[48px]">
-          <h3 className="font-medium text-sm text-gray-900">Response</h3>
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+        <div className="border-b border-gray-200 dark:border-gray-700 px-6 bg-gray-50 dark:bg-gray-800 flex items-center h-[48px]">
+          <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">Response</h3>
         </div>
-        <div className="flex-1 flex items-center justify-center text-gray-400">
+        <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
           <div className="text-center">
             <div className="text-4xl mb-2">⏳</div>
             <p className="text-sm">Sending request...</p>
@@ -42,14 +42,14 @@ export function ResponsePanel() {
 
   if (error) {
     return (
-      <div className="flex-1 flex flex-col bg-white">
-        <div className="border-b border-gray-200 px-6 bg-gray-50 flex items-center h-[48px]">
-          <h3 className="font-medium text-sm text-gray-900">Response</h3>
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+        <div className="border-b border-gray-200 dark:border-gray-700 px-6 bg-gray-50 dark:bg-gray-800 flex items-center h-[48px]">
+          <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">Response</h3>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center max-w-md">
             <div className="text-4xl mb-2">❌</div>
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         </div>
       </div>
@@ -58,11 +58,11 @@ export function ResponsePanel() {
 
   if (!response) {
     return (
-      <div className="flex-1 flex flex-col bg-white">
-        <div className="border-b border-gray-200 px-6 bg-gray-50 flex items-center h-[48px]">
-          <h3 className="font-medium text-sm text-gray-900">Response</h3>
+      <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+        <div className="border-b border-gray-200 dark:border-gray-700 px-6 bg-gray-50 dark:bg-gray-800 flex items-center h-[48px]">
+          <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">Response</h3>
         </div>
-        <div className="flex-1 flex items-center justify-center text-gray-400">
+        <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
           <div className="text-center">
             <div className="text-4xl mb-2">📭</div>
             <p className="text-sm">Send a request to see the response</p>
@@ -73,26 +73,26 @@ export function ResponsePanel() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white min-h-0">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-h-0">
       {/* Response Header */}
-      <div className="border-b border-gray-200 px-6 bg-gray-50 flex items-center h-[48px] flex-shrink-0">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 bg-gray-50 dark:bg-gray-800 flex items-center h-[48px] flex-shrink-0">
         <div className="flex items-center justify-between w-full">
-          <h3 className="font-medium text-sm text-gray-900">
-            Response {isStreaming && <span className="text-blue-600">(SSE Stream)</span>}
+          <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">
+            Response {isStreaming && <span className="text-blue-600 dark:text-blue-400">(SSE Stream)</span>}
           </h3>
           <div className="flex items-center gap-3 text-sm">
             <span className={`px-2 py-1 rounded font-medium ${getStatusBadgeColor(response.status)}`}>
               {response.status} {response.statusText}
             </span>
-            <span className="text-gray-600">
+            <span className="text-gray-600 dark:text-gray-400">
               <span className="font-medium">Time:</span> {response.duration}ms
             </span>
             {isStreaming ? (
-              <span className="text-gray-600">
+              <span className="text-gray-600 dark:text-gray-400">
                 <span className="font-medium">Events:</span> {response.events.length}
               </span>
             ) : (
-              <span className="text-gray-600">
+              <span className="text-gray-600 dark:text-gray-400">
                 <span className="font-medium">Size:</span> {formatBytes(responseSize)}
               </span>
             )}
@@ -101,7 +101,7 @@ export function ResponsePanel() {
       </div>
 
       {/* Response Tabs */}
-      <div className="border-b border-gray-200 flex-shrink-0">
+      <div className="border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex px-6">
           {(['body', 'headers', 'test-results'] as ResponseTab[]).map(tab => (
             <button
@@ -109,8 +109,8 @@ export function ResponsePanel() {
               onClick={() => setActiveResponseTab(tab)}
               className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
                 activeResponseTab === tab
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               {tab === 'test-results' ? 'Test Results' : tab}

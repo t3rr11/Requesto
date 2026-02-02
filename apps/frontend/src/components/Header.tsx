@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { useUIStore } from '../store/useUIStore';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
-import { ListCollapse, Menu } from 'lucide-react';
+import { useThemeStore } from '../store/useThemeStore';
+import { ListCollapse, Menu, Moon, Sun } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 export const Header = () => {
   const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, openHelp } = useUIStore();
   const { environmentsData, loadEnvironments, setActiveEnvironment } = useEnvironmentStore();
+  const { isDarkMode, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,7 +16,7 @@ export const Header = () => {
   }, []);
 
   return (
-    <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg">
+    <header className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-800 text-white shadow-lg">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-4">
           <button
@@ -100,10 +102,19 @@ export const Header = () => {
             </svg>
           </button>
 
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 hover:bg-blue-500 dark:hover:bg-gray-700 rounded transition-colors"
+            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+
           {/* Console Toggle */}
           <button
             onClick={toggleConsole}
-            className={`p-1.5 rounded transition-colors ${isConsoleOpen ? 'bg-blue-500' : 'hover:bg-blue-500'}`}
+            className={`p-1.5 rounded transition-colors ${isConsoleOpen ? 'bg-blue-500 dark:bg-gray-700' : 'hover:bg-blue-500 dark:hover:bg-gray-700'}`}
             title={isConsoleOpen ? 'Hide Console' : 'Show Console'}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

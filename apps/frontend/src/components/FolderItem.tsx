@@ -101,8 +101,8 @@ export const FolderItem = ({
     <div>
       {/* Folder Header */}
       <div
-        className={`px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ${
-          isDragOver ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+        className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
+          isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
         style={{ paddingLeft }}
         onClick={() => toggleFolder(folder.id)}
@@ -127,13 +127,13 @@ export const FolderItem = ({
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isExpanded ? (
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
           )}
-          <FolderIcon className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0" />
-          <span className="text-sm font-medium text-gray-700 truncate">{folder.name}</span>
-          <span className="text-xs text-gray-400">({folderRequests.length})</span>
+          <FolderIcon className="w-3.5 h-3.5 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{folder.name}</span>
+          <span className="text-xs text-gray-400 dark:text-gray-500">({folderRequests.length})</span>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
           <button
@@ -141,27 +141,27 @@ export const FolderItem = ({
               e.stopPropagation();
               openNewRequest(collection.id, folder.id);
             }}
-            className="p-1 hover:bg-gray-200 rounded transition-all"
+            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
             title="Add Request"
           >
-            <Plus className="w-3 h-3 text-gray-500" />
+            <Plus className="w-3 h-3 text-gray-500 dark:text-gray-400" />
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
               handleCreateFolder(collection.id, folder.id);
             }}
-            className="p-1 hover:bg-gray-200 rounded transition-all"
+            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
             title="New Subfolder"
           >
-            <FolderPlus className="w-3 h-3 text-gray-500" />
+            <FolderPlus className="w-3 h-3 text-gray-500 dark:text-gray-400" />
           </button>
           <button
             onClick={(e) => onDeleteFolder(collection.id, folder.id, e)}
-            className="p-1 hover:bg-gray-200 rounded transition-all"
+            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
             title="Delete Folder"
           >
-            <Trash2 className="w-3 h-3 text-gray-500" />
+            <Trash2 className="w-3 h-3 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
       </div>
@@ -172,7 +172,7 @@ export const FolderItem = ({
           {/* New folder input */}
           {newFolderInput?.collectionId === collection.id && newFolderInput?.parentId === folder.id && (
             <div className="px-4 py-2 flex items-center gap-2" style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}>
-              <FolderIcon className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <FolderIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
               <input
                 type="text"
                 value={folderName}
@@ -182,13 +182,13 @@ export const FolderItem = ({
                   if (e.key === 'Escape') handleCancelFolder();
                 }}
                 placeholder="Folder name..."
-                className="flex-1 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 autoFocus
               />
               <button onClick={handleSaveFolder} className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">
                 Save
               </button>
-              <button onClick={handleCancelFolder} className="px-2 py-1 text-xs bg-gray-200 rounded hover:bg-gray-300">
+              <button onClick={handleCancelFolder} className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 dark:text-gray-200">
                 Cancel
               </button>
             </div>
@@ -236,8 +236,8 @@ export const FolderItem = ({
               />
               
               <div
-                className={`px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between group ${
-                  activeSavedRequestId === request.id ? 'bg-blue-50 border-l-2 border-blue-500' : ''
+                className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
+                  activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
                 }`}
                 style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}
                 onClick={() => onSelectRequest(request)}
@@ -258,18 +258,18 @@ export const FolderItem = ({
                 }}
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <FileText className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  <FileText className="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0" />
                   <span className={`text-xs font-medium ${getMethodColor(request.method)} min-w-[45px]`}>
                     {request.method}
                   </span>
-                  <span className="text-sm text-gray-700 truncate">{request.name}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
                 </div>
                 <button
                   onClick={(e) => onDeleteRequest(collection.id, request.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
                   title="Delete Request"
                 >
-                  <Trash2 className="w-3 h-3 text-gray-500" />
+                  <Trash2 className="w-3 h-3 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
               

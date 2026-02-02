@@ -62,7 +62,7 @@ export const EnvironmentHeader = ({
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
+    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex-shrink-0">
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
           {isEditingName ? (
@@ -72,7 +72,7 @@ export const EnvironmentHeader = ({
               value={localName}
               onChange={e => setLocalName(e.target.value)}
               placeholder="Environment name"
-              className="text-2xl font-semibold px-2 py-1 -ml-2 border-2 border-blue-500 rounded focus:outline-none w-full"
+              className="text-2xl font-semibold px-2 py-1 -ml-2 border-2 border-blue-500 rounded focus:outline-none w-full dark:bg-gray-800 dark:text-gray-100"
               onBlur={handleNameBlur}
               onKeyDown={handleNameKeyDown}
             />
@@ -80,18 +80,18 @@ export const EnvironmentHeader = ({
             <div className="flex items-center gap-3">
               <h2
                 onClick={() => setIsEditingName(true)}
-                className="text-2xl font-semibold text-gray-900 cursor-text hover:text-blue-600 transition-colors px-2 py-1 -ml-2 rounded hover:bg-gray-50"
+                className="text-2xl font-semibold text-gray-900 dark:text-gray-100 cursor-text hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 -ml-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
                 title="Click to edit"
               >
                 {name || 'Untitled Environment'}
               </h2>
               {isActive && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
                   <Check className="w-3.5 h-3.5" />
                   Active
                 </span>
               )}
-              {hasUnsavedChanges && <span className="text-xs text-orange-600 font-medium">● Unsaved changes</span>}
+              {hasUnsavedChanges && <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">● Unsaved changes</span>}
             </div>
           )}
         </div>
@@ -136,14 +136,14 @@ export const EnvironmentHeader = ({
             {showMenu && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
                   <button
                     type="button"
                     onClick={() => {
                       onDuplicate();
                       setShowMenu(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
                   >
                     <Copy className="w-4 h-4" />
                     Duplicate

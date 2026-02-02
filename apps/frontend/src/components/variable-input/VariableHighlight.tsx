@@ -31,7 +31,11 @@ export function VariableHighlight({
     while ((match = regex.exec(value)) !== null) {
       // Add text before variable (visible, normal text)
       if (match.index > lastIndex) {
-        parts.push(<span key={`text-${lastIndex}`}>{value.substring(lastIndex, match.index)}</span>);
+        parts.push(
+          <span key={`text-${lastIndex}`} className="text-gray-900 dark:text-gray-100">
+            {value.substring(lastIndex, match.index)}
+          </span>
+        );
       }
 
       // Add variable with highlighting
@@ -48,8 +52,8 @@ export function VariableHighlight({
           spellCheck="false"
           className={`rounded pointer-events-auto cursor-pointer ${
             isDefined
-              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60'
+              : 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/60'
           }`}
           onMouseEnter={e => onVariableHover(e, varKey)}
           onMouseLeave={onVariableLeave}

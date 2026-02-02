@@ -147,26 +147,30 @@ export const ConsolePanel = () => {
     const isExpanded = expandedLogs.has(log.id);
 
     return (
-      <div key={log.id} className="border-b border-gray-800">
+      <div key={log.id} className="border-b border-gray-800 dark:border-gray-900">
         {/* Log Header */}
         <div
-          className="py-2 px-3 hover:bg-gray-800 cursor-pointer flex items-center gap-3"
+          className="py-2 px-3 hover:bg-gray-800 dark:hover:bg-gray-900 cursor-pointer flex items-center gap-3"
           onClick={() => toggleLogExpanded(log.id)}
         >
-          <span className="text-gray-500 text-xs font-mono select-none mt-0.5">{formatTime(log.timestamp)}</span>
+          <span className="text-gray-500 dark:text-gray-600 text-xs font-mono select-none mt-0.5">
+            {formatTime(log.timestamp)}
+          </span>
           {getLogIcon(log.type)}
           <div className={`flex-1 ${getLogColor(log.type)}`}>
             <div className="flex items-center gap-2">
               {log.method && <span className="font-bold text-xs">{log.method}</span>}
-              {log.url && <span className="text-gray-300 text-xs truncate flex-1">{log.url}</span>}
+              {log.url && <span className="text-gray-300 dark:text-gray-400 text-xs truncate flex-1">{log.url}</span>}
               {log.status !== undefined && (
                 <span className={`font-semibold text-sm ${getStatusColor(log.status)}`}>{log.status}</span>
               )}
-              {log.duration !== undefined && <span className="text-gray-400 text-xs">{log.duration}ms</span>}
+              {log.duration !== undefined && (
+                <span className="text-gray-400 dark:text-gray-500 text-xs">{log.duration}ms</span>
+              )}
             </div>
             {log.message && !log.url && <div className="text-sm mt-1">{log.message}</div>}
           </div>
-          <button className="text-gray-500 hover:text-gray-300 transition-colors">
+          <button className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400 transition-colors">
             {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
         </div>
@@ -177,7 +181,7 @@ export const ConsolePanel = () => {
             {/* Request Details */}
             {log.requestData && (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-blue-400 font-semibold pt-2">
+                <div className="flex items-center gap-2 text-blue-400 dark:text-blue-300 font-semibold pt-2">
                   <span>Request</span>
                 </div>
 
@@ -185,13 +189,13 @@ export const ConsolePanel = () => {
                 {log.requestData.headers && Object.keys(log.requestData.headers).length > 0 && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-xs font-semibold">Headers</span>
+                      <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">Headers</span>
                       <button
                         onClick={e => {
                           e.stopPropagation();
                           copyToClipboard(formatHeaders(log.requestData?.headers), `req-headers-${log.id}`);
                         }}
-                        className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                        className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400 transition-colors p-1"
                         title="Copy headers"
                       >
                         {copiedStates[`req-headers-${log.id}`] ? (
@@ -201,12 +205,12 @@ export const ConsolePanel = () => {
                         )}
                       </button>
                     </div>
-                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
+                    <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
                       {Object.entries(log.requestData.headers).map(([key, value]) => (
                         <div key={key} className="py-0.5">
-                          <span className="text-blue-300">{key}</span>
-                          <span className="text-gray-500">: </span>
-                          <span className="text-gray-300">{value}</span>
+                          <span className="text-blue-300 dark:text-blue-400">{key}</span>
+                          <span className="text-gray-500 dark:text-gray-600">: </span>
+                          <span className="text-gray-300 dark:text-gray-400">{value}</span>
                         </div>
                       ))}
                     </div>
@@ -311,7 +315,10 @@ export const ConsolePanel = () => {
                         <button
                           onClick={e => {
                             e.stopPropagation();
-                            copyToClipboard('body' in log.responseData! ? log.responseData.body || '' : '', `res-body-${log.id}`);
+                            copyToClipboard(
+                              'body' in log.responseData! ? log.responseData.body || '' : '',
+                              `res-body-${log.id}`
+                            );
                           }}
                           className="text-gray-500 hover:text-gray-300 transition-colors p-1"
                           title="Copy body"
@@ -337,7 +344,7 @@ export const ConsolePanel = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {/* Streaming Events */}
                 {log.responseData && 'isStreaming' in log.responseData && log.responseData.isStreaming && (
                   <div className="space-y-1">
@@ -363,7 +370,7 @@ export const ConsolePanel = () => {
   if (!isConsoleOpen) {
     return (
       <div
-        className="fixed bottom-0 left-0 right-0 bg-gray-800 text-white px-4 py-2 flex items-center justify-between shadow-lg cursor-pointer hover:bg-gray-700 transition-colors z-10"
+        className="fixed bottom-0 left-0 right-0 bg-gray-800 dark:bg-gray-900 text-white px-4 py-2 flex items-center justify-between shadow-lg cursor-pointer hover:bg-gray-700 dark:hover:bg-gray-800 transition-colors z-10 dark:border-t dark:border-gray-700"
         onClick={toggleConsole}
       >
         <div className="flex items-center gap-2">
@@ -381,18 +388,18 @@ export const ConsolePanel = () => {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-0 left-0 right-0 bg-gray-900 text-gray-100 flex flex-col shadow-2xl z-10"
+      className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-black text-gray-100 dark:text-gray-200 flex flex-col shadow-2xl z-10"
       style={{ height: `${consoleHeight}px` }}
     >
       {/* Resize Handle */}
       <div
-        className="h-1 bg-gray-700 hover:bg-orange-500 cursor-ns-resize transition-colors"
+        className="h-1 bg-gray-700 dark:bg-gray-800 hover:bg-orange-500 cursor-ns-resize transition-colors"
         onMouseDown={handleMouseDown}
       />
 
       {/* Header */}
       <div
-        className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700 cursor-pointer hover:bg-gray-750"
+        className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-950 border-b border-gray-700 dark:border-gray-800 cursor-pointer hover:bg-gray-750 dark:hover:bg-gray-900"
         onClick={toggleConsole}
       >
         <div className="flex items-center gap-2">
@@ -410,7 +417,7 @@ export const ConsolePanel = () => {
               e.stopPropagation();
               clearConsoleLogs();
             }}
-            className="p-1.5 hover:bg-gray-700 rounded transition-colors"
+            className="p-1.5 hover:bg-gray-700 dark:hover:bg-gray-800 rounded transition-colors"
             title="Clear Console"
           >
             <Trash2 className="w-4 h-4" />
@@ -420,7 +427,7 @@ export const ConsolePanel = () => {
               e.stopPropagation();
               toggleConsole();
             }}
-            className="p-1.5 hover:bg-gray-700 rounded transition-colors"
+            className="p-1.5 hover:bg-gray-700 dark:hover:bg-gray-800 rounded transition-colors"
             title="Close Console"
           >
             <X className="w-4 h-4" />

@@ -233,13 +233,13 @@ export const EnvironmentsPage = () => {
 
   return (
     <main className="overflow-hidden relative w-full h-full">
-      <div className="h-full flex flex-col bg-gray-50">
+      <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3 flex-shrink-0">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-3">
-              <h1 className="text-lg font-semibold text-gray-900">Environments</h1>
-              <p className="text-sm text-gray-500">Manage variables across different environments</p>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Environments</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Manage variables across different environments</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -283,8 +283,8 @@ export const EnvironmentsPage = () => {
                 />
 
                 {errors.name && (
-                  <div className="bg-red-50 border-b border-red-200 px-6 py-2">
-                    <p className="text-red-600 text-sm">{errors.name.message}</p>
+                  <div className="bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 px-6 py-2">
+                    <p className="text-red-600 dark:text-red-400 text-sm">{errors.name.message}</p>
                   </div>
                 )}
 
@@ -295,9 +295,9 @@ export const EnvironmentsPage = () => {
               // Empty state
               <div className="flex-1 flex items-center justify-center p-8">
                 <div className="text-center max-w-sm">
-                  <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Environment Selected</h3>
-                  <p className="text-sm text-gray-500 mb-6">
+                  <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Environment Selected</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                     Create your first environment to manage variables across different deployment targets
                   </p>
                   <Button onClick={createNew} variant="primary" size="md" className="flex items-center gap-2 mx-auto">

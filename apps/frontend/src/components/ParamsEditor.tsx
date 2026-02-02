@@ -102,17 +102,17 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
       {viewMode === 'table' ? (
         <>
           {/* Table View */}
-          <div className="border border-gray-300 rounded">
+          <div className="border border-gray-300 dark:border-gray-700 rounded">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b border-gray-300 bg-gray-50">
-                  <th className="text-left text-xs font-medium text-gray-600 py-2 px-3 w-10"></th>
-                  <th className="text-left text-xs font-medium text-gray-600 py-2 px-3">Key</th>
-                  <th className="text-left text-xs font-medium text-gray-600 py-2 px-3">Value</th>
-                  <th className="text-right text-xs font-medium text-gray-600 py-2 px-3 w-24">
+                <tr className="border-b border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <th className="text-left text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3 w-10"></th>
+                  <th className="text-left text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3">Key</th>
+                  <th className="text-left text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3">Value</th>
+                  <th className="text-right text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3 w-24">
                     <button
                       onClick={switchToBulkEdit}
-                      className="text-sm text-blue-600 hover:text-blue-800"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                       disabled={disabled}
                     >
                       Bulk Edit
@@ -122,7 +122,7 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
               </thead>
               <tbody>
                 {params.map(param => (
-                  <tr key={param.id} className="border-b border-gray-200 last:border-b-0">
+                  <tr key={param.id} className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
                     <td className="py-2 px-3 text-center">
                       <input
                         type="checkbox"
@@ -138,7 +138,7 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
                         value={param.key}
                         onChange={e => updateParam(param.id, 'key', e.target.value)}
                         placeholder="Key"
-                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none"
+                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none text-black dark:text-gray-200"
                         disabled={disabled}
                       />
                     </td>
@@ -148,13 +148,13 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
                         onChange={value => updateParam(param.id, 'value', value)}
                         placeholder="Value"
                         disabled={disabled}
-                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none"
+                        className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none text-black dark:text-gray-200"
                       />
                     </td>
                     <td className="py-2 px-3 text-right">
                       <button
                         onClick={() => removeParam(param.id)}
-                        className="text-gray-400 hover:text-red-600 cursor-pointer disabled:opacity-50 p-1 inline-flex items-center justify-center"
+                        className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer disabled:opacity-50 p-1 inline-flex items-center justify-center"
                         disabled={disabled}
                         title="Delete param"
                       >
@@ -166,7 +166,7 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
               </tbody>
             </table>
           </div>
-          <button onClick={addParam} className="text-sm text-blue-600 hover:text-blue-800 mt-2" disabled={disabled}>
+          <button onClick={addParam} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-2" disabled={disabled}>
             + Add Param
           </button>
         </>
@@ -175,13 +175,13 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
           {/* Bulk Edit View */}
           <div className="space-y-2">
             <div className="flex justify-between items-center mb-2">
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-gray-600 dark:text-gray-400">
                 Enter one parameter per line in the format:{' '}
-                <code className="bg-gray-100 px-1 py-0.5 rounded">key=value</code>
+                <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded dark:text-gray-300">key=value</code>
               </div>
               <button
                 onClick={switchToTableView}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                 disabled={disabled}
               >
                 Table View
@@ -191,7 +191,7 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
               value={bulkText}
               onChange={e => setBulkText(e.target.value)}
               placeholder="page=1&#10;limit=10&#10;search=query"
-              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono dark:bg-gray-800 dark:text-gray-200"
               rows={12}
               disabled={disabled}
             />

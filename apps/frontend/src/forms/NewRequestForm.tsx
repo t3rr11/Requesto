@@ -94,20 +94,20 @@ export const NewRequestForm = ({
     <Dialog isOpen={isOpen} onClose={handleClose} title="New Request">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
             {error}
           </div>
         )}
 
         {collections.length === 0 ? (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded text-sm">
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-400 px-3 py-2 rounded text-sm">
             No collections available. Please create a collection first.
           </div>
         ) : (
           <>
             <div>
-              <label htmlFor="request-name" className="block text-sm font-medium text-gray-700 mb-1">
-                Request Name <span className="text-red-500">*</span>
+              <label htmlFor="request-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Request Name <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <input
                 id="request-name"
@@ -115,20 +115,20 @@ export const NewRequestForm = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Request"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 autoFocus
               />
             </div>
 
             <div>
-              <label htmlFor="request-method" className="block text-sm font-medium text-gray-700 mb-1">
-                HTTP Method <span className="text-red-500">*</span>
+              <label htmlFor="request-method" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                HTTP Method <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <select
                 id="request-method"
                 value={method}
                 onChange={(e) => setMethod(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 {HTTP_METHODS.map((m) => (
                   <option key={m} value={m}>
@@ -139,8 +139,8 @@ export const NewRequestForm = ({
             </div>
 
             <div>
-              <label htmlFor="request-collection" className="block text-sm font-medium text-gray-700 mb-1">
-                Collection <span className="text-red-500">*</span>
+              <label htmlFor="request-collection" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Collection <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <select
                 id="request-collection"
@@ -149,7 +149,7 @@ export const NewRequestForm = ({
                   setCollectionId(e.target.value);
                   setFolderId(''); // Reset folder when collection changes
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 {collections.map((collection) => (
                   <option key={collection.id} value={collection.id}>
@@ -161,14 +161,14 @@ export const NewRequestForm = ({
 
             {availableFolders.length > 0 && (
               <div>
-                <label htmlFor="request-folder" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="request-folder" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Folder (optional)
                 </label>
                 <select
                   id="request-folder"
                   value={folderId}
                   onChange={(e) => setFolderId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                 >
                   <option value="">-- Root Level --</option>
                   {availableFolders.map((folder) => (
@@ -180,7 +180,7 @@ export const NewRequestForm = ({
               </div>
             )}
 
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded text-sm">
+            <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-400 px-3 py-2 rounded text-sm">
               A new empty request will be created with a default URL that you can edit.
             </div>
           </>
@@ -190,14 +190,14 @@ export const NewRequestForm = ({
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading || collections.length === 0}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating...' : 'Create Request'}
           </button>

@@ -32,14 +32,7 @@ interface SortableTabProps {
 }
 
 const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle }: SortableTabProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: tabId });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tabId });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -54,7 +47,7 @@ const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle
       {...attributes}
       {...listeners}
       onClick={() => onTabClick(tabId)}
-      onAuxClick={(e) => {
+      onAuxClick={e => {
         // Middle click (button 1) closes the tab
         if (e.button === 1) {
           e.preventDefault();
@@ -63,36 +56,35 @@ const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle
       }}
       title={getTabTitle(tabId)}
       className={`
-        group flex items-center gap-2 px-4 border-r border-gray-300 cursor-grab active:cursor-grabbing
+        group flex items-center gap-2 px-4 border-r border-gray-300 dark:border-gray-600 cursor-grab active:cursor-grabbing
         transition-colors duration-150 flex-shrink-0 min-w-[120px] max-w-[200px] h-full
-        ${isActive 
-          ? 'bg-white text-gray-900 border-b-2 border-b-blue-500' 
-          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+        ${
+          isActive
+            ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-b-blue-500 dark:border-b-blue-700'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
         }
       `}
     >
       {/* Tab label with dirty indicator */}
       <span className="flex-1 truncate select-none text-sm flex items-center gap-1">
         {tab.isDirty && (
-          <span className="text-orange-500 font-bold text-xs" title="Unsaved changes">
+          <span className="text-orange-500 dark:text-orange-400 font-bold text-xs" title="Unsaved changes">
             ●
           </span>
         )}
-        <span className="truncate">
-          {tab.label}
-        </span>
+        <span className="truncate">{tab.label}</span>
       </span>
-      
+
       {/* Close button */}
       <button
-        onClick={(e) => onCloseTab(e, tabId)}
+        onClick={e => onCloseTab(e, tabId)}
         className={`
-          flex-shrink-0 p-0.5 rounded hover:bg-gray-300 transition-colors
+          flex-shrink-0 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors
           ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
         `}
         aria-label={`Close ${tab.label}`}
       >
-        <X size={14} className="text-gray-600" />
+        <X size={14} className="text-gray-600 dark:text-gray-400" />
       </button>
     </div>
   );
@@ -104,7 +96,7 @@ export const TabsBar = () => {
   const [tabToClose, setTabToClose] = useState<string | null>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
-  
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -116,62 +108,61 @@ export const TabsBar = () => {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-  
+
   // Handle drag end
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    
+
     if (over && active.id !== over.id) {
       const oldIndex = tabOrder.indexOf(active.id as string);
       const newIndex = tabOrder.indexOf(over.id as string);
-      
+
       const newOrder = arrayMove(tabOrder, oldIndex, newIndex);
       reorderTabs(newOrder);
     }
   };
-  
+
   // Check if scrolling is needed and update scroll button visibility
   const checkScrollButtons = () => {
     const container = tabsContainerRef.current;
     if (!container) return;
-    
+
     const { scrollLeft, scrollWidth, clientWidth } = container;
     setShowLeftScroll(scrollLeft > 0);
     setShowRightScroll(scrollLeft + clientWidth < scrollWidth - 1);
   };
-  
+
   // Check scroll buttons on mount and when tabs change
   useEffect(() => {
     checkScrollButtons();
     const container = tabsContainerRef.current;
     if (!container) return;
-    
+
     container.addEventListener('scroll', checkScrollButtons);
     window.addEventListener('resize', checkScrollButtons);
-    
+
     return () => {
       container.removeEventListener('scroll', checkScrollButtons);
       window.removeEventListener('resize', checkScrollButtons);
     };
   }, [tabOrder]);
-  
+
   const scrollTabs = (direction: 'left' | 'right') => {
     const container = tabsContainerRef.current;
     if (!container) return;
-    
+
     const scrollAmount = 200;
-    const newScrollLeft = direction === 'left' 
-      ? container.scrollLeft - scrollAmount 
-      : container.scrollLeft + scrollAmount;
-    
+    const newScrollLeft =
+      direction === 'left' ? container.scrollLeft - scrollAmount : container.scrollLeft + scrollAmount;
+
     container.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
   };
-  
+
   // Handle wheel scroll for horizontal scrolling
   useEffect(() => {
     const container = tabsContainerRef.current;
     if (!container) return;
-    
+
     const handleWheel = (e: WheelEvent) => {
       // Only handle horizontal scroll if there's horizontal overflow
       if (container.scrollWidth > container.clientWidth) {
@@ -179,11 +170,11 @@ export const TabsBar = () => {
         container.scrollLeft += e.deltaY;
       }
     };
-    
+
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
   }, []);
-  
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -194,19 +185,19 @@ export const TabsBar = () => {
           closeTab(activeTabId);
         }
       }
-      
+
       // Ctrl/Cmd + T to open new tab
       if ((e.ctrlKey || e.metaKey) && e.key === 't') {
         e.preventDefault();
         openNewTab();
       }
-      
+
       // Ctrl/Cmd + Tab or Ctrl/Cmd + Shift + Tab for tab navigation
       if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
         e.preventDefault();
         const currentIndex = tabOrder.indexOf(activeTabId || '');
         if (currentIndex === -1) return;
-        
+
         let nextIndex: number;
         if (e.shiftKey) {
           // Previous tab
@@ -215,13 +206,13 @@ export const TabsBar = () => {
           // Next tab
           nextIndex = currentIndex < tabOrder.length - 1 ? currentIndex + 1 : 0;
         }
-        
+
         const nextTabId = tabOrder[nextIndex];
         if (nextTabId) {
           activateTab(nextTabId);
         }
       }
-      
+
       // Ctrl/Cmd + [1-9] to jump to specific tab
       if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
         e.preventDefault();
@@ -231,19 +222,19 @@ export const TabsBar = () => {
         }
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTabId, tabOrder, activateTab, closeTab, openNewTab]);
-  
+
   const handleTabClick = (tabId: string) => {
     activateTab(tabId);
   };
-  
+
   const handleCloseTab = (e: React.MouseEvent, tabId: string) => {
     e.stopPropagation();
     const tab = tabs[tabId];
-    
+
     // If tab has unsaved changes, show confirmation dialog
     if (tab?.isDirty) {
       setTabToClose(tabId);
@@ -251,26 +242,26 @@ export const TabsBar = () => {
       closeTab(tabId);
     }
   };
-  
+
   const confirmCloseTab = () => {
     if (tabToClose) {
       closeTab(tabToClose);
       setTabToClose(null);
     }
   };
-  
+
   const cancelCloseTab = () => {
     setTabToClose(null);
   };
-  
+
   const handleNewTab = () => {
     openNewTab();
   };
-  
+
   const getTabTitle = (tabId: string) => {
     const tab = tabs[tabId];
     if (!tab) return '';
-    
+
     let title = tab.label;
     if (tab.request.url) {
       title += `\n${tab.request.method} ${tab.request.url}`;
@@ -280,7 +271,7 @@ export const TabsBar = () => {
     }
     return title;
   };
-  
+
   return (
     <DndContext
       sensors={sensors}
@@ -288,20 +279,20 @@ export const TabsBar = () => {
       onDragEnd={handleDragEnd}
       modifiers={[restrictToHorizontalAxis]}
     >
-      <div className="bg-gray-100 border-b border-gray-300 flex items-center h-10 relative">
+      <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 flex items-center h-10 relative dark:border-t dark:border-t-gray-700">
         {/* Left scroll button */}
         {showLeftScroll && (
           <button
             onClick={() => scrollTabs('left')}
-            className="absolute left-0 z-10 h-full px-3 bg-gray-100 hover:bg-gray-200 transition-colors border-r border-gray-300 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
+            className="absolute left-0 z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
             aria-label="Scroll left"
           >
-            <ChevronLeft size={16} className="text-gray-600" />
+            <ChevronLeft size={16} className="text-gray-600 dark:text-gray-400" />
           </button>
         )}
-        
+
         {/* Tabs container with horizontal scroll - scrollbar hidden */}
-        <div 
+        <div
           ref={tabsContainerRef}
           className="flex-1 flex items-stretch overflow-x-auto overflow-y-hidden h-full scrollbar-hide"
           style={{
@@ -309,16 +300,13 @@ export const TabsBar = () => {
             msOverflowStyle: 'none', // IE/Edge
           }}
         >
-          <SortableContext
-            items={tabOrder}
-            strategy={horizontalListSortingStrategy}
-          >
-            {tabOrder.map((tabId) => {
+          <SortableContext items={tabOrder} strategy={horizontalListSortingStrategy}>
+            {tabOrder.map(tabId => {
               const tab = tabs[tabId];
               if (!tab) return null;
-              
+
               const isActive = tabId === activeTabId;
-              
+
               return (
                 <SortableTab
                   key={tabId}
@@ -333,28 +321,28 @@ export const TabsBar = () => {
             })}
           </SortableContext>
         </div>
-        
+
         {/* Right scroll button */}
         {showRightScroll && (
           <button
             onClick={() => scrollTabs('right')}
-            className="absolute right-[42px] border-r z-10 h-full px-3 bg-gray-100 hover:bg-gray-200 transition-colors border-l border-gray-300 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+            className="absolute right-[42px] border-r z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
             aria-label="Scroll right"
           >
-            <ChevronRight size={16} className="text-gray-600" />
+            <ChevronRight size={16} className="text-gray-600 dark:text-gray-400" />
           </button>
         )}
-        
+
         {/* New tab button */}
         <button
           onClick={handleNewTab}
-          className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 transition-colors border-gray-300 h-full"
+          className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-gray-300 dark:border-gray-600 h-full"
           aria-label="New tab"
           title="New tab (Ctrl/Cmd + T)"
         >
-          <Plus size={18} className="text-gray-600" />
+          <Plus size={18} className="text-gray-600 dark:text-gray-400" />
         </button>
-        
+
         {/* Confirmation dialog for closing tabs with unsaved changes */}
         <ConfirmDialog
           isOpen={tabToClose !== null}

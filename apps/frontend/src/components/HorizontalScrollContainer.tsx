@@ -82,10 +82,10 @@ export const HorizontalScrollContainer = ({
       {showLeftScroll && (
         <button
           onClick={() => scrollContent('left')}
-          className="absolute left-0 z-10 h-full px-3 bg-gray-50 hover:bg-gray-100 transition-colors border-r border-gray-300 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
+          className="absolute left-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
           aria-label="Scroll left"
         >
-          <ChevronLeft size={16} className="text-gray-600" />
+          <ChevronLeft size={16} className="text-gray-600 dark:text-gray-400" />
         </button>
       )}
 
@@ -109,10 +109,10 @@ export const HorizontalScrollContainer = ({
       {showRightScroll && (
         <button
           onClick={() => scrollContent('right')}
-          className="absolute right-0 z-10 h-full px-3 bg-gray-50 hover:bg-gray-100 transition-colors border-l border-gray-300 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+          className="absolute right-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
           aria-label="Scroll right"
         >
-          <ChevronRight size={16} className="text-gray-600" />
+          <ChevronRight size={16} className="text-gray-600 dark:text-gray-400" />
         </button>
       )}
     </div>

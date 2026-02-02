@@ -9,6 +9,7 @@ import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthConfig } from '../types';
+import { useThemeStore } from '../store/useThemeStore';
 
 export const requestFormSchema = z.object({
   method: z.string(),
@@ -32,22 +33,30 @@ export const requestFormSchema = z.object({
   body: z.string(),
   auth: z.object({
     type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest']),
-    basic: z.object({
-      username: z.string(),
-      password: z.string(),
-    }).optional(),
-    bearer: z.object({
-      token: z.string(),
-    }).optional(),
-    apiKey: z.object({
-      key: z.string(),
-      value: z.string(),
-      addTo: z.enum(['header', 'query']),
-    }).optional(),
-    digest: z.object({
-      username: z.string(),
-      password: z.string(),
-    }).optional(),
+    basic: z
+      .object({
+        username: z.string(),
+        password: z.string(),
+      })
+      .optional(),
+    bearer: z
+      .object({
+        token: z.string(),
+      })
+      .optional(),
+    apiKey: z
+      .object({
+        key: z.string(),
+        value: z.string(),
+        addTo: z.enum(['header', 'query']),
+      })
+      .optional(),
+    digest: z
+      .object({
+        username: z.string(),
+        password: z.string(),
+      })
+      .optional(),
   }),
   savedRequestId: z.string().optional(),
 });
@@ -79,7 +88,7 @@ function extractParamsFromUrl(url: string): { baseUrl: string; params: { key: st
 
     // Build base URL without query params
     let baseUrl = url.split('?')[0];
-    
+
     return { baseUrl, params };
   } catch {
     // If URL parsing fails, return as-is
@@ -101,21 +110,34 @@ interface RequestFormProps {
   onAuthChange: (auth: AuthConfig) => void;
 }
 
-export function RequestForm({ control, onSend, loading, urlValue, headers, onHeadersChange, params, onParamsChange, onUrlChange, auth, onAuthChange }: RequestFormProps) {
+export function RequestForm({
+  control,
+  onSend,
+  loading,
+  urlValue,
+  headers,
+  onHeadersChange,
+  params,
+  onParamsChange,
+  onUrlChange,
+  auth,
+  onAuthChange,
+}: RequestFormProps) {
   const [activeTab, setActiveTab] = useState<RequestTab>('headers');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
+  const { isDarkMode } = useThemeStore();
 
   // Handler for URL changes - extract query params and update params state
   const handleUrlChange = (newUrl: string) => {
     const { baseUrl, params: extractedParams } = extractParamsFromUrl(newUrl);
-    
+
     if (extractedParams.length > 0) {
       // Merge extracted params with existing params
       const existingParamKeys = new Set(params.map(p => p.key));
       const newParams = [...params];
-      
+
       extractedParams.forEach(extracted => {
         if (!existingParamKeys.has(extracted.key)) {
           newParams.push({
@@ -126,7 +148,7 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
           });
         }
       });
-      
+
       onParamsChange(newParams);
       onUrlChange(baseUrl); // Update URL without query params
     } else {
@@ -197,25 +219,38 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
+    <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
       {/* Request Bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex gap-3 items-center">
           <Controller
             name="method"
             control={control}
             render={({ field }) => (
-              <select
-                {...field}
-                className="px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm min-w-[100px]"
-                disabled={loading}
-              >
-                {HTTP_METHODS.map(m => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  {...field}
+                  className="w-full px-3 py-2.5 min-w-[100px] text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none cursor-pointer"
+                  style={{
+                    colorScheme: 'dark',
+                  }}
+                  disabled={loading}
+                >
+                  {HTTP_METHODS.map(m => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <svg
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500 dark:text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             )}
           />
 
@@ -229,7 +264,7 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
                   onChange={handleUrlChange}
                   placeholder="Enter request url"
                   disabled={loading}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-blue-500 bg-transparent text-black dark:text-gray-200"
                 />
               )}
             />
@@ -242,15 +277,15 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
       </div>
 
       {/* Request Tabs */}
-      <div className="border-b border-gray-200 bg-gray-50 relative h-[48px]">
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-[48px]">
         {/* Left scroll button */}
         {showLeftScroll && (
           <button
             onClick={() => scrollTabs('left')}
-            className="absolute left-0 top-0 z-10 h-full px-3 bg-gray-50 hover:bg-gray-100 transition-colors border-r border-gray-300 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
+            className="absolute left-0 top-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_8px_rgba(0,0,0,0.3)]"
             aria-label="Scroll left"
           >
-            <ChevronLeft size={16} className="text-gray-600" />
+            <ChevronLeft size={16} className="text-gray-600 dark:text-gray-400" />
           </button>
         )}
 
@@ -269,15 +304,15 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
             } else if (tab === 'headers' && headersCount > 0) {
               label += ` (${headersCount})`;
             }
-            
+
             return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                    ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 {label}
@@ -290,23 +325,19 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
         {showRightScroll && (
           <button
             onClick={() => scrollTabs('right')}
-            className="absolute right-0 top-0 z-10 h-full px-3 bg-gray-50 hover:bg-gray-100 transition-colors border-l border-gray-300 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+            className="absolute right-0 top-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_rgba(0,0,0,0.3)]"
             aria-label="Scroll right"
           >
-            <ChevronRight size={16} className="text-gray-600" />
+            <ChevronRight size={16} className="text-gray-600 dark:text-gray-400" />
           </button>
         )}
       </div>
 
       {/* Request Tab Content */}
-      <div className="flex-1 overflow-auto p-6">
-        {activeTab === 'params' && (
-          <ParamsEditor params={params} onParamsChange={onParamsChange} disabled={loading} />
-        )}
+      <div className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-900">
+        {activeTab === 'params' && <ParamsEditor params={params} onParamsChange={onParamsChange} disabled={loading} />}
 
-        {activeTab === 'auth' && (
-          <AuthEditor auth={auth} onAuthChange={onAuthChange} disabled={loading} />
-        )}
+        {activeTab === 'auth' && <AuthEditor auth={auth} onAuthChange={onAuthChange} disabled={loading} />}
 
         {activeTab === 'headers' && (
           <HeadersEditor headers={headers} onHeadersChange={onHeadersChange} disabled={loading} />
@@ -315,20 +346,23 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
         {activeTab === 'body' && (
           <div className="h-full">
             <div className="mb-3 flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
                 <input type="radio" name="bodyType" value="json" defaultChecked />
                 <span>JSON</span>
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-400">
+              <label className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
                 <input type="radio" name="bodyType" value="xml" disabled />
                 <span>XML</span>
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-400">
+              <label className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
                 <input type="radio" name="bodyType" value="form" disabled />
                 <span>Form Data</span>
               </label>
             </div>
-            <div className="border border-gray-300 rounded overflow-hidden" style={{ height: 'calc(100% - 40px)' }}>
+            <div
+              className="border border-gray-300 dark:border-gray-600 rounded overflow-hidden"
+              style={{ height: 'calc(100% - 40px)' }}
+            >
               <Controller
                 name="body"
                 control={control}
@@ -338,7 +372,20 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
                     defaultLanguage="json"
                     value={field.value}
                     onChange={value => field.onChange(value || '')}
-                    theme="vs-light"
+                    theme={isDarkMode ? 'custom-dark' : 'vs-light'}
+                    beforeMount={monaco => {
+                      monaco.editor.defineTheme('custom-dark', {
+                        base: 'vs-dark',
+                        inherit: true,
+                        rules: [],
+                        colors: {
+                          'editor.background': '#1f2937',
+                          'editor.lineHighlightBackground': '#374151',
+                          'editorLineNumber.foreground': '#6b7280',
+                          'editorLineNumber.activeForeground': '#9ca3af',
+                        },
+                      });
+                    }}
                     options={{
                       minimap: { enabled: false },
                       fontSize: 13,
@@ -358,16 +405,16 @@ export function RequestForm({ control, onSend, loading, urlValue, headers, onHea
         )}
 
         {activeTab === 'scripts' && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             <p className="mb-4">Add pre-request and test scripts.</p>
-            <div className="text-gray-400">Coming soon...</div>
+            <div className="text-gray-400 dark:text-gray-500">Coming soon...</div>
           </div>
         )}
 
         {activeTab === 'settings' && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             <p className="mb-4">Configure request settings.</p>
-            <div className="text-gray-400">Coming soon...</div>
+            <div className="text-gray-400 dark:text-gray-500">Coming soon...</div>
           </div>
         )}
       </div>

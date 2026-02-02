@@ -2,9 +2,11 @@ import Editor from '@monaco-editor/react';
 import { formatResponseBody } from '../../helpers/responseHelpers';
 import { useTabsStore } from '../../store/useTabsStore';
 import { ResponseBodyStreaming } from './ResponseBodyStreaming';
+import { useThemeStore } from '../../store/useThemeStore';
 
 export function ResponseBody() {
   const { getActiveTab } = useTabsStore();
+  const { isDarkMode } = useThemeStore();
   const activeTab = getActiveTab();
   const response = activeTab?.response || null;
 
@@ -25,12 +27,25 @@ export function ResponseBody() {
 
   return (
     <div className="h-full p-6">
-      <div className="border border-gray-300 rounded overflow-hidden h-full">
+      <div className="border border-gray-300 dark:border-gray-700 rounded overflow-hidden h-full">
         <Editor
           height="100%"
           defaultLanguage="json"
           value={formatResponseBody((response && 'body' in response ? response.body : '') || '')}
-          theme="vs-light"
+          theme={isDarkMode ? 'custom-dark' : 'vs-light'}
+          beforeMount={(monaco) => {
+            monaco.editor.defineTheme('custom-dark', {
+              base: 'vs-dark',
+              inherit: true,
+              rules: [],
+              colors: {
+                'editor.background': '#1f2937',
+                'editor.lineHighlightBackground': '#374151',
+                'editorLineNumber.foreground': '#6b7280',
+                'editorLineNumber.activeForeground': '#9ca3af',
+              },
+            });
+          }}
           options={{
             minimap: { enabled: false },
             fontSize: 13,

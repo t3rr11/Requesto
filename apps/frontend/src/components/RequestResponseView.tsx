@@ -482,7 +482,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-gray-50">
       {/* Top Bar - Breadcrumb and Save */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between h-14 flex-shrink-0">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between h-14 flex-shrink-0">
         <RequestBreadcrumb savedRequestId={savedRequestId} />
         <Button onClick={handleSave} size="sm" disabled={activeTab?.isLoading || !hasChanges}>
           Save
@@ -492,7 +492,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
       {/* Main Content - Split View */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative min-h-0">
         <div
-          className="flex flex-col border-r border-gray-200 bg-white relative"
+          className="flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative"
           style={{ width: `${requestPanelWidth}px` }}
         >
           <RequestForm
@@ -510,7 +510,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
           />
           {/* Resize Handle */}
           <div
-            className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 cursor-ew-resize transition-colors z-10"
+            className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ew-resize transition-colors z-10"
             onMouseDown={handleMouseDown}
             title="Drag to resize"
           />

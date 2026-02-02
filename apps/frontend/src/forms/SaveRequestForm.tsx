@@ -124,20 +124,20 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
     <Dialog isOpen={isOpen} onClose={handleClose} title="Save Request">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
             {error}
           </div>
         )}
 
         {collections.length === 0 ? (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-3 py-2 rounded text-sm">
+          <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-400 px-3 py-2 rounded text-sm">
             No collections available. Please create a collection first.
           </div>
         ) : (
           <>
             <div>
-              <label htmlFor="request-name" className="block text-sm font-medium text-gray-700 mb-1">
-                Request Name <span className="text-red-500">*</span>
+              <label htmlFor="request-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Request Name <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <input
                 id="request-name"
@@ -145,20 +145,20 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Get User by ID"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 autoFocus
               />
             </div>
 
             <div>
-              <label htmlFor="collection-select" className="block text-sm font-medium text-gray-700 mb-1">
-                Collection <span className="text-red-500">*</span>
+              <label htmlFor="collection-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Collection <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <select
                 id="collection-select"
                 value={collectionId}
                 onChange={(e) => setCollectionId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option value="">Select a collection</option>
                 {collections.map((col) => (
@@ -170,11 +170,11 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
             </div>
 
             {currentRequest && (
-              <div className="bg-gray-50 p-3 rounded-md text-sm">
-                <div className="font-medium text-gray-700 mb-2">Request Preview:</div>
-                <div className="space-y-1 text-gray-600">
+              <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md text-sm">
+                <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Request Preview:</div>
+                <div className="space-y-1 text-gray-600 dark:text-gray-400">
                   <div>
-                    <span className="font-semibold">{currentRequest.method}</span> {currentRequest.url || <span className="text-red-500">No URL specified</span>}
+                    <span className="font-semibold">{currentRequest.method}</span> {currentRequest.url || <span className="text-red-500 dark:text-red-400">No URL specified</span>}
                   </div>
                   {currentRequest.headers && Object.keys(currentRequest.headers).length > 0 && (
                     <div className="text-xs">
@@ -194,14 +194,14 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading || collections.length === 0 || !currentRequest?.url?.trim()}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Saving...' : 'Save Request'}
           </button>

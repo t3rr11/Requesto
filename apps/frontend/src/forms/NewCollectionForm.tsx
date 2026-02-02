@@ -48,14 +48,14 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
     <Dialog isOpen={isOpen} onClose={handleClose} title="New Collection">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
             {error}
           </div>
         )}
 
         <div>
-          <label htmlFor="collection-name" className="block text-sm font-medium text-gray-700 mb-1">
-            Name <span className="text-red-500">*</span>
+          <label htmlFor="collection-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Name <span className="text-red-500 dark:text-red-400">*</span>
           </label>
           <input
             id="collection-name"
@@ -63,13 +63,13 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="My API Collection"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             autoFocus
           />
         </div>
 
         <div>
-          <label htmlFor="collection-description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="collection-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Description (optional)
           </label>
           <textarea
@@ -78,7 +78,7 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Collection for testing user APIs"
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
           />
         </div>
 
@@ -86,14 +86,14 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
           <button
             type="button"
             onClick={handleClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating...' : 'Create Collection'}
           </button>

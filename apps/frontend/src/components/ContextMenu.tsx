@@ -41,7 +41,7 @@ export const ContextMenu = ({ items, position, onClose }: ContextMenuProps) => {
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 bg-white rounded-md shadow-lg border border-gray-200 py-1 min-w-[180px]"
+      className="fixed z-50 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[180px]"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
@@ -54,8 +54,8 @@ export const ContextMenu = ({ items, position, onClose }: ContextMenuProps) => {
             item.onClick();
             onClose();
           }}
-          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 ${
-            item.danger ? 'text-red-600 hover:bg-red-50' : 'text-gray-700'
+          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
+            item.danger ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-700 dark:text-gray-300'
           }`}
         >
           {item.icon}

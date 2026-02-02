@@ -215,7 +215,7 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className={`${className} relative bg-transparent caret-gray-900`}
+        className={`${className} relative bg-transparent caret-gray-900 dark:caret-gray-100`}
       />
 
       {/* Highlighted content layer */}

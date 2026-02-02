@@ -55,22 +55,22 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
 
   if (status === 0) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50">
+      <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
-          <p className="text-sm text-gray-600">{statusText}</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-3"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{statusText}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white">
+    <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
       {/* Header */}
-      <div className="px-4 py-2 border-b border-gray-200 bg-white flex items-center justify-between flex-shrink-0">
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">SSE Stream</span>
-          <span className="text-xs text-gray-500">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">SSE Stream</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             {events.length} {events.length === 1 ? 'event' : 'events'}
           </span>
         </div>
@@ -84,7 +84,7 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
       >
         {events.length === 0 ? (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center text-gray-400">
+            <div className="text-center text-gray-400 dark:text-gray-500">
               <div className="text-3xl mb-2">⏳</div>
               <p className="text-sm">Waiting for events...</p>
             </div>
@@ -94,12 +94,12 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
             {events.map((event, index) => (
               <div
                 key={index}
-                className="bg-white rounded border border-gray-200 shadow-sm hover:shadow transition-shadow"
+                className="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow transition-shadow"
               >
                 {/* Event Header */}
-                <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-semibold text-gray-600">
+                    <span className="text-xs font-mono font-semibold text-gray-600 dark:text-gray-400">
                       #{index + 1}
                     </span>
                     {event.event && (
@@ -112,19 +112,19 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
                       </span>
                     )}
                     {event.id && (
-                      <span className="text-xs text-gray-500 font-mono">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                         id: {event.id}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
                     {new Date(event.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
 
                 {/* Event Data */}
                 <div className="px-3 py-2">
-                  <pre className="text-xs font-mono text-gray-800 whitespace-pre-wrap break-words overflow-x-auto">
+                  <pre className="text-xs font-mono text-gray-800 dark:text-gray-300 whitespace-pre-wrap break-words overflow-x-auto">
                     {formatData(event.data)}
                   </pre>
                 </div>
