@@ -117,3 +117,78 @@ export function getUndefinedVariables(
 function escapeRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+/**
+ * Generates a new unique environment ID
+ */
+export const generateEnvironmentId = (): string => {
+  return `env-${Date.now()}`;
+};
+
+/**
+ * Creates a new environment object with default values
+ */
+export const createNewEnvironment = (name: string = 'New Environment'): Environment => {
+  return {
+    id: generateEnvironmentId(),
+    name,
+    variables: [],
+  };
+};
+
+/**
+ * Duplicates an existing environment with a new ID
+ */
+export const duplicateEnvironment = (env: Environment, nameSuffix: string = 'Copy'): Environment => {
+  return {
+    id: generateEnvironmentId(),
+    name: `${env.name} ${nameSuffix}`,
+    variables: env.variables.map(v => ({ ...v })),
+  };
+};
+
+/**
+ * Validates environment form data
+ */
+export const validateEnvironment = (env: Partial<Environment>): { valid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+
+  if (!env.name || env.name.trim() === '') {
+    errors.push('Environment name is required');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+};
+
+/**
+ * Filters out empty variables (variables with no key)
+ */
+export const filterValidVariables = (variables: EnvironmentVariable[]): EnvironmentVariable[] => {
+  return variables.filter(v => v.key.trim() !== '');
+};
+
+/**
+ * Prepares environment data for saving
+ */
+export const prepareEnvironmentForSave = (env: Environment): Environment => {
+  return {
+    ...env,
+    name: env.name.trim(),
+    variables: filterValidVariables(env.variables),
+  };
+};
+
+/**
+ * Creates a default empty variable
+ */
+export const createEmptyVariable = (): EnvironmentVariable => {
+  return {
+    key: '',
+    value: '',
+    enabled: true,
+    isSecret: false,
+  };
+};
