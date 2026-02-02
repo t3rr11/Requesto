@@ -54,6 +54,13 @@ const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle
       {...attributes}
       {...listeners}
       onClick={() => onTabClick(tabId)}
+      onAuxClick={(e) => {
+        // Middle click (button 1) closes the tab
+        if (e.button === 1) {
+          e.preventDefault();
+          onCloseTab(e, tabId);
+        }
+      }}
       title={getTabTitle(tabId)}
       className={`
         group flex items-center gap-2 px-4 border-r border-gray-300 cursor-grab active:cursor-grabbing
