@@ -39,19 +39,22 @@ export const Header = () => {
               <select
                 value={environmentsData.activeEnvironmentId || ''}
                 onChange={e => setActiveEnvironment(e.target.value)}
-                className="px-3 py-1.5 pr-8 text-sm bg-blue-500 text-white rounded border border-blue-400 hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-white appearance-none cursor-pointer"
+                className="px-3 min-w-32 py-1.5 pr-8 text-sm bg-white/10 text-white rounded-md border border-white/20 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white/30 appearance-none cursor-pointer backdrop-blur-sm transition-all"
+                style={{
+                  colorScheme: 'dark'
+                }}
               >
                 {environmentsData.environments.length === 0 && (
-                  <option value="">No environments</option>
+                  <option value="" className="bg-gray-800 text-white">No environments</option>
                 )}
                 {environmentsData.environments.map(env => (
-                  <option key={env.id} value={env.id}>
-                    {env.name} ({env.variables.filter(v => v.enabled).length} vars)
+                  <option key={env.id} value={env.id} className="bg-gray-800 text-white">
+                    {env.name}
                   </option>
                 ))}
               </select>
               <svg
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-white/70"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
