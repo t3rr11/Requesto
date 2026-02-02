@@ -45,7 +45,7 @@ async function start() {
       });
     }
 
-    const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+    const port = process.env.PORT ? parseInt(process.env.PORT) : 4000;
     const host = process.env.HOST || '0.0.0.0';
 
     await server.listen({ port, host });

@@ -38,11 +38,11 @@ COPY --from=frontend-build /app/frontend/dist ./public
 RUN mkdir -p /app/data
 
 # Expose port
-EXPOSE 3001
+EXPOSE 4000
 
 # Environment variables
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=4000
 ENV HOST=0.0.0.0
 
 # Start the application

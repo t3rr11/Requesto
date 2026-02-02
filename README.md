@@ -20,7 +20,7 @@ A lightweight, self-hosted API client (Postman alternative) that can be started 
 docker-compose up
 ```
 
-Then open your browser to `http://localhost:3000`
+Then open your browser to `http://localhost:4000`
 
 ## Development
 
