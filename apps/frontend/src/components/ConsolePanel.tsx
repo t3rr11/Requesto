@@ -206,13 +206,21 @@ export const ConsolePanel = () => {
                       </button>
                     </div>
                     <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
-                      {Object.entries(log.requestData.headers).map(([key, value]) => (
-                        <div key={key} className="py-0.5">
-                          <span className="text-blue-300 dark:text-blue-400">{key}</span>
-                          <span className="text-gray-500 dark:text-gray-600">: </span>
-                          <span className="text-gray-300 dark:text-gray-400">{value}</span>
-                        </div>
-                      ))}
+                      {Object.entries(log.requestData.headers).map(([key, value]) => {
+                        const isAuth = key.toLowerCase() === 'authorization';
+                        return (
+                          <div key={key} className="py-0.5 flex items-center gap-2">
+                            <span className={isAuth ? "text-yellow-300 font-bold" : "text-blue-300 dark:text-blue-400"}>{key}</span>
+                            <span className="text-gray-500 dark:text-gray-600">: </span>
+                            <span className={isAuth ? "text-yellow-200 truncate max-w-[16rem]" : "text-gray-300 dark:text-gray-400"} title={value}>
+                              {isAuth ? (value.length > 60 ? value.slice(0, 60) + '…' : value) : value}
+                            </span>
+                            {isAuth && (
+                              <span className="ml-2 px-2 py-0.5 bg-yellow-900/40 text-yellow-200 text-[10px] rounded">AUTH</span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -254,9 +262,49 @@ export const ConsolePanel = () => {
                 {/* Request Auth */}
                 {log.requestData.auth && log.requestData.auth.type !== 'none' && (
                   <div className="space-y-1">
-                    <span className="text-gray-400 text-xs font-semibold">Auth</span>
-                    <div className="bg-gray-800 rounded p-2 font-mono text-xs">
-                      <span className="text-purple-400">{log.requestData.auth.type}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400 text-xs font-semibold">Auth</span>
+                      {log.requestData.auth.type === 'oauth' && log.requestData.auth.oauth?.tokens?.accessToken && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            copyToClipboard(log.requestData?.auth?.oauth?.tokens?.accessToken || '', `auth-token-${log.id}`);
+                          }}
+                          className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                          title="Copy access token"
+                        >
+                          {copiedStates[`auth-token-${log.id}`] ? (
+                            <Check className="w-3 h-3 text-green-400" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    <div className="bg-gray-800 rounded p-2 font-mono text-xs space-y-2">
+                      <div>
+                        <span className="text-purple-400">{log.requestData.auth.type}</span>
+                      </div>
+                      {log.requestData.auth.type === 'oauth' && log.requestData.auth.oauth && (
+                        <>
+                          {log.requestData.auth.oauth.tokens?.accessToken ? (
+                            <div className="space-y-1">
+                              <div className="text-green-400 text-xs">✓ Authenticated</div>
+                              <div className="bg-gray-900 rounded p-2 break-all text-yellow-300">
+                                <span className="text-gray-500">Bearer </span>
+                                {log.requestData.auth.oauth.tokens.accessToken}
+                              </div>
+                              {log.requestData.auth.oauth.tokens.expiresAt && (
+                                <div className="text-gray-500 text-[10px]">
+                                  Expires: {new Date(log.requestData.auth.oauth.tokens.expiresAt).toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-yellow-400 text-xs">⚠ No token available (configId: {log.requestData.auth.oauth.configId})</div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}

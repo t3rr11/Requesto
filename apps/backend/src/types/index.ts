@@ -1,4 +1,4 @@
-export type AuthType = 'none' | 'basic' | 'bearer' | 'api-key' | 'digest';
+export type AuthType = 'none' | 'basic' | 'bearer' | 'api-key' | 'digest' | 'oauth';
 
 export interface BasicAuth {
   username: string;
@@ -20,12 +20,73 @@ export interface DigestAuth {
   password: string;
 }
 
+// OAuth Types
+
+/**
+ * OAuth configuration stored on backend
+ * Includes sensitive clientSecret that should never be sent to frontend
+ */
+export interface OAuthConfigServer {
+  id: string;
+  name: string;
+  provider: string;
+  authorizationUrl: string;
+  tokenUrl: string;
+  revocationUrl?: string;
+  clientId: string;
+  clientSecret?: string; // Sensitive - never sent to frontend
+  flowType: string;
+  usePKCE: boolean;
+  scopes: string[];
+  additionalParams?: Record<string, string>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Request to exchange authorization code for tokens
+ */
+export interface TokenExchangeRequest {
+  configId: string;
+  code: string;
+  codeVerifier?: string; // For PKCE
+  redirectUri: string;
+}
+
+/**
+ * Response from OAuth provider token endpoint
+ */
+export interface TokenExchangeResponse {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+  refresh_token?: string;
+  scope?: string;
+  id_token?: string;
+}
+
+/**
+ * Request to refresh an access token
+ */
+export interface TokenRefreshRequest {
+  configId: string;
+  refreshToken: string;
+}
+
+/**
+ * OAuth auth reference (simplified for backend)
+ */
+export interface OAuthAuth {
+  configId: string;
+}
+
 export interface AuthConfig {
   type: AuthType;
   basic?: BasicAuth;
   bearer?: BearerAuth;
   apiKey?: ApiKeyAuth;
   digest?: DigestAuth;
+  oauth?: OAuthAuth;
 }
 
 export interface ProxyRequest {

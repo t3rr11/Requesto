@@ -1,4 +1,5 @@
 import { Environment, EnvironmentVariable } from '../store/useEnvironmentStore';
+import { AuthConfig } from '../types';
 
 /**
  * Substitute environment variables in a string
@@ -28,14 +29,16 @@ export function substituteInRequest(
     method: string;
     url: string; 
     headers?: Record<string, string>; 
-    body?: string 
+    body?: string;
+    auth?: AuthConfig;
   },
   environment: Environment | null
 ): { 
   method: string;
   url: string; 
   headers?: Record<string, string>; 
-  body?: string 
+  body?: string;
+  auth?: AuthConfig;
 } {
   if (!environment) return request;
 
@@ -51,6 +54,7 @@ export function substituteInRequest(
         )
       : undefined,
     body: request.body ? substituteVariables(request.body, environment) : undefined,
+    auth: request.auth, // Preserve auth config
   };
 }
 
@@ -79,7 +83,7 @@ export function hasVariables(text: string): boolean {
  * Get all undefined variables used in a request
  */
 export function getUndefinedVariables(
-  request: { method: string; url: string; headers?: Record<string, string>; body?: string },
+  request: { method: string; url: string; headers?: Record<string, string>; body?: string; auth?: any },
   environment: Environment | null
 ): string[] {
   const usedVariables = new Set<string>();

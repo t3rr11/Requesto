@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useUIStore } from '../store/useUIStore';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { useThemeStore } from '../store/useThemeStore';
-import { ListCollapse, Menu, Moon, Sun } from 'lucide-react';
+import { ListCollapse, Menu, Moon, Sun, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router';
 
 export const Header = () => {
@@ -85,6 +85,15 @@ export const Header = () => {
               </svg>
             </button>
           </div>
+
+          {/* OAuth Settings Button */}
+          <button
+            onClick={() => navigate('/oauth')}
+            className="p-1.5 hover:bg-blue-500 dark:hover:bg-gray-700 rounded transition-colors"
+            title="OAuth 2.0 Settings"
+          >
+            <Shield className="w-5 h-5" />
+          </button>
 
           {/* Help Button */}
           <button

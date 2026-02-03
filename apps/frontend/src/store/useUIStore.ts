@@ -18,12 +18,15 @@ interface UIState {
   isNewCollectionOpen: boolean;
   isSaveRequestOpen: boolean;
   isNewRequestOpen: boolean;
+  isNewOAuthConfigOpen: boolean;
+  isEditOAuthConfigOpen: boolean;
   
   // Dialog context
   newRequestContext: {
     collectionId?: string;
     folderId?: string;
   } | null;
+  editOAuthConfigId: string | null;
   
   // Actions
   toggleSidebar: () => void;
@@ -52,6 +55,12 @@ interface UIState {
   openNewRequest: (collectionId?: string, folderId?: string) => void;
   closeNewRequest: () => void;
   
+  openNewOAuthConfig: () => void;
+  closeNewOAuthConfig: () => void;
+  
+  openEditOAuthConfig: (configId: string) => void;
+  closeEditOAuthConfig: () => void;
+  
   closeAllDialogs: () => void;
 }
 
@@ -70,7 +79,10 @@ export const useUIStore = create<UIState>()(
       isNewCollectionOpen: false,
       isSaveRequestOpen: false,
       isNewRequestOpen: false,
+      isNewOAuthConfigOpen: false,
+      isEditOAuthConfigOpen: false,
       newRequestContext: null,
+      editOAuthConfigId: null,
       
       // Actions
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -125,12 +137,21 @@ export const useUIStore = create<UIState>()(
       }),
       closeNewRequest: () => set({ isNewRequestOpen: false, newRequestContext: null }),
       
+      openNewOAuthConfig: () => set({ isNewOAuthConfigOpen: true }),
+      closeNewOAuthConfig: () => set({ isNewOAuthConfigOpen: false }),
+      
+      openEditOAuthConfig: (configId) => set({ isEditOAuthConfigOpen: true, editOAuthConfigId: configId }),
+      closeEditOAuthConfig: () => set({ isEditOAuthConfigOpen: false, editOAuthConfigId: null }),
+      
       closeAllDialogs: () => set({
         isHelpOpen: false,
         isNewCollectionOpen: false,
         isSaveRequestOpen: false,
         isNewRequestOpen: false,
+        isNewOAuthConfigOpen: false,
+        isEditOAuthConfigOpen: false,
         newRequestContext: null,
+        editOAuthConfigId: null,
       }),
     }),
     {

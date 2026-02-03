@@ -32,7 +32,7 @@ export const requestFormSchema = z.object({
   ),
   body: z.string(),
   auth: z.object({
-    type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest']),
+    type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest', 'oauth']),
     basic: z
       .object({
         username: z.string(),
@@ -55,6 +55,26 @@ export const requestFormSchema = z.object({
       .object({
         username: z.string(),
         password: z.string(),
+      })
+      .optional(),
+    oauth: z
+      .object({
+        configId: z.string(),
+        tokens: z
+          .object({
+            accessToken: z.string(),
+            tokenType: z.string(),
+            expiresIn: z.number().optional(),
+            expiresAt: z.number().optional(),
+            refreshToken: z.string().optional(),
+            scope: z.string().optional(),
+            idToken: z.string().optional(),
+          })
+          .optional(),
+        isAuthenticated: z.boolean(),
+        isRefreshing: z.boolean(),
+        lastAuthenticatedAt: z.number().optional(),
+        error: z.string().optional(),
       })
       .optional(),
   }),

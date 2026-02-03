@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { VariableAwareInput } from './VariableAwareInput';
+import { OAuthEditor } from './OAuthEditor';
 import { AuthConfig, AuthType } from '../types';
 
 interface AuthEditorProps {
@@ -19,6 +20,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
       bearer: type === 'bearer' ? { token: '' } : undefined,
       apiKey: type === 'api-key' ? { key: '', value: '', addTo: 'header' } : undefined,
       digest: type === 'digest' ? { username: '', password: '' } : undefined,
+      oauth: type === 'oauth' ? undefined : undefined,
     });
   };
 
@@ -69,6 +71,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
           <option value="bearer">Bearer Token</option>
           <option value="api-key">API Key</option>
           <option value="digest">Digest Auth</option>
+          <option value="oauth">OAuth 2.0</option>
         </select>
       </div>
 
@@ -228,6 +231,23 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {auth.type === 'oauth' && (
+        <div className="pt-2">
+          <OAuthEditor
+            auth={auth.oauth}
+            onAuthChange={(oauth) => {
+              // If oauth is being cleared (empty configId), change auth type to none
+              if (!oauth.configId) {
+                onAuthChange({ type: 'none' });
+              } else {
+                onAuthChange({ ...auth, type: 'oauth', oauth });
+              }
+            }}
+            disabled={disabled}
+          />
         </div>
       )}
 

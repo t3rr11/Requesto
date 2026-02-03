@@ -8,6 +8,7 @@ import { useEnvironmentStore } from './store/useEnvironmentStore';
 import { DialogManager } from './components/DialogManager';
 import { RequestPage } from './pages/RequestsPage';
 import { EnvironmentsPage } from './pages/EnvironmentsPage';
+import { OAuthCallback } from './components/OAuthCallback';
 
 function App() {
   const { isOpen: isAlertOpen, title: alertTitle, message: alertMessage, variant: alertVariant, closeAlert } = useAlertStore();
@@ -29,6 +30,7 @@ function App() {
           <Route path="/" element={<Navigate to="/requests" replace />} />
           <Route path="/requests" element={<RequestPage />} />
           <Route path="/environments" element={<EnvironmentsPage />} />
+          <Route path="/oauth/callback" element={<OAuthCallback />} />
         </Routes>
 
         <DialogManager />

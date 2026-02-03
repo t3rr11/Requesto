@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { collectionsDb } from '../database/collections';
+import { AuthConfig } from '../types';
 
 const collectionsRoutes: FastifyPluginAsync = async (server) => {
   // Get all collections
@@ -107,11 +108,12 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       url: string;
       headers?: Record<string, string>;
       body?: string;
+      auth?: AuthConfig;
       folderId?: string;
     };
   }>('/collections/:id/requests', async (request, reply) => {
     try {
-      const { name, method, url, headers, body, folderId } = request.body;
+      const { name, method, url, headers, body, auth, folderId } = request.body;
 
       if (!name || !method || !url) {
         return reply.code(400).send({ error: 'Name, method, and URL are required' });
@@ -124,6 +126,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
         url: url.trim(),
         headers,
         body,
+        auth,
         folderId,
         collectionId: request.params.id,
         createdAt: Date.now(),
@@ -152,6 +155,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       url?: string;
       headers?: Record<string, string>;
       body?: string;
+      auth?: AuthConfig;
       folderId?: string;
     };
   }>('/collections/:id/requests/:requestId', async (request, reply) => {

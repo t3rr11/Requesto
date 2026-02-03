@@ -56,6 +56,17 @@ export function applyAuthentication(
         // We'll pass it through and handle it in the axios config
       }
       break;
+
+    case 'oauth':
+      // OAuth tokens are sent as Bearer tokens in the Authorization header
+      // The frontend passes the access token directly in the auth config
+      if (auth.oauth?.configId) {
+        // Note: In the current architecture, tokens are NOT stored on the backend
+        // The frontend must include the token in the request, typically as a bearer token
+        // This case exists for compatibility but tokens should be handled client-side
+        console.warn('OAuth authentication detected but tokens should be managed client-side');
+      }
+      break;
   }
 
   return { headers: updatedHeaders, url: updatedUrl };

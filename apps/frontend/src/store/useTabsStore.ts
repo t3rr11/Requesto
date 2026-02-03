@@ -126,6 +126,7 @@ const calculateDirtyState = (tab: Tab): boolean => {
     url: tab.request.url,
     headers: tab.request.headers,
     body: tab.request.body,
+    auth: (tab.request as any).auth,
   });
   
   const original = JSON.stringify({
@@ -133,6 +134,7 @@ const calculateDirtyState = (tab: Tab): boolean => {
     url: tab.originalRequest.url,
     headers: tab.originalRequest.headers,
     body: tab.originalRequest.body,
+    auth: (tab.originalRequest as any).auth,
   });
   
   return current !== original;

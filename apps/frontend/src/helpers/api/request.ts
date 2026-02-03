@@ -1,4 +1,5 @@
 import { ProxyRequest, ProxyResponse, StreamingResponse, SSEEvent } from '../../types';
+import { prepareAuthenticatedRequest } from './authRequest';
 
 /**
  * Check if the request is likely to be a streaming response (SSE)
@@ -18,12 +19,15 @@ export const sendStreamingRequest = async (
   const startTime = Date.now();
   const events: SSEEvent[] = [];
 
+  // Prepare request with authentication (inject OAuth tokens if needed)
+  const authenticatedRequest = prepareAuthenticatedRequest(request);
+
   const response = await fetch('/api/proxy/stream', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(request),
+    body: JSON.stringify(authenticatedRequest),
   });
 
   if (!response.ok) {
@@ -131,12 +135,15 @@ export const sendRequest = async (request: ProxyRequest): Promise<ProxyResponse 
     throw new Error('Streaming requests must be handled through sendStreamingWithUpdates');
   }
 
+  // Prepare request with authentication (inject OAuth tokens if needed)
+  const authenticatedRequest = prepareAuthenticatedRequest(request);
+
   const response = await fetch('/api/proxy/request', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(request),
+    body: JSON.stringify(authenticatedRequest),
   });
 
   if (!response.ok) {

@@ -196,7 +196,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
       body: formValues.body.trim() || undefined,
       auth: formValues.auth,
     } as any);
-  }, [formValues.method, formValues.url, formValues.headers, formValues.params, formValues.body, activeTabId, updateTabRequest]);
+  }, [formValues.method, formValues.url, formValues.headers, formValues.params, formValues.body, formValues.auth, activeTabId, updateTabRequest]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -506,7 +506,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
             onParamsChange={params => setValue('params', params)}
             onUrlChange={url => setValue('url', url)}
             auth={formValues.auth}
-            onAuthChange={auth => setValue('auth', auth)}
+            onAuthChange={auth => setValue('auth', auth, { shouldDirty: true })}
           />
           {/* Resize Handle */}
           <div

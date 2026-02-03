@@ -82,6 +82,7 @@ export const CollectionsSidebar = () => {
         url: request.url,
         headers: request.headers,
         body: request.body,
+        auth: request.auth,
       },
       label: request.name,
     });
@@ -233,7 +234,7 @@ export const CollectionsSidebar = () => {
     openRequestTab({
       savedRequestId: '',
       collectionId: '',
-      request: { method: 'GET', url: '' },
+      request: { method: 'GET', url: '', auth: { type: 'none' } },
       label: 'New Request',
     });
   };
