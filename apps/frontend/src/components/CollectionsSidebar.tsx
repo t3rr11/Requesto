@@ -10,7 +10,7 @@ import { RenameForm } from '../forms/RenameForm';
 import { CollectionItem } from './CollectionItem';
 
 export const CollectionsSidebar = () => {
-  const { isSidebarOpen, sidebarWidth, setSidebarWidth, openNewCollection, isConsoleOpen, consoleHeight } = useUIStore();
+  const { isSidebarOpen, sidebarWidth, setSidebarWidth, openNewCollection } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const {
