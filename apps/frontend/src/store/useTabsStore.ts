@@ -121,20 +121,23 @@ const calculateDirtyState = (tab: Tab): boolean => {
     return false;
   }
   
+  // Normalize auth to prevent false positives from undefined vs { type: 'none' }
+  const normalizeAuth = (auth: any) => auth || { type: 'none' };
+  
   const current = JSON.stringify({
     method: tab.request.method,
     url: tab.request.url,
-    headers: tab.request.headers,
-    body: tab.request.body,
-    auth: (tab.request as any).auth,
+    headers: tab.request.headers || {},
+    body: tab.request.body || '',
+    auth: normalizeAuth((tab.request as any).auth),
   });
   
   const original = JSON.stringify({
     method: tab.originalRequest.method,
     url: tab.originalRequest.url,
-    headers: tab.originalRequest.headers,
-    body: tab.originalRequest.body,
-    auth: (tab.originalRequest as any).auth,
+    headers: tab.originalRequest.headers || {},
+    body: tab.originalRequest.body || '',
+    auth: normalizeAuth((tab.originalRequest as any).auth),
   });
   
   return current !== original;
@@ -168,13 +171,20 @@ export const useTabsStore = create<TabsState>((set, get) => ({
       return existingTab.id;
     }
     
+    // Normalize auth field to prevent false dirty state
+    // If auth is undefined, set it to { type: 'none' } to match form defaults
+    const normalizedRequest = {
+      ...request,
+      auth: request.auth || { type: 'none' as const },
+    };
+    
     // Create new tab with request data
     const newTab = createNewTab({
       label,
-      request: { ...request },
+      request: { ...normalizedRequest },
       savedRequestId,
       collectionId,
-      originalRequest: { ...request }, // Store original for dirty detection
+      originalRequest: { ...normalizedRequest }, // Store original for dirty detection
       isDirty: false,
     });
     
