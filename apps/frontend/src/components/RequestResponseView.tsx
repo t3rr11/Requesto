@@ -57,6 +57,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
 
   const formValues = watch();
   const savedRequestId = watch('savedRequestId');
+  const isInitialLoadRef = useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -98,6 +99,9 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
   useEffect(() => {
     if (!activeTab) return;
 
+    // Set flag to indicate we're doing an initial load
+    isInitialLoadRef.current = true;
+
     const loadedHeaders =
       activeTab.request.headers && Object.keys(activeTab.request.headers).length > 0
         ? Object.entries(activeTab.request.headers).map(([key, value], index) => ({
@@ -130,6 +134,11 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
     };
 
     reset(formData);
+    
+    // Clear the initial load flag after a short delay to allow the form sync to run once
+    setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 0);
   }, [activeTab?.id, reset]); // Only reload when tab ID changes
 
 /**
@@ -176,6 +185,9 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
   // Sync form changes back to active tab
   useEffect(() => {
     if (!activeTab || !activeTabId) return;
+    
+    // Skip the first sync after loading a tab to prevent false dirty state
+    if (isInitialLoadRef.current) return;
 
     // Build headers object
     const requestHeaders: Record<string, string> = {};

@@ -10,7 +10,7 @@ import { RenameForm } from '../forms/RenameForm';
 import { CollectionItem } from './CollectionItem';
 
 export const CollectionsSidebar = () => {
-  const { isSidebarOpen, sidebarWidth, setSidebarWidth, openNewCollection } = useUIStore();
+  const { isSidebarOpen, sidebarWidth, setSidebarWidth, openNewCollection, isConsoleOpen, consoleHeight } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const {
@@ -244,7 +244,7 @@ export const CollectionsSidebar = () => {
   return (
     <div
       ref={sidebarRef}
-      className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full relative"
+      className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col relative flex-1 min-h-0"
       style={{ width: `${sidebarWidth}px` }}
     >
       {/* Header */}
@@ -297,11 +297,6 @@ export const CollectionsSidebar = () => {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Footer Info */}
-      <div className="mb-9 p-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-        {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
       </div>
 
       <ConfirmDialog
