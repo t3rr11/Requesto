@@ -17,7 +17,7 @@ This guide covers deploying Requesto in various production scenarios.
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/requesto.git
+git clone https://github.com/t3rr11/Requesto.git
 cd requesto
 npm install
 
@@ -441,8 +441,8 @@ location /api {
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/yourusername/Requesto/issues
-- Documentation: https://github.com/yourusername/Requesto/wiki
+- GitHub Issues: https://github.com/t3rr11/Requesto/issues
+- Documentation: https://github.com/t3rr11/Requesto/wiki
 
 
 

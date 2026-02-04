@@ -6,7 +6,7 @@ Welcome to Requesto! This guide will help you get up and running quickly.
 
 ### Option 1: Desktop Application (Easiest)
 
-1. Download the installer for your platform from [Releases](https://github.com/yourusername/Requesto/releases)
+1. Download the installer for your platform from [Releases](https://github.com/t3rr11/Requesto/releases)
 2. Run the installer
 3. Launch Requesto from your applications menu
 
@@ -18,7 +18,7 @@ Welcome to Requesto! This guide will help you get up and running quickly.
 ### Option 2: Docker
 
 ```bash
-git clone https://github.com/yourusername/requesto.git
+git clone https://github.com/t3rr11/Requesto.git
 cd requesto
 docker-compose up
 ```
@@ -28,7 +28,7 @@ Access at: http://localhost:4000
 ### Option 3: From Source
 
 ```bash
-git clone https://github.com/yourusername/requesto.git
+git clone https://github.com/t3rr11/Requesto.git
 cd requesto
 npm install
 npm run dev
@@ -237,15 +237,14 @@ User data (collections, environments, history) is stored at:
 
 - Read [Documentation](README.md)
 - Check [Deployment Guide](docs/DEPLOYMENT.md) for production setup
-- View [Contributing Guide](CONTRIBUTING.md) to contribute
-- Report issues on [GitHub](https://github.com/yourusername/Requesto/issues)
+- Report issues on [GitHub](https://github.com/t3rr11/Requesto/issues)
 
 ## Getting Help
 
 - 📖 [Documentation](README.md)
-- 💬 [GitHub Discussions](https://github.com/yourusername/Requesto/discussions)
-- 🐛 [Report Bug](https://github.com/yourusername/Requesto/issues)
-- 💡 [Request Feature](https://github.com/yourusername/Requesto/issues)
+- 💬 [GitHub Discussions](https://github.com/t3rr11/Requesto/discussions)
+- 🐛 [Report Bug](https://github.com/t3rr11/Requesto/issues)
+- 💡 [Request Feature](https://github.com/t3rr11/Requesto/issues)
 
 ---
 

@@ -77,13 +77,13 @@ function createWindow() {
         {
           label: 'GitHub Repository',
           click: async () => {
-            await shell.openExternal('https://github.com/yourusername/requesto');
+            await shell.openExternal('https://github.com/t3rr11/Requesto');
           },
         },
         {
           label: 'Report Issue',
           click: async () => {
-            await shell.openExternal('https://github.com/yourusername/requesto/issues');
+            await shell.openExternal('https://github.com/t3rr11/Requesto/issues');
           },
         },
         { type: 'separator' },
