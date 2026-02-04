@@ -428,4 +428,177 @@ export async function oauthRoutes(server: FastifyInstance) {
       }
     }
   );
+
+  // Client Credentials Flow
+  server.post<{ Body: { configId: string } }>(
+    '/oauth/client-credentials',
+    async (request: FastifyRequest<{ Body: { configId: string } }>, reply: FastifyReply) => {
+      try {
+        const { configId } = request.body;
+        
+        // Validation
+        if (!configId) {
+          return reply.code(400).send({
+            error: 'Missing required field: configId',
+          });
+        }
+        
+        // Get config with secret
+        const config = getConfig(configId, true) as OAuthConfigServer | null;
+        if (!config) {
+          return reply.code(404).send({ error: 'OAuth configuration not found' });
+        }
+        
+        // Get client secret
+        const clientSecret = getClientSecret(configId);
+        if (!clientSecret) {
+          return reply.code(400).send({
+            error: 'Client secret required for client credentials flow',
+          });
+        }
+        
+        // Prepare token request
+        const tokenRequestBody: Record<string, string> = {
+          grant_type: 'client_credentials',
+          client_id: config.clientId,
+          client_secret: clientSecret,
+        };
+        
+        // Add scopes if provided
+        if (config.scopes && config.scopes.length > 0) {
+          tokenRequestBody.scope = config.scopes.join(' ');
+        }
+        
+        // Add any additional params from config
+        if (config.additionalParams) {
+          Object.assign(tokenRequestBody, config.additionalParams);
+        }
+        
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        };
+        
+        if (config.provider === 'github') {
+          headers['User-Agent'] = 'Localman-OAuth-Client';
+        }
+        
+        // Request token
+        console.log(`Client credentials flow for config ${configId} (provider: ${config.provider})`);
+        
+        const tokenResponse = await axios.post<TokenExchangeResponse>(
+          config.tokenUrl,
+          new URLSearchParams(tokenRequestBody).toString(),
+          { headers }
+        );
+        
+        // Return tokens to frontend
+        return reply.code(200).send(tokenResponse.data);
+        
+      } catch (error) {
+        console.error('Error in client credentials flow:', error);
+        
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status || 500;
+          const data = error.response?.data;
+          
+          return reply.code(status).send({
+            error: 'Client credentials flow failed',
+            details: data || error.message,
+          });
+        }
+        
+        return reply.code(500).send({
+          error: 'Failed to execute client credentials flow',
+        });
+      }
+    }
+  );
+
+  // Password Flow (Resource Owner Password Credentials)
+  server.post<{ Body: { configId: string; username: string; password: string } }>(
+    '/oauth/password',
+    async (request: FastifyRequest<{ Body: { configId: string; username: string; password: string } }>, reply: FastifyReply) => {
+      try {
+        const { configId, username, password } = request.body;
+        
+        // Validation
+        if (!configId || !username || !password) {
+          return reply.code(400).send({
+            error: 'Missing required fields: configId, username, password',
+          });
+        }
+        
+        // Get config with secret
+        const config = getConfig(configId, true) as OAuthConfigServer | null;
+        if (!config) {
+          return reply.code(404).send({ error: 'OAuth configuration not found' });
+        }
+        
+        // Get client secret
+        const clientSecret = getClientSecret(configId);
+        
+        // Prepare token request
+        const tokenRequestBody: Record<string, string> = {
+          grant_type: 'password',
+          username,
+          password,
+          client_id: config.clientId,
+        };
+        
+        // Add client secret if available
+        if (clientSecret) {
+          tokenRequestBody.client_secret = clientSecret;
+        }
+        
+        // Add scopes if provided
+        if (config.scopes && config.scopes.length > 0) {
+          tokenRequestBody.scope = config.scopes.join(' ');
+        }
+        
+        // Add any additional params from config
+        if (config.additionalParams) {
+          Object.assign(tokenRequestBody, config.additionalParams);
+        }
+        
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        };
+        
+        if (config.provider === 'github') {
+          headers['User-Agent'] = 'Localman-OAuth-Client';
+        }
+        
+        // Request token
+        console.log(`Password flow for config ${configId} (provider: ${config.provider})`);
+        
+        const tokenResponse = await axios.post<TokenExchangeResponse>(
+          config.tokenUrl,
+          new URLSearchParams(tokenRequestBody).toString(),
+          { headers }
+        );
+        
+        // Return tokens to frontend
+        return reply.code(200).send(tokenResponse.data);
+        
+      } catch (error) {
+        console.error('Error in password flow:', error);
+        
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status || 500;
+          const data = error.response?.data;
+          
+          return reply.code(status).send({
+            error: 'Password flow failed',
+            details: data || error.message,
+          });
+        }
+        
+        return reply.code(500).send({
+          error: 'Failed to execute password flow',
+        });
+      }
+    }
+  );
 }

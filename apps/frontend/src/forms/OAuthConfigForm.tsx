@@ -413,7 +413,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
               <option value="authorization-code">Authorization Code</option>
               <option value="implicit">Implicit (deprecated)</option>
               <option value="client-credentials">Client Credentials</option>
-              <option value="password">Password</option>
+              <option value="password">Password (not recommended)</option>
             </select>
           </div>
           
@@ -433,6 +433,46 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
             </select>
           </div>
         </div>
+
+        {/* Security Warnings */}
+        {flowType === 'implicit' && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-400 px-3 py-2 rounded text-sm flex items-start gap-2">
+            <Info size={16} className="flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">⚠️ Implicit Flow is Deprecated</p>
+              <p className="text-xs mt-1">
+                This flow exposes access tokens in the URL fragment (browser history, referrer headers). 
+                Use Authorization Code with PKCE instead for better security.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {flowType === 'password' && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-400 px-3 py-2 rounded text-sm flex items-start gap-2">
+            <Info size={16} className="flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">⚠️ Password Flow is Not Recommended</p>
+              <p className="text-xs mt-1">
+                This flow exposes user credentials to your application. Only use when absolutely necessary 
+                and with trusted first-party applications. Consider Authorization Code with PKCE instead.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {flowType === 'client-credentials' && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-400 px-3 py-2 rounded text-sm flex items-start gap-2">
+            <Info size={16} className="flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">ℹ️ Machine-to-Machine Authentication</p>
+              <p className="text-xs mt-1">
+                Client Credentials flow is for server-to-server communication without user interaction. 
+                Requires client secret. No user consent or redirect needed.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Advanced Options */}
         <div className="space-y-2">

@@ -182,6 +182,16 @@ export function redirectToOAuth(authUrl: string): void {
  * Start OAuth flow (popup or redirect based on config)
  */
 export async function startOAuthFlow(config: OAuthConfig): Promise<OAuthFlowResult> {
+  // Handle non-interactive flows
+  if (config.flowType === 'client-credentials') {
+    return await startClientCredentialsFlow(config);
+  }
+  
+  if (config.flowType === 'password') {
+    return await startPasswordFlow(config);
+  }
+  
+  // Handle interactive flows (authorization code, PKCE, implicit)
   const { url } = await buildAuthorizationUrl(config);
   
   if (config.usePopup) {
@@ -305,5 +315,108 @@ export async function revokeOAuthToken(
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || 'Failed to revoke token');
+  }
+}
+
+/**
+ * Start Client Credentials Flow
+ * Machine-to-machine authentication without user interaction
+ */
+export async function startClientCredentialsFlow(config: OAuthConfig): Promise<OAuthFlowResult> {
+  try {
+    const response = await fetch('/api/oauth/client-credentials', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        configId: config.id,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || 'Client credentials flow failed',
+        errorDescription: errorData.details || errorData.error,
+      };
+    }
+    
+    const tokens: OAuthTokens = await response.json();
+    
+    // Add expiresAt timestamp if not present
+    if (tokens.expiresIn && !tokens.expiresAt) {
+      tokens.expiresAt = Date.now() + tokens.expiresIn * 1000;
+    }
+    
+    return {
+      success: true,
+      tokens,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Client credentials flow failed',
+    };
+  }
+}
+
+/**
+ * Start Password Flow (Resource Owner Password Credentials)
+ * DEPRECATED: Only use when absolutely necessary
+ * Requires username and password to be provided in config
+ */
+export async function startPasswordFlow(config: OAuthConfig): Promise<OAuthFlowResult> {
+  try {
+    // Password flow requires username and password in additionalParams
+    const username = config.additionalParams?.username;
+    const password = config.additionalParams?.password;
+    
+    if (!username || !password) {
+      return {
+        success: false,
+        error: 'missing_credentials',
+        errorDescription: 'Username and password are required for password flow',
+      };
+    }
+    
+    const response = await fetch('/api/oauth/password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        configId: config.id,
+        username,
+        password,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        success: false,
+        error: errorData.error || 'Password flow failed',
+        errorDescription: errorData.details || errorData.error,
+      };
+    }
+    
+    const tokens: OAuthTokens = await response.json();
+    
+    // Add expiresAt timestamp if not present
+    if (tokens.expiresIn && !tokens.expiresAt) {
+      tokens.expiresAt = Date.now() + tokens.expiresIn * 1000;
+    }
+    
+    return {
+      success: true,
+      tokens,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Password flow failed',
+    };
   }
 }
