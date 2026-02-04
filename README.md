@@ -1,8 +1,8 @@
-# Localman
+# Requesto
 
 A lightweight, self-hosted API client (Postman alternative) that can be started via Docker and immediately used to test HTTP APIs through a web UI.
 
-![Localman Example](images/example.png)
+![Requesto Example](images/example.png)
 
 ## Features
 
@@ -54,3 +54,4 @@ npm run dev
 ## Documentation
 
 - **[Project Plan](docs/PROJECT_PLAN.md)** - Detailed project roadmap and architecture
+

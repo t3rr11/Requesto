@@ -73,7 +73,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
   ) => {
     const interval = parseInt(request.query.interval || '1000');
     const maxCount = parseInt(request.query.count || '10');
-    const customMessage = request.query.message || 'Test event';
 
     // Set SSE headers
     reply.raw.setHeader('Content-Type', 'text/event-stream');
@@ -82,7 +81,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
     reply.raw.setHeader('Access-Control-Allow-Origin', '*');
 
     let count = 0;
-    const startTime = Date.now();
 
     // Send initial connection event
     reply.raw.write(`event: connected\n`);

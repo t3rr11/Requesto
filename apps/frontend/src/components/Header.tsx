@@ -28,8 +28,8 @@ export const Header = () => {
           </button>
 
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/requests')}>
-            <img src="/logo.png" alt="Localman Logo" className="w-8 h-8" />
-            <h1 className="text-xl font-bold">Localman</h1>
+            <img src="./logo.png" alt="Requesto Logo" className="w-8 h-8" />
+            <h1 className="text-xl font-bold">Requesto</h1>
           </div>
 
           {/* Navigation Menu Items */}

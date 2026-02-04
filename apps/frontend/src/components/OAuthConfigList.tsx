@@ -1,4 +1,4 @@
-import { Shield, AlertCircle } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { OAuthConfig } from '../types';
 
 interface OAuthConfigListProps {

@@ -155,7 +155,7 @@ export const useUIStore = create<UIState>()(
       }),
     }),
     {
-      name: 'localman-ui-storage',
+      name: 'requesto-ui-storage',
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);

@@ -7,6 +7,7 @@ import { OAuthConfig, OAuthTokens } from '../../types';
 import { generateCodeVerifier, generateCodeChallenge } from './pkceHelper';
 import { saveState, generateState } from './stateHelper';
 import { getRedirectUri } from './redirectHelper';
+import { API_BASE } from '../api/config';
 
 export interface AuthorizationParams {
   authorizationUrl: string;
@@ -232,7 +233,7 @@ export async function exchangeCodeForTokens(
   code: string,
   codeVerifier?: string
 ): Promise<OAuthTokens> {
-  const response = await fetch('/api/oauth/token', {
+  const response = await fetch(`${API_BASE}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -266,7 +267,7 @@ export async function refreshOAuthToken(
   configId: string,
   refreshToken: string
 ): Promise<OAuthTokens> {
-  const response = await fetch('/api/oauth/refresh', {
+  const response = await fetch(`${API_BASE}/oauth/refresh`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -300,7 +301,7 @@ export async function revokeOAuthToken(
   token: string,
   tokenTypeHint?: 'access_token' | 'refresh_token'
 ): Promise<void> {
-  const response = await fetch('/api/oauth/revoke', {
+  const response = await fetch(`${API_BASE}/oauth/revoke`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -324,7 +325,7 @@ export async function revokeOAuthToken(
  */
 export async function startClientCredentialsFlow(config: OAuthConfig): Promise<OAuthFlowResult> {
   try {
-    const response = await fetch('/api/oauth/client-credentials', {
+    const response = await fetch(`${API_BASE}/oauth/client-credentials`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -381,7 +382,7 @@ export async function startPasswordFlow(config: OAuthConfig): Promise<OAuthFlowR
       };
     }
     
-    const response = await fetch('/api/oauth/password', {
+    const response = await fetch(`${API_BASE}/oauth/password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

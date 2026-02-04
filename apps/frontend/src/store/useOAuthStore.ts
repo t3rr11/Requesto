@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { OAuthConfig, OAuthTokens } from '../types';
 import { getTokens, storeTokens, removeTokens, isTokenExpired } from '../helpers/oauth/tokenManager';
+import { API_BASE } from '../helpers/api/config';
 
 interface OAuthState {
   // OAuth configurations (stored on backend, cached here)
@@ -56,7 +57,7 @@ export const useOAuthStore = create<OAuthState>((set, get) => ({
   loadConfigs: async () => {
     set({ isLoadingConfigs: true });
     try {
-      const response = await fetch('/api/oauth/configs');
+      const response = await fetch(`${API_BASE}/oauth/configs`);
       if (!response.ok) {
         throw new Error('Failed to load OAuth configurations');
       }
@@ -77,7 +78,7 @@ export const useOAuthStore = create<OAuthState>((set, get) => ({
   // Add new OAuth configuration
   addConfig: async (configData) => {
     try {
-      const response = await fetch('/api/oauth/configs', {
+      const response = await fetch(`${API_BASE}/oauth/configs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(configData),
@@ -103,7 +104,7 @@ export const useOAuthStore = create<OAuthState>((set, get) => ({
   // Update existing OAuth configuration
   updateConfig: async (id, updates) => {
     try {
-      const response = await fetch(`/api/oauth/configs/${id}`, {
+      const response = await fetch(`${API_BASE}/oauth/configs/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -127,7 +128,7 @@ export const useOAuthStore = create<OAuthState>((set, get) => ({
   // Delete OAuth configuration
   deleteConfig: async (id) => {
     try {
-      const response = await fetch(`/api/oauth/configs/${id}`, {
+      const response = await fetch(`${API_BASE}/oauth/configs/${id}`, {
         method: 'DELETE',
       });
       

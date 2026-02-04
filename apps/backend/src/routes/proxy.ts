@@ -6,6 +6,21 @@ import { saveRequest, getHistory, clearHistory } from '../database/storage';
 import { getActiveEnvironment, substituteInRequest } from '../database/environments';
 import { applyAuthentication, getAxiosAuthConfig } from '../helpers/authHelpers';
 
+// Helper to validate URLs
+function isValidUrl(urlString: string): boolean {
+  try {
+    new URL(urlString);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Helper to check if method supports body
+function methodSupportsBody(method: string): boolean {
+  return ['post', 'put', 'patch'].includes(method.toLowerCase());
+}
+
 export async function proxyRoutes(server: FastifyInstance) {
   server.post<{ Body: ProxyRequest }>(
     '/proxy/request',
@@ -16,6 +31,13 @@ export async function proxyRoutes(server: FastifyInstance) {
       if (!method || !url) {
         return reply.code(400).send({
           error: 'Missing required fields: method and url',
+        });
+      }
+
+      // Validate URL format
+      if (!isValidUrl(url)) {
+        return reply.code(400).send({
+          error: 'Invalid URL format',
         });
       }
 
@@ -43,9 +65,12 @@ export async function proxyRoutes(server: FastifyInstance) {
         }
 
         // Add body for methods that support it
-        if (['post', 'put', 'patch'].includes(method.toLowerCase()) && substituted.body) {
+        if (methodSupportsBody(method) && substituted.body) {
           config.data = substituted.body;
         }
+
+        // Set reasonable timeout (30 seconds)
+        config.timeout = 30000;
 
         const response = await axios(config);
         const duration = Date.now() - startTime;
@@ -76,18 +101,22 @@ export async function proxyRoutes(server: FastifyInstance) {
         const duration = Date.now() - startTime;
         
         if (axios.isAxiosError(error)) {
+          const errorBody = {
+            error: error.message,
+            code: error.code,
+            ...(error.response?.data && { responseData: error.response.data }),
+          };
+
           return reply.code(200).send({
-            status: 0,
-            statusText: 'Network Error',
-            headers: {},
-            body: JSON.stringify({ 
-              error: error.message,
-              code: error.code,
-            }),
+            status: error.response?.status || 0,
+            statusText: error.response?.statusText || 'Network Error',
+            headers: error.response?.headers || {},
+            body: JSON.stringify(errorBody),
             duration,
           });
         }
 
+        server.log.error({ error }, 'Proxy error');
         return reply.code(500).send({
           error: 'Internal server error',
           message: error instanceof Error ? error.message : 'Unknown error',
@@ -119,6 +148,13 @@ export async function proxyRoutes(server: FastifyInstance) {
         });
       }
 
+      // Validate URL format
+      if (!isValidUrl(url)) {
+        return reply.code(400).send({
+          error: 'Invalid URL format',
+        });
+      }
+
       // Get active environment and substitute variables
       const activeEnvironment = getActiveEnvironment();
       const substituted = substituteInRequest({ url, headers, body }, activeEnvironment);
@@ -133,7 +169,7 @@ export async function proxyRoutes(server: FastifyInstance) {
         };
 
         // Add body for methods that support it
-        if (['POST', 'PUT', 'PATCH'].includes(method.toUpperCase()) && substituted.body) {
+        if (methodSupportsBody(method) && substituted.body) {
           fetchOptions.body = substituted.body;
         }
 
@@ -181,25 +217,28 @@ export async function proxyRoutes(server: FastifyInstance) {
         }
 
       } catch (error) {
-        server.log.error(error);
+        server.log.error({ error }, 'Streaming proxy error');
         if (!reply.raw.headersSent) {
           reply.code(500).send({
             error: 'Internal server error',
             message: error instanceof Error ? error.message : 'Unknown error',
           });
+        } else {
+          // If headers already sent, destroy the connection
+          reply.raw.destroy();
         }
       }
     }
   );
 
   // Get request history
-  server.get('/history', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/history', async (_request: FastifyRequest, reply: FastifyReply) => {
     const history = getHistory();
     return reply.code(200).send(history);
   });
 
   // Clear request history
-  server.delete('/history', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.delete('/history', async (_request: FastifyRequest, reply: FastifyReply) => {
     clearHistory();
     return reply.code(200).send({ message: 'History cleared' });
   });

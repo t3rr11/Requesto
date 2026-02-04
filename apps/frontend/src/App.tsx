@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+import { HashRouter, Routes, Route, Navigate } from 'react-router';
 import { Header } from './components/Header';
 import { AlertDialog } from './components/AlertDialog';
 import { useAlertStore } from './store/useAlertStore';
@@ -20,10 +20,10 @@ function App() {
   useEffect(() => {
     loadCollections();
     loadEnvironments();
-  }, []);
+  }, [loadCollections, loadEnvironments]);
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
         <Header />
         
@@ -45,7 +45,7 @@ function App() {
           variant={alertVariant}
         />
       </div>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

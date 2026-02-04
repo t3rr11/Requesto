@@ -8,14 +8,35 @@ import { sseTestRoutes } from './routes/sse-test';
 import { oauthRoutes } from './routes/oauth';
 
 const server = Fastify({
-  logger: true,
+  logger: {
+    level: process.env.LOG_LEVEL || 'info',
+  },
+  requestIdHeader: 'x-request-id',
+  disableRequestLogging: false,
 });
 
 async function start() {
   try {
-    // Register CORS
+    // Register CORS with specific configuration
     await server.register(cors, {
-      origin: true,
+      origin: (origin, callback) => {
+        // Allow all localhost origins and Electron
+        const allowedOrigins = [
+          'http://localhost:5173',
+          'http://localhost:4000',
+          /^file:\/\//,
+        ];
+        
+        if (!origin || allowedOrigins.some(allowed => 
+          typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+        )) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'), false);
+        }
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     });
 
     // Register routes
@@ -52,6 +73,17 @@ async function start() {
 
     await server.listen({ port, host });
     console.log(`Server listening on http://${host}:${port}`);
+    
+    // Graceful shutdown
+    const signals = ['SIGINT', 'SIGTERM'] as const;
+    signals.forEach(signal => {
+      process.on(signal, async () => {
+        console.log(`${signal} received, closing server...`);
+        await server.close();
+        console.log('Server closed');
+        process.exit(0);
+      });
+    });
   } catch (err) {
     server.log.error(err);
     process.exit(1);

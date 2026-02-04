@@ -1,14 +1,14 @@
 version: '3.8'
 
 services:
-  localman:
+  requesto:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "4000:4000"
     volumes:
-      - localman-data:/app/data
+      - requesto-data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=4000
@@ -16,4 +16,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  localman-data:
+  requesto-data:

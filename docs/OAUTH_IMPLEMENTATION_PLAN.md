@@ -1,4 +1,4 @@
-# OAuth Implementation Plan for Localman
+# OAuth Implementation Plan for Requesto
 
 **Created:** February 3, 2026  
 **Last Updated:** February 4, 2026  
@@ -20,7 +20,7 @@
 
 ## Overview
 
-This document outlines a comprehensive plan to implement OAuth 2.0 authentication in Localman, an API testing tool. The implementation prioritizes security by handling OAuth flows entirely client-side while only storing non-sensitive configuration data on the server.
+This document outlines a comprehensive plan to implement OAuth 2.0 authentication in Requesto, an API testing tool. The implementation prioritizes security by handling OAuth flows entirely client-side while only storing non-sensitive configuration data on the server.
 
 ### Key Principles
 - **Client-side flow execution**: All OAuth flows execute in the browser
@@ -82,7 +82,7 @@ This document outlines a comprehensive plan to implement OAuth 2.0 authenticatio
 - **NFR1.3**: Nonce parameter for OpenID Connect
 - **NFR1.4**: No sensitive data logged
 - **NFR1.5**: Client secrets only stored server-side (never in browser)
-- **NFR1.6**: Access tokens never sent to Localman backend
+- **NFR1.6**: Access tokens never sent to Requesto backend
 
 #### NFR2: Performance
 - **NFR2.1**: OAuth flow completion within 30 seconds
@@ -110,7 +110,7 @@ This document outlines a comprehensive plan to implement OAuth 2.0 authenticatio
 **Use Case**: SPAs and public clients (our primary use case)
 
 **Flow Steps**:
-1. User initiates OAuth in Localman
+1. User initiates OAuth in Requesto
 2. Generate `code_verifier` (random string) and `code_challenge` (SHA256 hash)
 3. Redirect/popup to authorization endpoint with:
    - `response_type=code`
@@ -235,7 +235,7 @@ This document outlines a comprehensive plan to implement OAuth 2.0 authenticatio
 4. Poll token endpoint until authorization complete
 5. Receive access token
 
-**Use Case for Localman**: Could be useful for CI/CD scenarios or headless testing
+**Use Case for Requesto**: Could be useful for CI/CD scenarios or headless testing
 
 ---
 
@@ -282,7 +282,7 @@ Backend (Fastify)
 
 ```
 ┌─────────────┐                                    ┌──────────────┐
-│   Browser   │                                    │   Localman   │
+│   Browser   │                                    │   Requesto   │
 │  (Frontend) │                                    │   Backend    │
 └──────┬──────┘                                    └───────┬──────┘
        │                                                   │
@@ -335,7 +335,7 @@ Backend (Fastify)
 
 ```
 ┌─────────────┐                                    ┌──────────────┐
-│   Browser   │                                    │   Localman   │
+│   Browser   │                                    │   Requesto   │
 │  (Frontend) │                                    │   Backend    │
 └──────┬──────┘                                    └───────┬──────┘
        │                                                   │
@@ -432,7 +432,7 @@ Implement all three with user preference selection. Default to **sessionStorage*
 
 ## Redirect URI Handling
 
-This is critical for Localman's multi-environment support.
+This is critical for Requesto's multi-environment support.
 
 ### Challenge
 - **Local Development**: `http://localhost:5173`
@@ -1031,3 +1031,4 @@ Active Development - Phases 1 & 2 Complete, Phase 3 In Progress
 
 **Document Status**: Ready for Review  
 **Last Updated**: February 3, 2026
+

@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-Localman
+Requesto
 
 ### Working Description
 
@@ -422,7 +422,7 @@ Create/update environment variables
 
 ## 11. Naming
 
-* Localman
+* Requesto
 
 ---
 
@@ -453,3 +453,4 @@ The project is successful when:
 * Don't use as any unless completely necessary
 * Stop implementation when goals are met but before moving on double check the implementation
 * Treat this as a personal productivity tool first
+

@@ -1,5 +1,6 @@
 import { ProxyRequest, ProxyResponse, StreamingResponse, SSEEvent } from '../../types';
 import { prepareAuthenticatedRequest } from './authRequest';
+import { API_BASE } from './config';
 
 /**
  * Check if the request is likely to be a streaming response (SSE)
@@ -22,7 +23,7 @@ export const sendStreamingRequest = async (
   // Prepare request with authentication (inject OAuth tokens if needed)
   const authenticatedRequest = prepareAuthenticatedRequest(request);
 
-  const response = await fetch('/api/proxy/stream', {
+  const response = await fetch(`${API_BASE}/proxy/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -138,7 +139,7 @@ export const sendRequest = async (request: ProxyRequest): Promise<ProxyResponse 
   // Prepare request with authentication (inject OAuth tokens if needed)
   const authenticatedRequest = prepareAuthenticatedRequest(request);
 
-  const response = await fetch('/api/proxy/request', {
+  const response = await fetch(`${API_BASE}/proxy/request`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

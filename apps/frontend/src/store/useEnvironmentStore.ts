@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { API_BASE } from '../helpers/api/config';
 
 export interface EnvironmentVariable {
   key: string;
@@ -41,7 +42,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   loadEnvironments: async () => {
     try {
-      const res = await fetch('/api/environments');
+      const res = await fetch(`${API_BASE}/environments`);
       if (res.ok) {
         const data = await res.json();
         set({ environmentsData: data });
@@ -53,7 +54,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   setActiveEnvironment: async (id: string) => {
     try {
-      const res = await fetch('/api/environments/active', {
+      const res = await fetch(`${API_BASE}/environments/active`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
@@ -70,7 +71,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   saveEnvironment: async (environment: Environment) => {
     try {
-      const res = await fetch('/api/environments', {
+      const res = await fetch(`${API_BASE}/environments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(environment),
@@ -104,7 +105,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   deleteEnvironment: async (id: string) => {
     try {
-      const res = await fetch(`/api/environments/${id}`, {
+      const res = await fetch(`${API_BASE}/environments/${id}`, {
         method: 'DELETE',
       });
 

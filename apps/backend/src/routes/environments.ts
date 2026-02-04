@@ -9,7 +9,7 @@ import {
 
 export default async function environmentRoutes(fastify: FastifyInstance) {
   // Get all environments
-  fastify.get('/environments', async (request, reply) => {
+  fastify.get('/environments', async () => {
     const data = getEnvironments();
     return data;
   });

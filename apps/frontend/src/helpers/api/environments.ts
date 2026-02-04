@@ -1,10 +1,11 @@
 import { EnvironmentsData, Environment } from '../../store/types';
+import { API_BASE } from './config';
 
 /**
  * Get all environments
  */
 export const getEnvironments = async (): Promise<EnvironmentsData> => {
-  const response = await fetch('/api/environments');
+  const response = await fetch(`${API_BASE}/environments`);
   
   if (!response.ok) {
     throw new Error('Failed to fetch environments');
@@ -17,7 +18,7 @@ export const getEnvironments = async (): Promise<EnvironmentsData> => {
  * Save (create or update) an environment
  */
 export const saveEnvironment = async (environment: Environment): Promise<void> => {
-  const response = await fetch('/api/environments', {
+  const response = await fetch(`${API_BASE}/environments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -34,7 +35,7 @@ export const saveEnvironment = async (environment: Environment): Promise<void> =
  * Delete an environment
  */
 export const deleteEnvironment = async (id: string): Promise<void> => {
-  const response = await fetch(`/api/environments/${id}`, {
+  const response = await fetch(`${API_BASE}/environments/${id}`, {
     method: 'DELETE',
   });
 
@@ -47,7 +48,7 @@ export const deleteEnvironment = async (id: string): Promise<void> => {
  * Set the active environment
  */
 export const setActiveEnvironment = async (id: string): Promise<void> => {
-  const response = await fetch('/api/environments/active', {
+  const response = await fetch(`${API_BASE}/environments/active`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

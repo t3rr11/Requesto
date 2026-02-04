@@ -7,6 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { retrieveOAuthState } from '../helpers/oauth/stateHelper';
 import { useOAuthStore } from '../store/useOAuthStore';
+import { API_BASE } from '../helpers/api/config';
 
 export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -106,7 +107,7 @@ export function OAuthCallback() {
         console.log('[OAuth Callback] Exchanging code for tokens...');
         
         try {
-          const response = await fetch('/api/oauth/token', {
+          const response = await fetch(`${API_BASE}/oauth/token`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

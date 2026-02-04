@@ -1,7 +1,7 @@
 {
-  "name": "localman-backend",
+  "name": "requesto-backend",
   "version": "0.1.0",
-  "description": "Backend API proxy for Localman",
+  "description": "Backend API proxy for Requesto",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

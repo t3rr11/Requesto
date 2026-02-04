@@ -23,7 +23,7 @@ import {
 export async function oauthRoutes(server: FastifyInstance) {
   
   // Get all OAuth configurations (without secrets)
-  server.get('/oauth/configs', async (request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/oauth/configs', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const configs = getAllConfigs();
       return reply.code(200).send(configs);
@@ -210,7 +210,7 @@ export async function oauthRoutes(server: FastifyInstance) {
         };
         
         if (config.provider === 'github') {
-          headers['User-Agent'] = 'Localman-OAuth-Client';
+          headers['User-Agent'] = 'Requesto-OAuth-Client';
         }
         
         // Exchange code for token
@@ -293,7 +293,7 @@ export async function oauthRoutes(server: FastifyInstance) {
         };
         
         if (config.provider === 'github') {
-          headers['User-Agent'] = 'Localman-OAuth-Client';
+          headers['User-Agent'] = 'Requesto-OAuth-Client';
         }
         
         // Refresh token
@@ -381,7 +381,7 @@ export async function oauthRoutes(server: FastifyInstance) {
         };
         
         if (config.provider === 'github') {
-          headers['User-Agent'] = 'Localman-OAuth-Client';
+          headers['User-Agent'] = 'Requesto-OAuth-Client';
         }
         
         // Revoke token
@@ -480,7 +480,7 @@ export async function oauthRoutes(server: FastifyInstance) {
         };
         
         if (config.provider === 'github') {
-          headers['User-Agent'] = 'Localman-OAuth-Client';
+          headers['User-Agent'] = 'Requesto-OAuth-Client';
         }
         
         // Request token
@@ -567,7 +567,7 @@ export async function oauthRoutes(server: FastifyInstance) {
         };
         
         if (config.provider === 'github') {
-          headers['User-Agent'] = 'Localman-OAuth-Client';
+          headers['User-Agent'] = 'Requesto-OAuth-Client';
         }
         
         // Request token

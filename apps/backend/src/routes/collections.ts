@@ -4,13 +4,13 @@ import { AuthConfig } from '../types';
 
 const collectionsRoutes: FastifyPluginAsync = async (server) => {
   // Get all collections
-  server.get('/collections', async (request, reply) => {
+  server.get('/collections', async (_request, reply) => {
     try {
       const collections = await collectionsDb.getAll();
       return collections;
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to fetch collections' });
+      return reply.code(500).send({ error: 'Failed to fetch collections' });
     }
   });
 
@@ -24,7 +24,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return collection;
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to fetch collection' });
+      return reply.code(500).send({ error: 'Failed to fetch collection' });
     }
   });
 
@@ -56,7 +56,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return reply.code(201).send(collection);
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to create collection' });
+      return reply.code(500).send({ error: 'Failed to create collection' });
     }
   });
 
@@ -79,7 +79,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return collection;
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to update collection' });
+      return reply.code(500).send({ error: 'Failed to update collection' });
     }
   });
 
@@ -95,7 +95,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return { success: true };
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to delete collection' });
+      return reply.code(500).send({ error: 'Failed to delete collection' });
     }
   });
 
@@ -174,7 +174,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return savedRequest;
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to update request' });
+      return reply.code(500).send({ error: 'Failed to update request' });
     }
   });
 
@@ -195,7 +195,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return { success: true };
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to delete request' });
+      return reply.code(500).send({ error: 'Failed to delete request' });
     }
   });
 
@@ -234,7 +234,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return reply.code(201).send(savedFolder);
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to add folder to collection' });
+      return reply.code(500).send({ error: 'Failed to add folder to collection' });
     }
   });
 
@@ -261,7 +261,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return savedFolder;
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to update folder' });
+      return reply.code(500).send({ error: 'Failed to update folder' });
     }
   });
 
@@ -282,7 +282,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return { success: true };
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to delete folder' });
+      return reply.code(500).send({ error: 'Failed to delete folder' });
     }
   });
 
@@ -354,7 +354,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return savedRequest;
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to move request' });
+      return reply.code(500).send({ error: 'Failed to move request' });
     }
   });
 
@@ -449,7 +449,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return savedFolder;
     } catch (error) {
       server.log.error(error);
-      reply.code(500).send({ error: 'Failed to move folder' });
+      return reply.code(500).send({ error: 'Failed to move folder' });
     }
   });
 };

@@ -1,7 +1,6 @@
 import { Collection, SavedRequest, Folder } from '../../store/types';
 import { AuthConfig } from '../../types';
-
-const API_BASE = '/api';
+import { API_BASE } from './config';
 
 export const collectionsApi = {
   // Get all collections
