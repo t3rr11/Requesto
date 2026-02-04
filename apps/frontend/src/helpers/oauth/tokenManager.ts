@@ -144,6 +144,24 @@ export function isTokenExpired(tokens: OAuthTokens | null, thresholdSeconds: num
 }
 
 /**
+ * Check if the access token is expiring soon and should be refreshed
+ * 
+ * @param tokens - The tokens to check
+ * @param thresholdSeconds - Seconds before expiry to trigger refresh (default: 300 = 5 minutes)
+ * @returns True if token should be refreshed
+ */
+export function isTokenExpiringSoon(tokens: OAuthTokens | null, thresholdSeconds: number = 300): boolean {
+  if (!tokens || !tokens.expiresAt) {
+    return false; // Can't determine, don't refresh
+  }
+
+  const now = Date.now();
+  const refreshThreshold = tokens.expiresAt - (thresholdSeconds * 1000);
+
+  return now >= refreshThreshold;
+}
+
+/**
  * Get time until token expires (in seconds)
  * 
  * @param tokens - The tokens to check

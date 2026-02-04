@@ -4,12 +4,14 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Key, RefreshCw, LogOut, Settings, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Key, RefreshCw, LogOut, Settings, AlertCircle, CheckCircle, Clock, AlertTriangle, Trash2 } from 'lucide-react';
 import { OAuthConfig, OAuthAuth } from '../types';
 import { useOAuthStore } from '../store/useOAuthStore';
 import { useOAuthFlow } from '../hooks/useOAuthFlow';
+import { useTokenRefresh } from '../hooks/useTokenRefresh';
 import { OAuthConfigForm } from '../forms/OAuthConfigForm';
-import { formatTimeUntilExpiry } from '../helpers/oauth/tokenManager';
+import { formatTimeUntilExpiry, getTimeUntilExpiry } from '../helpers/oauth/tokenManager';
+import { revokeOAuthToken } from '../helpers/oauth/oauthFlowHandler';
 
 interface OAuthEditorProps {
   auth: OAuthAuth | undefined;
@@ -34,6 +36,18 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
   } = useOAuthStore();
   
   const { authenticate, refresh, isAuthenticating, error, clearError } = useOAuthFlow(selectedConfigId);
+  
+  // Enable automatic token refresh for the selected config
+  useTokenRefresh({
+    configId: selectedConfigId,
+    enabled: !!selectedConfigId,
+    onRefresh: (configId) => {
+      console.log(`[OAuth] Token auto-refreshed for config: ${configId}`);
+    },
+    onRefreshError: (configId, error) => {
+      console.error(`[OAuth] Auto-refresh failed for config ${configId}:`, error.message);
+    },
+  });
 
   // Load configs on mount
   useEffect(() => {
@@ -121,6 +135,36 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
     clearError();
   };
 
+  const handleRevoke = async () => {
+    if (!selectedConfigId || !tokens) return;
+    
+    const config = configs.find(c => c.id === selectedConfigId);
+    if (!config || !config.revocationUrl) {
+      // Provider doesn't support revocation, just clear tokens locally
+      clearTokens(selectedConfigId);
+      clearError();
+      return;
+    }
+    
+    try {
+      // Revoke the access token
+      await revokeOAuthToken(selectedConfigId, tokens.accessToken, 'access_token');
+      
+      // If there's a refresh token, revoke it too
+      if (tokens.refreshToken) {
+        await revokeOAuthToken(selectedConfigId, tokens.refreshToken, 'refresh_token');
+      }
+      
+      // Clear tokens locally after successful revocation
+      clearTokens(selectedConfigId);
+      clearError();
+    } catch (error) {
+      console.error('Failed to revoke token:', error);
+      // Still clear tokens locally even if revocation fails
+      clearTokens(selectedConfigId);
+    }
+  };
+
   const handleDeleteConfig = async (configId: string) => {
     await deleteConfig(configId);
     if (selectedConfigId === configId) {
@@ -147,6 +191,22 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
   const expiresIn = selectedConfigId ? tokenState[selectedConfigId]?.expiresIn : null;
   const isAuthenticated = !!tokens && !isExpired;
   const hasRefreshToken = !!tokens?.refreshToken;
+  
+  /**
+   * Get token status for visual indicators
+   * @returns 'good' | 'warning' | 'expired' | 'none'
+   */
+  const getTokenStatus = (): 'good' | 'warning' | 'expired' | 'none' => {
+    if (!tokens) return 'none';
+    
+    const secondsUntilExpiry = getTimeUntilExpiry(tokens);
+    if (secondsUntilExpiry === null) return 'good'; // No expiry info
+    if (secondsUntilExpiry <= 0) return 'expired';
+    if (secondsUntilExpiry <= 300) return 'warning'; // Less than 5 minutes
+    return 'good';
+  };
+  
+  const tokenStatus = getTokenStatus();
 
   return (
     <div className="space-y-4">
@@ -245,28 +305,68 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
           <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
             {isAuthenticated ? (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 text-sm">
-                  <CheckCircle size={16} />
-                  <span className="font-medium">Authenticated</span>
+                {/* Status indicator with color coding */}
+                <div className={`flex items-center gap-2 text-sm ${
+                  tokenStatus === 'good' ? 'text-green-600 dark:text-green-400' :
+                  tokenStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-red-600 dark:text-red-400'
+                }`}>
+                  {tokenStatus === 'good' && <CheckCircle size={16} />}
+                  {tokenStatus === 'warning' && <AlertTriangle size={16} />}
+                  {tokenStatus === 'expired' && <AlertCircle size={16} />}
+                  <span className="font-medium">
+                    {tokenStatus === 'good' && 'Authenticated'}
+                    {tokenStatus === 'warning' && 'Token Expiring Soon'}
+                    {tokenStatus === 'expired' && 'Token Expired'}
+                  </span>
                 </div>
                 
+                {/* Expiry countdown */}
                 {expiresIn !== null && (
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-xs">
+                  <div className={`flex items-center gap-2 text-xs ${
+                    tokenStatus === 'good' ? 'text-gray-600 dark:text-gray-400' :
+                    tokenStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                    'text-red-600 dark:text-red-400'
+                  }`}>
                     <Clock size={14} />
-                    <span>Expires {formatTimeUntilExpiry(tokens!)}</span>
+                    <span>
+                      {tokenStatus === 'expired' ? 'Expired' : `Expires in ${formatTimeUntilExpiry(tokens!)}`}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Auto-refresh indicator */}
+                {selectedConfig.autoRefreshToken && hasRefreshToken && (
+                  <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
+                    <RefreshCw size={14} />
+                    <span>Auto-refresh enabled (threshold: {selectedConfig.tokenRefreshThreshold || 300}s)</span>
                   </div>
                 )}
                 
                 <div className="flex gap-2 mt-3">
-                  {hasRefreshToken && selectedConfig.autoRefreshToken && (
+                  {hasRefreshToken && (
                     <button
                       type="button"
                       onClick={handleRefresh}
                       disabled={disabled || isAuthenticating}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs transition-colors disabled:opacity-50"
+                      title="Manually refresh the access token"
                     >
                       <RefreshCw size={14} />
                       Refresh Token
+                    </button>
+                  )}
+                  
+                  {selectedConfig.revocationUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRevoke}
+                      disabled={disabled || isAuthenticating}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-xs transition-colors disabled:opacity-50"
+                      title="Revoke token on provider and clear locally"
+                    >
+                      <Trash2 size={14} />
+                      Revoke
                     </button>
                   )}
                   
@@ -275,9 +375,10 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
                     onClick={handleLogout}
                     disabled={disabled || isAuthenticating}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs transition-colors"
+                    title="Clear stored tokens (local only)"
                   >
                     <LogOut size={14} />
-                    Clear Token
+                    Clear
                   </button>
                 </div>
               </div>

@@ -281,3 +281,29 @@ export async function refreshOAuthToken(
   
   return tokens;
 }
+
+/**
+ * Revoke OAuth token
+ */
+export async function revokeOAuthToken(
+  configId: string,
+  token: string,
+  tokenTypeHint?: 'access_token' | 'refresh_token'
+): Promise<void> {
+  const response = await fetch('/api/oauth/revoke', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      configId,
+      token,
+      tokenTypeHint,
+    }),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to revoke token');
+  }
+}

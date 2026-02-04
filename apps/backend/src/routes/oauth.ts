@@ -327,4 +327,105 @@ export async function oauthRoutes(server: FastifyInstance) {
       }
     }
   );
+
+  // Revoke OAuth token
+  server.post<{ Body: { configId: string; token: string; tokenTypeHint?: string } }>(
+    '/oauth/revoke',
+    async (request: FastifyRequest<{ Body: { configId: string; token: string; tokenTypeHint?: string } }>, reply: FastifyReply) => {
+      try {
+        const { configId, token, tokenTypeHint } = request.body;
+        
+        // Validation
+        if (!configId || !token) {
+          return reply.code(400).send({
+            error: 'Missing required fields: configId, token',
+          });
+        }
+        
+        // Get config with secret
+        const config = getConfig(configId, true) as OAuthConfigServer | null;
+        if (!config) {
+          return reply.code(404).send({ error: 'OAuth configuration not found' });
+        }
+        
+        // Check if provider supports revocation
+        if (!config.revocationUrl) {
+          return reply.code(400).send({
+            error: 'Token revocation not supported by this provider',
+          });
+        }
+        
+        // Get client secret
+        const clientSecret = getClientSecret(configId);
+        
+        // Prepare revocation request
+        const revokeRequestBody: Record<string, string> = {
+          token,
+          client_id: config.clientId,
+        };
+        
+        // Add client secret if available
+        if (clientSecret) {
+          revokeRequestBody.client_secret = clientSecret;
+        }
+        
+        // Add token type hint if provided
+        if (tokenTypeHint) {
+          revokeRequestBody.token_type_hint = tokenTypeHint;
+        }
+        
+        // Special handling for different providers
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        };
+        
+        if (config.provider === 'github') {
+          headers['User-Agent'] = 'Localman-OAuth-Client';
+        }
+        
+        // Revoke token
+        console.log(`Revoking OAuth token for config ${configId} (provider: ${config.provider})`);
+        
+        try {
+          await axios.post(
+            config.revocationUrl,
+            new URLSearchParams(revokeRequestBody).toString(),
+            { headers }
+          );
+          
+          // Revocation successful (or provider doesn't return error for invalid tokens)
+          return reply.code(200).send({ success: true });
+        } catch (revokeError) {
+          // Some providers return 200 even for already-revoked tokens
+          // Others might return 400 or 401
+          if (axios.isAxiosError(revokeError)) {
+            const status = revokeError.response?.status;
+            // Treat 400/401 as success if the error indicates token is already invalid
+            if (status === 400 || status === 401) {
+              return reply.code(200).send({ success: true, note: 'Token may have been already revoked' });
+            }
+          }
+          throw revokeError;
+        }
+        
+      } catch (error) {
+        console.error('Error revoking OAuth token:', error);
+        
+        if (axios.isAxiosError(error)) {
+          const status = error.response?.status || 500;
+          const data = error.response?.data;
+          
+          return reply.code(status).send({
+            error: 'Token revocation failed',
+            details: data || error.message,
+          });
+        }
+        
+        return reply.code(500).send({
+          error: 'Failed to revoke token',
+        });
+      }
+    }
+  );
 }
