@@ -93,6 +93,9 @@ npm run docker:down            # Stop docker-compose
 - **[Project Plan](docs/PROJECT_PLAN.md)** - Technical roadmap and architecture
 - **[Security](SECURITY.md)** - Security policy and vulnerability reporting
 
+## Disclosure
+AI was used to assist development.
+
 ## License
 
 MIT
