@@ -2,9 +2,9 @@
 
 A modern, lightweight API client (Postman alternative) available as both a desktop application and self-hosted web service. Test HTTP APIs with a beautiful interface, environment variables, OAuth 2.0 support, and complete offline capability.
 
-| Dark Mode | Light Mode |
+| Light Mode | Dark Mode |
 |-----------|------------|
-| ![Requesto Dark Mode](images/example-dark.png) | ![Requesto Light Mode](images/example-light.png) |
+| ![Requesto Light Mode](images/example-light.png) | ![Requesto Dark Mode](images/example-dark.png) | 
 
 ## Features
 
