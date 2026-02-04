@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Globe } from 'lucide-react';
+import { Plus, Globe, Settings } from 'lucide-react';
 import { Environment, useEnvironmentStore } from '../store/useEnvironmentStore';
 import { useAlertStore } from '../store/useAlertStore';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -238,7 +238,10 @@ export const EnvironmentsPage = () => {
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-3">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Environments</h1>
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-blue-500" />
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Environments</h1>
+              </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Manage variables across different environments</p>
             </div>
 

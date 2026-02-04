@@ -12,6 +12,7 @@ import { useAlertStore } from '../store/useAlertStore';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { OAuthConfigForm } from '../forms/OAuthConfigForm';
+import { OAuthConfigList } from '../components/OAuthConfigList';
 
 export const OAuthPage = () => {
   const navigate = useNavigate();
@@ -130,55 +131,12 @@ export const OAuthPage = () => {
         {/* Main Content */}
         <div className="flex-1 overflow-hidden flex min-h-0">
           {/* OAuth Config List */}
-          <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto">
-              {isLoadingConfigs ? (
-                <div className="flex items-center justify-center h-32">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Loading...</div>
-                </div>
-              ) : configs.length === 0 ? (
-                <div className="p-6 text-center">
-                  <Shield className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No OAuth configurations yet</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    Click "New Configuration" to get started
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {configs.map(config => (
-                    <button
-                      key={config.id}
-                      onClick={() => setSelectedConfigId(config.id)}
-                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
-                        selectedConfigId === config.id
-                          ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500'
-                          : 'border-l-4 border-transparent'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {config.name}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {config.provider === 'custom' ? 'Custom Provider' : config.provider}
-                          </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            {config.flowType === 'authorization-code-pkce' ? 'Auth Code (PKCE)' : 
-                             config.flowType === 'authorization-code' ? 'Auth Code' :
-                             config.flowType === 'client-credentials' ? 'Client Credentials' :
-                             config.flowType === 'implicit' ? 'Implicit' : 
-                             config.flowType === 'password' ? 'Password' : config.flowType}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <OAuthConfigList
+            configs={configs}
+            selectedConfigId={selectedConfigId}
+            isLoadingConfigs={isLoadingConfigs}
+            onConfigSelect={(config) => setSelectedConfigId(config.id)}
+          />
 
           {/* OAuth Config Details */}
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">

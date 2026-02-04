@@ -244,7 +244,7 @@ export const CollectionsSidebar = () => {
   return (
     <div
       ref={sidebarRef}
-      className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full relative dark:border-t dark:border-t-gray-700"
+      className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full relative"
       style={{ width: `${sidebarWidth}px` }}
     >
       {/* Header */}
