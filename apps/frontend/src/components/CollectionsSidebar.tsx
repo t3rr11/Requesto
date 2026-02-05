@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Folder as FolderIcon, FolderPlus, Plus } from 'lucide-react';
-import { useUIStore } from '../store/useUIStore';
-import { useCollectionsStore, SavedRequest } from '../store/useCollectionsStore';
-import { useTabsStore } from '../store/useTabsStore';
+import { useUIStore } from '../store/ui';
+import { useCollectionsStore } from '../store/collections';
+import { SavedRequest } from '../types';
+import { useTabsStore } from '../store/tabs';
 import { Dialog } from './Dialog';
 import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';

@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Key, RefreshCw, LogOut, Settings, AlertCircle, CheckCircle, Clock, AlertTriangle, Trash2 } from 'lucide-react';
 import { OAuthConfig, OAuthAuth } from '../types';
-import { useOAuthStore } from '../store/useOAuthStore';
+import { useOAuthStore } from '../store/oauth';
 import { useOAuthFlow } from '../hooks/useOAuthFlow';
 import { useTokenRefresh } from '../hooks/useTokenRefresh';
 import { OAuthConfigForm } from '../forms/OAuthConfigForm';

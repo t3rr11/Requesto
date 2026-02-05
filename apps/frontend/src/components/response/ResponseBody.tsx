@@ -1,8 +1,8 @@
 import Editor from '@monaco-editor/react';
 import { formatResponseBody } from '../../helpers/responseHelpers';
-import { useTabsStore } from '../../store/useTabsStore';
+import { useTabsStore } from '../../store/tabs';
 import { ResponseBodyStreaming } from './ResponseBodyStreaming';
-import { useThemeStore } from '../../store/useThemeStore';
+import { useThemeStore } from '../../store/theme';
 
 export function ResponseBody() {
   const { getActiveTab } = useTabsStore();

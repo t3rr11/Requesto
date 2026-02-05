@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import * as actions from './actions';
 
 interface UIState {  
   // Sidebar and console
@@ -42,42 +43,19 @@ export const useUIStore = create<UIState>()(
       expandedFolders: new Set<string>(),
       
       // Actions
-      toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-      setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
-      setSidebarWidth: (width) => set({ sidebarWidth: width }),
-      setRequestPanelWidth: (width) => set({ requestPanelWidth: width }),
+      toggleSidebar: () => actions.toggleSidebar(set),
+      setSidebarOpen: (isOpen) => actions.setSidebarOpen(set, isOpen),
+      setSidebarWidth: (width) => actions.setSidebarWidth(set, width),
+      setRequestPanelWidth: (width) => actions.setRequestPanelWidth(set, width),
       
-      toggleConsole: () => set((state) => ({ isConsoleOpen: !state.isConsoleOpen })),
-      setConsoleOpen: (isOpen) => set({ isConsoleOpen: isOpen }),
-      setConsoleHeight: (height) => set({ consoleHeight: height }),
+      toggleConsole: () => actions.toggleConsole(set),
+      setConsoleOpen: (isOpen) => actions.setConsoleOpen(set, isOpen),
+      setConsoleHeight: (height) => actions.setConsoleHeight(set, height),
       
-      toggleCollection: (id) => set((state) => {
-        const newExpanded = new Set(state.expandedCollections);
-        if (newExpanded.has(id)) {
-          newExpanded.delete(id);
-        } else {
-          newExpanded.add(id);
-        }
-        return { expandedCollections: newExpanded };
-      }),
-      
-      toggleFolder: (id) => set((state) => {
-        const newExpanded = new Set(state.expandedFolders);
-        if (newExpanded.has(id)) {
-          newExpanded.delete(id);
-        } else {
-          newExpanded.add(id);
-        }
-        return { expandedFolders: newExpanded };
-      }),
-      
-      expandCollection: (id) => set((state) => ({
-        expandedCollections: new Set(state.expandedCollections).add(id),
-      })),
-      
-      expandFolder: (id) => set((state) => ({
-        expandedFolders: new Set(state.expandedFolders).add(id),
-      })),
+      toggleCollection: (id) => actions.toggleCollection(set, id),
+      toggleFolder: (id) => actions.toggleFolder(set, id),
+      expandCollection: (id) => actions.expandCollection(set, id),
+      expandFolder: (id) => actions.expandFolder(set, id),
     }),
     {
       name: 'requesto-ui-storage',

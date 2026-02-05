@@ -190,3 +190,87 @@ export interface Tab {
   createdAt: number;
   lastAccessedAt: number;
 }
+
+// Environment types
+
+export interface Environment {
+  id: string;
+  name: string;
+  variables: EnvironmentVariable[];
+}
+
+export interface EnvironmentVariable {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
+export interface EnvironmentsData {
+  activeEnvironmentId: string | null;
+  environments: Environment[];
+}
+
+// History types
+
+export interface HistoryItem {
+  id: string;
+  method: string;
+  url: string;
+  status: number;
+  duration: number;
+  timestamp: number;
+  headers?: Record<string, string>;
+  body?: string;
+}
+
+// Collections types
+
+export interface SavedRequest {
+  id: string;
+  name: string;
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  auth?: AuthConfig;
+  collectionId: string;
+  folderId?: string;
+  order?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  parentId?: string; // Optional parent folder ID for nesting
+  collectionId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  folders: Folder[];
+  requests: SavedRequest[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Console log types (for request debugging)
+
+export interface ConsoleLog {
+  id: string;
+  timestamp: number;
+  type: 'request' | 'response' | 'error' | 'info';
+  method?: string;
+  url?: string;
+  status?: number;
+  duration?: number;
+  message?: string;
+  // Full request/response data for detailed view
+  requestData?: ProxyRequest;
+  responseData?: ProxyResponse | StreamingResponse;
+}

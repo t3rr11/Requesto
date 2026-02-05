@@ -7,7 +7,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { retrieveOAuthState } from '../helpers/oauth/stateHelper';
-import { useOAuthStore } from '../store/useOAuthStore';
+import { useOAuthStore } from '../store/oauth';
 import { API_BASE } from '../helpers/api/config';
 import { Button } from './Button';
 
@@ -32,29 +32,44 @@ export function OAuthCallback() {
   const handleCallback = async () => {
     try {
       // Parse callback parameters from URL
-      const params = new URLSearchParams(window.location.search);
-      const hash = new URLSearchParams(window.location.hash.substring(1));
+      // With HashRouter, params can be in the hash portion: /#/oauth/callback?code=xxx
+      // We need to extract query params from the hash, not from window.location.search
+      const fullHash = window.location.hash; // e.g., "#/oauth/callback?code=xxx&state=yyy"
+      const hashParts = fullHash.split('?');
+      const hashQuery = hashParts[1] || ''; // "code=xxx&state=yyy"
+      
+      // Parse query params from hash
+      const params = new URLSearchParams(hashQuery);
+      
+      // Also check traditional search params (for non-hash redirects)
+      const searchParams = new URLSearchParams(window.location.search);
+      
+      // For implicit flow, access_token might be in the fragment after the hash path
+      const fragmentAfterPath = hashQuery ? new URLSearchParams(hashQuery) : new URLSearchParams();
 
       // Check for errors from OAuth provider
-      const error = params.get('error') || hash.get('error');
+      const error = params.get('error') || searchParams.get('error') || fragmentAfterPath.get('error');
       if (error) {
-        const errorDescription = params.get('error_description') || hash.get('error_description') || error;
+        const errorDescription = params.get('error_description') || searchParams.get('error_description') || fragmentAfterPath.get('error_description') || error;
         handleError(`OAuth error: ${errorDescription}`);
         return;
       }
 
       // Get authorization code (for authorization code flow)
-      const code = params.get('code');
+      const code = params.get('code') || searchParams.get('code');
       
       // Get access token (for implicit flow)
-      const accessToken = hash.get('access_token');
+      const accessToken = fragmentAfterPath.get('access_token');
       
       // Get state parameter
-      const stateParam = params.get('state') || hash.get('state');
+      const stateParam = params.get('state') || searchParams.get('state') || fragmentAfterPath.get('state');
       console.log('[OAuth Callback] State param from URL:', stateParam?.substring(0, 10) + '...');
       
       if (!stateParam) {
         console.error('[OAuth Callback] No state parameter in URL');
+        console.error('[OAuth Callback] Full hash:', fullHash);
+        console.error('[OAuth Callback] Hash query:', hashQuery);
+        console.error('[OAuth Callback] Search params:', window.location.search);
         handleError('Missing state parameter - possible CSRF attack');
         return;
       }
@@ -133,10 +148,10 @@ export function OAuthCallback() {
       }
       // Handle implicit flow
       else if (accessToken) {
-        const tokenType = hash.get('token_type') || 'Bearer';
-        const expiresIn = hash.get('expires_in');
-        const scope = hash.get('scope');
-        const idToken = hash.get('id_token');
+        const tokenType = fragmentAfterPath.get('token_type') || 'Bearer';
+        const expiresIn = fragmentAfterPath.get('expires_in');
+        const scope = fragmentAfterPath.get('scope');
+        const idToken = fragmentAfterPath.get('id_token');
 
         tokens = {
           access_token: accessToken,

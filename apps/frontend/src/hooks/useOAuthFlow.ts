@@ -6,7 +6,7 @@
 import { useState, useCallback } from 'react';
 import { OAuthConfig } from '../types';
 import { startOAuthFlow, refreshOAuthToken } from '../helpers/oauth/oauthFlowHandler';
-import { useOAuthStore } from '../store/useOAuthStore';
+import { useOAuthStore } from '../store/oauth';
 
 export interface UseOAuthFlowResult {
   isAuthenticating: boolean;

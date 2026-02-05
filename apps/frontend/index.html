@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Requesto - API Client</title>
+    <script>
+      // Handle OAuth callback redirects for HashRouter compatibility
+      // When OAuth providers redirect to /oauth/callback?code=..., we need to
+      // redirect to /#/oauth/callback?code=... for HashRouter to handle it
+      (function() {
+        const path = window.location.pathname;
+        const search = window.location.search;
+        const hash = window.location.hash;
+        
+        // Check if this is an OAuth callback without a hash
+        if (path === '/oauth/callback' && !hash) {
+          // Redirect to hash-based route, preserving query params
+          window.location.replace('/#/oauth/callback' + search);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

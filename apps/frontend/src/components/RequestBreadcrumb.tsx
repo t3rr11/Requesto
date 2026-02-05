@@ -1,4 +1,4 @@
-import { useCollectionsStore } from '../store/useCollectionsStore';
+import { useCollectionsStore } from '../store/collections';
 
 interface RequestBreadcrumbProps {
   savedRequestId?: string;

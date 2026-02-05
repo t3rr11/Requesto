@@ -1,9 +1,8 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { collectionsApi } from '../helpers/api/collections';
-import { useCollectionsStore } from '../store/useCollectionsStore';
-import { useTabsStore } from '../store/useTabsStore';
-import { useAlertStore } from '../store/useAlertStore';
+import { useCollectionsStore } from '../store/collections';
+import { useTabsStore } from '../store/tabs';
+import { useAlertStore } from '../store/alert';
 import { AuthConfig } from '../types';
 
 interface SaveRequestFormProps {
@@ -19,7 +18,7 @@ interface SaveRequestFormProps {
 }
 
 export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveRequestFormProps) => {
-  const { collections, loadCollections, setActiveRequest } = useCollectionsStore();
+  const { collections, saveRequest, setActiveRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { markTabAsSaved, updateTabLabel, activeTabId } = useTabsStore();
   const [name, setName] = useState('');
@@ -87,7 +86,7 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
 
     setLoading(true);
     try {
-      const savedRequest = await collectionsApi.addRequest(collectionId, {
+      const savedRequestResult = await saveRequest(collectionId, {
         name: name.trim(),
         method: currentRequest.method,
         url: currentRequest.url,
@@ -96,14 +95,12 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
         auth: currentRequest.auth,
       });
       
-      await loadCollections();
-      
       // Update the UI to reflect this is now a saved request
-      setActiveRequest(savedRequest.id);
+      setActiveRequest(savedRequestResult.id);
       
       // Mark the active tab as saved
       if (activeTabId) {
-        markTabAsSaved(activeTabId, savedRequest.id, collectionId);
+        markTabAsSaved(activeTabId, savedRequestResult.id, collectionId);
         updateTabLabel(activeTabId, name.trim());
       }
       
@@ -112,6 +109,7 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
       onSuccess();
     } catch (err) {
       setError('Failed to save request');
+      showAlert('Error', 'Failed to save request', 'error');
     } finally {
       setLoading(false);
     }

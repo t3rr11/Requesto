@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { useUIStore } from '../store/useUIStore';
-import { useRequestStore, ConsoleLog } from '../store/useRequestStore';
+import { useUIStore } from '../store/ui';
+import { ConsoleLog } from '../types';
+import { useRequestStore } from '../store/request';
 import {
   Terminal,
   X,

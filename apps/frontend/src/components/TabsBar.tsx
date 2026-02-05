@@ -1,4 +1,4 @@
-import { useTabsStore } from '../store/useTabsStore';
+import { useTabsStore } from '../store/tabs';
 import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from './Button';

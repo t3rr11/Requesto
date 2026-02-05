@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useOAuthStore } from '../store/useOAuthStore';
+import { useOAuthStore } from '../store/oauth';
 import { refreshOAuthToken } from '../helpers/oauth/oauthFlowHandler';
 import { isTokenExpiringSoon } from '../helpers/oauth/tokenManager';
 

@@ -3,7 +3,7 @@ import { getStatusBadgeColor, formatBytes } from '../helpers/responseHelpers';
 import { ResponseBody } from './response/ResponseBody';
 import { ResponseHeaders } from './response/ResponseHeaders';
 import { ResponseTests } from './response/ResponseTests';
-import { useTabsStore } from '../store/useTabsStore';
+import { useTabsStore } from '../store/tabs';
 import { Button } from './Button';
 
 type ResponseTab = 'body' | 'headers' | 'test-results';

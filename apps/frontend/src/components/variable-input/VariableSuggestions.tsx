@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { EnvironmentVariable } from '../../store/useEnvironmentStore';
+import { EnvironmentVariable } from '../../types';
 import { Button } from '../Button';
 
 interface VariableSuggestionsProps {

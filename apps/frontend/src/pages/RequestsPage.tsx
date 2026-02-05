@@ -1,5 +1,5 @@
 import RequestResponseView from "../components/RequestResponseView";
-import { useUIStore } from "../store/useUIStore";
+import { useUIStore } from "../store/ui";
 import { EnvironmentSelector } from "../components/EnvironmentSelector";
 import { CollectionsSidebar } from "../components/CollectionsSidebar";
 import { ConsolePanel } from "../components/ConsolePanel";

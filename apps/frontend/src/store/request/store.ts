@@ -1,19 +1,6 @@
 import { create } from 'zustand';
-import { ProxyResponse, ProxyRequest, StreamingResponse } from '../types';
-
-export interface ConsoleLog {
-  id: string;
-  timestamp: number;
-  type: 'request' | 'response' | 'error' | 'info';
-  method?: string;
-  url?: string;
-  status?: number;
-  duration?: number;
-  message?: string;
-  // Full request/response data for detailed view
-  requestData?: ProxyRequest;
-  responseData?: ProxyResponse | StreamingResponse;
-}
+import { ProxyResponse, ProxyRequest, StreamingResponse, ConsoleLog } from '../../types';
+import * as actions from './actions';
 
 interface RequestState {
   // Current request/response state (legacy - kept for backwards compatibility)
@@ -29,6 +16,10 @@ interface RequestState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   
+  sendRequest: (request: ProxyRequest) => Promise<ProxyResponse>;
+  sendStreamingRequest: (request: ProxyRequest, updateCallback: (response: StreamingResponse) => void) => Promise<StreamingResponse>;
+  isStreamingRequest: (request: ProxyRequest) => boolean;
+  
   addConsoleLog: (log: ConsoleLog) => void;
   clearConsoleLogs: () => void;
 }
@@ -40,10 +31,13 @@ export const useRequestStore = create<RequestState>((set) => ({
   consoleLogs: [],
   
   setResponse: (response) => set({ response }),
-  
   setLoading: (loading) => set({ loading }),
-  
   setError: (error) => set({ error }),
+  
+  // Action implementations
+  sendRequest: (request) => actions.sendRequest(request),
+  sendStreamingRequest: (request, updateCallback) => actions.sendStreamingRequest(request, updateCallback),
+  isStreamingRequest: (request) => actions.isStreamingRequest(request),
   
   addConsoleLog: (log) => set((state) => ({
     consoleLogs: [...state.consoleLogs, log],

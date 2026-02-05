@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { useEnvironmentStore } from '../store/environments';
 
 export const EnvironmentSelector = () => {
   const { environmentsData, loadEnvironments, setActiveEnvironment } = useEnvironmentStore();

@@ -1,8 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Button } from '../components/Button';
-import { collectionsApi } from '../helpers/api/collections';
-import { useCollectionsStore } from '../store/useCollectionsStore';
-import { useAlertStore } from '../store/useAlertStore';
+import { useCollectionsStore } from '../store/collections';
+import { useAlertStore } from '../store/alert';
 
 interface NewCollectionFormProps {
   onSuccess: () => void;
@@ -10,7 +9,7 @@ interface NewCollectionFormProps {
 }
 
 export const NewCollectionForm = ({ onSuccess, onCancel }: NewCollectionFormProps) => {
-  const { loadCollections } = useCollectionsStore();
+  const { createCollection } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -28,14 +27,14 @@ export const NewCollectionForm = ({ onSuccess, onCancel }: NewCollectionFormProp
 
     setLoading(true);
     try {
-      await collectionsApi.create({ name: name.trim(), description: description.trim() || undefined });
-      await loadCollections();
+      await createCollection({ name: name.trim(), description: description.trim() || undefined });
       setName('');
       setDescription('');
       showAlert('Success', 'Collection created successfully', 'success');
       onSuccess();
     } catch (err) {
       setError('Failed to create collection');
+      showAlert('Error', 'Failed to create collection', 'error');
     } finally {
       setLoading(false);
     }

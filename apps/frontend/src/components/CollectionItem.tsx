@@ -1,7 +1,8 @@
 import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus } from 'lucide-react';
-import { Collection, SavedRequest, useCollectionsStore } from '../store/useCollectionsStore';
-import { useUIStore } from '../store/useUIStore';
-import { useTabsStore } from '../store/useTabsStore';
+import { useCollectionsStore } from '../store/collections';
+import { Collection, SavedRequest } from '../types';
+import { useUIStore } from '../store/ui';
+import { useTabsStore } from '../store/tabs';
 import { FolderItem } from './FolderItem';
 import { getMethodColor } from '../helpers/collectionHelpers';
 import { Button } from './Button';

@@ -1,6 +1,10 @@
 import { ProxyRequest, ProxyResponse, StreamingResponse, SSEEvent } from '../../types';
-import { prepareAuthenticatedRequest } from './authRequest';
-import { API_BASE } from './config';
+import { prepareAuthenticatedRequest } from '../../helpers/api/authRequest';
+import { API_BASE } from '../../helpers/api/config';
+
+// ============================================================================
+// Internal API Helper Functions (integrated from helpers/api/request.ts and helpers/api/sse.ts)
+// ============================================================================
 
 /**
  * Check if the request is likely to be a streaming response (SSE)
@@ -13,10 +17,10 @@ function isLikelyStreamingRequest(request: ProxyRequest): boolean {
 /**
  * Send a streaming HTTP request (for SSE) with real-time updates
  */
-export const sendStreamingRequest = async (
+async function sendStreamingRequestApi(
   request: ProxyRequest,
   updateCallback: (response: StreamingResponse) => void
-): Promise<StreamingResponse> => {
+): Promise<StreamingResponse> {
   const startTime = Date.now();
   const events: SSEEvent[] = [];
 
@@ -123,17 +127,15 @@ export const sendStreamingRequest = async (
   };
 
   return finalResponse;
-};
+}
 
 /**
- * Send an HTTP request via the proxy
+ * Send a regular HTTP request via the proxy
  */
-export const sendRequest = async (request: ProxyRequest): Promise<ProxyResponse | StreamingResponse> => {
+async function sendRequestApi(request: ProxyRequest): Promise<ProxyResponse> {
   // Check if this is a streaming request
   if (isLikelyStreamingRequest(request)) {
-    // For streaming, we need access to the tab store to update progressively
-    // This will be handled differently - just return the final result here
-    throw new Error('Streaming requests must be handled through sendStreamingWithUpdates');
+    throw new Error('Streaming requests must be handled through sendStreamingRequest');
   }
 
   // Prepare request with authentication (inject OAuth tokens if needed)
@@ -152,10 +154,117 @@ export const sendRequest = async (request: ProxyRequest): Promise<ProxyResponse 
   }
 
   return response.json();
+}
+
+// ============================================================================
+// SSE Client (integrated from helpers/api/sse.ts)
+// ============================================================================
+
+export interface SSEEventHandler {
+  onMessage?: (data: string, event?: string) => void;
+  onError?: (error: Event) => void;
+  onOpen?: () => void;
+  onClose?: () => void;
+}
+
+export class SSEClient {
+  private eventSource: EventSource | null = null;
+  private url: string;
+  private handlers: SSEEventHandler;
+
+  constructor(url: string, handlers: SSEEventHandler) {
+    this.url = url;
+    this.handlers = handlers;
+  }
+
+  /**
+   * Connect to the SSE endpoint
+   */
+  connect(): void {
+    if (this.eventSource) {
+      this.close();
+    }
+
+    this.eventSource = new EventSource(this.url);
+
+    this.eventSource.onopen = () => {
+      this.handlers.onOpen?.();
+    };
+
+    this.eventSource.onmessage = (event: MessageEvent) => {
+      this.handlers.onMessage?.(event.data, event.type);
+    };
+
+    this.eventSource.onerror = (error: Event) => {
+      this.handlers.onError?.(error);
+      this.close();
+    };
+  }
+
+  /**
+   * Close the SSE connection
+   */
+  close(): void {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+      this.handlers.onClose?.();
+    }
+  }
+
+  /**
+   * Check if connected
+   */
+  isConnected(): boolean {
+    return this.eventSource !== null && this.eventSource.readyState === EventSource.OPEN;
+  }
+}
+
+/**
+ * Create and manage an SSE connection
+ */
+export const createSSEConnection = (url: string, handlers: SSEEventHandler): SSEClient => {
+  const client = new SSEClient(url, handlers);
+  client.connect();
+  return client;
 };
 
-export const requestApi = {
-  send: sendRequest,
-  sendStreaming: sendStreamingRequest,
-  isStreaming: isLikelyStreamingRequest,
+// ============================================================================
+// Exported Store Actions
+// ============================================================================
+
+/**
+ * Send a regular HTTP request via the proxy
+ */
+export const sendRequest = async (request: ProxyRequest): Promise<ProxyResponse> => {
+  try {
+    const response = await sendRequestApi(request);
+    return response as ProxyResponse;
+  } catch (error) {
+    console.error('Failed to send request:', error);
+    throw error;
+  }
+};
+
+/**
+ * Send a streaming HTTP request (for SSE) with real-time updates
+ */
+export const sendStreamingRequest = async (
+  request: ProxyRequest,
+  updateCallback: (response: StreamingResponse) => void
+): Promise<StreamingResponse> => {
+  try {
+    const response = await sendStreamingRequestApi(request, updateCallback);
+    return response;
+  } catch (error) {
+    console.error('Failed to send streaming request:', error);
+    throw error;
+  }
+};
+
+/**
+ * Check if the request is likely to be a streaming response
+ */
+export const isStreamingRequest = (request: ProxyRequest): boolean => {
+  return isLikelyStreamingRequest(request);
 };

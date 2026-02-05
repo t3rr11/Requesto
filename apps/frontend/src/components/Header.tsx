@@ -1,5 +1,5 @@
-import { useUIStore } from '../store/useUIStore';
-import { useThemeStore } from '../store/useThemeStore';
+import { useUIStore } from '../store/ui';
+import { useThemeStore } from '../store/theme';
 import { ListCollapse, Menu, Moon, Sun, Settings, Shield, Send, HelpCircle, Terminal } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { Button } from './Button';

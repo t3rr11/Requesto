@@ -1,4 +1,4 @@
-import { EnvironmentVariable } from '../../store/useEnvironmentStore';
+import { EnvironmentVariable } from '../../types';
 
 interface VariableHighlightProps {
   value: string;

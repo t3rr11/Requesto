@@ -1,8 +1,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { Button } from '../components/Button';
-import { collectionsApi } from '../helpers/api/collections';
-import { useCollectionsStore } from '../store/useCollectionsStore';
-import { useAlertStore } from '../store/useAlertStore';
+import { useCollectionsStore } from '../store/collections';
+import { useAlertStore } from '../store/alert';
 
 interface NewRequestFormProps {
   onSuccess: () => void;
@@ -19,7 +18,7 @@ export const NewRequestForm = ({
   preselectedCollectionId,
   preselectedFolderId 
 }: NewRequestFormProps) => {
-  const { collections, loadCollections } = useCollectionsStore();
+  const { collections, createRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const [name, setName] = useState('');
   const [method, setMethod] = useState('GET');
@@ -60,7 +59,7 @@ export const NewRequestForm = ({
 
     setLoading(true);
     try {
-      await collectionsApi.addRequest(collectionId, {
+      await createRequest(collectionId, {
         name: name.trim(),
         method,
         url: 'http://localhost:3000',
@@ -68,7 +67,6 @@ export const NewRequestForm = ({
         body: '',
         folderId: folderId || undefined,
       });
-      await loadCollections();
       setName('');
       setMethod('GET');
       setFolderId('');
@@ -76,6 +74,7 @@ export const NewRequestForm = ({
       onSuccess();
     } catch (err) {
       setError('Failed to create request');
+      showAlert('Error', 'Failed to create request', 'error');
     } finally {
       setLoading(false);
     }

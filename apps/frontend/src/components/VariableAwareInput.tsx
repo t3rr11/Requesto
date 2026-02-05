@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { useEnvironmentStore } from '../store/environments';
 import { extractVariableNames } from '../helpers/environmentHelpers';
 import { useVariableDetection } from '../hooks/useVariableDetection';
 import { VariableHighlight } from './variable-input/VariableHighlight';

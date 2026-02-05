@@ -1,5 +1,5 @@
 import { Globe, AlertCircle } from 'lucide-react';
-import { Environment } from '../store/useEnvironmentStore';
+import { Environment } from '../types';
 import { Button } from './Button';
 
 interface EnvironmentListProps {

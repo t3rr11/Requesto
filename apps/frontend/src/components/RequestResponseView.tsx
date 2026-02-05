@@ -8,14 +8,13 @@ import { RequestBreadcrumb } from './RequestBreadcrumb';
 import { RequestForm, requestFormSchema, type RequestFormData } from '../forms/RequestForm';
 import { SaveRequestForm } from '../forms/SaveRequestForm';
 import { ResponsePanel } from './ResponsePanel';
-import { useRequestStore } from '../store/useRequestStore';
-import { useCollectionsStore } from '../store/useCollectionsStore';
-import { useAlertStore } from '../store/useAlertStore';
-import { useEnvironmentStore } from '../store/useEnvironmentStore';
-import { requestApi } from '../helpers/api/request';
+import { useRequestStore } from '../store/request';
+import { useCollectionsStore } from '../store/collections';
+import { useAlertStore } from '../store/alert';
+import { useEnvironmentStore } from '../store/environments';
 import { substituteInRequest, getUndefinedVariables } from '../helpers/environmentHelpers';
-import { useUIStore } from '../store/useUIStore';
-import { useTabsStore } from '../store/useTabsStore';
+import { useUIStore } from '../store/ui';
+import { useTabsStore } from '../store/tabs';
 import { useDialog } from '../hooks/useDialog';
 
 export interface RequestResponseViewRef {
@@ -29,7 +28,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
   const { getActiveTab, updateTabRequest, setTabResponse, setTabLoading, setTabError, markTabAsSaved, activeTabId } =
     useTabsStore();
 
-  const { addConsoleLog } = useRequestStore();
+  const { addConsoleLog, sendRequest, sendStreamingRequest, isStreamingRequest } = useRequestStore();
   const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { environmentsData } = useEnvironmentStore();
@@ -293,9 +292,9 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
 
     try {
       // Check if this is a streaming request
-      if (requestApi.isStreaming(substitutedRequest)) {
+      if (isStreamingRequest(substitutedRequest)) {
         // Handle streaming separately with progressive updates
-        await requestApi.sendStreaming(substitutedRequest, (streamResponse) => {
+        await sendStreamingRequest(substitutedRequest, (streamResponse) => {
           // Use flushSync to force immediate render, bypassing React 18's automatic batching
           flushSync(() => {
             setTabResponse(activeTabId, streamResponse);
@@ -320,7 +319,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         }
       } else {
         // Regular non-streaming request
-        const response = await requestApi.send(substitutedRequest);
+        const response = await sendRequest(substitutedRequest);
         const duration = Date.now() - startTime;
 
         setTabResponse(activeTabId, response);

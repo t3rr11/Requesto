@@ -9,7 +9,7 @@ import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthConfig } from '../types';
-import { useThemeStore } from '../store/useThemeStore';
+import { useThemeStore } from '../store/theme';
 
 export const requestFormSchema = z.object({
   method: z.string(),

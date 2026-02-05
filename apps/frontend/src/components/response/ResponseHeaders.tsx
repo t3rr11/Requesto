@@ -1,4 +1,4 @@
-import { useTabsStore } from '../../store/useTabsStore';
+import { useTabsStore } from '../../store/tabs';
 
 export function ResponseHeaders() {
   const { getActiveTab } = useTabsStore();

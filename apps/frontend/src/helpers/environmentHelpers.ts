@@ -1,4 +1,4 @@
-import { Environment, EnvironmentVariable } from '../store/useEnvironmentStore';
+import { Environment, EnvironmentVariable } from '../types';
 import { AuthConfig } from '../types';
 
 /**
