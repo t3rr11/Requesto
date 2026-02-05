@@ -75,7 +75,6 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                 className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  {/* Enable Toggle */}
                   <div className="pt-2">
                     <Controller
                       name={`${fieldArrayName}.${index}.enabled`}
@@ -92,9 +91,7 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                     />
                   </div>
 
-                  {/* Variable Fields */}
                   <div className="flex-1 grid grid-cols-2 gap-3">
-                    {/* Variable Name */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>
                       <Controller
@@ -111,7 +108,6 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                       />
                     </div>
 
-                    {/* Variable Value */}
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Value</label>
                       <Controller
@@ -148,7 +144,6 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex items-center gap-2 pt-7">
                     <Controller
                       name={`${fieldArrayName}.${index}.isSecret`}

@@ -227,7 +227,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
           </div>
         )}
 
-        {/* Tab Navigation */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4 -mx-6 px-6">
           {tabs.map((tab) => (
             <Button
@@ -252,12 +251,9 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
           ))}
         </div>
 
-        {/* Tab Content */}
         <div className="flex-1 overflow-y-auto space-y-4 min-h-[400px]">
-          {/* BASIC TAB */}
           {activeTab === 'basic' && (
             <>
-              {/* Configuration Name */}
               <div>
                 <label htmlFor="config-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Configuration Name <span className="text-red-500">*</span>
@@ -273,7 +269,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                 />
               </div>
 
-              {/* Provider Selection */}
               {!editConfig && (
                 <div>
                   <label htmlFor="provider" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -307,7 +302,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                 </div>
               )}
 
-              {/* Placeholders (if any) */}
               {Object.keys(placeholders).length > 0 && (
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -330,7 +324,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                 </div>
               )}
 
-              {/* Client Credentials */}
               <div className="space-y-3">
                 <div>
                   <label htmlFor="client-id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -375,7 +368,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                 </div>
               </div>
 
-              {/* Scopes */}
               <div>
                 <label htmlFor="scopes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Scopes
@@ -395,7 +387,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
             </>
           )}
 
-          {/* ENDPOINTS TAB */}
+
           {activeTab === 'endpoints' && (
             <>
               <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-sm text-gray-600 dark:text-gray-400">
@@ -475,7 +467,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
             </>
           )}
 
-          {/* SECURITY TAB */}
           {activeTab === 'security' && (
             <>
               <div>
@@ -500,7 +491,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                 </select>
               </div>
 
-              {/* Flow-specific warnings */}
               {flowType === 'authorization-code-pkce' && (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-400 px-3 py-2 rounded text-sm flex items-start gap-2">
                   <Info size={16} className="flex-shrink-0 mt-0.5" />
@@ -575,7 +565,6 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
             </>
           )}
 
-          {/* ADVANCED TAB */}
           {activeTab === 'advanced' && (
             <>
               <div className="space-y-3">
@@ -655,7 +644,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
           )}
         </div>
 
-        {/* Form Actions */}
+
         <div className="flex justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
           {editConfig && onDelete ? (
             <Button

@@ -14,7 +14,6 @@ export const HelpContent = ({ onClose }: HelpContentProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Keyboard Shortcuts Section */}
       <div>
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Keyboard Shortcuts</h3>
         <div className="space-y-3">
@@ -38,7 +37,6 @@ export const HelpContent = ({ onClose }: HelpContentProps) => {
 
       <div className="border-t dark:border-gray-700" />
 
-      {/* Environment Variables Section */}
       <div>
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Environment Variables</h3>
         <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300">

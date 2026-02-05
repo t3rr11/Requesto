@@ -18,7 +18,6 @@ export function ResponsePanel() {
   
   const [activeResponseTab, setActiveResponseTab] = useState<ResponseTab>('body');
   
-  // Check if this is a streaming response
   const isStreaming = response && 'isStreaming' in response && response.isStreaming;
   const responseSize = isStreaming 
     ? new Blob([JSON.stringify(response.events)]).size 
@@ -75,7 +74,6 @@ export function ResponsePanel() {
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-h-0">
-      {/* Response Header */}
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 bg-gray-50 dark:bg-gray-800 flex items-center h-[48px] flex-shrink-0">
         <div className="flex items-center justify-between w-full">
           <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">
@@ -101,7 +99,6 @@ export function ResponsePanel() {
         </div>
       </div>
 
-      {/* Response Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex px-6">
           {(['body', 'headers', 'test-results'] as ResponseTab[]).map(tab => (
@@ -122,7 +119,6 @@ export function ResponsePanel() {
         </div>
       </div>
 
-      {/* Response Tab Content */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {activeResponseTab === 'body' && <ResponseBody />}
         {activeResponseTab === 'headers' && <ResponseHeaders />}

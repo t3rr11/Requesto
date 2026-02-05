@@ -57,7 +57,6 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
 
   return (
     <div className="space-y-4">
-      {/* Auth Type Selector */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Authentication Type</label>
         <select
@@ -75,7 +74,6 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
         </select>
       </div>
 
-      {/* Auth Type Specific Forms */}
       {auth.type === 'basic' && auth.basic && (
         <div className="space-y-4 pt-2">
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">

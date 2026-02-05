@@ -19,9 +19,7 @@ export function OAuthCallback() {
   const hasProcessed = useRef(false);
 
   useEffect(() => {
-    // Prevent double execution in React Strict Mode
     if (hasProcessed.current) {
-      console.log('[OAuth Callback] Already processed, skipping...');
       return;
     }
     hasProcessed.current = true;
@@ -61,67 +59,37 @@ export function OAuthCallback() {
       // Get access token (for implicit flow)
       const accessToken = fragmentAfterPath.get('access_token');
       
-      // Get state parameter
       const stateParam = params.get('state') || searchParams.get('state') || fragmentAfterPath.get('state');
-      console.log('[OAuth Callback] State param from URL:', stateParam?.substring(0, 10) + '...');
       
       if (!stateParam) {
-        console.error('[OAuth Callback] No state parameter in URL');
-        console.error('[OAuth Callback] Full hash:', fullHash);
-        console.error('[OAuth Callback] Hash query:', hashQuery);
-        console.error('[OAuth Callback] Search params:', window.location.search);
         handleError('Missing state parameter - possible CSRF attack');
         return;
       }
 
-      // Retrieve and validate stored state
-      console.log('[OAuth Callback] Attempting to retrieve stored state...');
       const oauthState = retrieveOAuthState(stateParam);
-      console.log('[OAuth Callback] Retrieved state:', oauthState ? 'SUCCESS' : 'FAILED');
       
       if (!oauthState) {
-        console.error('[OAuth Callback] State validation failed');
         handleError('Invalid or expired state parameter');
         return;
       }
 
       const { configId, codeVerifier, redirectUri } = oauthState;
-      console.log('[OAuth Callback] Config ID from state:', configId);
-      console.log('[OAuth Callback] Code verifier present:', !!codeVerifier);
-      console.log('[OAuth Callback] Redirect URI:', redirectUri);
       
-      // Get config
-      console.log('[OAuth Callback] Attempting to get config...');
       let config = getConfig(configId);
-      console.log('[OAuth Callback] Config retrieved:', config ? 'SUCCESS' : 'FAILED');
       
       if (!config) {
-        console.error('[OAuth Callback] Config not found in store. Loading configs...');
-        // Try loading configs first
         await loadConfigs();
         config = getConfig(configId);
         if (!config) {
-          console.error('[OAuth Callback] Config still not found after loading');
           handleError('OAuth configuration not found');
           return;
         }
-        console.log('[OAuth Callback] Config found after reload');
       }
 
       let tokens;
-      
-      console.log('[OAuth Callback] Using config:', {
-        id: config?.id,
-        name: config?.name,
-        provider: config?.provider,
-        flowType: config?.flowType,
-      });
 
-      // Handle authorization code flow
       if (code) {
-        console.log('[OAuth Callback] Authorization code flow detected');
         setMessage('Exchanging authorization code for tokens...');
-        console.log('[OAuth Callback] Exchanging code for tokens...');
         
         try {
           const response = await fetch(`${API_BASE}/oauth/token`, {
@@ -166,8 +134,6 @@ export function OAuthCallback() {
         return;
       }
 
-      // Store tokens
-      console.log('[OAuth Callback] Storing tokens...');
       setMessage('Storing tokens...');
       const normalizedTokens = {
         accessToken: tokens.access_token,
@@ -243,7 +209,6 @@ export function OAuthCallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="max-w-md w-full space-y-8 text-center">
-        {/* Icon */}
         <div className="flex justify-center">
           {status === 'processing' && (
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500" />
@@ -260,7 +225,6 @@ export function OAuthCallback() {
           )}
         </div>
 
-        {/* Message */}
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {status === 'processing' && 'Processing...'}
@@ -272,7 +236,6 @@ export function OAuthCallback() {
           </p>
         </div>
 
-        {/* Additional actions */}
         {status === 'error' && !(window.opener && !window.opener.closed) && (
           <Button
             onClick={() => navigate('/')}

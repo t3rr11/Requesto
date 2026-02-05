@@ -59,7 +59,6 @@ export const OAuthPage = () => {
       }
       formDialog.close();
     } catch (error) {
-      console.error('Failed to save OAuth config:', error);
       showAlert('Error', 'Failed to save OAuth configuration', 'error');
       throw error;
     }
@@ -90,9 +89,8 @@ export const OAuthPage = () => {
       }
       
       showAlert('Success', 'OAuth configuration deleted successfully', 'success');
-      formDialog.close(); // Close form dialog if open
+      formDialog.close();
     } catch (error) {
-      console.error('Failed to delete OAuth config:', error);
       showAlert('Error', 'Failed to delete OAuth configuration', 'error');
       throw error;
     }
@@ -103,7 +101,6 @@ export const OAuthPage = () => {
   return (
     <main className="overflow-hidden relative w-full h-full">
       <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-        {/* Header */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-3">
@@ -128,9 +125,7 @@ export const OAuthPage = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="flex-1 overflow-hidden flex min-h-0">
-          {/* OAuth Config List */}
           <OAuthConfigList
             configs={configs}
             selectedConfigId={selectedConfigId}
@@ -138,11 +133,9 @@ export const OAuthPage = () => {
             onConfigSelect={(config) => setSelectedConfigId(config.id)}
           />
 
-          {/* OAuth Config Details */}
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
             {selectedConfig ? (
               <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Config Header */}
                 <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -174,10 +167,8 @@ export const OAuthPage = () => {
                   </div>
                 </div>
 
-                {/* Config Details */}
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="max-w-3xl space-y-6">
-                    {/* Basic Info */}
                     <div>
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                         Basic Information
@@ -225,7 +216,6 @@ export const OAuthPage = () => {
                       </div>
                     </div>
 
-                    {/* OAuth Endpoints */}
                     <div>
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                         OAuth Endpoints
@@ -260,7 +250,6 @@ export const OAuthPage = () => {
                       </div>
                     </div>
 
-                    {/* Configuration */}
                     <div>
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                         Configuration
@@ -301,7 +290,6 @@ export const OAuthPage = () => {
                       </div>
                     </div>
 
-                    {/* Metadata */}
                     <div>
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                         Metadata
@@ -345,7 +333,6 @@ export const OAuthPage = () => {
           </div>
         </div>
 
-        {/* OAuth Config Form Dialog */}
         <OAuthConfigForm
           isOpen={formDialog.isOpen}
           onClose={formDialog.close}
@@ -354,7 +341,6 @@ export const OAuthPage = () => {
           editConfig={formDialog.data ?? undefined}
         />
 
-        {/* Confirm Delete Dialog */}
         <ConfirmDialog {...confirmDialog.props} />
       </div>
     </main>

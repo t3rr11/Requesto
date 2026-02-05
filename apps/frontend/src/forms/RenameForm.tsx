@@ -31,8 +31,6 @@ export const RenameForm = ({
     try {
       await onSave(name.trim());
       onClose();
-    } catch (error) {
-      console.error('Failed to save:', error);
     } finally {
       setIsLoading(false);
     }

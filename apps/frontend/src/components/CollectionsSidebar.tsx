@@ -77,7 +77,6 @@ export const CollectionsSidebar = () => {
     };
   }, [isResizing, setSidebarWidth]);
 
-  // Handler for opening new empty request
   const handleNewRequest = () => {
     openRequestTab({
       savedRequestId: '',
@@ -87,7 +86,6 @@ export const CollectionsSidebar = () => {
     });
   };
 
-  // Rename handlers - just open dialogs
   const handleRenameRequest = (request: SavedRequest) => {
     renameRequestDialog.open({ request });
   };
@@ -129,7 +127,6 @@ export const CollectionsSidebar = () => {
       className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col relative flex-1 min-h-0"
       style={{ width: `${sidebarWidth}px` }}
     >
-      {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
@@ -144,7 +141,6 @@ export const CollectionsSidebar = () => {
         </div>
       </div>
 
-      {/* Collections List */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading collections...</div>
@@ -172,12 +168,10 @@ export const CollectionsSidebar = () => {
         )}
       </div>
 
-      {/* New Collection Dialog */}
       <Dialog isOpen={newCollectionDialog.isOpen} onClose={newCollectionDialog.close} title="New Collection">
         <NewCollectionForm onSuccess={newCollectionDialog.close} onCancel={newCollectionDialog.close} />
       </Dialog>
 
-      {/* New Request Dialog */}
       <Dialog isOpen={newRequestDialog.isOpen} onClose={newRequestDialog.close} title="New Request">
         {newRequestDialog.data && (
           <NewRequestForm
@@ -189,7 +183,6 @@ export const CollectionsSidebar = () => {
         )}
       </Dialog>
 
-      {/* Rename Request Dialog */}
       {renameRequestDialog.data && (
         <Dialog isOpen={renameRequestDialog.isOpen} onClose={renameRequestDialog.close} title="Rename Request">
           <RenameForm
@@ -203,7 +196,6 @@ export const CollectionsSidebar = () => {
         </Dialog>
       )}
 
-      {/* Rename Collection Dialog */}
       {renameCollectionDialog.data && (
         <Dialog isOpen={renameCollectionDialog.isOpen} onClose={renameCollectionDialog.close} title="Rename Collection">
           <RenameForm
@@ -218,7 +210,6 @@ export const CollectionsSidebar = () => {
         </Dialog>
       )}
 
-      {/* Rename Folder Dialog */}
       {renameFolderDialog.data && (
         <Dialog isOpen={renameFolderDialog.isOpen} onClose={renameFolderDialog.close} title="Rename Folder">
           <RenameForm
@@ -233,7 +224,6 @@ export const CollectionsSidebar = () => {
         </Dialog>
       )}
 
-      {/* Resize Handle */}
       <div
         className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ew-resize transition-colors"
         onMouseDown={handleMouseDown}

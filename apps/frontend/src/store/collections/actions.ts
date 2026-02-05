@@ -3,8 +3,6 @@ import { API_BASE } from '../../helpers/api/config';
 
 type SetState = (partial: any) => void;
 
-// API Helper Functions (integrated from helpers/api/collections.ts)
-
 async function getAllCollections(): Promise<Collection[]> {
   const res = await fetch(`${API_BASE}/collections`);
   if (!res.ok) throw new Error('Failed to fetch collections');

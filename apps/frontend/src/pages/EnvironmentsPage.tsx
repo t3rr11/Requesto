@@ -130,7 +130,6 @@ export const EnvironmentsPage = () => {
 
       setHasUnsavedChanges(false);
     } catch (error) {
-      console.error('Failed to save environment:', error);
       showAlert('Save Failed', 'Failed to save environment. Please try again.', 'error');
     }
   };
@@ -163,7 +162,6 @@ export const EnvironmentsPage = () => {
 
       showAlert('Success', 'Environment deleted successfully', 'success');
     } catch (error) {
-      console.error('Failed to delete environment:', error);
       showAlert('Delete Failed', 'Failed to delete environment. Please try again.', 'error');
     }
   };
@@ -175,7 +173,6 @@ export const EnvironmentsPage = () => {
       await setActiveEnvironment(selectedEnvId);
       showAlert('Success', 'Environment set as active', 'success');
     } catch (error) {
-      console.error('Failed to set active environment:', error);
       showAlert('Activation Failed', 'Failed to set active environment. Please try again.', 'error');
     }
   };
@@ -235,7 +232,6 @@ export const EnvironmentsPage = () => {
   return (
     <main className="overflow-hidden relative w-full h-full">
       <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-        {/* Header */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-baseline gap-3">
@@ -258,9 +254,7 @@ export const EnvironmentsPage = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="flex-1 overflow-hidden flex min-h-0">
-          {/* Environments List */}
           <EnvironmentList
             environments={environmentsData.environments}
             selectedEnvId={selectedEnvId}
@@ -269,11 +263,9 @@ export const EnvironmentsPage = () => {
             onEnvironmentSelect={handleEnvironmentSelect}
           />
 
-          {/* Environment Details */}
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
             {selectedEnvId ? (
               <form onSubmit={handleSubmit(handleSave)} className="flex-1 flex flex-col overflow-hidden">
-                {/* Environment Header */}
                 <EnvironmentHeader
                   name={formValues.name}
                   isActive={isActive}
@@ -292,7 +284,6 @@ export const EnvironmentsPage = () => {
                   </div>
                 )}
 
-                {/* Variables Section */}
                 <VariableEditor control={control} />
               </form>
             ) : (
@@ -314,7 +305,6 @@ export const EnvironmentsPage = () => {
           </div>
         </div>
 
-        {/* Confirm Delete Dialog */}
         <ConfirmDialog
           isOpen={confirmDelete !== null}
           onClose={() => setConfirmDelete(null)}

@@ -66,7 +66,6 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950">
-      {/* Header */}
       <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">SSE Stream</span>
@@ -76,7 +75,6 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
         </div>
       </div>
 
-      {/* Events List */}
       <div 
         ref={containerRef} 
         className="flex-1 overflow-auto px-4 py-3"
@@ -96,7 +94,6 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
                 key={index}
                 className="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow transition-shadow"
               >
-                {/* Event Header */}
                 <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-semibold text-gray-600 dark:text-gray-400">
@@ -122,7 +119,6 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
                   </span>
                 </div>
 
-                {/* Event Data */}
                 <div className="px-3 py-2">
                   <pre className="text-xs font-mono text-gray-800 dark:text-gray-300 whitespace-pre-wrap break-words overflow-x-auto">
                     {formatData(event.data)}

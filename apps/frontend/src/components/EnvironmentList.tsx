@@ -58,7 +58,6 @@ export const EnvironmentList = ({
           </Button>
         ))}
 
-        {/* Show new environment in list */}
         {isNewEnvironment && (
           <div className="px-3 py-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 border-2 border-blue-200 dark:border-blue-800">
             <div className="flex items-center gap-2">

@@ -102,7 +102,6 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
     <div className="space-y-2">
       {viewMode === 'table' ? (
         <>
-          {/* Table View */}
           <div className="border border-gray-300 dark:border-gray-700 rounded">
             <table className="w-full border-collapse">
               <thead>
@@ -177,7 +176,6 @@ export function ParamsEditor({ params, onParamsChange, disabled = false }: Param
         </>
       ) : (
         <>
-          {/* Bulk Edit View */}
           <div className="space-y-2">
             <div className="flex justify-between items-center mb-2">
               <div className="text-xs text-gray-600 dark:text-gray-400">

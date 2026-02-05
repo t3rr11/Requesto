@@ -79,7 +79,6 @@ export const HorizontalScrollContainer = ({
 
   return (
     <div className={`relative ${className}`}>
-      {/* Left scroll button */}
       {showLeftScroll && (
         <Button
           onClick={() => scrollContent('left')}
@@ -92,7 +91,6 @@ export const HorizontalScrollContainer = ({
         </Button>
       )}
 
-      {/* Scrollable content */}
       <div
         ref={containerRef}
         className={`overflow-x-auto overflow-y-hidden ${!showScrollbar ? 'scrollbar-hide' : ''} ${contentClassName}`}
@@ -108,7 +106,6 @@ export const HorizontalScrollContainer = ({
         {children}
       </div>
 
-      {/* Right scroll button */}
       {showRightScroll && (
         <Button
           onClick={() => scrollContent('right')}

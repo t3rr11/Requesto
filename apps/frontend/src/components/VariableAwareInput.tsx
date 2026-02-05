@@ -205,7 +205,6 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
 
   return (
     <div className="relative w-full">
-      {/* Actual input (transparent text) */}
       <input
         ref={inputRef}
         type={type}
@@ -218,7 +217,6 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
         className={`${className} relative bg-transparent caret-gray-900 dark:caret-gray-100`}
       />
 
-      {/* Highlighted content layer */}
       <VariableHighlight
         value={value}
         enabledVariables={enabledVariables}
@@ -228,10 +226,8 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
         onVariableClick={handleVariableClick}
       />
 
-      {/* Variable count badge */}
       <VariableBadge variableCount={usedVariables.length} hasUndefinedVariables={hasUndefinedVariables} />
 
-      {/* Variable hover tooltip */}
       <VariableTooltip
         show={tooltip.show}
         x={tooltip.x}
@@ -242,7 +238,6 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
         environmentName={activeEnvironment?.name}
       />
 
-      {/* Autocomplete suggestions */}
       <VariableSuggestions
         ref={suggestionsRef}
         show={showSuggestions}

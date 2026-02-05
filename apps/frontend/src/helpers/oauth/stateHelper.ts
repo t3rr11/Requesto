@@ -145,10 +145,6 @@ function cleanupExpiredStates(states: Record<string, OAuthState>): void {
   );
   
   expiredStates.forEach(key => delete states[key]);
-  
-  if (expiredStates.length > 0) {
-    console.log(`Cleaned up ${expiredStates.length} expired OAuth state(s)`);
-  }
 }
 
 /**

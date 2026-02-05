@@ -240,7 +240,6 @@ export function RequestForm({
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
-      {/* Request Bar */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex gap-3 items-center">
           <Controller
@@ -296,9 +295,7 @@ export function RequestForm({
         </div>
       </div>
 
-      {/* Request Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-[48px]">
-        {/* Left scroll button */}
         {showLeftScroll && (
           <Button
             onClick={() => scrollTabs('left')}
@@ -345,7 +342,6 @@ export function RequestForm({
           })}
         </div>
 
-        {/* Right scroll button */}
         {showRightScroll && (
           <Button
             onClick={() => scrollTabs('right')}
@@ -359,7 +355,6 @@ export function RequestForm({
         )}
       </div>
 
-      {/* Request Tab Content */}
       <div className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-900">
         {activeTab === 'params' && <ParamsEditor params={params} onParamsChange={onParamsChange} disabled={loading} />}
 

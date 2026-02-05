@@ -10,10 +10,6 @@ import { getTokens, storeTokens, removeTokens, isTokenExpired } from '../../help
 type SetState = (partial: any) => void;
 type GetState = () => any;
 
-// ============================================================================
-// Internal API Helpers (OAuth Configurations)
-// ============================================================================
-
 /**
  * Fetch all OAuth configurations from backend
  */
@@ -71,10 +67,6 @@ async function deleteOAuthConfigApi(id: string): Promise<void> {
     throw new Error('Failed to delete OAuth configuration');
   }
 }
-
-// ============================================================================
-// Store Actions - OAuth Configuration Management
-// ============================================================================
 
 /**
  * Load OAuth configurations from backend
@@ -163,17 +155,8 @@ export async function deleteConfig(
  * Get config by ID
  */
 export function getConfig(get: GetState, id: string): OAuthConfig | null {
-  const config = get().configs.find((c: OAuthConfig) => c.id === id) || null;
-  console.log('[OAuth Store] getConfig:', id.substring(0, 10) + '...', config ? 'FOUND' : 'NOT FOUND');
-  if (!config) {
-    console.log('[OAuth Store] Available configs:', get().configs.map((c: OAuthConfig) => c.id.substring(0, 10) + '...'));
-  }
-  return config;
+  return get().configs.find((c: OAuthConfig) => c.id === id) || null;
 }
-
-// ============================================================================
-// Store Actions - Token Management
-// ============================================================================
 
 /**
  * Load token state for a specific config

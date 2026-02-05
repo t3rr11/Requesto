@@ -144,7 +144,6 @@ export const CollectionItem = ({
 
   return (
     <div className="mb-1">
-      {/* Collection Header */}
       <div
         className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
           isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
@@ -199,10 +198,8 @@ export const CollectionItem = ({
         </div>
       </div>
 
-      {/* Collection Contents */}
       {isExpanded && (
         <div>
-          {/* New folder input at root level */}
           {newFolderInput?.collectionId === collection.id && !newFolderInput?.parentId && (
             <div className="px-4 py-2 flex items-center gap-2 ml-6">
               <FolderIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
@@ -227,7 +224,6 @@ export const CollectionItem = ({
             </div>
           )}
 
-          {/* Root folders */}
           {rootFolders.map(folder => (
             <FolderItem
               key={folder.id}
@@ -240,13 +236,11 @@ export const CollectionItem = ({
             />
           ))}
 
-          {/* Root requests (not in any folder) */}
           {rootRequests.length === 0 && rootFolders.length === 0 ? (
             <div className="px-4 py-2 text-xs text-gray-400 italic ml-6">No requests yet</div>
           ) : (
             rootRequests.map((request, index) => (
               <div key={request.id}>
-                {/* Drop zone above */}
                 <div
                   className={`transition-all ${dragOverIndex === index ? 'bg-blue-400 h-1' : 'h-0'}`}
                   onDragOver={e => handleDragOverIndex(e, index)}
@@ -279,7 +273,6 @@ export const CollectionItem = ({
                   </button>
                 </div>
 
-                {/* Drop zone below (for last item) */}
                 {index === rootRequests.length - 1 && (
                   <div
                     className={`transition-all ${dragOverIndex === index + 1 ? 'bg-blue-400 h-1' : 'h-0'}`}
@@ -294,7 +287,6 @@ export const CollectionItem = ({
         </div>
       )}
       
-      {/* Context Menus */}
       {requestContextMenu && (
         <ContextMenu
           position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
@@ -335,7 +327,6 @@ export const CollectionItem = ({
         />
       )}
       
-      {/* Confirm Dialog */}
       <ConfirmDialog {...confirmDialog.props} />
     </div>
   );

@@ -46,7 +46,6 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
         className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full ${sizes[size]} max-h-[90vh] flex flex-col`}
         onMouseDown={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h2>
           <Button onClick={onClose} variant="icon" size="md" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close">
@@ -54,10 +53,8 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
           </Button>
         </div>
 
-        {/* Content */}
         <div className="p-6 overflow-y-auto flex-1">{children}</div>
 
-        {/* Footer */}
         {footer && <div className="p-4 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700 rounded-b-lg flex-shrink-0">{footer}</div>}
       </div>
     </div>

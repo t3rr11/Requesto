@@ -92,17 +92,13 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
     };
   }, [isResizing, setRequestPanelWidth]);
 
-  // Check if form has changes compared to initial state
   const hasChanges = useMemo(() => {
-    // Use the active tab's isDirty state
     return activeTab?.isDirty || false;
   }, [activeTab]);
 
-  // Load active tab's request into form when tab changes
   useEffect(() => {
     if (!activeTab) return;
 
-    // Set flag to indicate we're doing an initial load
     isInitialLoadRef.current = true;
 
     const loadedHeaders =
@@ -115,7 +111,6 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
           }))
         : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
 
-    // Extract params from URL if present
     const { baseUrl, params: extractedParams } = extractParamsFromUrl(activeTab.request.url);
     const loadedParams = extractedParams.length > 0
       ? extractedParams.map((p, index) => ({
@@ -400,14 +395,11 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         auth: requestData.auth,
       });
 
-      // Mark tab as saved (clears dirty flag and updates original request)
       markTabAsSaved(activeTabId, values.savedRequestId!, collection.id);
 
-      // Update form's savedRequestId
       setValue('savedRequestId', values.savedRequestId);
     } catch (error) {
       showAlert('Update Failed', 'Failed to update the request. Please try again.', 'error');
-      console.error('Failed to update request:', error);
     }
   };
 
@@ -496,7 +488,6 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-gray-50">
-      {/* Top Bar - Breadcrumb and Save */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between h-14 flex-shrink-0">
         <RequestBreadcrumb savedRequestId={savedRequestId} />
         <Button onClick={handleSave} size="sm" disabled={activeTab?.isLoading || !hasChanges}>
@@ -504,7 +495,6 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         </Button>
       </div>
 
-      {/* Main Content - Split View */}
       <div ref={containerRef} className="flex-1 flex overflow-hidden relative min-h-0">
         <div
           className="flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative"
@@ -523,7 +513,6 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
             auth={formValues.auth}
             onAuthChange={auth => setValue('auth', auth, { shouldDirty: true })}
           />
-          {/* Resize Handle */}
           <div
             className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ew-resize transition-colors z-10"
             onMouseDown={handleMouseDown}
@@ -535,7 +524,6 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         </div>
       </div>
 
-      {/* Save Request Dialog */}
       <Dialog isOpen={saveRequestDialog.isOpen} onClose={saveRequestDialog.close} title="Save Request">
         <SaveRequestForm
           currentRequest={activeTab ? {

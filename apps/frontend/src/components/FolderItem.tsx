@@ -127,7 +127,6 @@ export const FolderItem = ({
 
   return (
     <div>
-      {/* Folder Header */}
       <div
         className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
           isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
@@ -184,10 +183,8 @@ export const FolderItem = ({
         </div>
       </div>
 
-      {/* Folder Contents */}
       {isExpanded && (
         <div>
-          {/* New folder input */}
           {newFolderInput?.collectionId === collection.id && newFolderInput?.parentId === folder.id && (
             <div className="px-4 py-2 flex items-center gap-2" style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}>
               <FolderIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
@@ -212,7 +209,6 @@ export const FolderItem = ({
             </div>
           )}
 
-          {/* Child folders */}
           {childFolders.map((childFolder) => (
             <FolderItem
               key={childFolder.id}
@@ -225,10 +221,8 @@ export const FolderItem = ({
             />
           ))}
 
-          {/* Requests in this folder */}
           {folderRequests.map((request, index) => (
             <div key={request.id}>
-              {/* Drop zone above */}
               <div
                 className={`transition-all ${
                   dragOverIndex === index ? 'bg-blue-400 h-1' : 'h-0'
@@ -263,7 +257,6 @@ export const FolderItem = ({
                 </button>
               </div>
               
-              {/* Drop zone below (for last item) */}
               {index === folderRequests.length - 1 && (
                 <div
                   className={`transition-all ${
@@ -279,7 +272,6 @@ export const FolderItem = ({
         </div>
       )}
       
-      {/* Context Menus */}
       {requestContextMenu && (
         <ContextMenu
           position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
@@ -320,7 +312,6 @@ export const FolderItem = ({
         />
       )}
       
-      {/* Confirm Dialog */}
       <ConfirmDialog {...confirmDialog.props} />
     </div>
   );

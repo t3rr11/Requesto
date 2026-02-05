@@ -54,7 +54,7 @@ export const ConsolePanel = () => {
         setCopiedStates(prev => ({ ...prev, [key]: false }));
       }, 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      // Silently fail - clipboard access may be denied
     }
   };
 
@@ -150,7 +150,6 @@ export const ConsolePanel = () => {
 
     return (
       <div key={log.id} className="border-b border-gray-800 dark:border-gray-900">
-        {/* Log Header */}
         <div
           className="py-2 px-3 hover:bg-gray-800 dark:hover:bg-gray-900 cursor-pointer flex items-center gap-3"
           onClick={() => toggleLogExpanded(log.id)}
@@ -177,17 +176,14 @@ export const ConsolePanel = () => {
           </Button>
         </div>
 
-        {/* Expanded Details */}
         {isExpanded && (
           <div className="px-3 pb-3 pl-20 space-y-3 text-sm">
-            {/* Request Details */}
             {log.requestData && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-blue-400 dark:text-blue-300 font-semibold pt-2">
                   <span>Request</span>
                 </div>
 
-                {/* Request Headers */}
                 {log.requestData.headers && Object.keys(log.requestData.headers).length > 0 && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -229,7 +225,6 @@ export const ConsolePanel = () => {
                   </div>
                 )}
 
-                {/* Request Body */}
                 {log.requestData.body && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -265,7 +260,6 @@ export const ConsolePanel = () => {
                   </div>
                 )}
 
-                {/* Request Auth */}
                 {log.requestData.auth && log.requestData.auth.type !== 'none' && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -319,7 +313,6 @@ export const ConsolePanel = () => {
               </div>
             )}
 
-            {/* Response Details */}
             {log.responseData && (
               <div className="space-y-2 border-t border-gray-700 pt-3">
                 <div className="flex items-center gap-2 text-green-400 font-semibold">
@@ -329,7 +322,6 @@ export const ConsolePanel = () => {
                   </span>
                 </div>
 
-                {/* Response Headers */}
                 {log.responseData.headers && Object.keys(log.responseData.headers).length > 0 && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -363,7 +355,6 @@ export const ConsolePanel = () => {
                   </div>
                 )}
 
-                {/* Response Body */}
                 {log.responseData && 'body' in log.responseData && log.responseData.body && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -405,7 +396,6 @@ export const ConsolePanel = () => {
                   </div>
                 )}
 
-                {/* Streaming Events */}
                 {log.responseData && 'isStreaming' in log.responseData && log.responseData.isStreaming && (
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
@@ -451,13 +441,11 @@ export const ConsolePanel = () => {
       className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-black text-gray-100 dark:text-gray-200 flex flex-col shadow-2xl z-10"
       style={{ height: `${consoleHeight}px` }}
     >
-      {/* Resize Handle */}
       <div
         className="h-1 bg-gray-700 dark:bg-gray-800 hover:bg-orange-500 cursor-ns-resize transition-colors"
         onMouseDown={handleMouseDown}
       />
 
-      {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-950 border-b border-gray-700 dark:border-gray-800 cursor-pointer hover:bg-gray-750 dark:hover:bg-gray-900"
         onClick={toggleConsole}
@@ -499,7 +487,6 @@ export const ConsolePanel = () => {
         </div>
       </div>
 
-      {/* Logs Content */}
       <div className="flex-1 overflow-y-auto font-mono text-xs scrollbar-dark">
         {consoleLogs.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500">

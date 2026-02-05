@@ -92,7 +92,6 @@ Accept: application/json`,
     <div className="space-y-4">
       <p className="text-sm text-gray-500 dark:text-gray-400">Paste multiple headers at once</p>
 
-      {/* Format Selector */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Format</label>
         <div className="flex gap-2">
@@ -112,7 +111,6 @@ Accept: application/json`,
         </div>
       </div>
 
-      {/* Input Area */}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Paste Headers</label>
         <textarea
@@ -128,7 +126,6 @@ Accept: application/json`,
         {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
       </div>
 
-      {/* Preview */}
       {preview.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -159,7 +156,6 @@ Accept: application/json`,
         </div>
       )}
 
-      {/* Examples */}
       <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Supported Formats:</h3>
         <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
@@ -175,7 +171,6 @@ Accept: application/json`,
         </ul>
       </div>
 
-      {/* Actions */}
       <div className="flex justify-between pt-2">
         <Button onClick={handlePreview} disabled={!inputText.trim()} variant="secondary" size="md">
           Preview

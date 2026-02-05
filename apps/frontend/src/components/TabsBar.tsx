@@ -66,7 +66,6 @@ const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle
         }
       `}
     >
-      {/* Tab label with dirty indicator */}
       <span className="flex-1 truncate select-none text-sm flex items-center gap-1">
         {tab.isDirty && (
           <span className="text-orange-500 dark:text-orange-400 font-bold text-xs" title="Unsaved changes">
@@ -76,7 +75,6 @@ const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle
         <span className="truncate">{tab.label}</span>
       </span>
 
-      {/* Close button */}
       <Button
         onClick={e => onCloseTab(e, tabId)}
         variant="icon"
@@ -97,7 +95,6 @@ export const TabsBar = () => {
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
 
-  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -280,7 +277,6 @@ export const TabsBar = () => {
       modifiers={[restrictToHorizontalAxis]}
     >
       <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 flex items-center h-10 relative dark:border-t dark:border-t-gray-700">
-        {/* Left scroll button */}
         {showLeftScroll && (
           <Button
             onClick={() => scrollTabs('left')}
@@ -292,7 +288,6 @@ export const TabsBar = () => {
           </Button>
         )}
 
-        {/* Tabs container with horizontal scroll - scrollbar hidden */}
         <div
           ref={tabsContainerRef}
           className="flex-1 flex items-stretch overflow-x-auto overflow-y-hidden h-full scrollbar-hide"
@@ -323,7 +318,6 @@ export const TabsBar = () => {
           </SortableContext>
         </div>
 
-        {/* Right scroll button */}
         {showRightScroll && (
           <Button
             onClick={() => scrollTabs('right')}
@@ -335,7 +329,6 @@ export const TabsBar = () => {
           </Button>
         )}
 
-        {/* New tab button */}
         <Button
           onClick={handleNewTab}
           variant="icon"
@@ -346,7 +339,6 @@ export const TabsBar = () => {
           <Plus size={18} />
         </Button>
 
-        {/* Confirmation dialog for closing tabs with unsaved changes */}
         <ConfirmDialog
           isOpen={tabToClose !== null}
           onClose={cancelCloseTab}

@@ -38,16 +38,9 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
   
   const { authenticate, refresh, isAuthenticating, error, clearError } = useOAuthFlow(selectedConfigId);
   
-  // Enable automatic token refresh for the selected config
   useTokenRefresh({
     configId: selectedConfigId,
     enabled: !!selectedConfigId,
-    onRefresh: (configId) => {
-      console.log(`[OAuth] Token auto-refreshed for config: ${configId}`);
-    },
-    onRefreshError: (configId, error) => {
-      console.error(`[OAuth] Auto-refresh failed for config ${configId}:`, error.message);
-    },
   });
 
   // Load configs on mount
@@ -141,27 +134,21 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
     
     const config = configs.find(c => c.id === selectedConfigId);
     if (!config || !config.revocationUrl) {
-      // Provider doesn't support revocation, just clear tokens locally
       clearTokens(selectedConfigId);
       clearError();
       return;
     }
     
     try {
-      // Revoke the access token
       await revokeOAuthToken(selectedConfigId, tokens.accessToken, 'access_token');
       
-      // If there's a refresh token, revoke it too
       if (tokens.refreshToken) {
         await revokeOAuthToken(selectedConfigId, tokens.refreshToken, 'refresh_token');
       }
       
-      // Clear tokens locally after successful revocation
       clearTokens(selectedConfigId);
       clearError();
     } catch (error) {
-      console.error('Failed to revoke token:', error);
-      // Still clear tokens locally even if revocation fails
       clearTokens(selectedConfigId);
     }
   };
@@ -211,13 +198,11 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
 
   return (
     <div className="space-y-4">
-      {/* Info Banner */}
       <div className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
         OAuth 2.0 authentication allows secure access to APIs without exposing credentials. 
         Configure your OAuth provider below and authenticate to get access tokens.
       </div>
 
-      {/* Config Selection */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -276,10 +261,8 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
         )}
       </div>
 
-      {/* Configuration Details & Status */}
       {selectedConfig && (
         <div className="border border-gray-300 dark:border-gray-600 rounded-md p-4 space-y-3">
-          {/* Config Info with Actions */}
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -308,11 +291,9 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
             </div>
           </div>
 
-          {/* Authentication Status */}
           <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
             {isAuthenticated ? (
               <div className="space-y-2">
-                {/* Status indicator with color coding */}
                 <div className={`flex items-center gap-2 text-sm ${
                   tokenStatus === 'good' ? 'text-green-600 dark:text-green-400' :
                   tokenStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
@@ -328,7 +309,6 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
                   </span>
                 </div>
                 
-                {/* Expiry countdown */}
                 {expiresIn !== null && (
                   <div className={`flex items-center gap-2 text-xs ${
                     tokenStatus === 'good' ? 'text-gray-600 dark:text-gray-400' :
@@ -342,7 +322,6 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
                   </div>
                 )}
                 
-                {/* Auto-refresh indicator */}
                 {selectedConfig.autoRefreshToken && hasRefreshToken && (
                   <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
                     <RefreshCw size={14} />
@@ -416,7 +395,6 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
             )}
           </div>
 
-          {/* Error Display */}
           {error && (
             <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
               <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
@@ -429,7 +407,6 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
         </div>
       )}
 
-      {/* OAuth Config Form Dialog */}
       <OAuthConfigForm
         isOpen={showConfigForm}
         onClose={handleCloseConfigForm}

@@ -39,7 +39,6 @@ export const Header = () => {
             <h1 className="text-xl font-bold">Requesto</h1>
           </div>
 
-          {/* Navigation Menu Items */}
           <nav className="flex items-center gap-1 ml-4">
             {navItems.map(({ path, icon: Icon, label, title }) => (
               <Button
@@ -61,7 +60,6 @@ export const Header = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Help Button */}
           <Button
             onClick={helpDialog.open}
             variant="icon"
@@ -72,7 +70,6 @@ export const Header = () => {
             <HelpCircle className="w-5 h-5" />
           </Button>
 
-          {/* Theme Toggle */}
           <Button
             onClick={toggleTheme}
             variant="icon"
@@ -83,7 +80,6 @@ export const Header = () => {
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </Button>
 
-          {/* Console Toggle */}
           <Button
             onClick={toggleConsole}
             variant="icon"
@@ -96,7 +92,6 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* Help Dialog */}
       <Dialog isOpen={helpDialog.isOpen} onClose={helpDialog.close} title="Help" size="md">
         <HelpContent onClose={helpDialog.close} />
       </Dialog>
