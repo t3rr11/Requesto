@@ -57,12 +57,12 @@ export const ContextMenu = ({ items, position, onClose }: ContextMenuProps) => {
           }}
           variant="ghost"
           size="md"
-          className={`w-full justify-start text-left text-sm rounded-none ${
+          className={`w-full !justify-start text-left text-sm rounded-none ${
             item.danger ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         >
-          {item.icon}
-          {item.label}
+          {item.icon && <span className="flex-shrink-0">{item.icon}</span>}
+          <span>{item.label}</span>
         </Button>
       ))}
     </div>

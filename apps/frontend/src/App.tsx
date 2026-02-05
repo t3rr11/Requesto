@@ -5,7 +5,6 @@ import { AlertDialog } from './components/AlertDialog';
 import { useAlertStore } from './store/useAlertStore';
 import { useCollectionsStore } from './store/useCollectionsStore';
 import { useEnvironmentStore } from './store/useEnvironmentStore';
-import { DialogManager } from './components/DialogManager';
 import { RequestPage } from './pages/RequestsPage';
 import { EnvironmentsPage } from './pages/EnvironmentsPage';
 import { OAuthPage } from './pages/OAuthPage';
@@ -34,8 +33,6 @@ function App() {
           <Route path="/oauth" element={<OAuthPage />} />
           <Route path="/oauth/callback" element={<OAuthCallback />} />
         </Routes>
-
-        <DialogManager />
         
         <AlertDialog
           isOpen={isAlertOpen}

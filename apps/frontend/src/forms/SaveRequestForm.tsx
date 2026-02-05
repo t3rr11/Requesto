@@ -1,15 +1,14 @@
 import { useState, FormEvent, useEffect } from 'react';
-import { Dialog } from '../components/Dialog';
 import { Button } from '../components/Button';
 import { collectionsApi } from '../helpers/api/collections';
 import { useCollectionsStore } from '../store/useCollectionsStore';
 import { useTabsStore } from '../store/useTabsStore';
+import { useAlertStore } from '../store/useAlertStore';
 import { AuthConfig } from '../types';
 
 interface SaveRequestFormProps {
-  isOpen: boolean;
-  onClose: () => void;
   onSuccess: () => void;
+  onCancel: () => void;
   currentRequest: {
     method: string;
     url: string;
@@ -19,8 +18,9 @@ interface SaveRequestFormProps {
   } | null;
 }
 
-export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: SaveRequestFormProps) => {
-  const { collections, setActiveRequest } = useCollectionsStore();
+export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveRequestFormProps) => {
+  const { collections, loadCollections, setActiveRequest } = useCollectionsStore();
+  const { showAlert } = useAlertStore();
   const { markTabAsSaved, updateTabLabel, activeTabId } = useTabsStore();
   const [name, setName] = useState('');
   const [collectionId, setCollectionId] = useState('');
@@ -28,7 +28,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isOpen && currentRequest) {
+    if (currentRequest) {
       // Auto-generate a name from the request
       // Extract pathname without URL encoding to preserve variables like {{baseUrl}}
       let pathname = '/';
@@ -52,7 +52,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
       }
       setName(`${currentRequest.method} ${pathname}`);
     }
-  }, [isOpen, currentRequest]);
+  }, [currentRequest]);
 
   useEffect(() => {
     // Auto-select first collection
@@ -96,6 +96,8 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
         auth: currentRequest.auth,
       });
       
+      await loadCollections();
+      
       // Update the UI to reflect this is now a saved request
       setActiveRequest(savedRequest.id);
       
@@ -106,8 +108,8 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
       }
       
       setName('');
+      showAlert('Success', 'Request saved successfully', 'success');
       onSuccess();
-      onClose();
     } catch (err) {
       setError('Failed to save request');
     } finally {
@@ -115,15 +117,14 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
     }
   };
 
-  const handleClose = () => {
+  const handleCancel = () => {
     setName('');
     setError('');
-    onClose();
+    onCancel();
   };
 
   return (
-    <Dialog isOpen={isOpen} onClose={handleClose} title="Save Request">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
             {error}
@@ -192,7 +193,7 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" onClick={handleClose} variant="ghost" size="md">
+          <Button type="button" onClick={handleCancel} variant="ghost" size="md">
             Cancel
           </Button>
           <Button type="submit" variant="primary" size="md" loading={loading} disabled={loading || collections.length === 0 || !currentRequest?.url?.trim()}>
@@ -200,6 +201,5 @@ export const SaveRequestForm = ({ isOpen, onClose, onSuccess, currentRequest }: 
           </Button>
         </div>
       </form>
-    </Dialog>
   );
 };

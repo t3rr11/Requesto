@@ -13,6 +13,7 @@ import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { OAuthConfigForm } from '../forms/OAuthConfigForm';
 import { OAuthConfigList } from '../components/OAuthConfigList';
+import { useDialogWithData, useConfirmDialog } from '../hooks/useDialog';
 
 export const OAuthPage = () => {
   const navigate = useNavigate();
@@ -20,9 +21,8 @@ export const OAuthPage = () => {
   const { configs, loadConfigs, addConfig, updateConfig, deleteConfig, isLoadingConfigs } = useOAuthStore();
   
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingConfig, setEditingConfig] = useState<OAuthConfig | undefined>(undefined);
-  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const formDialog = useDialogWithData<OAuthConfig | undefined>();
+  const confirmDialog = useConfirmDialog();
 
   useEffect(() => {
     loadConfigs();
@@ -38,20 +38,18 @@ export const OAuthPage = () => {
   }, [configs.length, selectedConfigId]);
 
   const handleCreateNew = () => {
-    setEditingConfig(undefined);
-    setIsFormOpen(true);
+    formDialog.open(undefined); // undefined = create new
   };
 
   const handleEdit = (config: OAuthConfig) => {
-    setEditingConfig(config);
-    setIsFormOpen(true);
+    formDialog.open(config); // pass config for editing
   };
 
   const handleSave = async (configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'> & { clientSecret?: string }) => {
     try {
-      if (editingConfig) {
+      if (formDialog.data) {
         // Update existing config
-        await updateConfig(editingConfig.id, configData);
+        await updateConfig(formDialog.data.id, configData);
         showAlert('Success', 'OAuth configuration updated successfully', 'success');
       } else {
         // Create new config
@@ -59,8 +57,7 @@ export const OAuthPage = () => {
         setSelectedConfigId(newConfig.id);
         showAlert('Success', 'OAuth configuration created successfully', 'success');
       }
-      setIsFormOpen(false);
-      setEditingConfig(undefined);
+      formDialog.close();
     } catch (error) {
       console.error('Failed to save OAuth config:', error);
       showAlert('Error', 'Failed to save OAuth configuration', 'error');
@@ -71,26 +68,29 @@ export const OAuthPage = () => {
   const handleDeleteClick = (id: string) => {
     const config = configs.find(c => c.id === id);
     if (config) {
-      setConfirmDelete({ id, name: config.name });
+      confirmDialog.open({
+        title: 'Delete OAuth Configuration',
+        message: `Are you sure you want to delete "${config.name}"? This action cannot be undone and will remove any associated tokens.`,
+        confirmText: 'Delete',
+        variant: 'danger',
+        onConfirm: async () => {
+          await handleDelete(id);
+        },
+      });
     }
   };
 
-  const handleDelete = async (configId?: string) => {
-    const id = configId || confirmDelete?.id;
-    if (!id) return;
-
+  const handleDelete = async (configId: string) => {
     try {
-      await deleteConfig(id);
+      await deleteConfig(configId);
       
-      if (selectedConfigId === id) {
-        const remaining = configs.filter(c => c.id !== id);
+      if (selectedConfigId === configId) {
+        const remaining = configs.filter(c => c.id !== configId);
         setSelectedConfigId(remaining.length > 0 ? remaining[0].id : null);
       }
       
       showAlert('Success', 'OAuth configuration deleted successfully', 'success');
-      setConfirmDelete(null);
-      setIsFormOpen(false);
-      setEditingConfig(undefined);
+      formDialog.close(); // Close form dialog if open
     } catch (error) {
       console.error('Failed to delete OAuth config:', error);
       showAlert('Error', 'Failed to delete OAuth configuration', 'error');
@@ -347,26 +347,15 @@ export const OAuthPage = () => {
 
         {/* OAuth Config Form Dialog */}
         <OAuthConfigForm
-          isOpen={isFormOpen}
-          onClose={() => {
-            setIsFormOpen(false);
-            setEditingConfig(undefined);
-          }}
+          isOpen={formDialog.isOpen}
+          onClose={formDialog.close}
           onSave={handleSave}
-          onDelete={editingConfig ? handleDelete : undefined}
-          editConfig={editingConfig}
+          onDelete={formDialog.data ? () => handleDeleteClick(formDialog.data!.id) : undefined}
+          editConfig={formDialog.data}
         />
 
         {/* Confirm Delete Dialog */}
-        <ConfirmDialog
-          isOpen={confirmDelete !== null}
-          onClose={() => setConfirmDelete(null)}
-          onConfirm={handleDelete}
-          title="Delete OAuth Configuration"
-          message={`Are you sure you want to delete "${confirmDelete?.name}"? This action cannot be undone and will remove any associated tokens.`}
-          confirmText="Delete"
-          variant="danger"
-        />
+        <ConfirmDialog {...confirmDialog.props} />
       </div>
     </main>
   );

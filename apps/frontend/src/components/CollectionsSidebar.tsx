@@ -1,48 +1,51 @@
 import { useState, useRef, useEffect } from 'react';
-import { Folder as FolderIcon, FolderPlus, Plus, Edit, Trash2 } from 'lucide-react';
+import { Folder as FolderIcon, FolderPlus, Plus } from 'lucide-react';
 import { useUIStore } from '../store/useUIStore';
 import { useCollectionsStore, SavedRequest } from '../store/useCollectionsStore';
-import { useCollectionsSidebarStore } from '../store/useCollectionsSidebarStore';
 import { useTabsStore } from '../store/useTabsStore';
-import { ConfirmDialog } from './ConfirmDialog';
-import { ContextMenu } from './ContextMenu';
+import { Dialog } from './Dialog';
 import { RenameForm } from '../forms/RenameForm';
+import { NewCollectionForm } from '../forms/NewCollectionForm';
+import { NewRequestForm } from '../forms/NewRequestForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
+import { useDialog, useDialogWithData } from '../hooks/useDialog';
+
+interface RenameRequestData {
+  request: SavedRequest;
+}
+
+interface RenameCollectionData {
+  id: string;
+  name: string;
+}
+
+interface RenameFolderData {
+  collectionId: string;
+  id: string;
+  name: string;
+}
+
+interface NewRequestContext {
+  collectionId?: string;
+  folderId?: string;
+}
 
 export const CollectionsSidebar = () => {
-  const { isSidebarOpen, sidebarWidth, setSidebarWidth, openNewCollection } = useUIStore();
+  const { isSidebarOpen, sidebarWidth, setSidebarWidth } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const {
-    collections,
-    loading,
-    setActiveRequest,
-    deleteCollection,
-    deleteFolder,
-    deleteRequest,
-    updateCollection,
-    updateRequest,
-    updateFolder,
-  } = useCollectionsStore();
+  const { collections, loading } = useCollectionsStore();
   const { openRequestTab } = useTabsStore();
-  const {
-    confirmDialog,
-    setConfirmDialog,
-    closeConfirmDialog,
-    requestContextMenu,
-    setRequestContextMenu,
-    collectionContextMenu,
-    setCollectionContextMenu,
-    folderContextMenu,
-    setFolderContextMenu,
-    renameRequest,
-    setRenameRequest,
-    renameCollection,
-    setRenameCollection,
-    renameFolder,
-    setRenameFolder,
-  } = useCollectionsSidebarStore();
+  
+  // Dialog hooks
+  const newCollectionDialog = useDialog();
+  const newRequestDialog = useDialogWithData<NewRequestContext>();
+  const renameRequestDialog = useDialogWithData<RenameRequestData>();
+  const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
+  const renameFolderDialog = useDialogWithData<RenameFolderData>();
+
+  const { updateCollection, updateRequest, updateFolder } = useCollectionsStore();
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -73,171 +76,48 @@ export const CollectionsSidebar = () => {
     };
   }, [isResizing, setSidebarWidth]);
 
-  const handleSelectRequest = (request: SavedRequest) => {
-    // Open request in a tab (or focus existing tab)
-    openRequestTab({
-      savedRequestId: request.id,
-      collectionId: request.collectionId,
-      request: {
-        method: request.method,
-        url: request.url,
-        headers: request.headers,
-        body: request.body,
-        auth: request.auth,
-      },
-      label: request.name,
-    });
-
-    // Keep for backwards compatibility with any components still using this
-    setActiveRequest(request.id);
-  };
-
-  const handleDeleteCollection = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Delete Collection',
-      message: 'Are you sure you want to delete this collection and all its requests? This action cannot be undone.',
-      onConfirm: async () => {
-        await deleteCollection(id);
-        closeConfirmDialog();
-      },
-    });
-  };
-
-  const handleDeleteFolder = async (collectionId: string, folderId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Delete Folder',
-      message: 'Are you sure you want to delete this folder and all its contents? This action cannot be undone.',
-      onConfirm: async () => {
-        await deleteFolder(collectionId, folderId);
-        closeConfirmDialog();
-      },
-    });
-  };
-
-  const handleDeleteRequest = async (collectionId: string, requestId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Delete Request',
-      message: 'Are you sure you want to delete this request? This action cannot be undone.',
-      onConfirm: async () => {
-        await deleteRequest(collectionId, requestId);
-        closeConfirmDialog();
-      },
-    });
-  };
-
-  const handleRequestContextMenu = (e: React.MouseEvent, request: SavedRequest) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setRequestContextMenu({ x: e.clientX, y: e.clientY, request });
-  };
-
-  const handleCollectionContextMenu = (e: React.MouseEvent, collectionId: string, collectionName: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCollectionContextMenu({ x: e.clientX, y: e.clientY, collectionId, collectionName });
-  };
-
-  const handleFolderContextMenu = (e: React.MouseEvent, collectionId: string, folderId: string, folderName: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFolderContextMenu({ x: e.clientX, y: e.clientY, collectionId, folderId, folderName });
-  };
-
-  const handleRenameRequest = (request: SavedRequest) => {
-    setRenameRequest({ request });
-    setRequestContextMenu(null);
-  };
-
-  const handleRenameCollection = (collectionId: string, collectionName: string) => {
-    setRenameCollection({ id: collectionId, name: collectionName });
-    setCollectionContextMenu(null);
-  };
-
-  const handleRenameFolder = (collectionId: string, folderId: string, folderName: string) => {
-    setRenameFolder({ collectionId, id: folderId, name: folderName });
-    setFolderContextMenu(null);
-  };
-
-  const handleSaveRequestRename = async (newName: string) => {
-    if (!renameRequest) return;
-
-    await updateRequest(renameRequest.request.collectionId, renameRequest.request.id, { name: newName });
-    setRenameRequest(null);
-  };
-
-  const handleSaveCollectionRename = async (newName: string) => {
-    if (!renameCollection) return;
-
-    await updateCollection(renameCollection.id, { name: newName });
-    setRenameCollection(null);
-  };
-
-  const handleSaveFolderRename = async (newName: string) => {
-    if (!renameFolder) return;
-
-    await updateFolder(renameFolder.collectionId, renameFolder.id, { name: newName });
-    setRenameFolder(null);
-  };
-
-  const handleDeleteRequestFromContext = async () => {
-    if (!requestContextMenu) return;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Delete Request',
-      message: 'Are you sure you want to delete this request? This action cannot be undone.',
-      onConfirm: async () => {
-        await deleteRequest(requestContextMenu.request.collectionId, requestContextMenu.request.id);
-        closeConfirmDialog();
-      },
-    });
-    setRequestContextMenu(null);
-  };
-
-  const handleDeleteCollectionFromContext = async () => {
-    if (!collectionContextMenu) return;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Delete Collection',
-      message: 'Are you sure you want to delete this collection and all its requests? This action cannot be undone.',
-      onConfirm: async () => {
-        await deleteCollection(collectionContextMenu.collectionId);
-        closeConfirmDialog();
-      },
-    });
-    setCollectionContextMenu(null);
-  };
-
-  const handleDeleteFolderFromContext = async () => {
-    if (!folderContextMenu) return;
-
-    setConfirmDialog({
-      isOpen: true,
-      title: 'Delete Folder',
-      message: 'Are you sure you want to delete this folder and all its contents? This action cannot be undone.',
-      onConfirm: async () => {
-        await deleteFolder(folderContextMenu.collectionId, folderContextMenu.folderId);
-        closeConfirmDialog();
-      },
-    });
-    setFolderContextMenu(null);
-  };
-
+  // Handler for opening new empty request
   const handleNewRequest = () => {
-    // Open a new empty tab
     openRequestTab({
       savedRequestId: '',
       collectionId: '',
       request: { method: 'GET', url: '', auth: { type: 'none' } },
       label: 'New Request',
     });
+  };
+
+  // Rename handlers - just open dialogs
+  const handleRenameRequest = (request: SavedRequest) => {
+    renameRequestDialog.open({ request });
+  };
+
+  const handleRenameCollection = (collectionId: string, collectionName: string) => {
+    renameCollectionDialog.open({ id: collectionId, name: collectionName });
+  };
+
+  const handleRenameFolder = (collectionId: string, folderId: string, folderName: string) => {
+    renameFolderDialog.open({ collectionId, id: folderId, name: folderName });
+  };
+
+  const handleSaveRequestRename = async (newName: string) => {
+    if (!renameRequestDialog.data) return;
+
+    await updateRequest(renameRequestDialog.data.request.collectionId, renameRequestDialog.data.request.id, { name: newName });
+    renameRequestDialog.close();
+  };
+
+  const handleSaveCollectionRename = async (newName: string) => {
+    if (!renameCollectionDialog.data) return;
+
+    await updateCollection(renameCollectionDialog.data.id, { name: newName });
+    renameCollectionDialog.close();
+  };
+
+  const handleSaveFolderRename = async (newName: string) => {
+    if (!renameFolderDialog.data) return;
+
+    await updateFolder(renameFolderDialog.data.collectionId, renameFolderDialog.data.id, { name: newName });
+    renameFolderDialog.close();
   };
 
   if (!isSidebarOpen) return null;
@@ -256,7 +136,7 @@ export const CollectionsSidebar = () => {
             <Button onClick={handleNewRequest} variant="icon" size="md" title="New Request">
               <Plus className="w-5 h-5" />
             </Button>
-            <Button onClick={openNewCollection} variant="icon" size="md" title="New Collection">
+            <Button onClick={newCollectionDialog.open} variant="icon" size="md" title="New Collection">
               <FolderPlus className="w-5 h-5" />
             </Button>
           </div>
@@ -276,137 +156,80 @@ export const CollectionsSidebar = () => {
         ) : (
           <div className="py-2">
             {collections.map(collection => (
-              <CollectionItem
-                key={collection.id}
-                collection={collection}
-                onSelectRequest={handleSelectRequest}
-                onDeleteCollection={handleDeleteCollection}
-                onDeleteRequest={handleDeleteRequest}
-                onDeleteFolder={handleDeleteFolder}
-                onRequestContextMenu={handleRequestContextMenu}
-                onCollectionContextMenu={handleCollectionContextMenu}
-                onFolderContextMenu={handleFolderContextMenu}
+              <CollectionItem 
+                key={collection.id} 
+                collection={collection} 
+                onOpenNewRequest={(collectionId, folderId) => 
+                  newRequestDialog.open({ collectionId, folderId })
+                }
+                onRenameRequest={handleRenameRequest}
+                onRenameCollection={handleRenameCollection}
+                onRenameFolder={handleRenameFolder}
               />
             ))}
           </div>
         )}
       </div>
 
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-        onConfirm={confirmDialog.onConfirm}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        confirmText="Delete"
-        variant="danger"
-      />
+      {/* New Collection Dialog */}
+      <Dialog isOpen={newCollectionDialog.isOpen} onClose={newCollectionDialog.close} title="New Collection">
+        <NewCollectionForm onSuccess={newCollectionDialog.close} onCancel={newCollectionDialog.close} />
+      </Dialog>
 
-      {/* Request Context Menu */}
-      {requestContextMenu && (
-        <ContextMenu
-          position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
-          items={[
-            {
-              label: 'Rename',
-              icon: <Edit className="w-4 h-4" />,
-              onClick: () => handleRenameRequest(requestContextMenu.request),
-            },
-            {
-              label: 'Delete',
-              icon: <Trash2 className="w-4 h-4" />,
-              onClick: handleDeleteRequestFromContext,
-              danger: true,
-            },
-          ]}
-          onClose={() => setRequestContextMenu(null)}
-        />
+      {/* New Request Dialog */}
+      <Dialog isOpen={newRequestDialog.isOpen} onClose={newRequestDialog.close} title="New Request">
+        {newRequestDialog.data && (
+          <NewRequestForm
+            preselectedCollectionId={newRequestDialog.data.collectionId}
+            preselectedFolderId={newRequestDialog.data.folderId}
+            onSuccess={newRequestDialog.close}
+            onCancel={newRequestDialog.close}
+          />
+        )}
+      </Dialog>
+
+      {/* Rename Request Dialog */}
+      {renameRequestDialog.data && (
+        <Dialog isOpen={renameRequestDialog.isOpen} onClose={renameRequestDialog.close} title="Rename Request">
+          <RenameForm
+            isOpen={true}
+            onClose={renameRequestDialog.close}
+            onSave={handleSaveRequestRename}
+            currentName={renameRequestDialog.data.request.name}
+            title="Rename Request"
+            label="Request Name"
+          />
+        </Dialog>
       )}
 
-      {/* Collection Context Menu */}
-      {collectionContextMenu && (
-        <ContextMenu
-          position={{ x: collectionContextMenu.x, y: collectionContextMenu.y }}
-          items={[
-            {
-              label: 'Rename',
-              icon: <Edit className="w-4 h-4" />,
-              onClick: () =>
-                handleRenameCollection(collectionContextMenu.collectionId, collectionContextMenu.collectionName),
-            },
-            {
-              label: 'Delete',
-              icon: <Trash2 className="w-4 h-4" />,
-              onClick: handleDeleteCollectionFromContext,
-              danger: true,
-            },
-          ]}
-          onClose={() => setCollectionContextMenu(null)}
-        />
+      {/* Rename Collection Dialog */}
+      {renameCollectionDialog.data && (
+        <Dialog isOpen={renameCollectionDialog.isOpen} onClose={renameCollectionDialog.close} title="Rename Collection">
+          <RenameForm
+            isOpen={true}
+            onClose={renameCollectionDialog.close}
+            onSave={handleSaveCollectionRename}
+            currentName={renameCollectionDialog.data.name}
+            title="Rename Collection"
+            label="Collection Name"
+            placeholder="Enter collection name..."
+          />
+        </Dialog>
       )}
 
-      {/* Folder Context Menu */}
-      {folderContextMenu && (
-        <ContextMenu
-          position={{ x: folderContextMenu.x, y: folderContextMenu.y }}
-          items={[
-            {
-              label: 'Rename',
-              icon: <Edit className="w-4 h-4" />,
-              onClick: () =>
-                handleRenameFolder(
-                  folderContextMenu.collectionId,
-                  folderContextMenu.folderId,
-                  folderContextMenu.folderName
-                ),
-            },
-            {
-              label: 'Delete',
-              icon: <Trash2 className="w-4 h-4" />,
-              onClick: handleDeleteFolderFromContext,
-              danger: true,
-            },
-          ]}
-          onClose={() => setFolderContextMenu(null)}
-        />
-      )}
-
-      {/* Rename Request Form */}
-      {renameRequest && (
-        <RenameForm
-          isOpen={true}
-          onClose={() => setRenameRequest(null)}
-          onSave={handleSaveRequestRename}
-          currentName={renameRequest.request.name}
-          title="Rename Request"
-          label="Request Name"
-        />
-      )}
-
-      {/* Rename Collection Form */}
-      {renameCollection && (
-        <RenameForm
-          isOpen={true}
-          onClose={() => setRenameCollection(null)}
-          onSave={handleSaveCollectionRename}
-          currentName={renameCollection.name}
-          title="Rename Collection"
-          label="Collection Name"
-          placeholder="Enter collection name..."
-        />
-      )}
-
-      {/* Rename Folder Form */}
-      {renameFolder && (
-        <RenameForm
-          isOpen={true}
-          onClose={() => setRenameFolder(null)}
-          onSave={handleSaveFolderRename}
-          currentName={renameFolder.name}
-          title="Rename Folder"
-          label="Folder Name"
-          placeholder="Enter folder name..."
-        />
+      {/* Rename Folder Dialog */}
+      {renameFolderDialog.data && (
+        <Dialog isOpen={renameFolderDialog.isOpen} onClose={renameFolderDialog.close} title="Rename Folder">
+          <RenameForm
+            isOpen={true}
+            onClose={renameFolderDialog.close}
+            onSave={handleSaveFolderRename}
+            currentName={renameFolderDialog.data.name}
+            title="Rename Folder"
+            label="Folder Name"
+            placeholder="Enter folder name..."
+          />
+        </Dialog>
       )}
 
       {/* Resize Handle */}

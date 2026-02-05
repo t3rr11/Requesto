@@ -1,46 +1,156 @@
 import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus } from 'lucide-react';
 import { Folder, Collection, SavedRequest, useCollectionsStore } from '../store/useCollectionsStore';
-import { useCollectionsSidebarStore } from '../store/useCollectionsSidebarStore';
 import { useUIStore } from '../store/useUIStore';
 import { useTabsStore } from '../store/useTabsStore';
 import { getMethodColor } from '../helpers/collectionHelpers';
 import { Button } from './Button';
+import { ContextMenu } from './ContextMenu';
+import { ConfirmDialog } from './ConfirmDialog';
 import { useState } from 'react';
+import { useConfirmDialog } from '../hooks/useDialog';
 
 interface FolderItemProps {
   folder: Folder;
   collection: Collection;
   depth: number;
-  onSelectRequest: (request: SavedRequest) => void;
-  onDeleteRequest: (collectionId: string, requestId: string, e: React.MouseEvent) => void;
-  onRequestContextMenu: (e: React.MouseEvent, request: SavedRequest) => void;
-  onDeleteFolder: (collectionId: string, folderId: string, e: React.MouseEvent) => void;
-  onFolderContextMenu: (e: React.MouseEvent, collectionId: string, folderId: string, folderName: string) => void;
+  onOpenNewRequest: (collectionId?: string, folderId?: string) => void;
+  onRenameRequest: (request: SavedRequest) => void;
+  onRenameFolder: (collectionId: string, folderId: string, folderName: string) => void;
 }
 
-export const FolderItem = ({
-  folder,
-  collection,
-  depth,
-  onSelectRequest,
-  onDeleteRequest,
-  onRequestContextMenu,
-  onDeleteFolder,
-  onFolderContextMenu,
+export const FolderItem = ({ 
+  folder, 
+  collection, 
+  depth, 
+  onOpenNewRequest,
+  onRenameRequest,
+  onRenameFolder,
 }: FolderItemProps) => {
-  const { addFolder, moveRequest, moveFolder } = useCollectionsStore();
-  const { getActiveTab } = useTabsStore();
+  const { moveRequest, moveFolder, setActiveRequest, addFolder, deleteFolder, deleteRequest } = useCollectionsStore();
+  const { openRequestTab, getActiveTab } = useTabsStore();
   const activeTab = getActiveTab();
-  const activeSavedRequestId = activeTab?.savedRequestId || ''; // Only highlight if tab has a saved request
-  const { newFolderInput, folderName, setNewFolderInput, setFolderName } = useCollectionsSidebarStore();
-  const { openNewRequest, expandedFolders, toggleFolder, expandFolder } = useUIStore();
+  const activeSavedRequestId = activeTab?.savedRequestId || '';
+  const { expandedFolders, toggleFolder, expandFolder } = useUIStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
+  // Context menus (local state)
+  const [requestContextMenu, setRequestContextMenu] = useState<{ x: number; y: number; request: SavedRequest } | null>(null);
+  const [folderContextMenu, setFolderContextMenu] = useState<{ x: number; y: number; collectionId: string; folderId: string; folderName: string } | null>(null);
+  
+  // Folder management (local state)
+  const [newFolderInput, setNewFolderInput] = useState<{ collectionId: string; parentId?: string } | null>(null);
+  const [folderName, setFolderName] = useState('');
+  
+  // Confirm dialog
+  const confirmDialog = useConfirmDialog();
+
+  // Handle selecting a request - opens it in a tab
+  const handleSelectRequest = (request: SavedRequest) => {
+    openRequestTab({
+      savedRequestId: request.id,
+      collectionId: request.collectionId,
+      request: {
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        body: request.body,
+        auth: request.auth,
+      },
+      label: request.name,
+    });
+    setActiveRequest(request.id);
+  };
+
+  // Delete handlers with confirmations
+  const handleDeleteRequest = (collectionId: string, requestId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    confirmDialog.open({
+      title: 'Delete Request',
+      message: 'Are you sure you want to delete this request? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteRequest(collectionId, requestId);
+      },
+    });
+  };
+
+  const handleDeleteFolder = (collectionId: string, folderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    confirmDialog.open({
+      title: 'Delete Folder',
+      message: 'Are you sure you want to delete this folder and all its contents? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteFolder(collectionId, folderId);
+      },
+    });
+  };
+
+  // Context menu handlers
+  const handleRequestContextMenu = (e: React.MouseEvent, request: SavedRequest) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRequestContextMenu({ x: e.clientX, y: e.clientY, request });
+  };
+
+  const handleFolderContextMenu = (
+    e: React.MouseEvent,
+    collectionId: string,
+    folderId: string,
+    folderName: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFolderContextMenu({ x: e.clientX, y: e.clientY, collectionId, folderId, folderName });
+  };
+  
+  const handleRenameRequestFromContext = () => {
+    if (!requestContextMenu) return;
+    onRenameRequest(requestContextMenu.request);
+    setRequestContextMenu(null);
+  };
+  
+  const handleDeleteRequestFromContext = () => {
+    if (!requestContextMenu) return;
+    confirmDialog.open({
+      title: 'Delete Request',
+      message: 'Are you sure you want to delete this request? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteRequest(requestContextMenu.request.collectionId, requestContextMenu.request.id);
+      },
+    });
+    setRequestContextMenu(null);
+  };
+  
+  const handleRenameFolderFromContext = () => {
+    if (!folderContextMenu) return;
+    onRenameFolder(folderContextMenu.collectionId, folderContextMenu.folderId, folderContextMenu.folderName);
+    setFolderContextMenu(null);
+  };
+  
+  const handleDeleteFolderFromContext = () => {
+    if (!folderContextMenu) return;
+    confirmDialog.open({
+      title: 'Delete Folder',
+      message: 'Are you sure you want to delete this folder and all its contents? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteFolder(folderContextMenu.collectionId, folderContextMenu.folderId);
+      },
+    });
+    setFolderContextMenu(null);
+  };
   
   const handleCreateFolder = (collectionId: string, parentId?: string) => {
     setNewFolderInput({ collectionId, parentId });
   };
-  
+
   const handleSaveFolder = async () => {
     if (!newFolderInput || !folderName.trim()) return;
     await addFolder(newFolderInput.collectionId, folderName.trim(), newFolderInput.parentId);
@@ -51,10 +161,12 @@ export const FolderItem = ({
     }
     
     setNewFolderInput(null);
+    setFolderName('');
   };
-  
+
   const handleCancelFolder = () => {
     setNewFolderInput(null);
+    setFolderName('');
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -107,7 +219,7 @@ export const FolderItem = ({
         }`}
         style={{ paddingLeft }}
         onClick={() => toggleFolder(folder.id)}
-        onContextMenu={(e) => onFolderContextMenu(e, collection.id, folder.id, folder.name)}
+        onContextMenu={(e) => handleFolderContextMenu(e, collection.id, folder.id, folder.name)}
         draggable
         onDragStart={(e) => {
           e.stopPropagation();
@@ -140,7 +252,7 @@ export const FolderItem = ({
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              openNewRequest(collection.id, folder.id);
+              onOpenNewRequest(collection.id, folder.id);
             }}
             variant="icon"
             size="sm"
@@ -160,7 +272,7 @@ export const FolderItem = ({
             <FolderPlus className="w-3 h-3" />
           </Button>
           <Button
-            onClick={(e) => onDeleteFolder(collection.id, folder.id, e)}
+            onClick={(e) => handleDeleteFolder(collection.id, folder.id, e)}
             variant="icon"
             size="sm"
             title="Delete Folder"
@@ -180,7 +292,7 @@ export const FolderItem = ({
               <input
                 type="text"
                 value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
+                  onChange={(e) => setFolderName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSaveFolder();
                   if (e.key === 'Escape') handleCancelFolder();
@@ -205,11 +317,9 @@ export const FolderItem = ({
               folder={childFolder}
               collection={collection}
               depth={depth + 1}
-              onSelectRequest={onSelectRequest}
-              onDeleteRequest={onDeleteRequest}
-              onRequestContextMenu={onRequestContextMenu}
-              onDeleteFolder={onDeleteFolder}
-              onFolderContextMenu={onFolderContextMenu}
+              onOpenNewRequest={onOpenNewRequest}
+              onRenameRequest={onRenameRequest}
+              onRenameFolder={onRenameFolder}
             />
           ))}
 
@@ -244,8 +354,8 @@ export const FolderItem = ({
                   activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
                 }`}
                 style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}
-                onClick={() => onSelectRequest(request)}
-                onContextMenu={(e) => onRequestContextMenu(e, request)}
+                onClick={() => handleSelectRequest(request)}
+                onContextMenu={(e) => handleRequestContextMenu(e, request)}
                 draggable
                 onDragStart={(e) => {
                   e.stopPropagation();
@@ -269,7 +379,7 @@ export const FolderItem = ({
                   <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
                 </div>
                 <button
-                  onClick={(e) => onDeleteRequest(collection.id, request.id, e)}
+                  onClick={(e) => handleDeleteRequest(collection.id, request.id, e)}
                   className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
                   title="Delete Request"
                 >
@@ -305,6 +415,50 @@ export const FolderItem = ({
           ))}
         </div>
       )}
+      
+      {/* Context Menus */}
+      {requestContextMenu && (
+        <ContextMenu
+          position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
+          items={[
+            {
+              label: 'Rename',
+              icon: <FileText className="w-4 h-4" />,
+              onClick: handleRenameRequestFromContext,
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="w-4 h-4" />,
+              onClick: handleDeleteRequestFromContext,
+              danger: true,
+            },
+          ]}
+          onClose={() => setRequestContextMenu(null)}
+        />
+      )}
+      
+      {folderContextMenu && (
+        <ContextMenu
+          position={{ x: folderContextMenu.x, y: folderContextMenu.y }}
+          items={[
+            {
+              label: 'Rename',
+              icon: <FolderIcon className="w-4 h-4" />,
+              onClick: handleRenameFolderFromContext,
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="w-4 h-4" />,
+              onClick: handleDeleteFolderFromContext,
+              danger: true,
+            },
+          ]}
+          onClose={() => setFolderContextMenu(null)}
+        />
+      )}
+      
+      {/* Confirm Dialog */}
+      <ConfirmDialog {...confirmDialog.props} />
     </div>
   );
 };

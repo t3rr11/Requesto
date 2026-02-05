@@ -1,44 +1,148 @@
 import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus } from 'lucide-react';
 import { Collection, SavedRequest, useCollectionsStore } from '../store/useCollectionsStore';
-import { useCollectionsSidebarStore } from '../store/useCollectionsSidebarStore';
 import { useUIStore } from '../store/useUIStore';
 import { useTabsStore } from '../store/useTabsStore';
 import { FolderItem } from './FolderItem';
 import { getMethodColor } from '../helpers/collectionHelpers';
 import { Button } from './Button';
+import { ContextMenu } from './ContextMenu';
+import { ConfirmDialog } from './ConfirmDialog';
 import React, { useState } from 'react';
+import { useConfirmDialog } from '../hooks/useDialog';
 
 interface CollectionItemProps {
   collection: Collection;
-  onSelectRequest: (request: SavedRequest) => void;
-  onDeleteCollection: (id: string, e: React.MouseEvent) => void;
-  onDeleteRequest: (collectionId: string, requestId: string, e: React.MouseEvent) => void;
-  onDeleteFolder: (collectionId: string, folderId: string, e: React.MouseEvent) => void;
-  onRequestContextMenu: (e: React.MouseEvent, request: SavedRequest) => void;
-  onCollectionContextMenu: (e: React.MouseEvent, collectionId: string, collectionName: string) => void;
-  onFolderContextMenu: (e: React.MouseEvent, collectionId: string, folderId: string, folderName: string) => void;
+  onOpenNewRequest: (collectionId?: string, folderId?: string) => void;
+  onRenameRequest: (request: SavedRequest) => void;
+  onRenameCollection: (collectionId: string, collectionName: string) => void;
+  onRenameFolder: (collectionId: string, folderId: string, folderName: string) => void;
 }
 
-export const CollectionItem = ({
-  collection,
-  onSelectRequest,
-  onDeleteCollection,
-  onDeleteRequest,
-  onDeleteFolder,
-  onRequestContextMenu,
-  onCollectionContextMenu,
-  onFolderContextMenu,
+export const CollectionItem = ({ 
+  collection, 
+  onOpenNewRequest,
+  onRenameRequest,
+  onRenameCollection,
+  onRenameFolder,
 }: CollectionItemProps) => {
-  const { addFolder, moveRequest } = useCollectionsStore();
+  const { addFolder, moveRequest, deleteCollection, deleteRequest, setActiveRequest } = useCollectionsStore();
+  const { openRequestTab } = useTabsStore();
   const { getActiveTab } = useTabsStore();
   const activeTab = getActiveTab();
   const activeSavedRequestId = activeTab?.savedRequestId || '';
-  const { newFolderInput, folderName, setNewFolderInput, setFolderName } = useCollectionsSidebarStore();
-  const { openNewRequest, expandedCollections, toggleCollection, expandCollection } = useUIStore();
+  const { expandedCollections, toggleCollection, expandCollection } = useUIStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
+  // Context menus (local state)
+  const [requestContextMenu, setRequestContextMenu] = useState<{ x: number; y: number; request: SavedRequest } | null>(null);
+  const [collectionContextMenu, setCollectionContextMenu] = useState<{ x: number; y: number; collectionId: string; collectionName: string } | null>(null);
+  
+  // Folder management (local state)
+  const [newFolderInput, setNewFolderInput] = useState<{ collectionId: string; parentId?: string } | null>(null);
+  const [folderName, setFolderName] = useState('');
+  
+  // Confirm dialog
+  const confirmDialog = useConfirmDialog();
 
   const isExpanded = expandedCollections.has(collection.id);
+
+  // Handle selecting a request - opens it in a tab
+  const handleSelectRequest = (request: SavedRequest) => {
+    openRequestTab({
+      savedRequestId: request.id,
+      collectionId: request.collectionId,
+      request: {
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        body: request.body,
+        auth: request.auth,
+      },
+      label: request.name,
+    });
+    setActiveRequest(request.id);
+  };
+
+  // Delete handlers with confirmations
+  const handleDeleteCollection = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    confirmDialog.open({
+      title: 'Delete Collection',
+      message: 'Are you sure you want to delete this collection and all its requests? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteCollection(id);
+      },
+    });
+  };
+
+  const handleDeleteRequest = (collectionId: string, requestId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    confirmDialog.open({
+      title: 'Delete Request',
+      message: 'Are you sure you want to delete this request? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteRequest(collectionId, requestId);
+      },
+    });
+  };
+
+  // Context menu handlers
+  const handleRequestContextMenu = (e: React.MouseEvent, request: SavedRequest) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRequestContextMenu({ x: e.clientX, y: e.clientY, request });
+  };
+
+  const handleCollectionContextMenu = (e: React.MouseEvent, collectionId: string, collectionName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCollectionContextMenu({ x: e.clientX, y: e.clientY, collectionId, collectionName });
+  };
+  
+  const handleRenameRequestFromContext = () => {
+    if (!requestContextMenu) return;
+    onRenameRequest(requestContextMenu.request);
+    setRequestContextMenu(null);
+  };
+  
+  const handleDeleteRequestFromContext = () => {
+    if (!requestContextMenu) return;
+    confirmDialog.open({
+      title: 'Delete Request',
+      message: 'Are you sure you want to delete this request? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteRequest(requestContextMenu.request.collectionId, requestContextMenu.request.id);
+      },
+    });
+    setRequestContextMenu(null);
+  };
+  
+  const handleRenameCollectionFromContext = () => {
+    if (!collectionContextMenu) return;
+    onRenameCollection(collectionContextMenu.collectionId, collectionContextMenu.collectionName);
+    setCollectionContextMenu(null);
+  };
+  
+  const handleDeleteCollectionFromContext = () => {
+    if (!collectionContextMenu) return;
+    confirmDialog.open({
+      title: 'Delete Collection',
+      message: 'Are you sure you want to delete this collection and all its requests? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        await deleteCollection(collectionContextMenu.collectionId);
+      },
+    });
+    setCollectionContextMenu(null);
+  };
 
   const handleCreateFolder = (collectionId: string, parentId?: string) => {
     setNewFolderInput({ collectionId, parentId });
@@ -47,7 +151,7 @@ export const CollectionItem = ({
   const handleSaveFolder = async () => {
     if (!newFolderInput || !folderName.trim()) return;
     await addFolder(newFolderInput.collectionId, folderName.trim(), newFolderInput.parentId);
-
+    
     // Auto-expand the parent after creating folder
     if (newFolderInput.parentId) {
       const { expandFolder } = useUIStore.getState();
@@ -55,12 +159,14 @@ export const CollectionItem = ({
     } else {
       expandCollection(collection.id);
     }
-
+    
     setNewFolderInput(null);
+    setFolderName('');
   };
 
   const handleCancelFolder = () => {
     setNewFolderInput(null);
+    setFolderName('');
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -112,7 +218,7 @@ export const CollectionItem = ({
           isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
         onClick={() => toggleCollection(collection.id)}
-        onContextMenu={e => onCollectionContextMenu(e, collection.id, collection.name)}
+        onContextMenu={e => handleCollectionContextMenu(e, collection.id, collection.name)}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -131,7 +237,7 @@ export const CollectionItem = ({
           <Button
             onClick={e => {
               e.stopPropagation();
-              openNewRequest(collection.id);
+              onOpenNewRequest(collection.id);
             }}
             variant="icon"
             size="sm"
@@ -151,7 +257,7 @@ export const CollectionItem = ({
             <FolderPlus className="w-3.5 h-3.5" />
           </Button>
           <Button
-            onClick={e => onDeleteCollection(collection.id, e)}
+            onClick={e => handleDeleteCollection(collection.id, e)}
             variant="icon"
             size="sm"
             title="Delete Collection"
@@ -196,11 +302,9 @@ export const CollectionItem = ({
               folder={folder}
               collection={collection}
               depth={0}
-              onSelectRequest={onSelectRequest}
-              onDeleteRequest={onDeleteRequest}
-              onRequestContextMenu={onRequestContextMenu}
-              onDeleteFolder={onDeleteFolder}
-              onFolderContextMenu={onFolderContextMenu}
+              onOpenNewRequest={onOpenNewRequest}
+              onRenameRequest={onRenameRequest}
+              onRenameFolder={onRenameFolder}
             />
           ))}
 
@@ -236,8 +340,8 @@ export const CollectionItem = ({
                   activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
                   }`}
                   style={{ paddingLeft: '32px' }}
-                  onClick={() => onSelectRequest(request)}
-                  onContextMenu={e => onRequestContextMenu(e, request)}
+                  onClick={() => handleSelectRequest(request)}
+                  onContextMenu={e => handleRequestContextMenu(e, request)}
                   draggable
                   onDragStart={e => {
                     e.stopPropagation();
@@ -264,7 +368,7 @@ export const CollectionItem = ({
                   <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
                 </div>
                 <button
-                  onClick={e => onDeleteRequest(collection.id, request.id, e)}
+                  onClick={e => handleDeleteRequest(collection.id, request.id, e)}
                   className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
                   title="Delete Request"
                 >
@@ -299,6 +403,50 @@ export const CollectionItem = ({
           )}
         </div>
       )}
+      
+      {/* Context Menus */}
+      {requestContextMenu && (
+        <ContextMenu
+          position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
+          items={[
+            {
+              label: 'Rename',
+              icon: <FileText className="w-4 h-4" />,
+              onClick: handleRenameRequestFromContext,
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="w-4 h-4" />,
+              onClick: handleDeleteRequestFromContext,
+              danger: true,
+            },
+          ]}
+          onClose={() => setRequestContextMenu(null)}
+        />
+      )}
+      
+      {collectionContextMenu && (
+        <ContextMenu
+          position={{ x: collectionContextMenu.x, y: collectionContextMenu.y }}
+          items={[
+            {
+              label: 'Rename',
+              icon: <FileText className="w-4 h-4" />,
+              onClick: handleRenameCollectionFromContext,
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="w-4 h-4" />,
+              onClick: handleDeleteCollectionFromContext,
+              danger: true,
+            },
+          ]}
+          onClose={() => setCollectionContextMenu(null)}
+        />
+      )}
+      
+      {/* Confirm Dialog */}
+      <ConfirmDialog {...confirmDialog.props} />
     </div>
   );
 };

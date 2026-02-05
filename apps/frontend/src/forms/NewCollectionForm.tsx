@@ -1,15 +1,17 @@
 import { useState, FormEvent } from 'react';
-import { Dialog } from '../components/Dialog';
 import { Button } from '../components/Button';
 import { collectionsApi } from '../helpers/api/collections';
+import { useCollectionsStore } from '../store/useCollectionsStore';
+import { useAlertStore } from '../store/useAlertStore';
 
 interface NewCollectionFormProps {
-  isOpen: boolean;
-  onClose: () => void;
   onSuccess: () => void;
+  onCancel: () => void;
 }
 
-export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionFormProps) => {
+export const NewCollectionForm = ({ onSuccess, onCancel }: NewCollectionFormProps) => {
+  const { loadCollections } = useCollectionsStore();
+  const { showAlert } = useAlertStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,10 +29,11 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
     setLoading(true);
     try {
       await collectionsApi.create({ name: name.trim(), description: description.trim() || undefined });
+      await loadCollections();
       setName('');
       setDescription('');
+      showAlert('Success', 'Collection created successfully', 'success');
       onSuccess();
-      onClose();
     } catch (err) {
       setError('Failed to create collection');
     } finally {
@@ -38,16 +41,15 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
     }
   };
 
-  const handleClose = () => {
+  const handleCancel = () => {
     setName('');
     setDescription('');
     setError('');
-    onClose();
+    onCancel();
   };
 
   return (
-    <Dialog isOpen={isOpen} onClose={handleClose} title="New Collection">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
             {error}
@@ -84,7 +86,7 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" onClick={handleClose} variant="ghost" size="md">
+          <Button type="button" onClick={handleCancel} variant="ghost" size="md">
             Cancel
           </Button>
           <Button type="submit" variant="primary" size="md" loading={loading} disabled={loading}>
@@ -92,6 +94,5 @@ export const NewCollectionForm = ({ isOpen, onClose, onSuccess }: NewCollectionF
           </Button>
         </div>
       </form>
-    </Dialog>
   );
 };

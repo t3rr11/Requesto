@@ -3,8 +3,10 @@ import { flushSync } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './Button';
+import { Dialog } from './Dialog';
 import { RequestBreadcrumb } from './RequestBreadcrumb';
 import { RequestForm, requestFormSchema, type RequestFormData } from '../forms/RequestForm';
+import { SaveRequestForm } from '../forms/SaveRequestForm';
 import { ResponsePanel } from './ResponsePanel';
 import { useRequestStore } from '../store/useRequestStore';
 import { useCollectionsStore } from '../store/useCollectionsStore';
@@ -14,6 +16,7 @@ import { requestApi } from '../helpers/api/request';
 import { substituteInRequest, getUndefinedVariables } from '../helpers/environmentHelpers';
 import { useUIStore } from '../store/useUIStore';
 import { useTabsStore } from '../store/useTabsStore';
+import { useDialog } from '../hooks/useDialog';
 
 export interface RequestResponseViewRef {
   loadRequest: (item: { method: string; url: string; headers?: Record<string, string>; body?: string }) => void;
@@ -30,9 +33,10 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
   const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { environmentsData } = useEnvironmentStore();
-  const { openSaveRequest, requestPanelWidth, setRequestPanelWidth } = useUIStore();
+  const { requestPanelWidth, setRequestPanelWidth } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const saveRequestDialog = useDialog();
 
   const activeTab = getActiveTab();
   
@@ -375,7 +379,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
 
     // If no savedRequestId, open save dialog to create new request
     if (!values.savedRequestId) {
-      openSaveRequest();
+      saveRequestDialog.open();
       return;
     }
 
@@ -384,7 +388,7 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
     // If collection not found (request was deleted), treat as new request
     if (!collection) {
       setValue('savedRequestId', undefined);
-      openSaveRequest();
+      saveRequestDialog.open();
       return;
     }
 
@@ -531,6 +535,21 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
           <ResponsePanel />
         </div>
       </div>
+
+      {/* Save Request Dialog */}
+      <Dialog isOpen={saveRequestDialog.isOpen} onClose={saveRequestDialog.close} title="Save Request">
+        <SaveRequestForm
+          currentRequest={activeTab ? {
+            method: activeTab.request.method,
+            url: activeTab.request.url,
+            headers: activeTab.request.headers,
+            body: activeTab.request.body,
+            auth: activeTab.request.auth,
+          } : null}
+          onSuccess={saveRequestDialog.close}
+          onCancel={saveRequestDialog.close}
+        />
+      </Dialog>
     </div>
   );
 });

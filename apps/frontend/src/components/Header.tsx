@@ -3,12 +3,16 @@ import { useThemeStore } from '../store/useThemeStore';
 import { ListCollapse, Menu, Moon, Sun, Settings, Shield, Send, HelpCircle, Terminal } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { Button } from './Button';
+import { Dialog } from './Dialog';
+import { HelpContent } from './HelpContent';
+import { useDialog } from '../hooks/useDialog';
 
 export const Header = () => {
-  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, openHelp } = useUIStore();
+  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole } = useUIStore();
   const { isDarkMode, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const helpDialog = useDialog();
 
   const navItems = [
     { path: '/requests', icon: Send, label: 'Requests', title: 'API Requests' },
@@ -59,7 +63,7 @@ export const Header = () => {
         <div className="flex items-center gap-3">
           {/* Help Button */}
           <Button
-            onClick={openHelp}
+            onClick={helpDialog.open}
             variant="icon"
             size="sm"
             className="text-white hover:!bg-blue-500 dark:hover:!bg-gray-700 hover:!text-white"
@@ -91,6 +95,11 @@ export const Header = () => {
           </Button>
         </div>
       </div>
+
+      {/* Help Dialog */}
+      <Dialog isOpen={helpDialog.isOpen} onClose={helpDialog.close} title="Help" size="md">
+        <HelpContent onClose={helpDialog.close} />
+      </Dialog>
     </header>
   );
 };

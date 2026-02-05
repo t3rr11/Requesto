@@ -1,13 +1,12 @@
 import { useState, FormEvent, useEffect } from 'react';
-import { Dialog } from '../components/Dialog';
 import { Button } from '../components/Button';
 import { collectionsApi } from '../helpers/api/collections';
 import { useCollectionsStore } from '../store/useCollectionsStore';
+import { useAlertStore } from '../store/useAlertStore';
 
 interface NewRequestFormProps {
-  isOpen: boolean;
-  onClose: () => void;
   onSuccess: () => void;
+  onCancel: () => void;
   preselectedCollectionId?: string;
   preselectedFolderId?: string;
 }
@@ -15,13 +14,13 @@ interface NewRequestFormProps {
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 export const NewRequestForm = ({ 
-  isOpen, 
-  onClose, 
   onSuccess, 
+  onCancel, 
   preselectedCollectionId,
   preselectedFolderId 
 }: NewRequestFormProps) => {
-  const { collections } = useCollectionsStore();
+  const { collections, loadCollections } = useCollectionsStore();
+  const { showAlert } = useAlertStore();
   const [name, setName] = useState('');
   const [method, setMethod] = useState('GET');
   const [collectionId, setCollectionId] = useState('');
@@ -30,19 +29,17 @@ export const NewRequestForm = ({
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isOpen) {
-      // Set preselected values
-      if (preselectedCollectionId) {
-        setCollectionId(preselectedCollectionId);
-      } else if (collections.length > 0 && !collectionId) {
-        setCollectionId(collections[0].id);
-      }
-      
-      if (preselectedFolderId) {
-        setFolderId(preselectedFolderId);
-      }
+    // Set preselected values
+    if (preselectedCollectionId) {
+      setCollectionId(preselectedCollectionId);
+    } else if (collections.length > 0 && !collectionId) {
+      setCollectionId(collections[0].id);
     }
-  }, [isOpen, preselectedCollectionId, preselectedFolderId, collections, collectionId]);
+    
+    if (preselectedFolderId) {
+      setFolderId(preselectedFolderId);
+    }
+  }, [preselectedCollectionId, preselectedFolderId, collections, collectionId]);
 
   const selectedCollection = collections.find(c => c.id === collectionId);
   const availableFolders = selectedCollection?.folders || [];
@@ -71,11 +68,12 @@ export const NewRequestForm = ({
         body: '',
         folderId: folderId || undefined,
       });
+      await loadCollections();
       setName('');
       setMethod('GET');
       setFolderId('');
+      showAlert('Success', 'Request created successfully', 'success');
       onSuccess();
-      onClose();
     } catch (err) {
       setError('Failed to create request');
     } finally {
@@ -83,17 +81,16 @@ export const NewRequestForm = ({
     }
   };
 
-  const handleClose = () => {
+  const handleCancel = () => {
     setName('');
     setMethod('GET');
     setFolderId('');
     setError('');
-    onClose();
+    onCancel();
   };
 
   return (
-    <Dialog isOpen={isOpen} onClose={handleClose} title="New Request">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
             {error}
@@ -188,7 +185,7 @@ export const NewRequestForm = ({
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" onClick={handleClose} variant="ghost" size="md">
+          <Button type="button" onClick={handleCancel} variant="ghost" size="md">
             Cancel
           </Button>
           <Button type="submit" variant="primary" size="md" loading={loading} disabled={loading || collections.length === 0}>
@@ -196,6 +193,5 @@ export const NewRequestForm = ({
           </Button>
         </div>
       </form>
-    </Dialog>
   );
 };

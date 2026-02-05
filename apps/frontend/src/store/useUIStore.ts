@@ -13,21 +13,6 @@ interface UIState {
   expandedCollections: Set<string>;
   expandedFolders: Set<string>;
   
-  // Dialog states
-  isHelpOpen: boolean;
-  isNewCollectionOpen: boolean;
-  isSaveRequestOpen: boolean;
-  isNewRequestOpen: boolean;
-  isNewOAuthConfigOpen: boolean;
-  isEditOAuthConfigOpen: boolean;
-  
-  // Dialog context
-  newRequestContext: {
-    collectionId?: string;
-    folderId?: string;
-  } | null;
-  editOAuthConfigId: string | null;
-  
   // Actions
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
@@ -42,26 +27,6 @@ interface UIState {
   toggleFolder: (id: string) => void;
   expandCollection: (id: string) => void;
   expandFolder: (id: string) => void;
-  
-  openHelp: () => void;
-  closeHelp: () => void;
-  
-  openNewCollection: () => void;
-  closeNewCollection: () => void;
-  
-  openSaveRequest: () => void;
-  closeSaveRequest: () => void;
-  
-  openNewRequest: (collectionId?: string, folderId?: string) => void;
-  closeNewRequest: () => void;
-  
-  openNewOAuthConfig: () => void;
-  closeNewOAuthConfig: () => void;
-  
-  openEditOAuthConfig: (configId: string) => void;
-  closeEditOAuthConfig: () => void;
-  
-  closeAllDialogs: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -75,14 +40,6 @@ export const useUIStore = create<UIState>()(
       consoleHeight: 250,
       expandedCollections: new Set<string>(),
       expandedFolders: new Set<string>(),
-      isHelpOpen: false,
-      isNewCollectionOpen: false,
-      isSaveRequestOpen: false,
-      isNewRequestOpen: false,
-      isNewOAuthConfigOpen: false,
-      isEditOAuthConfigOpen: false,
-      newRequestContext: null,
-      editOAuthConfigId: null,
       
       // Actions
       toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -121,38 +78,6 @@ export const useUIStore = create<UIState>()(
       expandFolder: (id) => set((state) => ({
         expandedFolders: new Set(state.expandedFolders).add(id),
       })),
-      
-      openHelp: () => set({ isHelpOpen: true }),
-      closeHelp: () => set({ isHelpOpen: false }),
-      
-      openNewCollection: () => set({ isNewCollectionOpen: true }),
-      closeNewCollection: () => set({ isNewCollectionOpen: false }),
-      
-      openSaveRequest: () => set({ isSaveRequestOpen: true }),
-      closeSaveRequest: () => set({ isSaveRequestOpen: false }),
-      
-      openNewRequest: (collectionId, folderId) => set({ 
-        isNewRequestOpen: true, 
-        newRequestContext: { collectionId, folderId } 
-      }),
-      closeNewRequest: () => set({ isNewRequestOpen: false, newRequestContext: null }),
-      
-      openNewOAuthConfig: () => set({ isNewOAuthConfigOpen: true }),
-      closeNewOAuthConfig: () => set({ isNewOAuthConfigOpen: false }),
-      
-      openEditOAuthConfig: (configId) => set({ isEditOAuthConfigOpen: true, editOAuthConfigId: configId }),
-      closeEditOAuthConfig: () => set({ isEditOAuthConfigOpen: false, editOAuthConfigId: null }),
-      
-      closeAllDialogs: () => set({
-        isHelpOpen: false,
-        isNewCollectionOpen: false,
-        isSaveRequestOpen: false,
-        isNewRequestOpen: false,
-        isNewOAuthConfigOpen: false,
-        isEditOAuthConfigOpen: false,
-        newRequestContext: null,
-        editOAuthConfigId: null,
-      }),
     }),
     {
       name: 'requesto-ui-storage',
