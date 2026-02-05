@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { initializeFile, atomicWrite } from './storage';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const ENVIRONMENTS_FILE = path.join(DATA_DIR, 'environments.json');
@@ -22,25 +23,16 @@ interface EnvironmentsData {
   environments: Environment[];
 }
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initialize with default environment if file doesn't exist
-if (!fs.existsSync(ENVIRONMENTS_FILE)) {
-  const defaultData: EnvironmentsData = {
-    activeEnvironmentId: 'default',
-    environments: [
-      {
-        id: 'default',
-        name: 'Default',
-        variables: []
-      }
-    ]
-  };
-  fs.writeFileSync(ENVIRONMENTS_FILE, JSON.stringify(defaultData, null, 2));
-}
+initializeFile(ENVIRONMENTS_FILE, {
+  activeEnvironmentId: 'default',
+  environments: [
+    {
+      id: 'default',
+      name: 'Default',
+      variables: []
+    }
+  ]
+} as EnvironmentsData);
 
 export function getEnvironments(): EnvironmentsData {
   try {
@@ -65,7 +57,7 @@ export function saveEnvironment(environment: Environment): void {
     data.environments.push(environment);
   }
   
-  fs.writeFileSync(ENVIRONMENTS_FILE, JSON.stringify(data, null, 2));
+  atomicWrite(ENVIRONMENTS_FILE, data);
 }
 
 export function deleteEnvironment(id: string): boolean {
@@ -73,18 +65,15 @@ export function deleteEnvironment(id: string): boolean {
   const index = data.environments.findIndex(env => env.id === id);
   
   if (index < 0) return false;
-  
-  // Don't allow deleting the last environment
   if (data.environments.length === 1) return false;
   
   data.environments.splice(index, 1);
   
-  // If we deleted the active environment, set a new one
   if (data.activeEnvironmentId === id) {
     data.activeEnvironmentId = data.environments[0]?.id || null;
   }
   
-  fs.writeFileSync(ENVIRONMENTS_FILE, JSON.stringify(data, null, 2));
+  atomicWrite(ENVIRONMENTS_FILE, data);
   return true;
 }
 
@@ -95,7 +84,7 @@ export function setActiveEnvironment(id: string): boolean {
   if (!exists) return false;
   
   data.activeEnvironmentId = id;
-  fs.writeFileSync(ENVIRONMENTS_FILE, JSON.stringify(data, null, 2));
+  atomicWrite(ENVIRONMENTS_FILE, data);
   return true;
 }
 
@@ -106,7 +95,6 @@ export function getActiveEnvironment(): Environment | null {
   return data.environments.find(env => env.id === data.activeEnvironmentId) || null;
 }
 
-// Substitute variables in a string
 export function substituteVariables(text: string, environment: Environment | null): string {
   if (!environment) return text;
   
@@ -121,20 +109,20 @@ export function substituteVariables(text: string, environment: Environment | nul
   return result;
 }
 
-// Substitute variables in request data
 export function substituteInRequest(
   request: { url: string; headers?: Record<string, string>; body?: string },
   environment: Environment | null
 ): { url: string; headers?: Record<string, string>; body?: string } {
   return {
     url: substituteVariables(request.url, environment),
-    headers: request.headers ? 
-      Object.fromEntries(
-        Object.entries(request.headers).map(([key, value]) => [
-          key,
-          substituteVariables(value, environment)
-        ])
-      ) : undefined,
+    headers: request.headers
+      ? Object.fromEntries(
+          Object.entries(request.headers).map(([key, value]) => [
+            key,
+            substituteVariables(value, environment)
+          ])
+        )
+      : undefined,
     body: request.body ? substituteVariables(request.body, environment) : undefined
   };
 }

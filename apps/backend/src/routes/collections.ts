@@ -3,7 +3,6 @@ import { collectionsDb } from '../database/collections';
 import { AuthConfig } from '../types';
 
 const collectionsRoutes: FastifyPluginAsync = async (server) => {
-  // Get all collections
   server.get('/collections', async (_request, reply) => {
     try {
       const collections = await collectionsDb.getAll();
@@ -14,7 +13,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Get a single collection
   server.get<{ Params: { id: string } }>('/collections/:id', async (request, reply) => {
     try {
       const collection = await collectionsDb.getById(request.params.id);
@@ -28,7 +26,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Create a new collection
   server.post<{
     Body: {
       name: string;
@@ -60,7 +57,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Update a collection
   server.put<{
     Params: { id: string };
     Body: {
@@ -83,7 +79,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Delete a collection
   server.delete<{ Params: { id: string } }>('/collections/:id', async (request, reply) => {
     try {
       const deleted = await collectionsDb.delete(request.params.id);
@@ -99,7 +94,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Add a request to a collection
   server.post<{
     Params: { id: string };
     Body: {
@@ -146,7 +140,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Update a request in a collection
   server.put<{
     Params: { id: string; requestId: string };
     Body: {
@@ -178,7 +171,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Delete a request from a collection
   server.delete<{
     Params: { id: string; requestId: string };
   }>('/collections/:id/requests/:requestId', async (request, reply) => {
@@ -199,9 +191,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Folder operations
-
-  // Add a folder to a collection
   server.post<{
     Params: { id: string };
     Body: {
@@ -238,7 +227,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Update a folder in a collection
   server.put<{
     Params: { id: string; folderId: string };
     Body: {
@@ -265,7 +253,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Delete a folder from a collection
   server.delete<{
     Params: { id: string; folderId: string };
   }>('/collections/:id/folders/:folderId', async (request, reply) => {
@@ -286,7 +273,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Move a request to a different collection/folder
   server.put<{
     Params: { id: string; requestId: string };
     Body: {
@@ -300,7 +286,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       const sourceCollectionId = request.params.id;
       const requestId = request.params.requestId;
 
-      // Get the source collection and request
       const sourceCollection = await collectionsDb.getById(sourceCollectionId);
       if (!sourceCollection) {
         return reply.code(404).send({ error: 'Source collection not found' });
@@ -311,23 +296,19 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
         return reply.code(404).send({ error: 'Request not found' });
       }
 
-      // Remove from source
       await collectionsDb.deleteRequest(sourceCollectionId, requestId);
 
-      // Get target collection to determine order
       const targetCollection = await collectionsDb.getById(targetCollectionId);
       if (!targetCollection) {
         return reply.code(404).send({ error: 'Target collection not found' });
       }
 
-      // Calculate order for the request
+      // EXPLAIN: If no order specified, append to end; otherwise shift existing items
       let order = targetOrder;
       if (order === undefined) {
-        // If no specific order, place at end
         const targetRequests = targetCollection.requests.filter(r => r.folderId === targetFolderId);
         order = targetRequests.length > 0 ? Math.max(...targetRequests.map(r => r.order || 0)) + 1 : 0;
       } else {
-        // Reorder existing requests in the target location
         const targetRequests = targetCollection.requests.filter(r => r.folderId === targetFolderId);
         for (const req of targetRequests) {
           if ((req.order || 0) >= order) {
@@ -358,7 +339,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
-  // Move a folder to a different collection/parent
   server.put<{
     Params: { id: string; folderId: string };
     Body: {
@@ -371,7 +351,6 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       const sourceCollectionId = request.params.id;
       const folderId = request.params.folderId;
 
-      // Get the source collection and folder
       const sourceCollection = await collectionsDb.getById(sourceCollectionId);
       if (!sourceCollection) {
         return reply.code(404).send({ error: 'Source collection not found' });
@@ -382,7 +361,7 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
         return reply.code(404).send({ error: 'Folder not found' });
       }
 
-      // Prevent moving a folder into itself or its descendants
+      // EXPLAIN: Walk up parent chain to prevent moving folder into itself or descendants
       if (targetParentId) {
         let checkParent = sourceCollection.folders?.find(f => f.id === targetParentId);
         while (checkParent) {
@@ -393,22 +372,18 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
         }
       }
 
-      // Get all descendants of this folder (recursively)
       const getDescendantIds = (parentId: string): string[] => {
         const children = sourceCollection.folders?.filter(f => f.parentId === parentId) || [];
         return children.flatMap(child => [child.id, ...getDescendantIds(child.id)]);
       };
       const descendantIds = [folderId, ...getDescendantIds(folderId)];
 
-      // Get all requests in this folder and descendants
       const requestsToMove = sourceCollection.requests.filter(r => 
         r.folderId && descendantIds.includes(r.folderId)
       );
 
-      // Remove folder and descendants from source
       await collectionsDb.deleteFolder(sourceCollectionId, folderId);
 
-      // Get folders to move (folder + all descendants)
       const foldersToMove = [
         folderToMove,
         ...sourceCollection.folders?.filter(f => descendantIds.includes(f.id)) || []

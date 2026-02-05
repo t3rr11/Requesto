@@ -1,8 +1,3 @@
-/**
- * OAuth Routes
- * Handles OAuth configuration management and secure token exchange
- */
-
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import axios from 'axios';
 import {
@@ -22,7 +17,6 @@ import {
 
 export async function oauthRoutes(server: FastifyInstance) {
   
-  // Get all OAuth configurations (without secrets)
   server.get('/oauth/configs', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const configs = getAllConfigs();
@@ -35,7 +29,6 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   });
 
-  // Get a specific OAuth configuration (without secret)
   server.get<{ Params: { id: string } }>(
     '/oauth/configs/:id',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
@@ -88,7 +81,7 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   );
 
-  // Update OAuth configuration
+
   server.patch<{ 
     Params: { id: string };
     Body: Partial<Omit<OAuthConfigServer, 'id' | 'createdAt'>>;
@@ -118,7 +111,7 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   );
 
-  // Delete OAuth configuration
+
   server.delete<{ Params: { id: string } }>(
     '/oauth/configs/:id',
     async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
@@ -140,31 +133,26 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   );
 
-  // Exchange authorization code for access token
-  // This is the SECURE endpoint that adds client_secret server-side
+  // GOTCHA: This endpoint adds client_secret server-side for secure token exchange
   server.post<{ Body: TokenExchangeRequest }>(
     '/oauth/token',
     async (request: FastifyRequest<{ Body: TokenExchangeRequest }>, reply: FastifyReply) => {
       try {
         const { configId, code, codeVerifier, redirectUri } = request.body;
         
-        // Validation
         if (!configId || !code || !redirectUri) {
           return reply.code(400).send({
             error: 'Missing required fields: configId, code, redirectUri',
           });
         }
         
-        // Get config with secret
         const config = getConfig(configId, true) as OAuthConfigServer | null;
         if (!config) {
           return reply.code(404).send({ error: 'OAuth configuration not found' });
         }
         
-        // Get client secret
         const clientSecret = getClientSecret(configId);
         
-        // Log for debugging
         console.log('[OAuth Token Exchange] Config:', {
           provider: config.provider,
           usePKCE: config.usePKCE,
@@ -172,7 +160,6 @@ export async function oauthRoutes(server: FastifyInstance) {
           hasCodeVerifier: !!codeVerifier,
         });
         
-        // Prepare token request
         const tokenRequestBody: Record<string, string> = {
           grant_type: 'authorization_code',
           code,
@@ -180,17 +167,15 @@ export async function oauthRoutes(server: FastifyInstance) {
           client_id: config.clientId,
         };
         
-        // Add client secret if available (required for confidential clients)
         if (clientSecret) {
           tokenRequestBody.client_secret = clientSecret;
         }
         
-        // Add code_verifier for PKCE (required for public clients using PKCE)
         if (codeVerifier && config.usePKCE) {
           tokenRequestBody.code_verifier = codeVerifier;
         }
         
-        // Microsoft Entra ID requires client_secret even with PKCE for Web apps
+        // GOTCHA: Microsoft Entra ID requires client_secret for Web apps even with PKCE
         if (config.provider === 'microsoft' && !clientSecret && !codeVerifier) {
           return reply.code(400).send({
             error: 'Configuration Error',
@@ -198,12 +183,10 @@ export async function oauthRoutes(server: FastifyInstance) {
           });
         }
         
-        // Add any additional params from config
         if (config.additionalParams) {
           Object.assign(tokenRequestBody, config.additionalParams);
         }
         
-        // Special handling for GitHub (requires User-Agent header)
         const headers: Record<string, string> = {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
@@ -213,7 +196,6 @@ export async function oauthRoutes(server: FastifyInstance) {
           headers['User-Agent'] = 'Requesto-OAuth-Client';
         }
         
-        // Exchange code for token
         console.log(`Exchanging OAuth code for config ${configId} (provider: ${config.provider})`);
         
         const tokenResponse = await axios.post<TokenExchangeResponse>(
@@ -222,8 +204,7 @@ export async function oauthRoutes(server: FastifyInstance) {
           { headers }
         );
         
-        // Return tokens to frontend (frontend will store them)
-        // IMPORTANT: Backend does NOT store these tokens
+        // GOTCHA: Backend does NOT store tokens - frontend stores them client-side
         return reply.code(200).send(tokenResponse.data);
         
       } catch (error) {
@@ -246,14 +227,12 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   );
 
-  // Refresh access token
   server.post<{ Body: TokenRefreshRequest }>(
     '/oauth/refresh',
     async (request: FastifyRequest<{ Body: TokenRefreshRequest }>, reply: FastifyReply) => {
       try {
         const { configId, refreshToken } = request.body;
         
-        // Validation
         if (!configId || !refreshToken) {
           return reply.code(400).send({
             error: 'Missing required fields: configId, refreshToken',
@@ -328,14 +307,12 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   );
 
-  // Revoke OAuth token
   server.post<{ Body: { configId: string; token: string; tokenTypeHint?: string } }>(
     '/oauth/revoke',
     async (request: FastifyRequest<{ Body: { configId: string; token: string; tokenTypeHint?: string } }>, reply: FastifyReply) => {
       try {
         const { configId, token, tokenTypeHint } = request.body;
         
-        // Validation
         if (!configId || !token) {
           return reply.code(400).send({
             error: 'Missing required fields: configId, token',
@@ -429,14 +406,12 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   );
 
-  // Client Credentials Flow
   server.post<{ Body: { configId: string } }>(
     '/oauth/client-credentials',
     async (request: FastifyRequest<{ Body: { configId: string } }>, reply: FastifyReply) => {
       try {
         const { configId } = request.body;
         
-        // Validation
         if (!configId) {
           return reply.code(400).send({
             error: 'Missing required field: configId',
@@ -515,14 +490,12 @@ export async function oauthRoutes(server: FastifyInstance) {
     }
   );
 
-  // Password Flow (Resource Owner Password Credentials)
   server.post<{ Body: { configId: string; username: string; password: string } }>(
     '/oauth/password',
     async (request: FastifyRequest<{ Body: { configId: string; username: string; password: string } }>, reply: FastifyReply) => {
       try {
         const { configId, username, password } = request.body;
         
-        // Validation
         if (!configId || !username || !password) {
           return reply.code(400).send({
             error: 'Missing required fields: configId, username, password',

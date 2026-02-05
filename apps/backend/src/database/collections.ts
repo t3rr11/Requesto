@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { AuthConfig } from '../types';
+import { initializeFile, atomicWrite } from './storage';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const COLLECTIONS_FILE = path.join(DATA_DIR, 'collections.json');
@@ -39,15 +40,7 @@ export interface Collection {
   updatedAt: number;
 }
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-
-// Initialize collections file if it doesn't exist
-if (!fs.existsSync(COLLECTIONS_FILE)) {
-  fs.writeFileSync(COLLECTIONS_FILE, JSON.stringify([]), 'utf-8');
-}
+initializeFile(COLLECTIONS_FILE, []);
 
 function readCollections(): Collection[] {
   try {
@@ -60,7 +53,7 @@ function readCollections(): Collection[] {
 }
 
 function writeCollections(collections: Collection[]): void {
-  fs.writeFileSync(COLLECTIONS_FILE, JSON.stringify(collections, null, 2), 'utf-8');
+  atomicWrite(COLLECTIONS_FILE, collections);
 }
 
 export const collectionsDb = {
@@ -187,7 +180,7 @@ export const collectionsDb = {
     const collection = collections.find((c: Collection) => c.id === collectionId);
     if (!collection || !collection.folders) return false;
 
-    // Delete all child folders recursively
+    // EXPLAIN: Recursively delete all child folders before deleting parent
     const deleteChildFolders = (parentId: string) => {
       const childFolders = collection.folders.filter((f: Folder) => f.parentId === parentId);
       childFolders.forEach((childFolder: Folder) => {
@@ -197,8 +190,6 @@ export const collectionsDb = {
     };
 
     deleteChildFolders(folderId);
-
-    // Delete all requests in this folder and child folders
     collection.requests = collection.requests.filter((r: SavedRequest) => r.folderId !== folderId);
 
     // Delete the folder itself

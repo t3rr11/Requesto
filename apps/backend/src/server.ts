@@ -17,10 +17,8 @@ const server = Fastify({
 
 async function start() {
   try {
-    // Register CORS with specific configuration
     await server.register(cors, {
       origin: (origin, callback) => {
-        // Allow all localhost origins and Electron
         const allowedOrigins = [
           'http://localhost:5173',
           'http://localhost:4000',
@@ -39,19 +37,16 @@ async function start() {
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     });
 
-    // Register routes
     await server.register(proxyRoutes, { prefix: '/api' });
     await server.register(environmentRoutes, { prefix: '/api' });
     await server.register(collectionsRoutes, { prefix: '/api' });
     await server.register(sseTestRoutes, { prefix: '/api' });
     await server.register(oauthRoutes, { prefix: '/api' });
 
-    // Health check
     server.get('/health', async () => {
       return { status: 'ok' };
     });
 
-    // Serve static files in production
     if (process.env.NODE_ENV === 'production') {
       const fastifyStatic = await import('@fastify/static');
       await server.register(fastifyStatic.default, {
@@ -74,7 +69,6 @@ async function start() {
     await server.listen({ port, host });
     console.log(`Server listening on http://${host}:${port}`);
     
-    // Graceful shutdown
     const signals = ['SIGINT', 'SIGTERM'] as const;
     signals.forEach(signal => {
       process.on(signal, async () => {

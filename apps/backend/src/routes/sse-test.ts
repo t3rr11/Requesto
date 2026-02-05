@@ -7,7 +7,6 @@ interface SSEQueryParams {
 }
 
 export async function sseTestRoutes(fastify: FastifyInstance) {
-  // Simple SSE stream that sends events every second
   fastify.get('/sse/test', async (
     request: FastifyRequest<{ Querystring: SSEQueryParams }>,
     reply: FastifyReply
@@ -16,7 +15,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
     const maxCount = parseInt(request.query.count || '10');
     const customMessage = request.query.message || 'Test event';
 
-    // Set SSE headers
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache');
     reply.raw.setHeader('Connection', 'keep-alive');
@@ -25,7 +23,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
     let count = 0;
     const startTime = Date.now();
 
-    // Send initial connection event
     reply.raw.write(`event: connected\n`);
     reply.raw.write(`data: ${JSON.stringify({ message: 'SSE stream connected', timestamp: new Date().toISOString() })}\n\n`);
 
@@ -39,16 +36,13 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
         elapsed: Date.now() - startTime,
       };
 
-      // Send message event
       reply.raw.write(`id: ${count}\n`);
       reply.raw.write(`event: message\n`);
       reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 
-      // Close stream after reaching max count
       if (count >= maxCount) {
         clearInterval(intervalId);
         
-        // Send completion event
         reply.raw.write(`event: complete\n`);
         reply.raw.write(`data: ${JSON.stringify({ 
           message: 'Stream complete', 
@@ -60,7 +54,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
       }
     }, interval);
 
-    // Handle client disconnect
     request.raw.on('close', () => {
       clearInterval(intervalId);
       reply.raw.end();
@@ -74,7 +67,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
     const interval = parseInt(request.query.interval || '1000');
     const maxCount = parseInt(request.query.count || '10');
 
-    // Set SSE headers
     reply.raw.setHeader('Content-Type', 'text/event-stream');
     reply.raw.setHeader('Cache-Control', 'no-cache');
     reply.raw.setHeader('Connection', 'keep-alive');
@@ -82,19 +74,16 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
 
     let count = 0;
 
-    // Send initial connection event
     reply.raw.write(`event: connected\n`);
     reply.raw.write(`data: "SSE stream connected"\n\n`);
 
     const intervalId = setInterval(() => {
       count++;
 
-      // Send message event
       reply.raw.write(`id: ${count}\n`);
       reply.raw.write(`event: message\n`);
       reply.raw.write(`data: "Test event #${count}"\n\n`);
 
-      // Close stream after reaching max count
       if (count >= maxCount) {
         clearInterval(intervalId);
         
@@ -113,7 +102,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
     });
   });
 
-  // SSE stream with random data (stock prices simulation)
   fastify.get('/sse/stocks', async (
     request: FastifyRequest,
     reply: FastifyReply
@@ -157,7 +145,6 @@ export async function sseTestRoutes(fastify: FastifyInstance) {
     });
   });
 
-  // SSE stream with progress updates
   fastify.get('/sse/progress', async (
     request: FastifyRequest,
     reply: FastifyReply

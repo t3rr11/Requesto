@@ -8,13 +8,11 @@ import {
 } from '../database/environments';
 
 export default async function environmentRoutes(fastify: FastifyInstance) {
-  // Get all environments
   fastify.get('/environments', async () => {
     const data = getEnvironments();
     return data;
   });
 
-  // Create or update environment
   fastify.post<{ Body: Environment }>('/environments', async (request, reply) => {
     const environment = request.body;
     
@@ -26,7 +24,6 @@ export default async function environmentRoutes(fastify: FastifyInstance) {
     return { success: true, environment };
   });
 
-  // Delete environment
   fastify.delete<{ Params: { id: string } }>('/environments/:id', async (request, reply) => {
     const { id } = request.params;
     const success = deleteEnvironment(id);
@@ -38,7 +35,6 @@ export default async function environmentRoutes(fastify: FastifyInstance) {
     return { success: true };
   });
 
-  // Set active environment
   fastify.post<{ Body: { id: string } }>('/environments/active', async (request, reply) => {
     const { id } = request.body;
     const success = setActiveEnvironment(id);
