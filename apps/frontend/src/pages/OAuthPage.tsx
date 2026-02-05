@@ -350,8 +350,8 @@ export const OAuthPage = () => {
           isOpen={formDialog.isOpen}
           onClose={formDialog.close}
           onSave={handleSave}
-          onDelete={formDialog.data ? () => handleDeleteClick(formDialog.data!.id) : undefined}
-          editConfig={formDialog.data}
+          onDelete={formDialog.data ? async () => handleDeleteClick(formDialog.data!.id) : undefined}
+          editConfig={formDialog.data ?? undefined}
         />
 
         {/* Confirm Delete Dialog */}

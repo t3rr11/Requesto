@@ -203,6 +203,7 @@ export interface EnvironmentVariable {
   key: string;
   value: string;
   enabled: boolean;
+  isSecret?: boolean;
 }
 
 export interface EnvironmentsData {

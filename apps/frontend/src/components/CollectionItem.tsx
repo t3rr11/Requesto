@@ -2,14 +2,15 @@ import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, 
 import { useCollectionsStore } from '../store/collections';
 import { Collection, SavedRequest } from '../types';
 import { useUIStore } from '../store/ui';
-import { useTabsStore } from '../store/tabs';
 import { FolderItem } from './FolderItem';
 import { getMethodColor } from '../helpers/collectionHelpers';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
-import React, { useState } from 'react';
-import { useConfirmDialog } from '../hooks/useDialog';
+import React from 'react';
+import { useItemContextMenu } from '../hooks/useItemContextMenu';
+import { useItemDragDrop } from '../hooks/useItemDragDrop';
+import { useItemActions } from '../hooks/useItemActions';
 
 interface CollectionItemProps {
   collection: Collection;
@@ -26,93 +27,84 @@ export const CollectionItem = ({
   onRenameCollection,
   onRenameFolder,
 }: CollectionItemProps) => {
-  const { addFolder, moveRequest, deleteCollection, deleteRequest, setActiveRequest } = useCollectionsStore();
-  const { openRequestTab } = useTabsStore();
-  const { getActiveTab } = useTabsStore();
-  const activeTab = getActiveTab();
-  const activeSavedRequestId = activeTab?.savedRequestId || '';
-  const { expandedCollections, toggleCollection, expandCollection } = useUIStore();
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const { moveRequest } = useCollectionsStore();
+  const { expandedCollections, toggleCollection } = useUIStore();
   
-  // Context menus (local state)
-  const [requestContextMenu, setRequestContextMenu] = useState<{ x: number; y: number; request: SavedRequest } | null>(null);
-  const [collectionContextMenu, setCollectionContextMenu] = useState<{ x: number; y: number; collectionId: string; collectionName: string } | null>(null);
-  
-  // Folder management (local state)
-  const [newFolderInput, setNewFolderInput] = useState<{ collectionId: string; parentId?: string } | null>(null);
-  const [folderName, setFolderName] = useState('');
-  
-  // Confirm dialog
-  const confirmDialog = useConfirmDialog();
+  // Use custom hooks for shared logic
+  const {
+    requestContextMenu,
+    openRequestContextMenu,
+    closeRequestContextMenu,
+    collectionContextMenu,
+    openCollectionContextMenu,
+    closeCollectionContextMenu,
+  } = useItemContextMenu();
+
+  const {
+    newFolderInput,
+    folderName,
+    setFolderName,
+    startCreateFolder,
+    handleSaveFolder,
+    handleCancelFolder,
+    activeSavedRequestId,
+    handleSelectRequest,
+    handleDeleteCollection,
+    handleDeleteRequest,
+    confirmDialog,
+  } = useItemActions();
+
+  const {
+    isDragOver,
+    dragOverIndex,
+    handleDragOver,
+    handleDragLeave,
+    handleDragOverIndex,
+    handleDragLeaveIndex,
+    handleDropAtIndex,
+    createRequestDragHandlers,
+  } = useItemDragDrop({
+    onDropRequest: async (collectionId, requestId, targetOrder) => {
+      await moveRequest(collectionId, requestId, collection.id, undefined, targetOrder);
+    },
+    onDropFolder: async (collectionId, folderId) => {
+      if (folderId !== collection.id) {
+        const { moveFolder } = useCollectionsStore.getState();
+        await moveFolder(collectionId, folderId, collection.id, undefined);
+      }
+    },
+  });
 
   const isExpanded = expandedCollections.has(collection.id);
 
-  // Handle selecting a request - opens it in a tab
-  const handleSelectRequest = (request: SavedRequest) => {
-    openRequestTab({
-      savedRequestId: request.id,
-      collectionId: request.collectionId,
-      request: {
-        method: request.method,
-        url: request.url,
-        headers: request.headers,
-        body: request.body,
-        auth: request.auth,
-      },
-      label: request.name,
-    });
-    setActiveRequest(request.id);
-  };
-
-  // Delete handlers with confirmations
-  const handleDeleteCollection = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    confirmDialog.open({
-      title: 'Delete Collection',
-      message: 'Are you sure you want to delete this collection and all its requests? This action cannot be undone.',
-      confirmText: 'Delete',
-      variant: 'danger',
-      onConfirm: async () => {
-        await deleteCollection(id);
-      },
-    });
-  };
-
-  const handleDeleteRequest = (collectionId: string, requestId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    confirmDialog.open({
-      title: 'Delete Request',
-      message: 'Are you sure you want to delete this request? This action cannot be undone.',
-      confirmText: 'Delete',
-      variant: 'danger',
-      onConfirm: async () => {
-        await deleteRequest(collectionId, requestId);
-      },
-    });
-  };
-
-  // Context menu handlers
-  const handleRequestContextMenu = (e: React.MouseEvent, request: SavedRequest) => {
+  // Custom drop handler for collection
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setRequestContextMenu({ x: e.clientX, y: e.clientY, request });
-  };
-
-  const handleCollectionContextMenu = (e: React.MouseEvent, collectionId: string, collectionName: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCollectionContextMenu({ x: e.clientX, y: e.clientY, collectionId, collectionName });
+    
+    const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
+    
+    if (dragType === 'application/request') {
+      const data = JSON.parse(e.dataTransfer.getData('application/request'));
+      await moveRequest(data.collectionId, data.requestId, collection.id, undefined);
+    } else if (dragType === 'application/folder') {
+      const data = JSON.parse(e.dataTransfer.getData('application/folder'));
+      if (data.folderId !== collection.id) {
+        const { moveFolder } = useCollectionsStore.getState();
+        await moveFolder(data.collectionId, data.folderId, collection.id, undefined);
+      }
+    }
   };
   
   const handleRenameRequestFromContext = () => {
     if (!requestContextMenu) return;
     onRenameRequest(requestContextMenu.request);
-    setRequestContextMenu(null);
+    closeRequestContextMenu();
   };
   
   const handleDeleteRequestFromContext = () => {
     if (!requestContextMenu) return;
+    const { deleteRequest } = useCollectionsStore.getState();
     confirmDialog.open({
       title: 'Delete Request',
       message: 'Are you sure you want to delete this request? This action cannot be undone.',
@@ -122,17 +114,18 @@ export const CollectionItem = ({
         await deleteRequest(requestContextMenu.request.collectionId, requestContextMenu.request.id);
       },
     });
-    setRequestContextMenu(null);
+    closeRequestContextMenu();
   };
   
   const handleRenameCollectionFromContext = () => {
     if (!collectionContextMenu) return;
     onRenameCollection(collectionContextMenu.collectionId, collectionContextMenu.collectionName);
-    setCollectionContextMenu(null);
+    closeCollectionContextMenu();
   };
   
   const handleDeleteCollectionFromContext = () => {
     if (!collectionContextMenu) return;
+    const { deleteCollection } = useCollectionsStore.getState();
     confirmDialog.open({
       title: 'Delete Collection',
       message: 'Are you sure you want to delete this collection and all its requests? This action cannot be undone.',
@@ -142,69 +135,7 @@ export const CollectionItem = ({
         await deleteCollection(collectionContextMenu.collectionId);
       },
     });
-    setCollectionContextMenu(null);
-  };
-
-  const handleCreateFolder = (collectionId: string, parentId?: string) => {
-    setNewFolderInput({ collectionId, parentId });
-  };
-
-  const handleSaveFolder = async () => {
-    if (!newFolderInput || !folderName.trim()) return;
-    await addFolder(newFolderInput.collectionId, folderName.trim(), newFolderInput.parentId);
-    
-    // Auto-expand the parent after creating folder
-    if (newFolderInput.parentId) {
-      const { expandFolder } = useUIStore.getState();
-      expandFolder(newFolderInput.parentId);
-    } else {
-      expandCollection(collection.id);
-    }
-    
-    setNewFolderInput(null);
-    setFolderName('');
-  };
-
-  const handleCancelFolder = () => {
-    setNewFolderInput(null);
-    setFolderName('');
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const dragType = e.dataTransfer.types[0];
-    if (dragType === 'application/request' || dragType === 'application/folder') {
-      setIsDragOver(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-
-    const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
-
-    if (dragType === 'application/request') {
-      const data = JSON.parse(e.dataTransfer.getData('application/request'));
-      // Allow moving to root of same collection (e.g., from folder to collection root)
-      // or to a different collection
-      await moveRequest(data.collectionId, data.requestId, collection.id, undefined);
-    } else if (dragType === 'application/folder') {
-      const data = JSON.parse(e.dataTransfer.getData('application/folder'));
-      // Prevent dropping a folder into itself or staying in same position
-      if (data.folderId !== collection.id) {
-        const { moveFolder } = useCollectionsStore.getState();
-        await moveFolder(data.collectionId, data.folderId, collection.id, undefined);
-      }
-    }
+    closeCollectionContextMenu();
   };
 
   const rootFolders = (collection.folders || []).filter(f => !f.parentId);
@@ -219,7 +150,7 @@ export const CollectionItem = ({
           isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
         onClick={() => toggleCollection(collection.id)}
-        onContextMenu={e => handleCollectionContextMenu(e, collection.id, collection.name)}
+        onContextMenu={e => openCollectionContextMenu(e, collection.id, collection.name)}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -249,7 +180,7 @@ export const CollectionItem = ({
           <Button
             onClick={e => {
               e.stopPropagation();
-              handleCreateFolder(collection.id);
+              startCreateFolder(collection.id);
             }}
             variant="icon"
             size="sm"
@@ -280,14 +211,14 @@ export const CollectionItem = ({
                 value={folderName}
                 onChange={e => setFolderName(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter') handleSaveFolder();
+                  if (e.key === 'Enter') handleSaveFolder(collection.id);
                   if (e.key === 'Escape') handleCancelFolder();
                 }}
                 placeholder="Folder name..."
                 className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 autoFocus
               />
-              <Button onClick={handleSaveFolder} variant="primary" size="sm">
+              <Button onClick={() => handleSaveFolder(collection.id)} variant="primary" size="sm">
                 Save
               </Button>
               <Button onClick={handleCancelFolder} variant="secondary" size="sm">
@@ -318,22 +249,9 @@ export const CollectionItem = ({
                 {/* Drop zone above */}
                 <div
                   className={`transition-all ${dragOverIndex === index ? 'bg-blue-400 h-1' : 'h-0'}`}
-                  onDragOver={e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragOverIndex(index);
-                  }}
-                  onDragLeave={() => setDragOverIndex(null)}
-                  onDrop={async e => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragOverIndex(null);
-                    const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
-                    if (dragType === 'application/request') {
-                      const data = JSON.parse(e.dataTransfer.getData('application/request'));
-                      await moveRequest(data.collectionId, data.requestId, collection.id, undefined, index);
-                    }
-                  }}
+                  onDragOver={e => handleDragOverIndex(e, index)}
+                  onDragLeave={handleDragLeaveIndex}
+                  onDrop={e => handleDropAtIndex(e, index)}
                 />
 
                 <div
@@ -342,24 +260,8 @@ export const CollectionItem = ({
                   }`}
                   style={{ paddingLeft: '32px' }}
                   onClick={() => handleSelectRequest(request)}
-                  onContextMenu={e => handleRequestContextMenu(e, request)}
-                  draggable
-                  onDragStart={e => {
-                    e.stopPropagation();
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData(
-                      'application/request',
-                      JSON.stringify({
-                        requestId: request.id,
-                        collectionId: collection.id,
-                      })
-                    );
-                    (e.target as HTMLElement).style.opacity = '0.5';
-                  }}
-                  onDragEnd={e => {
-                    (e.target as HTMLElement).style.opacity = '1';
-                    setDragOverIndex(null);
-                  }}
+                  onContextMenu={e => openRequestContextMenu(e, request)}
+                  {...createRequestDragHandlers(request.id, collection.id)}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                   <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
@@ -381,22 +283,9 @@ export const CollectionItem = ({
                 {index === rootRequests.length - 1 && (
                   <div
                     className={`transition-all ${dragOverIndex === index + 1 ? 'bg-blue-400 h-1' : 'h-0'}`}
-                    onDragOver={e => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDragOverIndex(index + 1);
-                    }}
-                    onDragLeave={() => setDragOverIndex(null)}
-                    onDrop={async e => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setDragOverIndex(null);
-                      const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
-                      if (dragType === 'application/request') {
-                        const data = JSON.parse(e.dataTransfer.getData('application/request'));
-                        await moveRequest(data.collectionId, data.requestId, collection.id, undefined, index + 1);
-                      }
-                    }}
+                    onDragOver={e => handleDragOverIndex(e, index + 1)}
+                    onDragLeave={handleDragLeaveIndex}
+                    onDrop={e => handleDropAtIndex(e, index + 1)}
                   />
                 )}
               </div>
@@ -422,7 +311,7 @@ export const CollectionItem = ({
               danger: true,
             },
           ]}
-          onClose={() => setRequestContextMenu(null)}
+          onClose={closeRequestContextMenu}
         />
       )}
       
@@ -442,7 +331,7 @@ export const CollectionItem = ({
               danger: true,
             },
           ]}
-          onClose={() => setCollectionContextMenu(null)}
+          onClose={closeCollectionContextMenu}
         />
       )}
       
