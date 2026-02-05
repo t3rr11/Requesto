@@ -1,5 +1,6 @@
 import { Globe, AlertCircle } from 'lucide-react';
 import { Environment } from '../store/useEnvironmentStore';
+import { Button } from './Button';
 
 interface EnvironmentListProps {
   environments: Environment[];
@@ -32,14 +33,16 @@ export const EnvironmentList = ({
         )}
 
         {environments.map(env => (
-          <button
+          <Button
             key={env.id}
             onClick={() => onEnvironmentSelect(env)}
-            className={`w-full text-left px-3 py-2.5 rounded-lg transition-all ${
+            variant="ghost"
+            size="md"
+            className={`w-full justify-start text-left rounded-lg ${
               selectedEnvId === env.id ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 w-full">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="truncate">{env.name}</span>
@@ -52,7 +55,7 @@ export const EnvironmentList = ({
                 </div>
               </div>
             </div>
-          </button>
+          </Button>
         ))}
 
         {/* Show new environment in list */}

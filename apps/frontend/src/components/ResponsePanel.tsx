@@ -4,6 +4,7 @@ import { ResponseBody } from './response/ResponseBody';
 import { ResponseHeaders } from './response/ResponseHeaders';
 import { ResponseTests } from './response/ResponseTests';
 import { useTabsStore } from '../store/useTabsStore';
+import { Button } from './Button';
 
 type ResponseTab = 'body' | 'headers' | 'test-results';
 
@@ -104,17 +105,19 @@ export function ResponsePanel() {
       <div className="border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex px-6">
           {(['body', 'headers', 'test-results'] as ResponseTab[]).map(tab => (
-            <button
+            <Button
               key={tab}
               onClick={() => setActiveResponseTab(tab)}
-              className={`px-4 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
+              variant="ghost"
+              size="md"
+              className={`px-4 py-3 text-sm font-medium capitalize rounded-none border-b-2 ${
                 activeResponseTab === tab
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
               {tab === 'test-results' ? 'Test Results' : tab}
-            </button>
+            </Button>
           ))}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Button } from './Button';
 
 interface ContextMenuItem {
   label: string;
@@ -48,19 +49,21 @@ export const ContextMenu = ({ items, position, onClose }: ContextMenuProps) => {
       }}
     >
       {items.map((item, index) => (
-        <button
+        <Button
           key={index}
           onClick={() => {
             item.onClick();
             onClose();
           }}
-          className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 ${
-            item.danger ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-700 dark:text-gray-300'
+          variant="ghost"
+          size="md"
+          className={`w-full justify-start text-left text-sm rounded-none ${
+            item.danger ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
         >
           {item.icon}
-          <span>{item.label}</span>
-        </button>
+          {item.label}
+        </Button>
       ))}
     </div>
   );

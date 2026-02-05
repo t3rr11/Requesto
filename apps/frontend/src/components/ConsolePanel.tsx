@@ -15,6 +15,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
+import { Button } from './Button';
 
 export const ConsolePanel = () => {
   const { isConsoleOpen, toggleConsole, consoleHeight, setConsoleHeight } = useUIStore();
@@ -170,9 +171,9 @@ export const ConsolePanel = () => {
             </div>
             {log.message && !log.url && <div className="text-sm mt-1">{log.message}</div>}
           </div>
-          <button className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400 transition-colors">
+          <Button variant="icon" size="sm" className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400">
             {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
+          </Button>
         </div>
 
         {/* Expanded Details */}
@@ -190,20 +191,22 @@ export const ConsolePanel = () => {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">Headers</span>
-                      <button
+                      <Button
                         onClick={e => {
                           e.stopPropagation();
                           copyToClipboard(formatHeaders(log.requestData?.headers), `req-headers-${log.id}`);
                         }}
-                        className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400 transition-colors p-1"
+                        variant="icon"
+                        size="sm"
                         title="Copy headers"
+                        className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400"
                       >
                         {copiedStates[`req-headers-${log.id}`] ? (
                           <Check className="w-3 h-3 text-green-400" />
                         ) : (
                           <Copy className="w-3 h-3" />
                         )}
-                      </button>
+                      </Button>
                     </div>
                     <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
                       {Object.entries(log.requestData.headers).map(([key, value]) => {
@@ -230,20 +233,22 @@ export const ConsolePanel = () => {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 text-xs font-semibold">Body</span>
-                      <button
+                      <Button
                         onClick={e => {
                           e.stopPropagation();
                           copyToClipboard(log.requestData?.body || '', `req-body-${log.id}`);
                         }}
-                        className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                        variant="icon"
+                        size="sm"
                         title="Copy body"
+                        className="text-gray-500 hover:text-gray-300"
                       >
                         {copiedStates[`req-body-${log.id}`] ? (
                           <Check className="w-3 h-3 text-green-400" />
                         ) : (
                           <Copy className="w-3 h-3" />
                         )}
-                      </button>
+                      </Button>
                     </div>
                     <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
                       <pre className="text-gray-300 whitespace-pre-wrap break-words">
@@ -265,20 +270,22 @@ export const ConsolePanel = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 text-xs font-semibold">Auth</span>
                       {log.requestData.auth.type === 'oauth' && log.requestData.auth.oauth?.tokens?.accessToken && (
-                        <button
+                        <Button
                           onClick={e => {
                             e.stopPropagation();
                             copyToClipboard(log.requestData?.auth?.oauth?.tokens?.accessToken || '', `auth-token-${log.id}`);
                           }}
-                          className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                          variant="icon"
+                          size="sm"
                           title="Copy access token"
+                          className="text-gray-500 hover:text-gray-300"
                         >
                           {copiedStates[`auth-token-${log.id}`] ? (
                             <Check className="w-3 h-3 text-green-400" />
                           ) : (
                             <Copy className="w-3 h-3" />
                           )}
-                        </button>
+                        </Button>
                       )}
                     </div>
                     <div className="bg-gray-800 rounded p-2 font-mono text-xs space-y-2">
@@ -326,20 +333,22 @@ export const ConsolePanel = () => {
                   <div className="space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400 text-xs font-semibold">Headers</span>
-                      <button
+                      <Button
                         onClick={e => {
                           e.stopPropagation();
                           copyToClipboard(formatHeaders(log.responseData?.headers), `res-headers-${log.id}`);
                         }}
-                        className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                        variant="icon"
+                        size="sm"
                         title="Copy headers"
+                        className="text-gray-500 hover:text-gray-300"
                       >
                         {copiedStates[`res-headers-${log.id}`] ? (
                           <Check className="w-3 h-3 text-green-400" />
                         ) : (
                           <Copy className="w-3 h-3" />
                         )}
-                      </button>
+                      </Button>
                     </div>
                     <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
                       {Object.entries(log.responseData.headers).map(([key, value]) => (
@@ -360,7 +369,7 @@ export const ConsolePanel = () => {
                       <span className="text-gray-400 text-xs font-semibold">Body</span>
                       <div className="flex items-center gap-1">
                         <span className="text-gray-500 text-xs">{new Blob([log.responseData.body]).size} bytes</span>
-                        <button
+                        <Button
                           onClick={e => {
                             e.stopPropagation();
                             copyToClipboard(
@@ -368,15 +377,17 @@ export const ConsolePanel = () => {
                               `res-body-${log.id}`
                             );
                           }}
-                          className="text-gray-500 hover:text-gray-300 transition-colors p-1"
+                          variant="icon"
+                          size="sm"
                           title="Copy body"
+                          className="text-gray-500 hover:text-gray-300"
                         >
                           {copiedStates[`res-body-${log.id}`] ? (
                             <Check className="w-3 h-3 text-green-400" />
                           ) : (
                             <Copy className="w-3 h-3" />
                           )}
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
@@ -460,26 +471,30 @@ export const ConsolePanel = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             onClick={e => {
               e.stopPropagation();
               clearConsoleLogs();
             }}
-            className="p-1.5 hover:bg-gray-700 dark:hover:bg-gray-800 rounded transition-colors"
+            variant="icon"
+            size="sm"
             title="Clear Console"
+            className="hover:bg-gray-700 dark:hover:bg-gray-800"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={e => {
               e.stopPropagation();
               toggleConsole();
             }}
-            className="p-1.5 hover:bg-gray-700 dark:hover:bg-gray-800 rounded transition-colors"
+            variant="icon"
+            size="sm"
             title="Close Console"
+            className="hover:bg-gray-700 dark:hover:bg-gray-800"
           >
             <X className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
 

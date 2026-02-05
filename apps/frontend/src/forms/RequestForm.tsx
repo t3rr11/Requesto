@@ -300,13 +300,15 @@ export function RequestForm({
       <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-[48px]">
         {/* Left scroll button */}
         {showLeftScroll && (
-          <button
+          <Button
             onClick={() => scrollTabs('left')}
-            className="absolute left-0 top-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_8px_rgba(0,0,0,0.3)]"
+            variant="ghost"
+            size="sm"
+            className="absolute left-0 top-0 z-10 h-full px-3 rounded-none border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_8px_rgba(0,0,0,0.3)]"
             aria-label="Scroll left"
           >
-            <ChevronLeft size={16} className="text-gray-600 dark:text-gray-400" />
-          </button>
+            <ChevronLeft size={16} />
+          </Button>
         )}
 
         <div
@@ -326,30 +328,34 @@ export function RequestForm({
             }
 
             return (
-              <button
+              <Button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                variant="ghost"
+                size="sm"
+                className={`flex-shrink-0 px-4 py-3 rounded-none border-b-2 transition-colors ${
                   activeTab === tab
                     ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
               >
                 {label}
-              </button>
+              </Button>
             );
           })}
         </div>
 
         {/* Right scroll button */}
         {showRightScroll && (
-          <button
+          <Button
             onClick={() => scrollTabs('right')}
-            className="absolute right-0 top-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_rgba(0,0,0,0.3)]"
+            variant="ghost"
+            size="sm"
+            className="absolute right-0 top-0 z-10 h-full px-3 rounded-none border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_rgba(0,0,0,0.3)]"
             aria-label="Scroll right"
           >
-            <ChevronRight size={16} className="text-gray-600 dark:text-gray-400" />
-          </button>
+            <ChevronRight size={16} />
+          </Button>
         )}
       </div>
 

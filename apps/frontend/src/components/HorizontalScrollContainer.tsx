@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from './Button';
 
 interface HorizontalScrollContainerProps {
   children: ReactNode;
@@ -80,13 +81,15 @@ export const HorizontalScrollContainer = ({
     <div className={`relative ${className}`}>
       {/* Left scroll button */}
       {showLeftScroll && (
-        <button
+        <Button
           onClick={() => scrollContent('left')}
-          className="absolute left-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
+          variant="icon"
+          size="md"
+          className="absolute left-0 z-10 h-full rounded-none bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
           aria-label="Scroll left"
         >
           <ChevronLeft size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
+        </Button>
       )}
 
       {/* Scrollable content */}
@@ -107,13 +110,15 @@ export const HorizontalScrollContainer = ({
 
       {/* Right scroll button */}
       {showRightScroll && (
-        <button
+        <Button
           onClick={() => scrollContent('right')}
-          className="absolute right-0 z-10 h-full px-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+          variant="icon"
+          size="md"
+          className="absolute right-0 z-10 h-full rounded-none bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
           aria-label="Scroll right"
         >
           <ChevronRight size={16} className="text-gray-600 dark:text-gray-400" />
-        </button>
+        </Button>
       )}
     </div>
   );

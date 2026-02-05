@@ -1,6 +1,7 @@
 import { useTabsStore } from '../store/useTabsStore';
 import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { Button } from './Button';
 import { ConfirmDialog } from './ConfirmDialog';
 import {
   DndContext,
@@ -76,16 +77,15 @@ const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle
       </span>
 
       {/* Close button */}
-      <button
+      <Button
         onClick={e => onCloseTab(e, tabId)}
-        className={`
-          flex-shrink-0 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors
-          ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
-        `}
+        variant="icon"
+        size="sm"
+        className={`flex-shrink-0 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         aria-label={`Close ${tab.label}`}
       >
-        <X size={14} className="text-gray-600 dark:text-gray-400" />
-      </button>
+        <X size={14} />
+      </Button>
     </div>
   );
 };
@@ -282,13 +282,14 @@ export const TabsBar = () => {
       <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 flex items-center h-10 relative dark:border-t dark:border-t-gray-700">
         {/* Left scroll button */}
         {showLeftScroll && (
-          <button
+          <Button
             onClick={() => scrollTabs('left')}
-            className="absolute left-0 z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
+            variant="icon"
+            className="absolute left-0 z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
             aria-label="Scroll left"
           >
-            <ChevronLeft size={16} className="text-gray-600 dark:text-gray-400" />
-          </button>
+            <ChevronLeft size={16} />
+          </Button>
         )}
 
         {/* Tabs container with horizontal scroll - scrollbar hidden */}
@@ -324,24 +325,26 @@ export const TabsBar = () => {
 
         {/* Right scroll button */}
         {showRightScroll && (
-          <button
+          <Button
             onClick={() => scrollTabs('right')}
-            className="absolute right-[42px] border-r z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+            variant="icon"
+            className="absolute right-[42px] border-r z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
             aria-label="Scroll right"
           >
-            <ChevronRight size={16} className="text-gray-600 dark:text-gray-400" />
-          </button>
+            <ChevronRight size={16} />
+          </Button>
         )}
 
         {/* New tab button */}
-        <button
+        <Button
           onClick={handleNewTab}
-          className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors border-gray-300 dark:border-gray-600 h-full"
+          variant="icon"
+          className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-gray-300 dark:border-gray-600 h-full"
           aria-label="New tab"
           title="New tab (Ctrl/Cmd + T)"
         >
-          <Plus size={18} className="text-gray-600 dark:text-gray-400" />
-        </button>
+          <Plus size={18} />
+        </Button>
 
         {/* Confirmation dialog for closing tabs with unsaved changes */}
         <ConfirmDialog

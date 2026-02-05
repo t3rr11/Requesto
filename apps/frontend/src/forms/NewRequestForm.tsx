@@ -1,5 +1,6 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { Dialog } from '../components/Dialog';
+import { Button } from '../components/Button';
 import { collectionsApi } from '../helpers/api/collections';
 import { useCollectionsStore } from '../store/useCollectionsStore';
 
@@ -187,20 +188,12 @@ export const NewRequestForm = ({
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-          >
+          <Button type="button" onClick={handleClose} variant="ghost" size="md">
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading || collections.length === 0}
-            className="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Creating...' : 'Create Request'}
-          </button>
+          </Button>
+          <Button type="submit" variant="primary" size="md" loading={loading} disabled={loading || collections.length === 0}>
+            Create Request
+          </Button>
         </div>
       </form>
     </Dialog>

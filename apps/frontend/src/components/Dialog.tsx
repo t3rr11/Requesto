@@ -1,4 +1,6 @@
 import React, { useEffect } from 'react';
+import { X } from 'lucide-react';
+import { Button } from './Button';
 
 export interface DialogProps {
   isOpen: boolean;
@@ -47,11 +49,9 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b dark:border-gray-700 flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" aria-label="Close">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <Button onClick={onClose} variant="icon" size="md" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close">
+            <X className="w-6 h-6" />
+          </Button>
         </div>
 
         {/* Content */}

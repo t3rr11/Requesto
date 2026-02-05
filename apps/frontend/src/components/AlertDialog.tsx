@@ -1,5 +1,7 @@
 import React from 'react';
+import { XCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import { Dialog } from './Dialog';
+import { Button } from './Button';
 
 interface AlertDialogProps {
   isOpen: boolean;
@@ -19,30 +21,22 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
   const icons = {
     error: (
       <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-        <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
+        <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
       </div>
     ),
     warning: (
       <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-4">
-        <svg className="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
+        <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
       </div>
     ),
     info: (
       <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
-        <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+        <Info className="w-6 h-6 text-blue-600 dark:text-blue-400" />
       </div>
     ),
     success: (
       <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-        <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
+        <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
       </div>
     ),
   };
@@ -52,12 +46,9 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
       <div className="text-center">
         {icons[variant]}
         <p className="text-gray-700 dark:text-gray-300 mb-6">{message}</p>
-        <button
-          onClick={onClose}
-          className="px-6 py-2 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors"
-        >
+        <Button onClick={onClose} variant="primary" size="md">
           OK
-        </button>
+        </Button>
       </div>
     </Dialog>
   );

@@ -1,7 +1,8 @@
 import { useUIStore } from '../store/useUIStore';
 import { useThemeStore } from '../store/useThemeStore';
-import { ListCollapse, Menu, Moon, Sun, Settings, Shield, Send } from 'lucide-react';
+import { ListCollapse, Menu, Moon, Sun, Settings, Shield, Send, HelpCircle, Terminal } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
+import { Button } from './Button';
 
 export const Header = () => {
   const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, openHelp } = useUIStore();
@@ -19,13 +20,15 @@ export const Header = () => {
     <header className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-800 text-white shadow-lg">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-4">
-          <button
+          <Button
             onClick={toggleSidebar}
-            className="p-2 hover:bg-blue-500 rounded transition-colors"
+            variant="icon"
+            size="md"
+            className="text-white hover:!bg-blue-500 dark:hover:!bg-gray-700 hover:!text-white"
             title={isSidebarOpen ? 'Hide Sidebar' : 'Show Sidebar'}
           >
             {isSidebarOpen ? <Menu className="w-5 h-5" /> : <ListCollapse className="w-5 h-5" />}
-          </button>
+          </Button>
 
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/requests')}>
             <img src="./logo.png" alt="Requesto Logo" className="w-8 h-8" />
@@ -35,64 +38,57 @@ export const Header = () => {
           {/* Navigation Menu Items */}
           <nav className="flex items-center gap-1 ml-4">
             {navItems.map(({ path, icon: Icon, label, title }) => (
-              <button
+              <Button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded transition-colors ${
+                variant="ghost"
+                size="sm"
+                className={`text-white hover:!text-white hover:!bg-blue-500 dark:hover:!bg-gray-700 ${
                   location.pathname === path
-                    ? 'bg-blue-500 dark:bg-gray-700'
-                    : 'hover:bg-blue-500 dark:hover:bg-gray-700'
+                    && 'bg-blue-500 dark:bg-gray-700'
                 }`}
                 title={title}
               >
                 <Icon className="w-4 h-4" />
-                <span className="text-sm font-medium">{label}</span>
-              </button>
+                {label}
+              </Button>
             ))}
           </nav>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Help Button */}
-          <button
+          <Button
             onClick={openHelp}
-            className="p-1.5 hover:bg-blue-500 rounded transition-colors"
+            variant="icon"
+            size="sm"
+            className="text-white hover:!bg-blue-500 dark:hover:!bg-gray-700 hover:!text-white"
             title="Keyboard Shortcuts"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </button>
+            <HelpCircle className="w-5 h-5" />
+          </Button>
 
           {/* Theme Toggle */}
-          <button
+          <Button
             onClick={toggleTheme}
-            className="p-1.5 hover:bg-blue-500 dark:hover:bg-gray-700 rounded transition-colors"
+            variant="icon"
+            size="sm"
+            className="text-white hover:!bg-blue-500 dark:hover:!bg-gray-700 hover:!text-white"
             title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-          </button>
+          </Button>
 
           {/* Console Toggle */}
-          <button
+          <Button
             onClick={toggleConsole}
-            className={`p-1.5 rounded transition-colors ${isConsoleOpen ? 'bg-blue-500 dark:bg-gray-700' : 'hover:bg-blue-500 dark:hover:bg-gray-700'}`}
+            variant="icon"
+            size="sm"
+            className={`text-white hover:!text-white ${isConsoleOpen ? 'bg-blue-500 dark:bg-gray-700' : 'hover:!bg-blue-500 dark:hover:!bg-gray-700'}`}
             title={isConsoleOpen ? 'Hide Console' : 'Show Console'}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-          </button>
+            <Terminal className="w-5 h-5" />
+          </Button>
         </div>
       </div>
     </header>

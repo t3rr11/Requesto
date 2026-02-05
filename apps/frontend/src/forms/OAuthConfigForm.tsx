@@ -6,6 +6,7 @@
 import { useState, FormEvent, useEffect } from 'react';
 import { Eye, EyeOff, Info } from 'lucide-react';
 import { Dialog } from '../components/Dialog';
+import { Button } from '../components/Button';
 import { OAuthConfig, OAuthFlowType, OAuthTokenStorage } from '../types';
 import {
   getAllProviderTemplates,
@@ -229,12 +230,14 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
         {/* Tab Navigation */}
         <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4 -mx-6 px-6">
           {tabs.map((tab) => (
-            <button
+            <Button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
+              variant="ghost"
+              size="md"
               className={`
-                px-4 py-2 text-sm font-medium border-b-2 transition-colors relative
+                px-4 py-2 text-sm font-medium border-b-2 rounded-none relative !ring-0
                 ${activeTab === tab.id
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
@@ -245,7 +248,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
               {tab.badge && (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full"></span>
               )}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -265,7 +268,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Production Microsoft, Dev GitHub"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   autoFocus
                 />
               </div>
@@ -280,7 +283,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                     id="provider"
                     value={selectedProvider}
                     onChange={(e) => handleProviderChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   >
                     <option value="custom">Custom Provider</option>
                     {providerTemplates.map(template => (
@@ -356,13 +359,15 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                       placeholder="Optional (for confidential clients)"
                       className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm"
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setShowClientSecret(!showClientSecret)}
+                      variant="icon"
+                      size="sm"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
                       {showClientSecret ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Required for client credentials and password flows
@@ -653,7 +658,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
         {/* Form Actions */}
         <div className="flex justify-between gap-2 pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
           {editConfig && onDelete ? (
-            <button
+            <Button
               type="button"
               onClick={async () => {
                 if (confirm('Are you sure you want to delete this OAuth configuration? This cannot be undone.')) {
@@ -668,30 +673,30 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
                   }
                 }
               }}
-              className="px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+              variant="danger"
               disabled={loading}
             >
               Delete Configuration
-            </button>
+            </Button>
           ) : (
             <div />
           )}
           <div className="flex gap-2">
-            <button
+            <Button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              variant="secondary"
               disabled={loading}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-500 dark:bg-blue-600 hover:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="primary"
             >
               {loading ? 'Saving...' : (editConfig ? 'Save Changes' : 'Create Configuration')}
-            </button>
+            </Button>
           </div>
         </div>
       </form>

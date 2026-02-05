@@ -5,6 +5,7 @@ import { useUIStore } from '../store/useUIStore';
 import { useTabsStore } from '../store/useTabsStore';
 import { FolderItem } from './FolderItem';
 import { getMethodColor } from '../helpers/collectionHelpers';
+import { Button } from './Button';
 import React, { useState } from 'react';
 
 interface CollectionItemProps {
@@ -127,33 +128,36 @@ export const CollectionItem = ({
           <span className="text-xs text-gray-400 dark:text-gray-500">({totalItems})</span>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-          <button
+          <Button
             onClick={e => {
               e.stopPropagation();
               openNewRequest(collection.id);
             }}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
+            variant="icon"
+            size="sm"
             title="Add Request"
           >
-            <Plus className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-          </button>
-          <button
+            <Plus className="w-3.5 h-3.5" />
+          </Button>
+          <Button
             onClick={e => {
               e.stopPropagation();
               handleCreateFolder(collection.id);
             }}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
+            variant="icon"
+            size="sm"
             title="New Folder"
           >
-            <FolderPlus className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-          </button>
-          <button
+            <FolderPlus className="w-3.5 h-3.5" />
+          </Button>
+          <Button
             onClick={e => onDeleteCollection(collection.id, e)}
-            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
+            variant="icon"
+            size="sm"
             title="Delete Collection"
           >
-            <Trash2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-          </button>
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </div>
 
@@ -176,15 +180,12 @@ export const CollectionItem = ({
                 className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 autoFocus
               />
-              <button
-                onClick={handleSaveFolder}
-                className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
+              <Button onClick={handleSaveFolder} variant="primary" size="sm">
                 Save
-              </button>
-              <button onClick={handleCancelFolder} className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 dark:text-gray-200">
+              </Button>
+              <Button onClick={handleCancelFolder} variant="secondary" size="sm">
                 Cancel
-              </button>
+              </Button>
             </div>
           )}
 

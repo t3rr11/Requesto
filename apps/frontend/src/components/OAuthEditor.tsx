@@ -10,6 +10,7 @@ import { useOAuthStore } from '../store/useOAuthStore';
 import { useOAuthFlow } from '../hooks/useOAuthFlow';
 import { useTokenRefresh } from '../hooks/useTokenRefresh';
 import { OAuthConfigForm } from '../forms/OAuthConfigForm';
+import { Button } from './Button';
 import { formatTimeUntilExpiry, getTimeUntilExpiry } from '../helpers/oauth/tokenManager';
 import { revokeOAuthToken } from '../helpers/oauth/oauthFlowHandler';
 
@@ -223,15 +224,17 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
             OAuth Configuration
           </label>
           {!selectedConfigId && (
-            <button
+            <Button
               type="button"
               onClick={() => setShowConfigForm(true)}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+              variant="ghost"
+              size="sm"
               disabled={disabled || isAuthenticating}
+              className="gap-1"
             >
               <Plus size={14} />
               New
-            </button>
+            </Button>
           )}
         </div>
         
@@ -258,14 +261,16 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
             </select>
             
             {selectedConfigId && (
-              <button
+              <Button
                 type="button"
                 onClick={handleRemoveAuth}
-                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                variant="ghost"
+                size="sm"
+                className="text-xs h-auto py-1 px-2"
                 disabled={disabled || isAuthenticating}
               >
                 Remove authentication from this request
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -289,15 +294,17 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
             </div>
             
             <div className="flex items-center gap-1">
-              <button
+              <Button
                 type="button"
                 onClick={() => handleEditConfig(selectedConfig)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded"
+                variant="icon"
+                size="sm"
+                className="p-1.5"
                 title="Edit configuration"
                 disabled={disabled || isAuthenticating}
               >
                 <Settings size={16} />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -345,41 +352,47 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
                 
                 <div className="flex gap-2 mt-3">
                   {hasRefreshToken && (
-                    <button
+                    <Button
                       type="button"
                       onClick={handleRefresh}
                       disabled={disabled || isAuthenticating}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded text-xs transition-colors disabled:opacity-50"
+                      variant="primary"
+                      size="sm"
                       title="Manually refresh the access token"
+                      className="gap-1.5"
                     >
                       <RefreshCw size={14} />
                       Refresh Token
-                    </button>
+                    </Button>
                   )}
                   
                   {selectedConfig.revocationUrl && (
-                    <button
+                    <Button
                       type="button"
                       onClick={handleRevoke}
                       disabled={disabled || isAuthenticating}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded text-xs transition-colors disabled:opacity-50"
+                      variant="danger"
+                      size="sm"
                       title="Revoke token on provider and clear locally"
+                      className="gap-1.5"
                     >
                       <Trash2 size={14} />
                       Revoke
-                    </button>
+                    </Button>
                   )}
                   
-                  <button
+                  <Button
                     type="button"
                     onClick={handleLogout}
                     disabled={disabled || isAuthenticating}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs transition-colors"
+                    variant="secondary"
+                    size="sm"
                     title="Clear stored tokens (local only)"
+                    className="gap-1.5"
                   >
                     <LogOut size={14} />
                     Clear
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -389,15 +402,16 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
                   <span>Not authenticated</span>
                 </div>
                 
-                <button
+                <Button
                   type="button"
                   onClick={handleAuthenticate}
                   disabled={disabled || isAuthenticating}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  variant="primary"
+                  className="gap-2"
                 >
                   <Key size={16} />
                   {isAuthenticating ? 'Authenticating...' : 'Authenticate'}
-                </button>
+                </Button>
               </div>
             )}
           </div>

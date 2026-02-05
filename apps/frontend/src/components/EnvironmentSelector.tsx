@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 
 export const EnvironmentSelector = () => {
@@ -30,14 +31,7 @@ export const EnvironmentSelector = () => {
             </option>
           ))}
         </select>
-        <svg
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500 dark:text-gray-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none text-gray-500 dark:text-gray-400" />
       </div>
     </div>
   );

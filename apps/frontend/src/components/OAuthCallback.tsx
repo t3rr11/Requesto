@@ -5,9 +5,11 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { retrieveOAuthState } from '../helpers/oauth/stateHelper';
 import { useOAuthStore } from '../store/useOAuthStore';
 import { API_BASE } from '../helpers/api/config';
+import { Button } from './Button';
 
 export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
@@ -233,16 +235,12 @@ export function OAuthCallback() {
           )}
           {status === 'success' && (
             <div className="rounded-full h-16 w-16 bg-green-100 dark:bg-green-900 flex items-center justify-center">
-              <svg className="h-10 w-10 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <CheckCircle2 className="h-10 w-10 text-green-600 dark:text-green-400" />
             </div>
           )}
           {status === 'error' && (
             <div className="rounded-full h-16 w-16 bg-red-100 dark:bg-red-900 flex items-center justify-center">
-              <svg className="h-10 w-10 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <XCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
             </div>
           )}
         </div>
@@ -261,12 +259,13 @@ export function OAuthCallback() {
 
         {/* Additional actions */}
         {status === 'error' && !(window.opener && !window.opener.closed) && (
-          <button
+          <Button
             onClick={() => navigate('/')}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+            variant="primary"
+            className="mt-4"
           >
             Return to App
-          </button>
+          </Button>
         )}
 
         {status === 'success' && window.opener && !window.opener.closed && (

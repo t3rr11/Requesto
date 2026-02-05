@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Dialog } from '../components/Dialog';
+import { Button } from '../components/Button';
 
 interface RenameFormProps {
   isOpen: boolean;
@@ -62,20 +63,12 @@ export const RenameForm = ({
           />
         </div>
         <div className="flex justify-end gap-2">
-          <button
-            onClick={handleClose}
-            disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button onClick={handleClose} disabled={isLoading} variant="ghost" size="md">
             Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || isLoading}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 dark:bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Saving...' : 'Save'}
-          </button>
+          </Button>
+          <Button onClick={handleSave} disabled={!name.trim() || isLoading} loading={isLoading} variant="primary" size="md">
+            Save
+          </Button>
         </div>
       </div>
     </Dialog>

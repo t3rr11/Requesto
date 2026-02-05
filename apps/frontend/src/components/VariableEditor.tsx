@@ -130,13 +130,15 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                                   className="w-full px-3 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono dark:bg-gray-800 dark:text-gray-200"
                                 />
                                 {secretField.value && valueField.value && (
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={() => toggleSecretVisibility(index)}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                                    variant="icon"
+                                    size="sm"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                                   >
                                     {showSecrets[index] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                  </button>
+                                  </Button>
                                 )}
                               </div>
                             )}
@@ -152,27 +154,31 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                       name={`${fieldArrayName}.${index}.isSecret`}
                       control={control}
                       render={({ field: secretField }) => (
-                        <button
+                        <Button
                           type="button"
                           onClick={() => secretField.onChange(!secretField.value)}
-                          className={`p-1.5 rounded transition-colors ${
+                          variant="icon"
+                          size="sm"
+                          className={`${
                             secretField.value ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
                           }`}
                           title={secretField.value ? 'Secret variable' : 'Mark as secret'}
                         >
                           <EyeOff className="w-4 h-4" />
-                        </button>
+                        </Button>
                       )}
                     />
 
-                    <button
+                    <Button
                       type="button"
                       onClick={() => remove(index)}
-                      className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                      variant="icon"
+                      size="sm"
+                      className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                       title="Remove variable"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

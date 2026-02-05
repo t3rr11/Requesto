@@ -8,6 +8,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { ContextMenu } from './ContextMenu';
 import { RenameForm } from '../forms/RenameForm';
 import { CollectionItem } from './CollectionItem';
+import { Button } from './Button';
 
 export const CollectionsSidebar = () => {
   const { isSidebarOpen, sidebarWidth, setSidebarWidth, openNewCollection } = useUIStore();
@@ -252,20 +253,12 @@ export const CollectionsSidebar = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
           <div className="flex gap-2">
-            <button
-              onClick={handleNewRequest}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
-              title="New Request"
-            >
-              <Plus className="w-5 h-5 text-gray-600" />
-            </button>
-            <button
-              onClick={openNewCollection}
-              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
-              title="New Collection"
-            >
-              <FolderPlus className="w-5 h-5 text-gray-600" />
-            </button>
+            <Button onClick={handleNewRequest} variant="icon" size="md" title="New Request">
+              <Plus className="w-5 h-5" />
+            </Button>
+            <Button onClick={openNewCollection} variant="icon" size="md" title="New Collection">
+              <FolderPlus className="w-5 h-5" />
+            </Button>
           </div>
         </div>
       </div>

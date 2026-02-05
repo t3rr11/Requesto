@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { VariableAwareInput } from './VariableAwareInput';
+import { Button } from './Button';
 
 interface HeaderRow {
   id: string;
@@ -109,14 +110,16 @@ export function HeadersEditor({ headers, onHeadersChange, disabled = false }: He
                   <th className="text-left text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3 w-10"></th>
                   <th className="text-left text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3">Key</th>
                   <th className="text-left text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3">Value</th>
-                  <th className="text-right text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3 w-24">
-                    <button
+                  <th className="text-right text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3 w-32">
+                    <Button
                       onClick={switchToBulkEdit}
-                      className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                      variant="ghost"
+                      size="sm"
                       disabled={disabled}
+                      className="whitespace-nowrap"
                     >
                       Bulk Edit
-                    </button>
+                    </Button>
                   </th>
                 </tr>
               </thead>
@@ -152,23 +155,25 @@ export function HeadersEditor({ headers, onHeadersChange, disabled = false }: He
                       />
                     </td>
                     <td className="py-2 px-3 text-right">
-                      <button
+                      <Button
                         onClick={() => removeHeader(header.id)}
-                        className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 cursor-pointer disabled:opacity-50 p-1 inline-flex items-center justify-center"
+                        variant="icon"
+                        size="sm"
                         disabled={disabled}
                         title="Delete header"
+                        className="text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <button onClick={addHeader} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mt-2" disabled={disabled}>
+          <Button onClick={addHeader} variant="ghost" size="sm" disabled={disabled} className="mt-2">
             + Add Header
-          </button>
+          </Button>
         </>
       ) : (
         <>
@@ -179,13 +184,14 @@ export function HeadersEditor({ headers, onHeadersChange, disabled = false }: He
                 Enter one header per line in the format:{' '}
                 <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded dark:text-gray-300">key:value</code>
               </div>
-              <button
+              <Button
                 onClick={switchToTableView}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                variant="ghost"
+                size="sm"
                 disabled={disabled}
               >
                 Table View
-              </button>
+              </Button>
             </div>
             <textarea
               value={bulkText}
