@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus, Download } from 'lucide-react';
 import { useCollectionsStore } from '../store/collections';
 import { Collection, SavedRequest } from '../types';
 import { useUIStore } from '../store/ui';
@@ -11,6 +11,7 @@ import React from 'react';
 import { useItemContextMenu } from '../hooks/useItemContextMenu';
 import { useItemDragDrop } from '../hooks/useItemDragDrop';
 import { useItemActions } from '../hooks/useItemActions';
+import { useAlertStore } from '../store/alert';
 
 interface CollectionItemProps {
   collection: Collection;
@@ -27,7 +28,8 @@ export const CollectionItem = ({
   onRenameCollection,
   onRenameFolder,
 }: CollectionItemProps) => {
-  const { moveRequest } = useCollectionsStore();
+  const { moveRequest, exportCollection, exportRequest } = useCollectionsStore();
+  const { showAlert } = useAlertStore();
   const { expandedCollections, toggleCollection, selectedRequestIds, toggleRequestSelection, clearSelection } =
     useUIStore();
 
@@ -154,6 +156,29 @@ export const CollectionItem = ({
       },
     });
     closeCollectionContextMenu();
+  };
+
+  const handleExportCollection = async () => {
+    try {
+      await exportCollection(collectionContextMenu!.collectionId);
+      showAlert('Collection exported successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to export collection', 'error');
+    }
+    closeCollectionContextMenu();
+  };
+
+  const handleExportRequest = async () => {
+    try {
+      await exportRequest(
+        requestContextMenu!.request.collectionId,
+        requestContextMenu!.request.id
+      );
+      showAlert('Request exported successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to export request', 'error');
+    }
+    closeRequestContextMenu();
   };
 
   const rootFolders = (collection.folders || []).filter(f => !f.parentId);
@@ -337,6 +362,11 @@ export const CollectionItem = ({
               onClick: handleRenameRequestFromContext,
             },
             {
+              label: 'Export',
+              icon: <Download className="w-4 h-4" />,
+              onClick: handleExportRequest,
+            },
+            {
               label: 'Delete',
               icon: <Trash2 className="w-4 h-4" />,
               onClick: handleDeleteRequestFromContext,
@@ -355,6 +385,11 @@ export const CollectionItem = ({
               label: 'Rename',
               icon: <FileText className="w-4 h-4" />,
               onClick: handleRenameCollectionFromContext,
+            },
+            {
+              label: 'Export',
+              icon: <Download className="w-4 h-4" />,
+              onClick: handleExportCollection,
             },
             {
               label: 'Delete',

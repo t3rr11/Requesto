@@ -1,6 +1,7 @@
-import { Globe, AlertCircle } from 'lucide-react';
+import { Globe, AlertCircle, Upload } from 'lucide-react';
 import { Environment } from '../types';
 import { Button } from './Button';
+import { useRef } from 'react';
 
 interface EnvironmentListProps {
   environments: Environment[];
@@ -8,6 +9,8 @@ interface EnvironmentListProps {
   activeEnvironmentId: string | null;
   isNewEnvironment: boolean;
   onEnvironmentSelect: (env: Environment) => void;
+  onEnvironmentContextMenu: (e: React.MouseEvent, env: Environment) => void;
+  onImport: (file: File) => void;
 }
 
 export const EnvironmentList = ({
@@ -16,11 +19,42 @@ export const EnvironmentList = ({
   activeEnvironmentId,
   isNewEnvironment,
   onEnvironmentSelect,
+  onEnvironmentContextMenu,
+  onImport,
 }: EnvironmentListProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onImport(file);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="w-72 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col flex-shrink-0">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Your Environments</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Your Environments</h2>
+          <Button onClick={handleImportClick} variant="icon" size="sm" title="Import Environment">
+            <Upload className="w-4 h-4" />
+          </Button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-1">
@@ -36,6 +70,7 @@ export const EnvironmentList = ({
           <Button
             key={env.id}
             onClick={() => onEnvironmentSelect(env)}
+            onContextMenu={(e) => onEnvironmentContextMenu(e, env)}
             variant="ghost"
             size="md"
             className={`w-full justify-start text-left rounded-lg ${

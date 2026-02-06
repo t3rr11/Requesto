@@ -41,6 +41,10 @@ interface CollectionsState {
   updateFolder: (collectionId: string, folderId: string, updates: Partial<Folder>) => Promise<void>;
   moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
   moveFolder: (sourceCollectionId: string, folderId: string, targetCollectionId: string, targetParentId?: string) => Promise<void>;
+  importCollection: (file: File) => Promise<Collection>;
+  exportCollection: (collectionId: string) => Promise<void>;
+  exportRequest: (collectionId: string, requestId: string) => Promise<void>;
+  exportFolder: (collectionId: string, folderId: string) => Promise<void>;
 }
 
 export const useCollectionsStore = create<CollectionsState>((set) => ({
@@ -82,4 +86,12 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
 
   moveFolder: (sourceCollectionId, folderId, targetCollectionId, targetParentId) => 
     actions.moveFolder(set, sourceCollectionId, folderId, targetCollectionId, targetParentId),
+
+  importCollection: (file) => actions.importCollection(set, file),
+
+  exportCollection: (collectionId) => actions.exportCollection(collectionId),
+
+  exportRequest: (collectionId, requestId) => actions.exportRequest(collectionId, requestId),
+
+  exportFolder: (collectionId, folderId) => actions.exportFolder(collectionId, folderId),
 }));

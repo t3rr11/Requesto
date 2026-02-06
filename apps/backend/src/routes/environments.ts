@@ -45,4 +45,40 @@ export default async function environmentRoutes(fastify: FastifyInstance) {
     
     return { success: true };
   });
+
+  // Import environment from Postman format
+  fastify.post<{ Body: { environment: any } }>('/environments/import', async (request, reply) => {
+    try {
+      const { environment: postmanEnvironment } = request.body;
+      
+      if (!postmanEnvironment || !postmanEnvironment.name) {
+        return reply.code(400).send({ error: 'Invalid Postman environment format' });
+      }
+
+      // Import is handled by frontend helper, backend just saves the environment
+      saveEnvironment(postmanEnvironment);
+      return reply.code(201).send({ success: true, environment: postmanEnvironment });
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Failed to import environment' });
+    }
+  });
+
+  // Export environment
+  fastify.get<{ Params: { id: string } }>('/environments/:id/export', async (request, reply) => {
+    try {
+      const data = getEnvironments();
+      const environment = data.environments.find(env => env.id === request.params.id);
+      
+      if (!environment) {
+        return reply.code(404).send({ error: 'Environment not found' });
+      }
+
+      return environment;
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.code(500).send({ error: 'Failed to export environment' });
+    }
+  });
 }
+

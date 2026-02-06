@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Globe, Settings } from 'lucide-react';
+import { Plus, Globe, Settings, Download, Trash2 } from 'lucide-react';
 import { useEnvironmentStore } from '../store/environments';
 import { Environment } from '../types';
 import { useAlertStore } from '../store/alert';
@@ -11,6 +11,7 @@ import { Button } from '../components/Button';
 import { EnvironmentList } from '../components/EnvironmentList';
 import { EnvironmentHeader } from '../components/EnvironmentHeader';
 import { VariableEditor } from '../components/VariableEditor';
+import { ContextMenu } from '../components/ContextMenu';
 import { useNavigate } from 'react-router';
 import {
   createNewEnvironment,
@@ -35,11 +36,23 @@ const environmentFormSchema = z.object({
 type EnvironmentFormData = z.infer<typeof environmentFormSchema>;
 
 export const EnvironmentsPage = () => {
-  const { environmentsData, loadEnvironments, saveEnvironment, deleteEnvironment, setActiveEnvironment } =
-    useEnvironmentStore();
+  const {
+    environmentsData,
+    loadEnvironments,
+    saveEnvironment,
+    deleteEnvironment,
+    setActiveEnvironment,
+    importEnvironment,
+    exportEnvironment,
+  } = useEnvironmentStore();
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
+  const [environmentContextMenu, setEnvironmentContextMenu] = useState<{
+    x: number;
+    y: number;
+    environment: Environment;
+  } | null>(null);
   const { showAlert } = useAlertStore();
   const navigate = useNavigate();
   const lastSavedValuesRef = useRef<string>('');
@@ -226,6 +239,85 @@ export const EnvironmentsPage = () => {
     setValue('name', name, { shouldValidate: true });
   };
 
+  const handleEnvironmentContextMenu = (e: React.MouseEvent, env: Environment) => {
+    e.preventDefault();
+    setEnvironmentContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      environment: env,
+    });
+  };
+
+  const closeEnvironmentContextMenu = () => {
+    setEnvironmentContextMenu(null);
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const imported = await importEnvironment(file);
+      showAlert('Environment imported successfully', 'success');
+      handleEnvironmentSelect(imported);
+    } catch (error) {
+      showAlert('Failed to import environment. Please check the file format.', 'error');
+    }
+  };
+
+  const handleExportFromContext = async () => {
+    if (!environmentContextMenu) return;
+
+    try {
+      await exportEnvironment(environmentContextMenu.environment.id);
+      showAlert('Environment exported successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to export environment', 'error');
+    }
+    closeEnvironmentContextMenu();
+  };
+
+  const handleDuplicateFromContext = () => {
+    if (!environmentContextMenu) return;
+
+    const duplicated = duplicateEnv(environmentContextMenu.environment);
+    const duplicatedData = {
+      id: duplicated.id,
+      name: duplicated.name,
+      variables: duplicated.variables,
+    };
+
+    reset(duplicatedData);
+    lastSavedValuesRef.current = '';
+    setSelectedEnvId(duplicated.id);
+    setHasUnsavedChanges(true);
+    closeEnvironmentContextMenu();
+  };
+
+  const handleDeleteFromContext = () => {
+    if (!environmentContextMenu) return;
+    const env = environmentContextMenu.environment;
+    
+    if (environmentsData.environments.length <= 1 && !isNewEnvironment) {
+      showAlert('Cannot delete the last environment', 'error');
+      closeEnvironmentContextMenu();
+      return;
+    }
+
+    setConfirmDelete({ id: env.id, name: env.name });
+    closeEnvironmentContextMenu();
+  };
+
+  const handleExport = async () => {
+    if (!selectedEnvId) return;
+
+    try {
+      await exportEnvironment(selectedEnvId);
+      showAlert('Environment exported successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to export environment', 'error');
+    }
+  };
+
+
+
   const isActive = environmentsData.activeEnvironmentId === selectedEnvId;
   const isNewEnvironment = selectedEnvId ? !environmentsData.environments.find(e => e.id === selectedEnvId) : false;
 
@@ -261,6 +353,8 @@ export const EnvironmentsPage = () => {
             activeEnvironmentId={environmentsData.activeEnvironmentId}
             isNewEnvironment={isNewEnvironment}
             onEnvironmentSelect={handleEnvironmentSelect}
+            onEnvironmentContextMenu={handleEnvironmentContextMenu}
+            onImport={handleImport}
           />
 
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
@@ -275,6 +369,7 @@ export const EnvironmentsPage = () => {
                   onDuplicate={handleDuplicate}
                   onDelete={() => selectedEnvId && handleDeleteClick(selectedEnvId)}
                   onSave={handleSave}
+                  onExport={handleExport}
                   canDelete={environmentsData.environments.length > 1 || isNewEnvironment}
                 />
 
@@ -314,6 +409,31 @@ export const EnvironmentsPage = () => {
           confirmText="Delete"
           variant="danger"
         />
+
+        {environmentContextMenu && (
+          <ContextMenu
+            position={{ x: environmentContextMenu.x, y: environmentContextMenu.y }}
+            items={[
+              {
+                label: 'Export',
+                icon: <Download className="w-4 h-4" />,
+                onClick: handleExportFromContext,
+              },
+              {
+                label: 'Duplicate',
+                icon: <Globe className="w-4 h-4" />,
+                onClick: handleDuplicateFromContext,
+              },
+              {
+                label: 'Delete',
+                icon: <Trash2 className="w-4 h-4" />,
+                onClick: handleDeleteFromContext,
+                danger: true,
+              },
+            ]}
+            onClose={closeEnvironmentContextMenu}
+          />
+        )}
       </div>
     </main>
   );

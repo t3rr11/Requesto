@@ -13,6 +13,8 @@ interface EnvironmentState {
   deleteEnvironment: (id: string) => Promise<void>;
   addEnvironment: (environment: Environment) => void;
   updateEnvironment: (environment: Environment) => void;
+  importEnvironment: (file: File) => Promise<Environment>;
+  exportEnvironment: (environmentId: string) => Promise<void>;
 }
 
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
@@ -49,4 +51,8 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
       set({ environmentsData: { ...environmentsData, environments: updated } });
     }
   },
+
+  importEnvironment: (file) => actions.importEnvironment(set, file),
+  exportEnvironment: (environmentId) => actions.exportEnvironment(environmentId),
 }));
+

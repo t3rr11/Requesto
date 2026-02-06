@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Folder as FolderIcon, FolderPlus } from 'lucide-react';
+import { Folder as FolderIcon, FolderPlus, Upload } from 'lucide-react';
 import { useUIStore } from '../store/ui';
 import { useCollectionsStore } from '../store/collections';
 import { SavedRequest } from '../types';
@@ -10,6 +10,7 @@ import { NewRequestForm } from '../forms/NewRequestForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
+import { useAlertStore } from '../store/alert';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -35,7 +36,9 @@ export const CollectionsSidebar = () => {
   const { isSidebarOpen, sidebarWidth, setSidebarWidth, clearSelection } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const { collections, loading } = useCollectionsStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { collections, loading, importCollection } = useCollectionsStore();
+  const { showAlert } = useAlertStore();
   
   // Dialog hooks
   const newCollectionDialog = useDialog();
@@ -127,6 +130,27 @@ export const CollectionsSidebar = () => {
     renameFolderDialog.close();
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await importCollection(file);
+      showAlert('Collection imported successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to import collection. Please check the file format.', 'error');
+    }
+
+    // Reset input so the same file can be imported again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   if (!isSidebarOpen) return null;
 
   return (
@@ -139,11 +163,21 @@ export const CollectionsSidebar = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
           <div className="flex gap-2">
+            <Button onClick={handleImportClick} variant="icon" size="md" title="Import Collection">
+              <Upload className="w-5 h-5" />
+            </Button>
             <Button onClick={newCollectionDialog.open} variant="icon" size="md" title="New Collection">
               <FolderPlus className="w-5 h-5" />
             </Button>
           </div>
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto">

@@ -1,6 +1,12 @@
 import { StoreApi } from 'zustand';
 import { Environment, EnvironmentsData } from '../../types';
 import { API_BASE } from '../../helpers/api/config';
+import {
+  importPostmanEnvironment,
+  exportEnvironmentToPostman,
+  downloadJSON,
+  readJSONFile,
+} from '../../helpers/postman';
 
 // ============================================================================
 // Internal API Helper Functions (integrated from helpers/api/environments.ts)
@@ -189,3 +195,54 @@ export const deleteEnvironmentPublic = deleteEnvironmentApi;
  * Set active environment (public API)
  */
 export const setActiveEnvironmentPublic = setActiveEnvironmentApi;
+
+// ============================================================================
+// Import/Export Functions
+// ============================================================================
+
+/**
+ * Import environment from Postman format
+ */
+export const importEnvironment = async (
+  set: SetState,
+  file: File
+): Promise<Environment> => {
+  try {
+    const postmanData = await readJSONFile(file);
+    const environment = importPostmanEnvironment(postmanData);
+    
+    // Send to backend
+    const res = await fetch(`${API_BASE}/environments/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ environment }),
+    });
+    
+    if (!res.ok) throw new Error('Failed to import environment');
+    
+    await loadEnvironments(set);
+    return environment;
+  } catch (error) {
+    console.error('Failed to import environment:', error);
+    throw error;
+  }
+};
+
+/**
+ * Export environment to Postman format
+ */
+export const exportEnvironment = async (environmentId: string): Promise<void> => {
+  try {
+    const res = await fetch(`${API_BASE}/environments/${environmentId}/export`);
+    if (!res.ok) throw new Error('Failed to export environment');
+    
+    const environment: Environment = await res.json();
+    const postmanEnvironment = exportEnvironmentToPostman(environment);
+    
+    const filename = `${environment.name.replace(/[^a-z0-9]/gi, '_')}.postman_environment.json`;
+    downloadJSON(postmanEnvironment, filename);
+  } catch (error) {
+    console.error('Failed to export environment:', error);
+    throw error;
+  }
+};

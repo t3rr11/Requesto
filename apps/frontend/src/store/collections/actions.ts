@@ -1,5 +1,11 @@
 import { Collection, SavedRequest, Folder, AuthConfig } from '../../types';
 import { API_BASE } from '../../helpers/api/config';
+import {
+  importPostmanCollection,
+  exportToPostman,
+  downloadJSON,
+  readJSONFile,
+} from '../../helpers/postman';
 
 type SetState = (partial: any) => void;
 
@@ -357,6 +363,116 @@ export async function moveFolder(
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to move folder:', error);
+    throw error;
+  }
+}
+
+// Import/Export functions
+
+export async function importCollection(set: SetState, file: File): Promise<Collection> {
+  try {
+    const postmanData = await readJSONFile(file);
+    const collection = importPostmanCollection(postmanData);
+    
+    // Send to backend
+    const res = await fetch(`${API_BASE}/collections/import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ collection }),
+    });
+    
+    if (!res.ok) throw new Error('Failed to import collection');
+    
+    await loadCollections(set);
+    return collection;
+  } catch (error) {
+    console.error('Failed to import collection:', error);
+    throw error;
+  }
+}
+
+export async function exportCollection(collectionId: string): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/collections/${collectionId}/export`);
+    if (!res.ok) throw new Error('Failed to export collection');
+    
+    const collection: Collection = await res.json();
+    const postmanCollection = exportToPostman(collection);
+    
+    const filename = `${collection.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
+    downloadJSON(postmanCollection, filename);
+  } catch (error) {
+    console.error('Failed to export collection:', error);
+    throw error;
+  }
+}
+
+export async function exportRequest(collectionId: string, requestId: string): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/collections/${collectionId}/export`);
+    if (!res.ok) throw new Error('Failed to export request');
+    
+    const collection: Collection = await res.json();
+    const request = collection.requests.find(r => r.id === requestId);
+    
+    if (!request) throw new Error('Request not found');
+    
+    // Create a minimal collection with just this request
+    const singleRequestCollection: Collection = {
+      ...collection,
+      name: request.name,
+      requests: [request],
+      folders: [],
+    };
+    
+    const postmanCollection = exportToPostman(singleRequestCollection);
+    const filename = `${request.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
+    downloadJSON(postmanCollection, filename);
+  } catch (error) {
+    console.error('Failed to export request:', error);
+    throw error;
+  }
+}
+
+export async function exportFolder(collectionId: string, folderId: string): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/collections/${collectionId}/export`);
+    if (!res.ok) throw new Error('Failed to export folder');
+    
+    const collection: Collection = await res.json();
+    const folder = collection.folders.find(f => f.id === folderId);
+    
+    if (!folder) throw new Error('Folder not found');
+    
+    // Get all descendant folders
+    const getDescendantFolders = (parentId: string): Folder[] => {
+      const children = collection.folders.filter(f => f.parentId === parentId);
+      return children.reduce(
+        (acc, child) => [...acc, child, ...getDescendantFolders(child.id)],
+        [] as Folder[]
+      );
+    };
+    
+    const folderIds = [folderId, ...getDescendantFolders(folderId).map(f => f.id)];
+    const foldersInExport = collection.folders.filter(f => folderIds.includes(f.id));
+    const requestsInExport = collection.requests.filter(r => r.folderId && folderIds.includes(r.folderId));
+    
+    // Create a collection with just this folder and its contents
+    const folderCollection: Collection = {
+      ...collection,
+      name: folder.name,
+      folders: foldersInExport.map(f => ({
+        ...f,
+        parentId: f.parentId === folderId ? undefined : f.parentId, // Make root folder top-level
+      })),
+      requests: requestsInExport,
+    };
+    
+    const postmanCollection = exportToPostman(folderCollection);
+    const filename = `${folder.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
+    downloadJSON(postmanCollection, filename);
+  } catch (error) {
+    console.error('Failed to export folder:', error);
     throw error;
   }
 }

@@ -427,6 +427,47 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return reply.code(500).send({ error: 'Failed to move folder' });
     }
   });
+
+  // Import collection (already converted from Postman format by frontend)
+  server.post<{
+    Body: {
+      collection: any; // Collection in Requesto format
+    };
+  }>('/collections/import', async (request, reply) => {
+    try {
+      const { collection } = request.body;
+      
+      if (!collection || !collection.name) {
+        return reply.code(400).send({ error: 'Invalid collection format' });
+      }
+
+      // Collection is already in Requesto format, just save it
+      const savedCollection = await collectionsDb.create(collection);
+      return reply.code(201).send(savedCollection);
+    } catch (error) {
+      server.log.error(error);
+      return reply.code(500).send({ error: 'Failed to import collection' });
+    }
+  });
+
+  // Export collection in Postman format
+  server.get<{
+    Params: { id: string };
+  }>('/collections/:id/export', async (request, reply) => {
+    try {
+      const collection = await collectionsDb.getById(request.params.id);
+      
+      if (!collection) {
+        return reply.code(404).send({ error: 'Collection not found' });
+      }
+
+      // Return the collection - frontend will handle conversion to Postman format
+      return collection;
+    } catch (error) {
+      server.log.error(error);
+      return reply.code(500).send({ error: 'Failed to export collection' });
+    }
+  });
 };
 
 export default collectionsRoutes;

@@ -143,7 +143,7 @@ export function RequestForm({
   auth,
   onAuthChange,
 }: RequestFormProps) {
-  const [activeTab, setActiveTab] = useState<RequestTab>('headers');
+  const [activeTab, setActiveTab] = useState<RequestTab>('params');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);

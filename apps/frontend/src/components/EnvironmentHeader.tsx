@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { Check, MoreVertical, Copy, Trash2, Save } from 'lucide-react';
+import { Check, MoreVertical, Copy, Trash2, Save, Download } from 'lucide-react';
 import { Button } from './Button';
 
 interface EnvironmentHeaderProps {
@@ -11,6 +11,7 @@ interface EnvironmentHeaderProps {
   onDuplicate: () => void;
   onDelete: () => void;
   onSave: () => void;
+  onExport: () => void;
   canDelete: boolean;
 }
 
@@ -23,6 +24,7 @@ export const EnvironmentHeader = ({
   onDuplicate,
   onDelete,
   onSave,
+  onExport,
   canDelete,
 }: EnvironmentHeaderProps) => {
   const [isEditingName, setIsEditingName] = useState(false);
@@ -149,6 +151,19 @@ export const EnvironmentHeader = ({
                   >
                     <Copy className="w-4 h-4 mr-2" />
                     Duplicate
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      onExport();
+                      setShowMenu(false);
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start px-4 py-2 text-sm rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
                   </Button>
                   <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
                   <Button

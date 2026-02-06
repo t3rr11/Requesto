@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus, Download } from 'lucide-react';
 import { Folder, Collection, SavedRequest } from '../types';
 import { useCollectionsStore } from '../store/collections';
 import { useUIStore } from '../store/ui';
@@ -9,6 +9,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { useItemContextMenu } from '../hooks/useItemContextMenu';
 import { useItemDragDrop } from '../hooks/useItemDragDrop';
 import { useItemActions } from '../hooks/useItemActions';
+import { useAlertStore } from '../store/alert';
 
 interface FolderItemProps {
   folder: Folder;
@@ -27,7 +28,8 @@ export const FolderItem = ({
   onRenameRequest,
   onRenameFolder,
 }: FolderItemProps) => {
-  const { moveRequest, moveFolder } = useCollectionsStore();
+  const { moveRequest, moveFolder, exportRequest, exportFolder } = useCollectionsStore();
+  const { showAlert } = useAlertStore();
   const { expandedFolders, toggleFolder, selectedRequestIds, toggleRequestSelection, clearSelection } = useUIStore();
   
   // Use custom hooks for shared logic
@@ -124,6 +126,28 @@ export const FolderItem = ({
       },
     });
     closeFolderContextMenu();
+  };
+
+  const handleExportFolder = async () => {
+    if (!folderContextMenu) return;
+    try {
+      await exportFolder(folderContextMenu.collectionId, folderContextMenu.folderId);
+      showAlert('Folder exported successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to export folder', 'error');
+    }
+    closeFolderContextMenu();
+  };
+
+  const handleExportRequest = async () => {
+    if (!requestContextMenu) return;
+    try {
+      await exportRequest(requestContextMenu.request.collectionId, requestContextMenu.request.id);
+      showAlert('Request exported successfully', 'success');
+    } catch (error) {
+      showAlert('Failed to export request', 'error');
+    }
+    closeRequestContextMenu();
   };
 
   const childFolders = (collection.folders || []).filter((f) => f.parentId === folder.id);
@@ -309,6 +333,11 @@ export const FolderItem = ({
               onClick: handleRenameRequestFromContext,
             },
             {
+              label: 'Export',
+              icon: <Download className="w-4 h-4" />,
+              onClick: handleExportRequest,
+            },
+            {
               label: 'Delete',
               icon: <Trash2 className="w-4 h-4" />,
               onClick: handleDeleteRequestFromContext,
@@ -327,6 +356,11 @@ export const FolderItem = ({
               label: 'Rename',
               icon: <FolderIcon className="w-4 h-4" />,
               onClick: handleRenameFolderFromContext,
+            },
+            {
+              label: 'Export',
+              icon: <Download className="w-4 h-4" />,
+              onClick: handleExportFolder,
             },
             {
               label: 'Delete',
