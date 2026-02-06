@@ -1,6 +1,6 @@
 {
   "name": "requesto-electron",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Requesto - API Client",
   "main": "dist/main.js",
   "author": "Requesto Contributors",
