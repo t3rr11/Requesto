@@ -69,3 +69,55 @@ export const expandFolder = (set: SetState, id: string) => {
     expandedFolders: new Set(state.expandedFolders).add(id),
   }));
 };
+
+// Multi-select actions
+export const toggleRequestSelection = (
+  set: SetState, 
+  requestId: string, 
+  ctrlKey: boolean, 
+  shiftKey: boolean,
+  allRequestIds?: string[]
+) => {
+  set((state: any) => {
+    const newSelected = new Set(state.selectedRequestIds);
+    
+    if (shiftKey && state.lastSelectedRequestId && allRequestIds) {
+      // Range select - select all items between last selected and current
+      const lastIndex = allRequestIds.indexOf(state.lastSelectedRequestId);
+      const currentIndex = allRequestIds.indexOf(requestId);
+      
+      if (lastIndex !== -1 && currentIndex !== -1) {
+        const start = Math.min(lastIndex, currentIndex);
+        const end = Math.max(lastIndex, currentIndex);
+        
+        // Select all items in range
+        for (let i = start; i <= end; i++) {
+          newSelected.add(allRequestIds[i]);
+        }
+      }
+    } else if (!ctrlKey) {
+      // Single select - clear all and select only this one
+      newSelected.clear();
+      newSelected.add(requestId);
+    } else {
+      // Multi-select with CTRL - toggle selection
+      if (newSelected.has(requestId)) {
+        newSelected.delete(requestId);
+      } else {
+        newSelected.add(requestId);
+      }
+    }
+    
+    return { 
+      selectedRequestIds: newSelected,
+      lastSelectedRequestId: requestId,
+    };
+  });
+};
+
+export const clearSelection = (set: SetState) => {
+  set({ 
+    selectedRequestIds: new Set(),
+    lastSelectedRequestId: null,
+  });
+};

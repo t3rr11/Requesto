@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Folder as FolderIcon, FolderPlus, Plus } from 'lucide-react';
+import { Folder as FolderIcon, FolderPlus } from 'lucide-react';
 import { useUIStore } from '../store/ui';
 import { useCollectionsStore } from '../store/collections';
 import { SavedRequest } from '../types';
-import { useTabsStore } from '../store/tabs';
 import { Dialog } from './Dialog';
 import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
@@ -33,11 +32,10 @@ interface NewRequestContext {
 }
 
 export const CollectionsSidebar = () => {
-  const { isSidebarOpen, sidebarWidth, setSidebarWidth } = useUIStore();
+  const { isSidebarOpen, sidebarWidth, setSidebarWidth, clearSelection } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const { collections, loading } = useCollectionsStore();
-  const { openRequestTab } = useTabsStore();
   
   // Dialog hooks
   const newCollectionDialog = useDialog();
@@ -76,15 +74,25 @@ export const CollectionsSidebar = () => {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing, setSidebarWidth]);
+  
+  // Clear selection when clicking on empty space
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      // Check if click is outside request items (on sidebar background)
+      if (
+        sidebarRef.current?.contains(target) && 
+        !target.closest('[data-request-item]') &&
+        !target.closest('[data-folder-item]') &&
+        !target.closest('button')
+      ) {
+        clearSelection();
+      }
+    };
 
-  const handleNewRequest = () => {
-    openRequestTab({
-      savedRequestId: '',
-      collectionId: '',
-      request: { method: 'GET', url: '', auth: { type: 'none' } },
-      label: 'New Request',
-    });
-  };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [clearSelection]);
 
   const handleRenameRequest = (request: SavedRequest) => {
     renameRequestDialog.open({ request });
@@ -131,9 +139,6 @@ export const CollectionsSidebar = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
           <div className="flex gap-2">
-            <Button onClick={handleNewRequest} variant="icon" size="md" title="New Request">
-              <Plus className="w-5 h-5" />
-            </Button>
             <Button onClick={newCollectionDialog.open} variant="icon" size="md" title="New Collection">
               <FolderPlus className="w-5 h-5" />
             </Button>

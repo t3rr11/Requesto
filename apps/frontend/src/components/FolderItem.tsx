@@ -28,7 +28,7 @@ export const FolderItem = ({
   onRenameFolder,
 }: FolderItemProps) => {
   const { moveRequest, moveFolder } = useCollectionsStore();
-  const { expandedFolders, toggleFolder } = useUIStore();
+  const { expandedFolders, toggleFolder, selectedRequestIds, toggleRequestSelection, clearSelection } = useUIStore();
   
   // Use custom hooks for shared logic
   const {
@@ -68,11 +68,19 @@ export const FolderItem = ({
   } = useItemDragDrop({
     onDropRequest: async (collectionId, requestId, targetOrder) => {
       await moveRequest(collectionId, requestId, collection.id, folder.id, targetOrder);
+      clearSelection();
     },
     onDropFolder: async (collectionId, folderId) => {
       if (folderId !== folder.id) {
         await moveFolder(collectionId, folderId, collection.id, folder.id);
       }
+    },
+    onDropMultipleRequests: async (requests, targetOrder) => {
+      // Move all selected requests to this folder
+      for (const req of requests) {
+        await moveRequest(req.collectionId, req.requestId, collection.id, folder.id, targetOrder);
+      }
+      clearSelection();
     },
   });
   
@@ -124,11 +132,15 @@ export const FolderItem = ({
     .sort((a, b) => (a.order || 0) - (b.order || 0));
   const isExpanded = expandedFolders.has(folder.id);
   const paddingLeft = `${(depth + 1) * 16 + 16}px`;
+  
+  // Get all request IDs in display order for range selection
+  const allRequestIds = folderRequests.map(r => r.id);
 
   return (
     <div>
       <div
-        className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
+        data-folder-item
+        className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
           isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
         style={{ paddingLeft }}
@@ -158,6 +170,7 @@ export const FolderItem = ({
             variant="icon"
             size="sm"
             title="Add Request"
+            className="hover:bg-gray-200"
           >
             <Plus className="w-3 h-3" />
           </Button>
@@ -169,6 +182,7 @@ export const FolderItem = ({
             variant="icon"
             size="sm"
             title="New Subfolder"
+            className="hover:bg-gray-200"
           >
             <FolderPlus className="w-3 h-3" />
           </Button>
@@ -177,6 +191,7 @@ export const FolderItem = ({
             variant="icon"
             size="sm"
             title="Delete Folder"
+            className="hover:bg-gray-200"
           >
             <Trash2 className="w-3 h-3" />
           </Button>
@@ -233,11 +248,23 @@ export const FolderItem = ({
               />
               
               <div
+                data-request-item
                 className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
                   activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
+                } ${
+                  selectedRequestIds.has(request.id) ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
                 }`}
                 style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}
-                onClick={() => handleSelectRequest(request)}
+                onClick={(e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    toggleRequestSelection(request.id, true, false);
+                  } else if (e.shiftKey) {
+                    toggleRequestSelection(request.id, false, true, allRequestIds);
+                  } else {
+                    handleSelectRequest(request);
+                    toggleRequestSelection(request.id, false, false);
+                  }
+                }}
                 onContextMenu={(e) => openRequestContextMenu(e, request)}
                 {...createRequestDragHandlers(request.id, collection.id)}
               >

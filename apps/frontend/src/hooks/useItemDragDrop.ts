@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useUIStore } from '../store/ui';
 
 interface DragDropCallbacks {
   onDropRequest?: (collectionId: string, requestId: string, targetOrder?: number) => Promise<void>;
   onDropFolder?: (collectionId: string, folderId: string) => Promise<void>;
+  onDropMultipleRequests?: (requests: Array<{ collectionId: string; requestId: string }>, targetOrder?: number) => Promise<void>;
 }
 
 /**
@@ -35,9 +37,14 @@ export const useItemDragDrop = (callbacks: DragDropCallbacks = {}) => {
 
     const dragType = e.dataTransfer.types.find((t) => t.startsWith('application/'));
 
-    if (dragType === 'application/request' && callbacks.onDropRequest) {
+    if (dragType === 'application/request') {
       const data = JSON.parse(e.dataTransfer.getData('application/request'));
-      await callbacks.onDropRequest(data.collectionId, data.requestId);
+      
+      if (data.isMultiSelect && callbacks.onDropMultipleRequests) {
+        await callbacks.onDropMultipleRequests(data.requests);
+      } else if (callbacks.onDropRequest) {
+        await callbacks.onDropRequest(data.collectionId, data.requestId);
+      }
     } else if (dragType === 'application/folder' && callbacks.onDropFolder) {
       const data = JSON.parse(e.dataTransfer.getData('application/folder'));
       await callbacks.onDropFolder(data.collectionId, data.folderId);
@@ -63,27 +70,55 @@ export const useItemDragDrop = (callbacks: DragDropCallbacks = {}) => {
     const dragType = e.dataTransfer.types.find((t) => t.startsWith('application/'));
     if (dragType === 'application/request' && callbacks.onDropRequest) {
       const data = JSON.parse(e.dataTransfer.getData('application/request'));
-      await callbacks.onDropRequest(data.collectionId, data.requestId, index);
+      
+      // Check if this is a multi-select drag
+      if (data.isMultiSelect && callbacks.onDropMultipleRequests) {
+        await callbacks.onDropMultipleRequests(data.requests, index);
+      } else {
+        await callbacks.onDropRequest(data.collectionId, data.requestId, index);
+      }
     }
   };
 
   // Request drag start/end handlers
-  const createRequestDragHandlers = (requestId: string, collectionId: string) => ({
-    draggable: true,
-    onDragStart: (e: React.DragEvent) => {
-      e.stopPropagation();
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData(
-        'application/request',
-        JSON.stringify({ requestId, collectionId })
-      );
-      (e.target as HTMLElement).style.opacity = '0.5';
-    },
-    onDragEnd: (e: React.DragEvent) => {
-      (e.target as HTMLElement).style.opacity = '1';
-      setDragOverIndex(null);
-    },
-  });
+  const createRequestDragHandlers = (requestId: string, collectionId: string) => {
+    return {
+      draggable: true,
+      onDragStart: (e: React.DragEvent) => {
+        e.stopPropagation();
+        e.dataTransfer.effectAllowed = 'move';
+        
+        const { selectedRequestIds } = useUIStore.getState();
+        const isSelected = selectedRequestIds.has(requestId);
+        
+        // Check if dragging multiple selected items
+        if (isSelected && selectedRequestIds.size > 1) {
+          // Multi-select drag
+          const requests = Array.from(selectedRequestIds).map(id => ({
+            requestId: id,
+            collectionId, // Note: This assumes all selected items are in same collection for now
+          }));
+          
+          e.dataTransfer.setData(
+            'application/request',
+            JSON.stringify({ isMultiSelect: true, requests })
+          );
+        } else {
+          // Single drag
+          e.dataTransfer.setData(
+            'application/request',
+            JSON.stringify({ requestId, collectionId })
+          );
+        }
+        
+        (e.target as HTMLElement).style.opacity = '0.5';
+      },
+      onDragEnd: (e: React.DragEvent) => {
+        (e.target as HTMLElement).style.opacity = '1';
+        setDragOverIndex(null);
+      },
+    };
+  };
 
   // Folder drag start/end handlers
   const createFolderDragHandlers = (folderId: string, collectionId: string) => ({

@@ -20,16 +20,17 @@ interface CollectionItemProps {
   onRenameFolder: (collectionId: string, folderId: string, folderName: string) => void;
 }
 
-export const CollectionItem = ({ 
-  collection, 
+export const CollectionItem = ({
+  collection,
   onOpenNewRequest,
   onRenameRequest,
   onRenameCollection,
   onRenameFolder,
 }: CollectionItemProps) => {
   const { moveRequest } = useCollectionsStore();
-  const { expandedCollections, toggleCollection } = useUIStore();
-  
+  const { expandedCollections, toggleCollection, selectedRequestIds, toggleRequestSelection, clearSelection } =
+    useUIStore();
+
   // Use custom hooks for shared logic
   const {
     requestContextMenu,
@@ -66,12 +67,20 @@ export const CollectionItem = ({
   } = useItemDragDrop({
     onDropRequest: async (collectionId, requestId, targetOrder) => {
       await moveRequest(collectionId, requestId, collection.id, undefined, targetOrder);
+      clearSelection();
     },
     onDropFolder: async (collectionId, folderId) => {
       if (folderId !== collection.id) {
         const { moveFolder } = useCollectionsStore.getState();
         await moveFolder(collectionId, folderId, collection.id, undefined);
       }
+    },
+    onDropMultipleRequests: async (requests, targetOrder) => {
+      // Move all selected requests
+      for (const req of requests) {
+        await moveRequest(req.collectionId, req.requestId, collection.id, undefined, targetOrder);
+      }
+      clearSelection();
     },
   });
 
@@ -81,12 +90,21 @@ export const CollectionItem = ({
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
-    
+
     if (dragType === 'application/request') {
       const data = JSON.parse(e.dataTransfer.getData('application/request'));
-      await moveRequest(data.collectionId, data.requestId, collection.id, undefined);
+
+      if (data.isMultiSelect) {
+        // Move all selected requests
+        for (const req of data.requests) {
+          await moveRequest(req.collectionId, req.requestId, collection.id, undefined);
+        }
+        clearSelection();
+      } else {
+        await moveRequest(data.collectionId, data.requestId, collection.id, undefined);
+      }
     } else if (dragType === 'application/folder') {
       const data = JSON.parse(e.dataTransfer.getData('application/folder'));
       if (data.folderId !== collection.id) {
@@ -95,13 +113,13 @@ export const CollectionItem = ({
       }
     }
   };
-  
+
   const handleRenameRequestFromContext = () => {
     if (!requestContextMenu) return;
     onRenameRequest(requestContextMenu.request);
     closeRequestContextMenu();
   };
-  
+
   const handleDeleteRequestFromContext = () => {
     if (!requestContextMenu) return;
     const { deleteRequest } = useCollectionsStore.getState();
@@ -116,13 +134,13 @@ export const CollectionItem = ({
     });
     closeRequestContextMenu();
   };
-  
+
   const handleRenameCollectionFromContext = () => {
     if (!collectionContextMenu) return;
     onRenameCollection(collectionContextMenu.collectionId, collectionContextMenu.collectionName);
     closeCollectionContextMenu();
   };
-  
+
   const handleDeleteCollectionFromContext = () => {
     if (!collectionContextMenu) return;
     const { deleteCollection } = useCollectionsStore.getState();
@@ -142,10 +160,13 @@ export const CollectionItem = ({
   const rootRequests = collection.requests.filter(r => !r.folderId).sort((a, b) => (a.order || 0) - (b.order || 0));
   const totalItems = collection.requests.length;
 
+  // Get all request IDs in display order for range selection
+  const allRequestIds = rootRequests.map(r => r.id);
+
   return (
     <div className="mb-1">
       <div
-        className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
+        className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
           isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
         onClick={() => toggleCollection(collection.id)}
@@ -173,6 +194,7 @@ export const CollectionItem = ({
             variant="icon"
             size="sm"
             title="Add Request"
+            className="hover:bg-gray-200"
           >
             <Plus className="w-3.5 h-3.5" />
           </Button>
@@ -184,6 +206,7 @@ export const CollectionItem = ({
             variant="icon"
             size="sm"
             title="New Folder"
+            className="hover:bg-gray-200"
           >
             <FolderPlus className="w-3.5 h-3.5" />
           </Button>
@@ -192,6 +215,7 @@ export const CollectionItem = ({
             variant="icon"
             size="sm"
             title="Delete Collection"
+            className="hover:bg-gray-200"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
@@ -249,27 +273,43 @@ export const CollectionItem = ({
                 />
 
                 <div
-                className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
-                  activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
+                  data-request-item
+                  className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
+                    activeSavedRequestId === request.id
+                      ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500'
+                      : ''
+                  } ${
+                    selectedRequestIds.has(request.id)
+                      ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500'
+                      : ''
                   }`}
                   style={{ paddingLeft: '32px' }}
-                  onClick={() => handleSelectRequest(request)}
+                  onClick={e => {
+                    if (e.ctrlKey || e.metaKey) {
+                      toggleRequestSelection(request.id, true, false);
+                    } else if (e.shiftKey) {
+                      toggleRequestSelection(request.id, false, true, allRequestIds);
+                    } else {
+                      handleSelectRequest(request);
+                      toggleRequestSelection(request.id, false, false);
+                    }
+                  }}
                   onContextMenu={e => openRequestContextMenu(e, request)}
                   {...createRequestDragHandlers(request.id, collection.id)}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                  <span className={`text-xs font-medium ${getMethodColor(request.method)} min-w-[45px]`}>
-                    {request.method}
-                  </span>
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
-                </div>
-                <button
-                  onClick={e => handleDeleteRequest(collection.id, request.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
-                  title="Delete Request"
-                >
-                  <Trash2 className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                    <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                    <span className={`text-xs font-medium ${getMethodColor(request.method)} min-w-[45px]`}>
+                      {request.method}
+                    </span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
+                  </div>
+                  <button
+                    onClick={e => handleDeleteRequest(collection.id, request.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
+                    title="Delete Request"
+                  >
+                    <Trash2 className="w-3 h-3 text-gray-500 dark:text-gray-400" />
                   </button>
                 </div>
 
@@ -286,7 +326,7 @@ export const CollectionItem = ({
           )}
         </div>
       )}
-      
+
       {requestContextMenu && (
         <ContextMenu
           position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
@@ -306,7 +346,7 @@ export const CollectionItem = ({
           onClose={closeRequestContextMenu}
         />
       )}
-      
+
       {collectionContextMenu && (
         <ContextMenu
           position={{ x: collectionContextMenu.x, y: collectionContextMenu.y }}
@@ -326,7 +366,7 @@ export const CollectionItem = ({
           onClose={closeCollectionContextMenu}
         />
       )}
-      
+
       <ConfirmDialog {...confirmDialog.props} />
     </div>
   );

@@ -14,6 +14,10 @@ interface UIState {
   expandedCollections: Set<string>;
   expandedFolders: Set<string>;
   
+  // Multi-select state
+  selectedRequestIds: Set<string>;
+  lastSelectedRequestId: string | null;
+  
   // Actions
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
@@ -28,6 +32,10 @@ interface UIState {
   toggleFolder: (id: string) => void;
   expandCollection: (id: string) => void;
   expandFolder: (id: string) => void;
+  
+  // Multi-select actions
+  toggleRequestSelection: (requestId: string, ctrlKey: boolean, shiftKey: boolean, allRequestIds?: string[]) => void;
+  clearSelection: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -41,6 +49,8 @@ export const useUIStore = create<UIState>()(
       consoleHeight: 250,
       expandedCollections: new Set<string>(),
       expandedFolders: new Set<string>(),
+      selectedRequestIds: new Set<string>(),
+      lastSelectedRequestId: null,
       
       // Actions
       toggleSidebar: () => actions.toggleSidebar(set),
@@ -56,6 +66,9 @@ export const useUIStore = create<UIState>()(
       toggleFolder: (id) => actions.toggleFolder(set, id),
       expandCollection: (id) => actions.expandCollection(set, id),
       expandFolder: (id) => actions.expandFolder(set, id),
+      
+      toggleRequestSelection: (requestId, ctrlKey, shiftKey, allRequestIds) => actions.toggleRequestSelection(set, requestId, ctrlKey, shiftKey, allRequestIds),
+      clearSelection: () => actions.clearSelection(set),
     }),
     {
       name: 'requesto-ui-storage',
@@ -69,6 +82,8 @@ export const useUIStore = create<UIState>()(
               ...state,
               expandedCollections: new Set(state.expandedCollections || []),
               expandedFolders: new Set(state.expandedFolders || []),
+              selectedRequestIds: new Set(),
+              lastSelectedRequestId: null,
             },
           };
         },
