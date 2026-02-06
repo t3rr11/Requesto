@@ -1,0 +1,15 @@
+{
+  "name": "requesto-website",
+  "version": "1.0.0",
+  "description": "Requesto documentation website",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0",
+    "vue": "^3.4.0"
+  }
+}

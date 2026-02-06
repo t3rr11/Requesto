@@ -13,7 +13,8 @@
     "http"
   ],
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "website"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev -w requesto-backend\" \"npm run dev -w requesto-frontend\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
@@ -31,7 +32,11 @@
 
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up --build",
-    "docker:down": "docker-compose down"
+    "docker:down": "docker-compose down",
+
+    "docs:dev": "npm run dev -w requesto-website",
+    "docs:build": "npm run build -w requesto-website",
+    "docs:preview": "npm run preview -w requesto-website"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

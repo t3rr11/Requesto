@@ -1,0 +1,5 @@
+# VitePress cache
+.vitepress/cache
+
+# VitePress dist
+.vitepress/dist
