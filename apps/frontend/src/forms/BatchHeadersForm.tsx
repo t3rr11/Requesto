@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../components/Button';
+import { parseHeaders } from '../helpers/headerHelpers';
 
 interface BatchHeadersFormProps {
   onImport: (headers: Array<{ key: string; value: string }>) => void;
@@ -12,58 +13,10 @@ export const BatchHeadersForm: React.FC<BatchHeadersFormProps> = ({ onImport, on
   const [preview, setPreview] = useState<Array<{ key: string; value: string }>>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const parseHeaders = (text: string, selectedFormat: string) => {
-    const headers: Array<{ key: string; value: string }> = [];
-    setError(null);
-
-    try {
-      // Try JSON format
-      if (selectedFormat === 'json' || (selectedFormat === 'auto' && text.trim().startsWith('{'))) {
-        const parsed = JSON.parse(text);
-        Object.entries(parsed).forEach(([key, value]) => {
-          headers.push({ key, value: String(value) });
-        });
-        return headers;
-      }
-
-      // Parse line by line
-      const lines = text.split('\n').filter(line => line.trim());
-
-      for (const line of lines) {
-        // curl -H format: -H "Header: Value" or -H 'Header: Value'
-        if (line.includes('-H') || line.includes('--header')) {
-          const match =
-            line.match(/[-]H\s+["']([^:]+):\s*([^"']+)["']/i) || line.match(/--header\s+["']([^:]+):\s*([^"']+)["']/i);
-          if (match) {
-            headers.push({ key: match[1].trim(), value: match[2].trim() });
-            continue;
-          }
-        }
-
-        // Standard "Key: Value" format
-        const colonIndex = line.indexOf(':');
-        if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex).trim();
-          const value = line.substring(colonIndex + 1).trim();
-          if (key && value) {
-            headers.push({ key, value });
-          }
-        }
-      }
-
-      if (headers.length === 0) {
-        setError('No headers found. Use "Key: Value" format, one per line.');
-      }
-    } catch (err) {
-      setError('Failed to parse headers. Check format and try again.');
-    }
-
-    return headers;
-  };
-
   const handlePreview = () => {
-    const parsed = parseHeaders(inputText, format);
-    setPreview(parsed);
+    const { headers, error: parseError } = parseHeaders(inputText, format);
+    setError(parseError);
+    setPreview(headers);
   };
 
   const handleImport = () => {

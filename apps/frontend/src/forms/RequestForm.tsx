@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { Control, Controller } from 'react-hook-form';
-import { z } from 'zod';
 import Editor from '@monaco-editor/react';
 import { Button } from '../components/Button';
 import { HeadersEditor } from '../components/HeadersEditor';
@@ -10,111 +9,14 @@ import { AuthEditor } from '../components/AuthEditor';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthConfig } from '../types';
 import { useThemeStore } from '../store/theme';
+import { requestFormSchema, RequestFormData } from './schemas/requestFormSchema';
+import { extractParamsFromUrl } from '../helpers/urlHelpers';
 
-export const requestFormSchema = z.object({
-  method: z.string(),
-  url: z.string().min(1, 'URL is required'),
-  headers: z.array(
-    z.object({
-      id: z.string(),
-      key: z.string(),
-      value: z.string(),
-      enabled: z.boolean(),
-    })
-  ),
-  params: z.array(
-    z.object({
-      id: z.string(),
-      key: z.string(),
-      value: z.string(),
-      enabled: z.boolean(),
-    })
-  ),
-  body: z.string(),
-  auth: z.object({
-    type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest', 'oauth']),
-    basic: z
-      .object({
-        username: z.string(),
-        password: z.string(),
-      })
-      .optional(),
-    bearer: z
-      .object({
-        token: z.string(),
-      })
-      .optional(),
-    apiKey: z
-      .object({
-        key: z.string(),
-        value: z.string(),
-        addTo: z.enum(['header', 'query']),
-      })
-      .optional(),
-    digest: z
-      .object({
-        username: z.string(),
-        password: z.string(),
-      })
-      .optional(),
-    oauth: z
-      .object({
-        configId: z.string(),
-        tokens: z
-          .object({
-            accessToken: z.string(),
-            tokenType: z.string(),
-            expiresIn: z.number().optional(),
-            expiresAt: z.number().optional(),
-            refreshToken: z.string().optional(),
-            scope: z.string().optional(),
-            idToken: z.string().optional(),
-          })
-          .optional(),
-        isAuthenticated: z.boolean(),
-        isRefreshing: z.boolean(),
-        lastAuthenticatedAt: z.number().optional(),
-        error: z.string().optional(),
-      })
-      .optional(),
-  }),
-  savedRequestId: z.string().optional(),
-});
-
-export type RequestFormData = z.infer<typeof requestFormSchema>;
+export { requestFormSchema, type RequestFormData };
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'scripts' | 'settings';
-
-/**
- * Extract query parameters from URL and return both the base URL and params
- */
-function extractParamsFromUrl(url: string): { baseUrl: string; params: { key: string; value: string }[] } {
-  try {
-    // Check if URL has a protocol, if not, try to parse as a relative URL
-    let urlObj: URL;
-    if (url.match(/^https?:\/\//i)) {
-      urlObj = new URL(url);
-    } else {
-      // For relative URLs or URLs without protocol, add a dummy base
-      urlObj = new URL(url, 'http://dummy');
-    }
-
-    const params: { key: string; value: string }[] = [];
-    urlObj.searchParams.forEach((value, key) => {
-      params.push({ key, value });
-    });
-
-    // Build base URL without query params
-    let baseUrl = url.split('?')[0];
-
-    return { baseUrl, params };
-  } catch {
-    // If URL parsing fails, return as-is
-    return { baseUrl: url, params: [] };
-  }
-}
 
 interface RequestFormProps {
   control: Control<RequestFormData>;

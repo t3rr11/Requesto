@@ -1,9 +1,13 @@
-import { useState, FormEvent, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../components/Button';
 import { useCollectionsStore } from '../store/collections';
 import { useTabsStore } from '../store/tabs';
 import { useAlertStore } from '../store/alert';
 import { AuthConfig } from '../types';
+import { extractPathnameFromUrl } from '../helpers/urlHelpers';
+import { SaveRequestFormData, saveRequestSchema } from './schemas/requestSchemas';
 
 interface SaveRequestFormProps {
   onSuccess: () => void;
@@ -21,73 +25,50 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
   const { collections, saveRequest, setActiveRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { markTabAsSaved, updateTabLabel, activeTabId } = useTabsStore();
-  const [name, setName] = useState('');
-  const [collectionId, setCollectionId] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    reset,
+  } = useForm<SaveRequestFormData>({
+    resolver: zodResolver(saveRequestSchema),
+    defaultValues: {
+      name: '',
+      collectionId: collections.length > 0 ? collections[0].id : '',
+    },
+  });
 
+  // Auto-generate name from request
   useEffect(() => {
     if (currentRequest) {
-      // Auto-generate a name from the request
-      // Extract pathname without URL encoding to preserve variables like {{baseUrl}}
-      let pathname = '/';
-      try {
-        const url = currentRequest.url.trim();
-        if (url) {
-          // Check if it's a full URL
-          if (url.match(/^https?:\/\//)) {
-            const urlObj = new URL(url);
-            pathname = urlObj.pathname;
-          } else {
-            // It's just a path or path with host, extract the path part
-            const pathMatch = url.match(/^(?:https?:\/\/)?[^/]*(\/[^?#]*)?/);
-            pathname = pathMatch?.[1] || '/';
-          }
-        }
-      } catch {
-        // If URL parsing fails, try to extract just the path
-        const pathMatch = currentRequest.url.match(/^(?:https?:\/\/)?[^/]*(\/[^?#]*)?/);
-        pathname = pathMatch?.[1] || currentRequest.url || '/';
-      }
-      setName(`${currentRequest.method} ${pathname}`);
+      const pathname = extractPathnameFromUrl(currentRequest.url);
+      setValue('name', `${currentRequest.method} ${pathname}`);
     }
-  }, [currentRequest]);
+  }, [currentRequest, setValue]);
 
+  // Auto-select first collection
   useEffect(() => {
-    // Auto-select first collection
-    if (collections.length > 0 && !collectionId) {
-      setCollectionId(collections[0].id);
+    if (collections.length > 0) {
+      setValue('collectionId', collections[0].id);
     }
-  }, [collections, collectionId]);
+  }, [collections, setValue]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (!name.trim()) {
-      setError('Request name is required');
-      return;
-    }
-
-    if (!collectionId) {
-      setError('Please select a collection');
-      return;
-    }
-
+  const onSubmit = async (data: SaveRequestFormData) => {
     if (!currentRequest) {
-      setError('No request to save');
+      showAlert('Error', 'No request to save', 'error');
       return;
     }
 
     if (!currentRequest.url.trim()) {
-      setError('Request URL is required');
+      showAlert('Error', 'Request URL is required', 'error');
       return;
     }
 
-    setLoading(true);
     try {
-      const savedRequestResult = await saveRequest(collectionId, {
-        name: name.trim(),
+      const savedRequestResult = await saveRequest(data.collectionId, {
+        name: data.name,
         method: currentRequest.method,
         url: currentRequest.url,
         headers: currentRequest.headers,
@@ -100,35 +81,25 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
       
       // Mark the active tab as saved
       if (activeTabId) {
-        markTabAsSaved(activeTabId, savedRequestResult.id, collectionId);
-        updateTabLabel(activeTabId, name.trim());
+        markTabAsSaved(activeTabId, savedRequestResult.id, data.collectionId);
+        updateTabLabel(activeTabId, data.name);
       }
       
-      setName('');
       showAlert('Success', 'Request saved successfully', 'success');
+      reset();
       onSuccess();
     } catch (err) {
-      setError('Failed to save request');
       showAlert('Error', 'Failed to save request', 'error');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    setName('');
-    setError('');
+    reset();
     onCancel();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">
-            {error}
-          </div>
-        )}
-
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {collections.length === 0 ? (
           <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-400 px-3 py-2 rounded text-sm">
             No collections available. Please create a collection first.
@@ -142,12 +113,14 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
               <input
                 id="request-name"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                {...register('name')}
                 placeholder="Get User by ID"
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                 autoFocus
               />
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>
+              )}
             </div>
 
             <div>
@@ -156,8 +129,7 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
               </label>
               <select
                 id="collection-select"
-                value={collectionId}
-                onChange={(e) => setCollectionId(e.target.value)}
+                {...register('collectionId')}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option value="">Select a collection</option>
@@ -167,6 +139,9 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
                   </option>
                 ))}
               </select>
+              {errors.collectionId && (
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.collectionId.message}</p>
+              )}
             </div>
 
             {currentRequest && (
@@ -194,7 +169,7 @@ export const SaveRequestForm = ({ onSuccess, onCancel, currentRequest }: SaveReq
           <Button type="button" onClick={handleCancel} variant="ghost" size="md">
             Cancel
           </Button>
-          <Button type="submit" variant="primary" size="md" loading={loading} disabled={loading || collections.length === 0 || !currentRequest?.url?.trim()}>
+          <Button type="submit" variant="primary" size="md" loading={isSubmitting} disabled={isSubmitting || collections.length === 0 || !currentRequest?.url?.trim()}>
             Save Request
           </Button>
         </div>

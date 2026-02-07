@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog } from '../components/Dialog';
 import { Button } from '../components/Button';
+import { RenameFormData, renameSchema } from './schemas/renameSchema';
 
 interface RenameFormProps {
   isOpen: boolean;
@@ -21,54 +24,62 @@ export const RenameForm = ({
   label,
   placeholder = 'Enter name...'
 }: RenameFormProps) => {
-  const [name, setName] = useState(currentName);
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<RenameFormData>({
+    resolver: zodResolver(renameSchema),
+    defaultValues: {
+      name: currentName,
+    },
+  });
 
-  const handleSave = async () => {
-    if (!name.trim()) return;
-    
-    setIsLoading(true);
-    try {
-      await onSave(name.trim());
-      onClose();
-    } finally {
-      setIsLoading(false);
-    }
+  // Update form when currentName changes
+  useEffect(() => {
+    reset({ name: currentName });
+  }, [currentName, reset]);
+
+  const onSubmit = async (data: RenameFormData) => {
+    await onSave(data.name);
+    onClose();
   };
 
   const handleClose = () => {
-    setName(currentName);
+    reset({ name: currentName });
     onClose();
   };
 
   return (
     <Dialog isOpen={isOpen} onClose={handleClose} title={title}>
-      <div className="space-y-4">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{label}</label>
           <input
             type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            {...register('name')}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isLoading) handleSave();
               if (e.key === 'Escape') handleClose();
             }}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             placeholder={placeholder}
-            disabled={isLoading}
+            disabled={isSubmitting}
             autoFocus
           />
+          {errors.name && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>
+          )}
         </div>
         <div className="flex justify-end gap-2">
-          <Button onClick={handleClose} disabled={isLoading} variant="ghost" size="md">
+          <Button onClick={handleClose} disabled={isSubmitting} variant="ghost" size="md">
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!name.trim() || isLoading} loading={isLoading} variant="primary" size="md">
+          <Button type="submit" disabled={isSubmitting} loading={isSubmitting} variant="primary" size="md">
             Save
           </Button>
         </div>
-      </div>
+      </form>
     </Dialog>
   );
 };
