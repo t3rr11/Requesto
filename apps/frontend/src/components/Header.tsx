@@ -1,6 +1,6 @@
 import { useUIStore } from '../store/ui';
 import { useThemeStore } from '../store/theme';
-import { ListCollapse, Menu, Moon, Sun, Settings, Shield, Send, HelpCircle, Terminal } from 'lucide-react';
+import { ListCollapse, Menu, Moon, Sun, Settings, Shield, Send, HelpCircle, Terminal, Columns2, Rows2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
@@ -8,7 +8,7 @@ import { HelpContent } from './HelpContent';
 import { useDialog } from '../hooks/useDialog';
 
 export const Header = () => {
-  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole } = useUIStore();
+  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, panelLayout, togglePanelLayout } = useUIStore();
   const { isDarkMode, toggleTheme } = useThemeStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,6 +78,16 @@ export const Header = () => {
             title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </Button>
+
+          <Button
+            onClick={togglePanelLayout}
+            variant="icon"
+            size="sm"
+            className="text-white hover:!bg-blue-500 dark:hover:!bg-gray-700 hover:!text-white"
+            title={panelLayout === 'horizontal' ? 'Switch to Vertical Layout' : 'Switch to Horizontal Layout'}
+          >
+            {panelLayout === 'horizontal' ? <Rows2 className="w-5 h-5" /> : <Columns2 className="w-5 h-5" />}
           </Button>
 
           <Button

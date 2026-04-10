@@ -2,11 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import * as actions from './actions';
 
+export type PanelLayout = 'horizontal' | 'vertical';
+
 interface UIState {  
   // Sidebar and console
   isSidebarOpen: boolean;
   sidebarWidth: number;
   requestPanelWidth: number;
+  requestPanelHeight: number;
+  panelLayout: PanelLayout;
   isConsoleOpen: boolean;
   consoleHeight: number;
   
@@ -23,6 +27,9 @@ interface UIState {
   setSidebarOpen: (isOpen: boolean) => void;
   setSidebarWidth: (width: number) => void;
   setRequestPanelWidth: (width: number) => void;
+  setRequestPanelHeight: (height: number) => void;
+  togglePanelLayout: () => void;
+  setPanelLayout: (layout: PanelLayout) => void;
   
   toggleConsole: () => void;
   setConsoleOpen: (isOpen: boolean) => void;
@@ -45,6 +52,8 @@ export const useUIStore = create<UIState>()(
       isSidebarOpen: true,
       sidebarWidth: 320,
       requestPanelWidth: 600,
+      requestPanelHeight: 400,
+      panelLayout: 'horizontal' as PanelLayout,
       isConsoleOpen: false,
       consoleHeight: 250,
       expandedCollections: new Set<string>(),
@@ -57,6 +66,9 @@ export const useUIStore = create<UIState>()(
       setSidebarOpen: (isOpen) => actions.setSidebarOpen(set, isOpen),
       setSidebarWidth: (width) => actions.setSidebarWidth(set, width),
       setRequestPanelWidth: (width) => actions.setRequestPanelWidth(set, width),
+      setRequestPanelHeight: (height) => actions.setRequestPanelHeight(set, height),
+      togglePanelLayout: () => actions.togglePanelLayout(set),
+      setPanelLayout: (layout) => actions.setPanelLayout(set, layout),
       
       toggleConsole: () => actions.toggleConsole(set),
       setConsoleOpen: (isOpen) => actions.setConsoleOpen(set, isOpen),
@@ -106,6 +118,8 @@ export const useUIStore = create<UIState>()(
         isSidebarOpen: state.isSidebarOpen,
         sidebarWidth: state.sidebarWidth,
         requestPanelWidth: state.requestPanelWidth,
+        requestPanelHeight: state.requestPanelHeight,
+        panelLayout: state.panelLayout,
         isConsoleOpen: state.isConsoleOpen,
         consoleHeight: state.consoleHeight,
         expandedCollections: state.expandedCollections,

@@ -7,7 +7,6 @@ interface HelpContentProps {
 
 export const HelpContent = ({ onClose }: HelpContentProps) => {
   const shortcuts = [
-    { keys: ['Ctrl', 'Enter'], description: 'Send request' },
     { keys: ['Ctrl', 'S'], description: 'Save request' },
     { keys: ['Esc'], description: 'Close modals' },
   ];

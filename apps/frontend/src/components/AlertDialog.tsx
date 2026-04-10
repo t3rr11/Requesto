@@ -11,6 +11,13 @@ interface AlertDialogProps {
   variant?: 'error' | 'warning' | 'info' | 'success';
 }
 
+const iconConfig = {
+  error: { Icon: XCircle, bg: 'bg-red-50 dark:bg-red-900/20', color: 'text-red-500 dark:text-red-400' },
+  warning: { Icon: AlertTriangle, bg: 'bg-orange-50 dark:bg-orange-900/20', color: 'text-orange-500 dark:text-orange-400' },
+  info: { Icon: Info, bg: 'bg-blue-50 dark:bg-blue-900/20', color: 'text-blue-500 dark:text-blue-400' },
+  success: { Icon: CheckCircle2, bg: 'bg-green-50 dark:bg-green-900/20', color: 'text-green-500 dark:text-green-400' },
+};
+
 export const AlertDialog: React.FC<AlertDialogProps> = ({
   isOpen,
   onClose,
@@ -18,34 +25,26 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
   message,
   variant = 'info',
 }) => {
-  const icons = {
-    error: (
-      <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-        <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
-      </div>
-    ),
-    warning: (
-      <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-4">
-        <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-      </div>
-    ),
-    info: (
-      <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
-        <Info className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-      </div>
-    ),
-    success: (
-      <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-        <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
-      </div>
-    ),
-  };
+  const { Icon, bg, color } = iconConfig[variant];
+  // When the title already conveys the full message (e.g. auto-generated from variant),
+  // show the message as the main content with the icon inline.
+  const hasDistinctMessage = message && message !== title;
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title={title} size="sm">
-      <div className="text-center">
-        {icons[variant]}
-        <p className="text-gray-700 dark:text-gray-300 mb-6">{message}</p>
+    <Dialog isOpen={isOpen} onClose={onClose} title={hasDistinctMessage ? title : ''} size="sm">
+      <div className="flex items-start gap-3">
+        <div className={`w-9 h-9 rounded-full ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
+          <Icon className={`w-4.5 h-4.5 ${color}`} />
+        </div>
+        <div className="min-w-0 pt-1.5">
+          {hasDistinctMessage ? (
+            <p className="text-sm text-gray-600 dark:text-gray-300">{message}</p>
+          ) : (
+            <p className="text-[15px] font-medium text-gray-800 dark:text-gray-200">{message || title}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex justify-end mt-5">
         <Button onClick={onClose} variant="primary" size="md">
           OK
         </Button>

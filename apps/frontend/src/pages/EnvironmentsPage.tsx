@@ -7,12 +7,12 @@ import { useEnvironmentStore } from '../store/environments';
 import { Environment } from '../types';
 import { useAlertStore } from '../store/alert';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { Button } from '../components/Button';
+import { PageShell } from '../components/PageShell';
+import { EmptyState } from '../components/EmptyState';
 import { EnvironmentList } from '../components/EnvironmentList';
 import { EnvironmentHeader } from '../components/EnvironmentHeader';
 import { VariableEditor } from '../components/VariableEditor';
 import { ContextMenu } from '../components/ContextMenu';
-import { useNavigate } from 'react-router';
 import {
   createNewEnvironment,
   duplicateEnvironment as duplicateEnv,
@@ -54,7 +54,6 @@ export const EnvironmentsPage = () => {
     environment: Environment;
   } | null>(null);
   const { showAlert } = useAlertStore();
-  const navigate = useNavigate();
   const lastSavedValuesRef = useRef<string>('');
 
   const {
@@ -320,31 +319,15 @@ export const EnvironmentsPage = () => {
   const isNewEnvironment = selectedEnvId ? !environmentsData.environments.find(e => e.id === selectedEnvId) : false;
 
   return (
-    <main className="overflow-hidden relative w-full h-full">
-      <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-baseline gap-3">
-              <div className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-blue-500" />
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Environments</h1>
-              </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Manage variables across different environments</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button onClick={createNew} variant="primary" size="sm" className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                New Environment
-              </Button>
-              <Button onClick={() => navigate('/requests')} variant="secondary" size="sm">
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-hidden flex min-h-0">
+    <>
+      <PageShell
+        icon={<Settings className="w-5 h-5 text-blue-500" />}
+        title="Environments"
+        subtitle="Manage variables across different environments"
+        actions={[
+          { label: 'New Environment', icon: <Plus className="w-4 h-4" />, onClick: createNew },
+        ]}
+        sidebar={
           <EnvironmentList
             environments={environmentsData.environments}
             selectedEnvId={selectedEnvId}
@@ -354,87 +337,75 @@ export const EnvironmentsPage = () => {
             onEnvironmentContextMenu={handleEnvironmentContextMenu}
             onImport={handleImport}
           />
+        }
+      >
+        {selectedEnvId ? (
+          <form onSubmit={handleSubmit(handleSave)} className="flex-1 flex flex-col overflow-hidden">
+            <EnvironmentHeader
+              name={formValues.name}
+              isActive={isActive}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onNameChange={handleNameChange}
+              onSetActive={handleSetActive}
+              onDuplicate={handleDuplicate}
+              onDelete={() => selectedEnvId && handleDeleteClick(selectedEnvId)}
+              onSave={handleSave}
+              onExport={handleExport}
+              canDelete={environmentsData.environments.length > 1 || isNewEnvironment}
+            />
 
-          <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-            {selectedEnvId ? (
-              <form onSubmit={handleSubmit(handleSave)} className="flex-1 flex flex-col overflow-hidden">
-                <EnvironmentHeader
-                  name={formValues.name}
-                  isActive={isActive}
-                  hasUnsavedChanges={hasUnsavedChanges}
-                  onNameChange={handleNameChange}
-                  onSetActive={handleSetActive}
-                  onDuplicate={handleDuplicate}
-                  onDelete={() => selectedEnvId && handleDeleteClick(selectedEnvId)}
-                  onSave={handleSave}
-                  onExport={handleExport}
-                  canDelete={environmentsData.environments.length > 1 || isNewEnvironment}
-                />
-
-                {errors.name && (
-                  <div className="bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 px-6 py-2">
-                    <p className="text-red-600 dark:text-red-400 text-sm">{errors.name.message}</p>
-                  </div>
-                )}
-
-                <VariableEditor control={control} />
-              </form>
-            ) : (
-              // Empty state
-              <div className="flex-1 flex items-center justify-center p-8">
-                <div className="text-center max-w-sm">
-                  <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                    No Environment Selected
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                    Create your first environment to manage variables across different deployment targets
-                  </p>
-                  <Button onClick={createNew} variant="primary" size="md" className="flex items-center gap-2 mx-auto">
-                    <Plus className="w-4 h-4" />
-                    Create Environment
-                  </Button>
-                </div>
+            {errors.name && (
+              <div className="bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 px-6 py-2">
+                <p className="text-red-600 dark:text-red-400 text-sm">{errors.name.message}</p>
               </div>
             )}
-          </div>
-        </div>
 
-        <ConfirmDialog
-          isOpen={confirmDelete !== null}
-          onClose={() => setConfirmDelete(null)}
-          onConfirm={handleDelete}
-          title="Delete Environment"
-          message={`Are you sure you want to delete "${confirmDelete?.name}"? This action cannot be undone.`}
-          confirmText="Delete"
-          variant="danger"
-        />
-
-        {environmentContextMenu && (
-          <ContextMenu
-            position={{ x: environmentContextMenu.x, y: environmentContextMenu.y }}
-            items={[
-              {
-                label: 'Export',
-                icon: <Download className="w-4 h-4" />,
-                onClick: handleExportFromContext,
-              },
-              {
-                label: 'Duplicate',
-                icon: <Globe className="w-4 h-4" />,
-                onClick: handleDuplicateFromContext,
-              },
-              {
-                label: 'Delete',
-                icon: <Trash2 className="w-4 h-4" />,
-                onClick: handleDeleteFromContext,
-                danger: true,
-              },
-            ]}
-            onClose={closeEnvironmentContextMenu}
+            <VariableEditor control={control} />
+          </form>
+        ) : (
+          <EmptyState
+            icon={<Globe className="w-16 h-16" />}
+            title="No Environment Selected"
+            description="Create your first environment to manage variables across different deployment targets"
+            action={{ label: 'Create Environment', icon: <Plus className="w-4 h-4" />, onClick: createNew }}
           />
         )}
-      </div>
-    </main>
+      </PageShell>
+
+      <ConfirmDialog
+        isOpen={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Environment"
+        message={`Are you sure you want to delete "${confirmDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+      />
+
+      {environmentContextMenu && (
+        <ContextMenu
+          position={{ x: environmentContextMenu.x, y: environmentContextMenu.y }}
+          items={[
+            {
+              label: 'Export',
+              icon: <Download className="w-4 h-4" />,
+              onClick: handleExportFromContext,
+            },
+            {
+              label: 'Duplicate',
+              icon: <Globe className="w-4 h-4" />,
+              onClick: handleDuplicateFromContext,
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="w-4 h-4" />,
+              onClick: handleDeleteFromContext,
+              danger: true,
+            },
+          ]}
+          onClose={closeEnvironmentContextMenu}
+        />
+      )}
+    </>
   );
 };

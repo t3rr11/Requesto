@@ -19,6 +19,20 @@ export const setRequestPanelWidth = (set: SetState, width: number) => {
   set({ requestPanelWidth: width });
 };
 
+export const setRequestPanelHeight = (set: SetState, height: number) => {
+  set({ requestPanelHeight: height });
+};
+
+export const togglePanelLayout = (set: SetState) => {
+  set((state: any) => ({
+    panelLayout: state.panelLayout === 'horizontal' ? 'vertical' : 'horizontal',
+  }));
+};
+
+export const setPanelLayout = (set: SetState, layout: 'horizontal' | 'vertical') => {
+  set({ panelLayout: layout });
+};
+
 // Console actions
 export const toggleConsole = (set: SetState) => {
   set((state: any) => ({ isConsoleOpen: !state.isConsoleOpen }));

@@ -64,7 +64,7 @@ export const EnvironmentHeader = ({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex-shrink-0">
+    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex-shrink-0">
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 min-w-0">
           {isEditingName ? (
@@ -74,7 +74,7 @@ export const EnvironmentHeader = ({
               value={localName}
               onChange={e => setLocalName(e.target.value)}
               placeholder="Environment name"
-              className="text-2xl font-semibold px-2 py-1 -ml-2 border-2 border-blue-500 rounded focus:outline-none w-full dark:bg-gray-800 dark:text-gray-100"
+              className="text-xl font-semibold px-2 py-1 -ml-2 border-2 border-blue-500 rounded focus:outline-none w-full dark:bg-gray-800 dark:text-gray-100"
               onBlur={handleNameBlur}
               onKeyDown={handleNameKeyDown}
             />
@@ -82,7 +82,7 @@ export const EnvironmentHeader = ({
             <div className="flex items-center gap-3">
               <h2
                 onClick={() => setIsEditingName(true)}
-                className="text-2xl font-semibold text-gray-900 dark:text-gray-100 cursor-text hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 -ml-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="text-xl font-semibold text-gray-900 dark:text-gray-100 cursor-text hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 -ml-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
                 title="Click to edit"
               >
                 {name || 'Untitled Environment'}

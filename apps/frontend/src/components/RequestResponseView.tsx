@@ -32,7 +32,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
   const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { environmentsData } = useEnvironmentStore();
-  const { requestPanelWidth, setRequestPanelWidth } = useUIStore();
+  const { requestPanelWidth, setRequestPanelWidth, requestPanelHeight, setRequestPanelHeight, panelLayout } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const saveRequestDialog = useDialog();
@@ -72,9 +72,16 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       if (!isResizing || !containerRef.current) return;
 
       const containerRect = containerRef.current.getBoundingClientRect();
-      const newWidth = e.clientX - containerRect.left;
-      const clampedWidth = Math.max(300, Math.min(newWidth, containerRect.width - 300));
-      setRequestPanelWidth(clampedWidth);
+      
+      if (panelLayout === 'horizontal') {
+        const newWidth = e.clientX - containerRect.left;
+        const clampedWidth = Math.max(300, Math.min(newWidth, containerRect.width - 300));
+        setRequestPanelWidth(clampedWidth);
+      } else {
+        const newHeight = e.clientY - containerRect.top;
+        const clampedHeight = Math.max(200, Math.min(newHeight, containerRect.height - 200));
+        setRequestPanelHeight(clampedHeight);
+      }
     };
 
     const handleMouseUp = () => {
@@ -90,7 +97,7 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, setRequestPanelWidth]);
+  }, [isResizing, setRequestPanelWidth, setRequestPanelHeight, panelLayout]);
 
   const hasChanges = useMemo(() => {
     return activeTab?.isDirty || false;
@@ -211,14 +218,6 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + Enter to send request
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        const currentUrl = getValues('url');
-        if (!activeTab?.isLoading && currentUrl.trim()) {
-          handleSend();
-        }
-      }
       // Ctrl/Cmd + S to save request
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
@@ -495,10 +494,10 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
         </Button>
       </div>
 
-      <div ref={containerRef} className="flex-1 flex overflow-hidden relative min-h-0">
+      <div ref={containerRef} className={`flex-1 flex ${panelLayout === 'horizontal' ? 'flex-row' : 'flex-col'} overflow-hidden relative min-h-0`}>
         <div
-          className="flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative"
-          style={{ width: `${requestPanelWidth}px` }}
+          className={`flex flex-col ${panelLayout === 'horizontal' ? 'border-r' : 'border-b'} border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative`}
+          style={panelLayout === 'horizontal' ? { width: `${requestPanelWidth}px` } : { height: `${requestPanelHeight}px` }}
         >
           <RequestForm
             control={control}
@@ -514,7 +513,10 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
             onAuthChange={auth => setValue('auth', auth, { shouldDirty: true })}
           />
           <div
-            className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ew-resize transition-colors z-10"
+            className={panelLayout === 'horizontal'
+              ? 'absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ew-resize transition-colors z-10'
+              : 'absolute bottom-0 left-0 h-1 w-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ns-resize transition-colors z-10'
+            }
             onMouseDown={handleMouseDown}
             title="Drag to resize"
           />
