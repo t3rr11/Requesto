@@ -1,6 +1,13 @@
 @import 'tailwindcss';
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Only show focus rings for keyboard navigation (Tab), not mouse clicks */
+*:focus:not(:focus-visible) {
+  outline: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
 body {
   margin: 0;
   font-family:

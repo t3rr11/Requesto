@@ -6,7 +6,7 @@ export function ResponseHeaders() {
   const response = activeTab?.response || null;
 
   return (
-    <div className="p-6">
+    <div className="p-6 overflow-y-auto h-full">
       {response && Object.entries(response.headers).length > 0 ? (
         <div className="space-y-2">
           {Object.entries(response.headers).map(([key, value]) => (

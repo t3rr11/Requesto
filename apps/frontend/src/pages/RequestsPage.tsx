@@ -1,6 +1,5 @@
 import RequestResponseView from "../components/RequestResponseView";
 import { useUIStore } from "../store/ui";
-import { EnvironmentSelector } from "../components/EnvironmentSelector";
 import { CollectionsSidebar } from "../components/CollectionsSidebar";
 import { ConsolePanel } from "../components/ConsolePanel";
 import { TabsBar } from "../components/TabsBar";
@@ -17,7 +16,6 @@ export const RequestPage = () => {
             height: isConsoleOpen ? `calc(100% - ${consoleHeight}px)` : 'calc(100% - 40px)'
           }}
         >
-          <EnvironmentSelector />
           <CollectionsSidebar />
         </div>
       )}

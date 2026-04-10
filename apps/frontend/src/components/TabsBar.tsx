@@ -3,6 +3,7 @@ import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from './Button';
 import { ConfirmDialog } from './ConfirmDialog';
+import { EnvironmentSelectorCompact } from './EnvironmentSelector';
 import {
   DndContext,
   closestCenter,
@@ -316,28 +317,30 @@ export const TabsBar = () => {
               );
             })}
           </SortableContext>
+
+          <Button
+            onClick={handleNewTab}
+            variant="icon"
+            className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-gray-300 dark:border-gray-600 h-full"
+            aria-label="New tab"
+            title="New tab (Ctrl/Cmd + T)"
+          >
+            <Plus size={18} />
+          </Button>
         </div>
 
         {showRightScroll && (
           <Button
             onClick={() => scrollTabs('right')}
             variant="icon"
-            className="absolute right-[42px] border-r z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
+            className="absolute right-[160px] border-r z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
             aria-label="Scroll right"
           >
             <ChevronRight size={16} />
           </Button>
         )}
 
-        <Button
-          onClick={handleNewTab}
-          variant="icon"
-          className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-gray-300 dark:border-gray-600 h-full"
-          aria-label="New tab"
-          title="New tab (Ctrl/Cmd + T)"
-        >
-          <Plus size={18} />
-        </Button>
+        <EnvironmentSelectorCompact />
 
         <ConfirmDialog
           isOpen={tabToClose !== null}
