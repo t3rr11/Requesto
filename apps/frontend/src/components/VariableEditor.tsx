@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { useFieldArray, Control, Controller } from 'react-hook-form';
+import { useFieldArray, Control, Controller, FieldValues, ArrayPath, FieldPath, FieldArray } from 'react-hook-form';
 import { Plus, Trash2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from './Button';
 
-interface VariableEditorProps {
-  control: Control<any>;
-  fieldArrayName?: string;
+interface VariableEditorProps<T extends FieldValues> {
+  control: Control<T>;
+  fieldArrayName?: ArrayPath<T>;
 }
 
-export const VariableEditor = ({ control, fieldArrayName = 'variables' }: VariableEditorProps) => {
+export const VariableEditor = <T extends FieldValues>({
+  control,
+  fieldArrayName = 'variables' as ArrayPath<T>,
+}: VariableEditorProps<T>) => {
   const { fields, append, remove } = useFieldArray({
     control,
     name: fieldArrayName,
@@ -24,7 +27,7 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
   };
 
   const addVariable = () => {
-    append({ key: '', value: '', enabled: true, isSecret: false });
+    append({ key: '', value: '', enabled: true, isSecret: false } as FieldArray<T, ArrayPath<T>>);
   };
 
   return (
@@ -77,7 +80,7 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                 <div className="flex items-start gap-3">
                   <div className="pt-2">
                     <Controller
-                      name={`${fieldArrayName}.${index}.enabled`}
+                      name={`${fieldArrayName}.${index}.enabled` as FieldPath<T>}
                       control={control}
                       render={({ field: enabledField }) => (
                         <input
@@ -95,7 +98,7 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Name</label>
                       <Controller
-                        name={`${fieldArrayName}.${index}.key`}
+                        name={`${fieldArrayName}.${index}.key` as FieldPath<T>}
                         control={control}
                         render={({ field: inputField }) => (
                           <input
@@ -111,11 +114,11 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Value</label>
                       <Controller
-                        name={`${fieldArrayName}.${index}.value`}
+                        name={`${fieldArrayName}.${index}.value` as FieldPath<T>}
                         control={control}
                         render={({ field: valueField }) => (
                           <Controller
-                            name={`${fieldArrayName}.${index}.isSecret`}
+                            name={`${fieldArrayName}.${index}.isSecret` as FieldPath<T>}
                             control={control}
                             render={({ field: secretField }) => (
                               <div className="relative">
@@ -146,7 +149,7 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
 
                   <div className="flex items-center gap-2 pt-7">
                     <Controller
-                      name={`${fieldArrayName}.${index}.isSecret`}
+                      name={`${fieldArrayName}.${index}.isSecret` as FieldPath<T>}
                       control={control}
                       render={({ field: secretField }) => (
                         <Button
@@ -155,7 +158,9 @@ export const VariableEditor = ({ control, fieldArrayName = 'variables' }: Variab
                           variant="icon"
                           size="sm"
                           className={`${
-                            secretField.value ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            secretField.value
+                              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                              : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
                           }`}
                           title={secretField.value ? 'Secret variable' : 'Mark as secret'}
                         >

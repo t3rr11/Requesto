@@ -8,7 +8,7 @@ export interface VariableDetectionResult {
 
 export function useVariableDetection(
   value: string,
-  inputRef: RefObject<HTMLInputElement>
+  inputRef: RefObject<HTMLInputElement | null>
 ): VariableDetectionResult {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentVariable, setCurrentVariable] = useState('');

@@ -1,4 +1,4 @@
-import Editor from '@monaco-editor/react';
+import Editor, { Monaco } from '@monaco-editor/react';
 import { formatResponseBody } from '../../helpers/responseHelpers';
 import { useTabsStore } from '../../store/tabs';
 import { ResponseBodyStreaming } from './ResponseBodyStreaming';
@@ -33,7 +33,7 @@ export function ResponseBody() {
           defaultLanguage="json"
           value={formatResponseBody((response && 'body' in response ? response.body : '') || '')}
           theme={isDarkMode ? 'custom-dark' : 'vs-light'}
-          beforeMount={(monaco) => {
+          beforeMount={(monaco: Monaco) => {
             monaco.editor.defineTheme('custom-dark', {
               base: 'vs-dark',
               inherit: true,

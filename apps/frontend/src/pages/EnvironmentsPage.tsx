@@ -294,7 +294,7 @@ export const EnvironmentsPage = () => {
   const handleDeleteFromContext = () => {
     if (!environmentContextMenu) return;
     const env = environmentContextMenu.environment;
-    
+
     if (environmentsData.environments.length <= 1 && !isNewEnvironment) {
       showAlert('Cannot delete the last environment', 'error');
       closeEnvironmentContextMenu();
@@ -315,8 +315,6 @@ export const EnvironmentsPage = () => {
       showAlert('Failed to export environment', 'error');
     }
   };
-
-
 
   const isActive = environmentsData.activeEnvironmentId === selectedEnvId;
   const isNewEnvironment = selectedEnvId ? !environmentsData.environments.find(e => e.id === selectedEnvId) : false;
@@ -386,7 +384,9 @@ export const EnvironmentsPage = () => {
               <div className="flex-1 flex items-center justify-center p-8">
                 <div className="text-center max-w-sm">
                   <Globe className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Environment Selected</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    No Environment Selected
+                  </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
                     Create your first environment to manage variables across different deployment targets
                   </p>

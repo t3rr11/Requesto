@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { EnvironmentVariable } from '../../types';
 
 interface VariableHighlightProps {
@@ -20,7 +21,7 @@ export function VariableHighlight({
   if (!value) return null;
 
   const renderHighlightedContent = () => {
-    const parts: (string | JSX.Element)[] = [];
+    const parts: (string | ReactNode)[] = [];
     let lastIndex = 0;
     const regex = /\{\{([^}]+)\}\}/g;
     let match;

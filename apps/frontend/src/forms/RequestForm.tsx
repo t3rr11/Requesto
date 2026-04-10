@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Control, Controller } from 'react-hook-form';
-import Editor from '@monaco-editor/react';
+import Editor, { Monaco } from '@monaco-editor/react';
 import { Button } from '../components/Button';
 import { HeadersEditor } from '../components/HeadersEditor';
 import { ParamsEditor } from '../components/ParamsEditor';
@@ -294,9 +294,9 @@ export function RequestForm({
                     height="100%"
                     defaultLanguage="json"
                     value={field.value}
-                    onChange={value => field.onChange(value || '')}
+                    onChange={(value: string | undefined) => field.onChange(value || '')}
                     theme={isDarkMode ? 'custom-dark' : 'vs-light'}
-                    beforeMount={monaco => {
+                    beforeMount={(monaco: Monaco) => {
                       monaco.editor.defineTheme('custom-dark', {
                         base: 'vs-dark',
                         inherit: true,
