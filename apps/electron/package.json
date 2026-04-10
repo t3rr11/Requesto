@@ -24,28 +24,44 @@
       {
         "from": "../../apps/frontend/dist",
         "to": "frontend/dist",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "extraResources": [
       {
         "from": "../../apps/backend",
         "to": "backend",
-        "filter": ["dist/**/*", "data/**/*", "package.json", "package-lock.json"]
+        "filter": [
+          "dist/**/*",
+          "data/**/*",
+          "package.json",
+          "package-lock.json"
+        ]
       }
     ],
     "afterPack": "scripts/afterPack.js",
     "win": {
-      "target": ["nsis", "portable"],
+      "target": [
+        "nsis",
+        "portable"
+      ],
       "icon": "../../apps/frontend/public/icon.ico"
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "../../apps/frontend/public/logo.png",
       "category": "public.app-category.developer-tools"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "../../apps/frontend/public/logo.png",
       "category": "Development"
     },
@@ -59,7 +75,7 @@
   "dependencies": {},
   "devDependencies": {
     "@types/node": "^24.9.0",
-    "electron": "^41.2.0",
+    "electron": "41.2.0",
     "electron-builder": "^26.8.1",
     "typescript": "^6.0.2"
   }
