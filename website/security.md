@@ -226,10 +226,10 @@ networks:
 
 ```bash
 # Scan Docker image
-docker scan ghcr.io/YOUR_USERNAME/requesto:latest
+docker scan ghcr.io/t3rr11/requesto:latest
 
 # Or use Trivy
-trivy image ghcr.io/YOUR_USERNAME/requesto:latest
+trivy image ghcr.io/t3rr11/requesto:latest
 ```
 
 ## Compliance Certifications

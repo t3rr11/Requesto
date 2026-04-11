@@ -94,7 +94,7 @@ version: '3.8'
 
 services:
   requesto:
-    image: ghcr.io/YOUR_USERNAME/requesto:latest
+    image: ghcr.io/t3rr11/requesto:latest
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.requesto.rule=Host(`requesto.example.com`)"
@@ -114,7 +114,7 @@ Mount the data directory to persist collections, environments, and history:
 ```bash
 docker run -d \
   -v /path/on/host:/app/data \
-  ghcr.io/YOUR_USERNAME/requesto:latest
+  ghcr.io/t3rr11/requesto:latest
 ```
 
 ### Data Directory Structure
