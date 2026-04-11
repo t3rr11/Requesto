@@ -3,11 +3,11 @@ import { defineConfig } from 'vitepress';
 export default defineConfig({
   title: 'Requesto',
   description: 'A lightweight, self-hosted API client',
-  base: '/Requesto/',
+  base: '/',
   srcDir: 'src',
 
   head: [
-    ['link', { rel: 'icon', href: '/Requesto/favicon.ico' }],
+    ['link', { rel: 'icon', href: '/logo.svg' }],
     ['meta', { name: 'theme-color', content: '#3b82f6' }],
     ['meta', { property: 'og:title', content: 'Requesto' }],
     ['meta', { property: 'og:description', content: 'A lightweight, self-hosted API client' }],
@@ -26,9 +26,7 @@ export default defineConfig({
       { text: 'Download', link: '/guide/download' },
       {
         text: 'v1.0.0',
-        items: [
-          { text: 'Changelog', link: 'https://github.com/t3rr11/Requesto/releases' },
-        ],
+        items: [{ text: 'Changelog', link: 'https://github.com/t3rr11/Requesto/releases' }],
       },
     ],
 
