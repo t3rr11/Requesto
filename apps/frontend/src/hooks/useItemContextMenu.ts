@@ -1,10 +1,7 @@
 import { useState } from 'react';
-import { SavedRequest } from '../types';
+import type { SavedRequest } from '../store/collections/types';
 
-/**
- * Hook for managing context menus on collections, folders, and requests
- */
-export const useItemContextMenu = () => {
+export function useItemContextMenu() {
   const [requestContextMenu, setRequestContextMenu] = useState<{
     x: number;
     y: number;
@@ -26,62 +23,48 @@ export const useItemContextMenu = () => {
     folderName: string;
   } | null>(null);
 
-  // Request context menu handlers
   const openRequestContextMenu = (e: React.MouseEvent, request: SavedRequest) => {
     e.preventDefault();
     e.stopPropagation();
     setRequestContextMenu({ x: e.clientX, y: e.clientY, request });
   };
 
-  const closeRequestContextMenu = () => {
-    setRequestContextMenu(null);
-  };
+  const closeRequestContextMenu = () => setRequestContextMenu(null);
 
-  // Collection context menu handlers
   const openCollectionContextMenu = (
     e: React.MouseEvent,
     collectionId: string,
-    collectionName: string
+    collectionName: string,
   ) => {
     e.preventDefault();
     e.stopPropagation();
     setCollectionContextMenu({ x: e.clientX, y: e.clientY, collectionId, collectionName });
   };
 
-  const closeCollectionContextMenu = () => {
-    setCollectionContextMenu(null);
-  };
+  const closeCollectionContextMenu = () => setCollectionContextMenu(null);
 
-  // Folder context menu handlers
   const openFolderContextMenu = (
     e: React.MouseEvent,
     collectionId: string,
     folderId: string,
-    folderName: string
+    folderName: string,
   ) => {
     e.preventDefault();
     e.stopPropagation();
     setFolderContextMenu({ x: e.clientX, y: e.clientY, collectionId, folderId, folderName });
   };
 
-  const closeFolderContextMenu = () => {
-    setFolderContextMenu(null);
-  };
+  const closeFolderContextMenu = () => setFolderContextMenu(null);
 
   return {
-    // Request context menu
     requestContextMenu,
     openRequestContextMenu,
     closeRequestContextMenu,
-    
-    // Collection context menu
     collectionContextMenu,
     openCollectionContextMenu,
     closeCollectionContextMenu,
-    
-    // Folder context menu
     folderContextMenu,
     openFolderContextMenu,
     closeFolderContextMenu,
   };
-};
+}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { VariableAwareInput } from './VariableAwareInput';
 import { OAuthEditor } from './OAuthEditor';
-import { AuthConfig, AuthType } from '../types';
+import type { AuthConfig, AuthType } from '../store/request/types';
 
 interface AuthEditorProps {
   auth: AuthConfig;
@@ -24,36 +24,22 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
     });
   };
 
-  const updateBasicAuth = (field: 'username' | 'password', value: string) => {
-    if (!auth.basic) return;
-    onAuthChange({
-      ...auth,
-      basic: { ...auth.basic, [field]: value },
-    });
-  };
+  const inputClass =
+    'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200';
 
-  const updateBearerAuth = (value: string) => {
-    onAuthChange({
-      ...auth,
-      bearer: { token: value },
-    });
-  };
+  const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
+  const descClass = 'text-sm text-gray-600 dark:text-gray-400 mb-4';
 
-  const updateApiKeyAuth = (field: 'key' | 'value' | 'addTo', value: string) => {
-    if (!auth.apiKey) return;
-    onAuthChange({
-      ...auth,
-      apiKey: { ...auth.apiKey, [field]: value },
-    });
-  };
-
-  const updateDigestAuth = (field: 'username' | 'password', value: string) => {
-    if (!auth.digest) return;
-    onAuthChange({
-      ...auth,
-      digest: { ...auth.digest, [field]: value },
-    });
-  };
+  const ToggleButton = () => (
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-400"
+      disabled={disabled}
+    >
+      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+    </button>
+  );
 
   return (
     <div className="space-y-4">
@@ -62,7 +48,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
         <select
           value={auth.type}
           onChange={e => handleTypeChange(e.target.value as AuthType)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200"
+          className={inputClass}
           disabled={disabled}
         >
           <option value="none">No Auth</option>
@@ -76,38 +62,31 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
 
       {auth.type === 'basic' && auth.basic && (
         <div className="space-y-4 pt-2">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <div className={descClass}>
             Basic authentication sends credentials as base64-encoded username:password in the Authorization header.
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+            <label className={labelClass}>Username</label>
             <VariableAwareInput
               value={auth.basic.username}
-              onChange={value => updateBasicAuth('username', value)}
+              onChange={value => onAuthChange({ ...auth, basic: { ...auth.basic!, username: value } })}
               placeholder="Enter username"
               disabled={disabled}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <label className={labelClass}>Password</label>
             <div className="relative">
               <VariableAwareInput
                 value={auth.basic.password}
-                onChange={value => updateBasicAuth('password', value)}
+                onChange={value => onAuthChange({ ...auth, basic: { ...auth.basic!, password: value } })}
                 placeholder="Enter password"
                 disabled={disabled}
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200"
+                className={`${inputClass} pr-10`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
-                disabled={disabled}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              <ToggleButton />
             </div>
           </div>
         </div>
@@ -115,28 +94,21 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
 
       {auth.type === 'bearer' && auth.bearer && (
         <div className="space-y-4 pt-2">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <div className={descClass}>
             Bearer token authentication sends the token in the Authorization header with the Bearer prefix.
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Token</label>
+            <label className={labelClass}>Token</label>
             <div className="relative">
               <VariableAwareInput
                 value={auth.bearer.token}
-                onChange={updateBearerAuth}
+                onChange={value => onAuthChange({ ...auth, bearer: { token: value } })}
                 placeholder="Enter bearer token"
                 disabled={disabled}
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono dark:bg-gray-800 dark:text-gray-200"
+                className={`${inputClass} pr-10 font-mono`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                disabled={disabled}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              <ToggleButton />
             </div>
           </div>
         </div>
@@ -144,46 +116,39 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
 
       {auth.type === 'api-key' && auth.apiKey && (
         <div className="space-y-4 pt-2">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <div className={descClass}>
             API key authentication can be sent via request header or query parameter.
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Key</label>
+            <label className={labelClass}>Key</label>
             <VariableAwareInput
               value={auth.apiKey.key}
-              onChange={value => updateApiKeyAuth('key', value)}
+              onChange={value => onAuthChange({ ...auth, apiKey: { ...auth.apiKey!, key: value } })}
               placeholder="e.g., X-API-Key, api_key"
               disabled={disabled}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Value</label>
+            <label className={labelClass}>Value</label>
             <div className="relative">
               <VariableAwareInput
                 value={auth.apiKey.value}
-                onChange={value => updateApiKeyAuth('value', value)}
+                onChange={value => onAuthChange({ ...auth, apiKey: { ...auth.apiKey!, value: value } })}
                 placeholder="Enter API key value"
                 disabled={disabled}
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono dark:bg-gray-800 dark:text-gray-200"
+                className={`${inputClass} pr-10 font-mono`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                disabled={disabled}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              <ToggleButton />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Add To</label>
+            <label className={labelClass}>Add To</label>
             <select
               value={auth.apiKey.addTo}
-              onChange={e => updateApiKeyAuth('addTo', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200"
+              onChange={e => onAuthChange({ ...auth, apiKey: { ...auth.apiKey!, addTo: e.target.value as 'header' | 'query' } })}
+              className={inputClass}
               disabled={disabled}
             >
               <option value="header">Header</option>
@@ -195,38 +160,31 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
 
       {auth.type === 'digest' && auth.digest && (
         <div className="space-y-4 pt-2">
-          <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-            Digest authentication is more secure than Basic auth, using MD5 hashing. The server must support digest authentication.
+          <div className={descClass}>
+            Digest authentication is more secure than Basic auth, using MD5 hashing.
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+            <label className={labelClass}>Username</label>
             <VariableAwareInput
               value={auth.digest.username}
-              onChange={value => updateDigestAuth('username', value)}
+              onChange={value => onAuthChange({ ...auth, digest: { ...auth.digest!, username: value } })}
               placeholder="Enter username"
               disabled={disabled}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200"
+              className={inputClass}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <label className={labelClass}>Password</label>
             <div className="relative">
               <VariableAwareInput
                 value={auth.digest.password}
-                onChange={value => updateDigestAuth('password', value)}
+                onChange={value => onAuthChange({ ...auth, digest: { ...auth.digest!, password: value } })}
                 placeholder="Enter password"
                 disabled={disabled}
                 type={showPassword ? 'text' : 'password'}
-                className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200"
+                className={`${inputClass} pr-10`}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                disabled={disabled}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+              <ToggleButton />
             </div>
           </div>
         </div>
@@ -236,8 +194,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
         <div className="pt-2">
           <OAuthEditor
             auth={auth.oauth}
-            onAuthChange={(oauth) => {
-              // If oauth is being cleared (empty configId), change auth type to none
+            onAuthChange={oauth => {
               if (!oauth.configId) {
                 onAuthChange({ type: 'none' });
               } else {

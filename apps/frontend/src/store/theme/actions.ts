@@ -1,28 +1,22 @@
-import { StoreApi } from 'zustand';
+type SetState = (partial: Record<string, unknown> | ((state: { isDarkMode: boolean }) => Record<string, unknown>)) => void;
 
-type SetState = StoreApi<any>['setState'];
+function applyThemeClass(isDark: boolean): void {
+  if (isDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
 
-export const toggleTheme = (set: SetState) => {
-  set((state: any) => {
-    const newDarkMode = !state.isDarkMode;
-    // Update the document class
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    return { isDarkMode: newDarkMode };
+export function toggleTheme(set: SetState): void {
+  set((state) => {
+    const next = !state.isDarkMode;
+    applyThemeClass(next);
+    return { isDarkMode: next };
   });
-};
+}
 
-export const setTheme = (set: SetState, isDark: boolean) => {
-  set(() => {
-    // Update the document class
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    return { isDarkMode: isDark };
-  });
-};
+export function setTheme(set: SetState, isDark: boolean): void {
+  applyThemeClass(isDark);
+  set({ isDarkMode: isDark });
+}

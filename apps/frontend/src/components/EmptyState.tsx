@@ -1,25 +1,21 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Button } from './Button';
+
+interface EmptyStateAction {
+  label: string;
+  icon?: ReactNode;
+  onClick: () => void;
+}
 
 interface EmptyStateProps {
   icon: ReactNode;
   title: string;
   description: string;
-  action?: {
-    label: string;
-    icon?: ReactNode;
-    onClick: () => void;
-  };
+  action?: EmptyStateAction;
   size?: 'sm' | 'lg';
 }
 
-export const EmptyState = ({
-  icon,
-  title,
-  description,
-  action,
-  size = 'lg',
-}: EmptyStateProps) => {
+export function EmptyState({ icon, title, description, action, size = 'lg' }: EmptyStateProps) {
   if (size === 'sm') {
     return (
       <div className="text-center py-12 px-4">
@@ -45,4 +41,4 @@ export const EmptyState = ({
       </div>
     </div>
   );
-};
+}

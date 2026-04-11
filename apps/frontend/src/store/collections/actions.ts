@@ -1,4 +1,5 @@
-import { Collection, SavedRequest, Folder, AuthConfig } from '../../types';
+import type { Collection, SavedRequest, Folder } from './types';
+import type { AuthConfig } from '../request/types';
 import { API_BASE } from '../../helpers/api/config';
 import {
   importPostmanCollection,
@@ -7,7 +8,9 @@ import {
   readJSONFile,
 } from '../../helpers/postman';
 
-type SetState = (partial: any) => void;
+type SetState = (partial: Record<string, unknown>) => void;
+
+// ── Internal API helpers (not exported) ──────────────────────────────────────
 
 async function getAllCollections(): Promise<Collection[]> {
   const res = await fetch(`${API_BASE}/collections`);
@@ -36,23 +39,17 @@ async function updateCollectionApi(id: string, data: { name?: string; descriptio
 }
 
 async function deleteCollectionApi(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/collections/${id}`, {
-    method: 'DELETE',
-  });
+  const res = await fetch(`${API_BASE}/collections/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete collection');
 }
 
 async function addRequestApi(
   collectionId: string,
   data: {
-    name: string;
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    auth?: AuthConfig;
-    folderId?: string;
-  }
+    name: string; method: string; url: string;
+    headers?: Record<string, string>; body?: string;
+    auth?: AuthConfig; folderId?: string;
+  },
 ): Promise<SavedRequest> {
   const res = await fetch(`${API_BASE}/collections/${collectionId}/requests`, {
     method: 'POST',
@@ -66,15 +63,7 @@ async function addRequestApi(
 async function updateRequestApi(
   collectionId: string,
   requestId: string,
-  data: {
-    name?: string;
-    method?: string;
-    url?: string;
-    headers?: Record<string, string>;
-    body?: string;
-    auth?: AuthConfig;
-    folderId?: string;
-  }
+  data: Partial<SavedRequest>,
 ): Promise<SavedRequest> {
   const res = await fetch(`${API_BASE}/collections/${collectionId}/requests/${requestId}`, {
     method: 'PUT',
@@ -86,19 +75,11 @@ async function updateRequestApi(
 }
 
 async function deleteRequestApi(collectionId: string, requestId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/collections/${collectionId}/requests/${requestId}`, {
-    method: 'DELETE',
-  });
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/requests/${requestId}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete request');
 }
 
-async function addFolderApi(
-  collectionId: string,
-  data: {
-    name: string;
-    parentId?: string;
-  }
-): Promise<Folder> {
+async function addFolderApi(collectionId: string, data: { name: string; parentId?: string }): Promise<Folder> {
   const res = await fetch(`${API_BASE}/collections/${collectionId}/folders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -108,14 +89,7 @@ async function addFolderApi(
   return res.json();
 }
 
-async function updateFolderApi(
-  collectionId: string,
-  folderId: string,
-  data: {
-    name?: string;
-    parentId?: string;
-  }
-): Promise<Folder> {
+async function updateFolderApi(collectionId: string, folderId: string, data: Partial<Folder>): Promise<Folder> {
   const res = await fetch(`${API_BASE}/collections/${collectionId}/folders/${folderId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -126,18 +100,13 @@ async function updateFolderApi(
 }
 
 async function deleteFolderApi(collectionId: string, folderId: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/collections/${collectionId}/folders/${folderId}`, {
-    method: 'DELETE',
-  });
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/folders/${folderId}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete folder');
 }
 
 async function moveRequestApi(
-  sourceCollectionId: string,
-  requestId: string,
-  targetCollectionId: string,
-  targetFolderId?: string,
-  targetOrder?: number
+  sourceCollectionId: string, requestId: string,
+  targetCollectionId: string, targetFolderId?: string, targetOrder?: number,
 ): Promise<SavedRequest> {
   const res = await fetch(`${API_BASE}/collections/${sourceCollectionId}/requests/${requestId}/move`, {
     method: 'PUT',
@@ -149,10 +118,8 @@ async function moveRequestApi(
 }
 
 async function moveFolderApi(
-  sourceCollectionId: string,
-  folderId: string,
-  targetCollectionId: string,
-  targetParentId?: string
+  sourceCollectionId: string, folderId: string,
+  targetCollectionId: string, targetParentId?: string,
 ): Promise<Folder> {
   const res = await fetch(`${API_BASE}/collections/${sourceCollectionId}/folders/${folderId}/move`, {
     method: 'PUT',
@@ -163,7 +130,7 @@ async function moveFolderApi(
   return res.json();
 }
 
-// Store Action Implementations
+// ── Store action implementations ─────────────────────────────────────────────
 
 export async function loadCollections(set: SetState): Promise<void> {
   set({ loading: true });
@@ -179,7 +146,7 @@ export async function loadCollections(set: SetState): Promise<void> {
 
 export async function createCollection(
   set: SetState,
-  data: { name: string; description?: string }
+  data: { name: string; description?: string },
 ): Promise<Collection> {
   try {
     const collection = await createCollectionApi(data);
@@ -192,10 +159,7 @@ export async function createCollection(
 }
 
 export async function addFolder(
-  set: SetState,
-  collectionId: string,
-  name: string,
-  parentId?: string
+  set: SetState, collectionId: string, name: string, parentId?: string,
 ): Promise<void> {
   try {
     await addFolderApi(collectionId, { name, parentId });
@@ -210,14 +174,10 @@ export async function createRequest(
   set: SetState,
   collectionId: string,
   data: {
-    name: string;
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    auth?: AuthConfig;
-    folderId?: string;
-  }
+    name: string; method: string; url: string;
+    headers?: Record<string, string>; body?: string;
+    auth?: AuthConfig; folderId?: string;
+  },
 ): Promise<SavedRequest> {
   try {
     const request = await addRequestApi(collectionId, data);
@@ -233,14 +193,10 @@ export async function saveRequest(
   set: SetState,
   collectionId: string,
   data: {
-    name: string;
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    auth?: AuthConfig;
-    folderId?: string;
-  }
+    name: string; method: string; url: string;
+    headers?: Record<string, string>; body?: string;
+    auth?: AuthConfig; folderId?: string;
+  },
 ): Promise<SavedRequest> {
   try {
     const request = await addRequestApi(collectionId, data);
@@ -258,131 +214,96 @@ export async function deleteCollection(set: SetState, id: string): Promise<void>
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to delete collection:', error);
-    throw error;
   }
 }
 
-export async function deleteFolder(
-  set: SetState,
-  collectionId: string,
-  folderId: string
-): Promise<void> {
+export async function deleteFolder(set: SetState, collectionId: string, folderId: string): Promise<void> {
   try {
     await deleteFolderApi(collectionId, folderId);
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to delete folder:', error);
-    throw error;
   }
 }
 
-export async function deleteRequest(
-  set: SetState,
-  collectionId: string,
-  requestId: string
-): Promise<void> {
+export async function deleteRequest(set: SetState, collectionId: string, requestId: string): Promise<void> {
   try {
     await deleteRequestApi(collectionId, requestId);
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to delete request:', error);
-    throw error;
   }
 }
 
-export async function updateCollection(
-  set: SetState,
-  id: string,
-  updates: Partial<Collection>
-): Promise<void> {
+export async function updateCollection(set: SetState, id: string, updates: Partial<Collection>): Promise<void> {
   try {
     await updateCollectionApi(id, updates);
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to update collection:', error);
-    throw error;
   }
 }
 
 export async function updateRequest(
-  set: SetState,
-  collectionId: string,
-  requestId: string,
-  updates: Partial<SavedRequest>
+  set: SetState, collectionId: string, requestId: string, updates: Partial<SavedRequest>,
 ): Promise<void> {
   try {
     await updateRequestApi(collectionId, requestId, updates);
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to update request:', error);
-    throw error;
   }
 }
 
 export async function updateFolder(
-  set: SetState,
-  collectionId: string,
-  folderId: string,
-  updates: Partial<Folder>
+  set: SetState, collectionId: string, folderId: string, updates: Partial<Folder>,
 ): Promise<void> {
   try {
     await updateFolderApi(collectionId, folderId, updates);
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to update folder:', error);
-    throw error;
   }
 }
 
 export async function moveRequest(
-  set: SetState,
-  sourceCollectionId: string,
-  requestId: string,
-  targetCollectionId: string,
-  targetFolderId?: string,
-  targetOrder?: number
+  set: SetState, sourceCollectionId: string, requestId: string,
+  targetCollectionId: string, targetFolderId?: string, targetOrder?: number,
 ): Promise<void> {
   try {
     await moveRequestApi(sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder);
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to move request:', error);
-    throw error;
   }
 }
 
 export async function moveFolder(
-  set: SetState,
-  sourceCollectionId: string,
-  folderId: string,
-  targetCollectionId: string,
-  targetParentId?: string
+  set: SetState, sourceCollectionId: string, folderId: string,
+  targetCollectionId: string, targetParentId?: string,
 ): Promise<void> {
   try {
     await moveFolderApi(sourceCollectionId, folderId, targetCollectionId, targetParentId);
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to move folder:', error);
-    throw error;
   }
 }
 
-// Import/Export functions
+// ── Import / export ──────────────────────────────────────────────────────────
 
 export async function importCollection(set: SetState, file: File): Promise<Collection> {
   try {
     const postmanData = await readJSONFile(file);
-    const collection = importPostmanCollection(postmanData);
-    
-    // Send to backend
+    const collection = importPostmanCollection(postmanData as Parameters<typeof importPostmanCollection>[0]);
+
     const res = await fetch(`${API_BASE}/collections/import`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ collection }),
     });
-    
     if (!res.ok) throw new Error('Failed to import collection');
-    
+
     await loadCollections(set);
     return collection;
   } catch (error) {
@@ -395,10 +316,9 @@ export async function exportCollection(collectionId: string): Promise<void> {
   try {
     const res = await fetch(`${API_BASE}/collections/${collectionId}/export`);
     if (!res.ok) throw new Error('Failed to export collection');
-    
+
     const collection: Collection = await res.json();
     const postmanCollection = exportToPostman(collection);
-    
     const filename = `${collection.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
     downloadJSON(postmanCollection, filename);
   } catch (error) {
@@ -411,20 +331,17 @@ export async function exportRequest(collectionId: string, requestId: string): Pr
   try {
     const res = await fetch(`${API_BASE}/collections/${collectionId}/export`);
     if (!res.ok) throw new Error('Failed to export request');
-    
+
     const collection: Collection = await res.json();
-    const request = collection.requests.find(r => r.id === requestId);
-    
+    const request = collection.requests.find((r) => r.id === requestId);
     if (!request) throw new Error('Request not found');
-    
-    // Create a minimal collection with just this request
+
     const singleRequestCollection: Collection = {
       ...collection,
       name: request.name,
       requests: [request],
       folders: [],
     };
-    
     const postmanCollection = exportToPostman(singleRequestCollection);
     const filename = `${request.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
     downloadJSON(postmanCollection, filename);
@@ -438,36 +355,35 @@ export async function exportFolder(collectionId: string, folderId: string): Prom
   try {
     const res = await fetch(`${API_BASE}/collections/${collectionId}/export`);
     if (!res.ok) throw new Error('Failed to export folder');
-    
+
     const collection: Collection = await res.json();
-    const folder = collection.folders.find(f => f.id === folderId);
-    
+    const folder = collection.folders.find((f) => f.id === folderId);
     if (!folder) throw new Error('Folder not found');
-    
-    // Get all descendant folders
-    const getDescendantFolders = (parentId: string): Folder[] => {
-      const children = collection.folders.filter(f => f.parentId === parentId);
-      return children.reduce(
-        (acc, child) => [...acc, child, ...getDescendantFolders(child.id)],
-        [] as Folder[]
+
+    const getDescendants = (parentId: string): Folder[] => {
+      const children = collection.folders.filter((f) => f.parentId === parentId);
+      return children.reduce<Folder[]>(
+        (acc, child) => [...acc, child, ...getDescendants(child.id)],
+        [],
       );
     };
-    
-    const folderIds = [folderId, ...getDescendantFolders(folderId).map(f => f.id)];
-    const foldersInExport = collection.folders.filter(f => folderIds.includes(f.id));
-    const requestsInExport = collection.requests.filter(r => r.folderId && folderIds.includes(r.folderId));
-    
-    // Create a collection with just this folder and its contents
+
+    const folderIds = [folderId, ...getDescendants(folderId).map((f) => f.id)];
+    const foldersInExport = collection.folders.filter((f) => folderIds.includes(f.id));
+    const requestsInExport = collection.requests.filter(
+      (r) => r.folderId && folderIds.includes(r.folderId),
+    );
+
     const folderCollection: Collection = {
       ...collection,
       name: folder.name,
-      folders: foldersInExport.map(f => ({
+      folders: foldersInExport.map((f) => ({
         ...f,
-        parentId: f.parentId === folderId ? undefined : f.parentId, // Make root folder top-level
+        parentId: f.parentId === folderId ? undefined : f.parentId,
       })),
       requests: requestsInExport,
     };
-    
+
     const postmanCollection = exportToPostman(folderCollection);
     const filename = `${folder.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
     downloadJSON(postmanCollection, filename);

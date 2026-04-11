@@ -21,11 +21,8 @@ export function VariableTooltip({
 
   return (
     <div
-      className="fixed z-[60] bg-gray-900 dark:bg-black text-white px-3 py-2 rounded-lg shadow-lg max-w-sm border border-gray-700 dark:border-gray-800"
-      style={{
-        left: `${x}px`,
-        top: `${y}px`,
-      }}
+      className="fixed z-60 bg-gray-900 dark:bg-black text-white px-3 py-2 rounded-lg shadow-lg max-w-sm border border-gray-700 dark:border-gray-800"
+      style={{ left: `${x}px`, top: `${y}px` }}
     >
       <div className="text-xs font-medium text-gray-300 dark:text-gray-400 mb-1">Variable</div>
       <div className="font-mono text-sm font-semibold mb-2">{variableKey}</div>

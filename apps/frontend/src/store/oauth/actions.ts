@@ -1,106 +1,70 @@
-/**
- * OAuth Store - Actions
- * Handles OAuth configuration management and token state
- */
-
-import type { OAuthConfig, OAuthTokens } from '../../types';
+import type { OAuthConfig, OAuthTokens } from './types';
 import { API_BASE } from '../../helpers/api/config';
 import { getTokens, storeTokens, removeTokens, isTokenExpired } from '../../helpers/oauth/tokenManager';
 
-type SetState = (partial: any) => void;
-type GetState = () => any;
+type SetState = (partial: Record<string, unknown> | ((state: Record<string, unknown>) => Record<string, unknown>)) => void;
+type GetState = () => Record<string, unknown>;
 
-/**
- * Fetch all OAuth configurations from backend
- */
+// ── Internal API helpers ─────────────────────────────────────────────────────
+
 async function getOAuthConfigsApi(): Promise<OAuthConfig[]> {
-  const response = await fetch(`${API_BASE}/oauth/configs`);
-  if (!response.ok) {
-    throw new Error('Failed to load OAuth configurations');
-  }
-  return response.json();
+  const res = await fetch(`${API_BASE}/oauth/configs`);
+  if (!res.ok) throw new Error('Failed to load OAuth configurations');
+  return res.json();
 }
 
-/**
- * Create a new OAuth configuration
- */
-async function createOAuthConfigApi(configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<OAuthConfig> {
-  const response = await fetch(`${API_BASE}/oauth/configs`, {
+async function createOAuthConfigApi(
+  configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'>,
+): Promise<OAuthConfig> {
+  const res = await fetch(`${API_BASE}/oauth/configs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(configData),
   });
-  
-  if (!response.ok) {
-    throw new Error('Failed to create OAuth configuration');
-  }
-  
-  return response.json();
+  if (!res.ok) throw new Error('Failed to create OAuth configuration');
+  return res.json();
 }
 
-/**
- * Update an existing OAuth configuration
- */
 async function updateOAuthConfigApi(id: string, updates: Partial<OAuthConfig>): Promise<OAuthConfig> {
-  const response = await fetch(`${API_BASE}/oauth/configs/${id}`, {
+  const res = await fetch(`${API_BASE}/oauth/configs/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   });
-  
-  if (!response.ok) {
-    throw new Error('Failed to update OAuth configuration');
-  }
-  
-  return response.json();
+  if (!res.ok) throw new Error('Failed to update OAuth configuration');
+  return res.json();
 }
 
-/**
- * Delete an OAuth configuration
- */
 async function deleteOAuthConfigApi(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/oauth/configs/${id}`, {
-    method: 'DELETE',
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to delete OAuth configuration');
-  }
+  const res = await fetch(`${API_BASE}/oauth/configs/${id}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to delete OAuth configuration');
 }
 
-/**
- * Load OAuth configurations from backend
- */
+// ── Config actions ───────────────────────────────────────────────────────────
+
 export async function loadConfigs(set: SetState, get: GetState): Promise<void> {
   set({ isLoadingConfigs: true });
   try {
     const configs = await getOAuthConfigsApi();
     set({ configs });
-    
-    // Load token states for all configs
     loadAllTokenStates(get);
   } catch (error) {
-    console.error('[OAuth Store] Failed to load OAuth configs:', error);
+    console.error('Failed to load OAuth configs:', error);
     throw error;
   } finally {
     set({ isLoadingConfigs: false });
   }
 }
 
-/**
- * Add new OAuth configuration
- */
 export async function addConfig(
-  set: SetState, 
-  configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'>
+  set: SetState,
+  configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<OAuthConfig> {
   try {
     const newConfig = await createOAuthConfigApi(configData);
-    
-    set((state: any) => ({
-      configs: [...state.configs, newConfig],
+    set((state) => ({
+      configs: [...(state.configs as OAuthConfig[]), newConfig],
     }));
-    
     return newConfig;
   } catch (error) {
     console.error('Failed to add OAuth config:', error);
@@ -108,19 +72,13 @@ export async function addConfig(
   }
 }
 
-/**
- * Update existing OAuth configuration
- */
 export async function updateConfig(
-  set: SetState,
-  id: string,
-  updates: Partial<OAuthConfig>
+  set: SetState, id: string, updates: Partial<OAuthConfig>,
 ): Promise<void> {
   try {
-    const updatedConfig = await updateOAuthConfigApi(id, updates);
-    
-    set((state: any) => ({
-      configs: state.configs.map((c: OAuthConfig) => c.id === id ? updatedConfig : c),
+    const updated = await updateOAuthConfigApi(id, updates);
+    set((state) => ({
+      configs: (state.configs as OAuthConfig[]).map((c) => (c.id === id ? updated : c)),
     }));
   } catch (error) {
     console.error('Failed to update OAuth config:', error);
@@ -128,22 +86,12 @@ export async function updateConfig(
   }
 }
 
-/**
- * Delete OAuth configuration
- */
-export async function deleteConfig(
-  set: SetState,
-  _get: GetState,
-  id: string
-): Promise<void> {
+export async function deleteConfig(set: SetState, _get: GetState, id: string): Promise<void> {
   try {
     await deleteOAuthConfigApi(id);
-    
-    set((state: any) => ({
-      configs: state.configs.filter((c: OAuthConfig) => c.id !== id),
+    set((state) => ({
+      configs: (state.configs as OAuthConfig[]).filter((c) => c.id !== id),
     }));
-    
-    // Clear associated tokens
     clearTokens(set, id);
   } catch (error) {
     console.error('Failed to delete OAuth config:', error);
@@ -151,116 +99,80 @@ export async function deleteConfig(
   }
 }
 
-/**
- * Get config by ID
- */
 export function getConfig(get: GetState, id: string): OAuthConfig | null {
-  return get().configs.find((c: OAuthConfig) => c.id === id) || null;
+  return (get().configs as OAuthConfig[]).find((c) => c.id === id) ?? null;
 }
 
-/**
- * Load token state for a specific config
- */
-export function loadTokenState(set: SetState, _get: GetState, configId: string): void {
+// ── Token state ──────────────────────────────────────────────────────────────
+
+export function loadTokenState(set: SetState, configId: string): void {
   const tokens = getTokens(configId);
-  const isExpired = isTokenExpired(tokens);
-  const expiresIn = tokens?.expiresAt 
+  const expired = isTokenExpired(tokens);
+  const expiresIn = tokens?.expiresAt
     ? Math.max(0, Math.floor((tokens.expiresAt - Date.now()) / 1000))
     : null;
-  
-  set((state: any) => ({
+
+  set((state) => ({
     tokenState: {
-      ...state.tokenState,
-      [configId]: { tokens, isExpired, expiresIn },
+      ...(state.tokenState as Record<string, unknown>),
+      [configId]: { tokens, isExpired: expired, expiresIn },
     },
   }));
 }
 
-/**
- * Load token states for all configs
- */
 export function loadAllTokenStates(get: GetState): void {
-  const { configs, loadTokenState: loadTokenStateFn } = get();
-  configs.forEach((config: OAuthConfig) => {
-    loadTokenStateFn(config.id);
-  });
+  const state = get();
+  const configs = state.configs as OAuthConfig[];
+  const loadFn = state.loadTokenState as (configId: string) => void;
+  configs.forEach((c) => loadFn(c.id));
 }
 
-/**
- * Store tokens
- */
 export function setTokens(
-  get: GetState,
-  configId: string,
-  tokens: OAuthTokens,
-  storageType: OAuthConfig['tokenStorage']
+  get: GetState, configId: string, tokens: OAuthTokens, storageType: OAuthConfig['tokenStorage'],
 ): void {
   storeTokens(configId, tokens, storageType);
-  get().loadTokenState(configId);
+  const loadFn = get().loadTokenState as (configId: string) => void;
+  loadFn(configId);
 }
 
-/**
- * Clear tokens for a config
- */
 export function clearTokens(set: SetState, configId: string): void {
   removeTokens(configId);
-  set((state: any) => ({
+  set((state) => ({
     tokenState: {
-      ...state.tokenState,
+      ...(state.tokenState as Record<string, unknown>),
       [configId]: { tokens: null, isExpired: true, expiresIn: null },
     },
   }));
 }
 
-/**
- * Clear all tokens
- */
 export function clearAllTokens(set: SetState, get: GetState): void {
-  const { configs } = get();
-  configs.forEach((config: OAuthConfig) => {
-    removeTokens(config.id);
-  });
+  const configs = get().configs as OAuthConfig[];
+  configs.forEach((c) => removeTokens(c.id));
   set({ tokenState: {} });
 }
 
-// ============================================================================
-// Store Actions - Authentication State
-// ============================================================================
+// ── Auth state ───────────────────────────────────────────────────────────────
 
-/**
- * Set authenticating state
- */
-export function setAuthenticating(set: SetState, configId: string, isAuthenticating: boolean): void {
-  set((state: any) => ({
-    isAuthenticating: {
-      ...state.isAuthenticating,
-      [configId]: isAuthenticating,
-    },
+export function setAuthenticating(set: SetState, configId: string, isAuth: boolean): void {
+  set((state) => ({
+    isAuthenticating: { ...(state.isAuthenticating as Record<string, boolean>), [configId]: isAuth },
   }));
 }
 
-/**
- * Set error
- */
-export function setError(set: SetState, _get: GetState, configId: string, error: string | null): void {
+export function setError(set: SetState, configId: string, error: string | null): void {
   if (error) {
-    set((state: any) => ({
-      errors: {
-        ...state.errors,
-        [configId]: error,
-      },
+    set((state) => ({
+      errors: { ...(state.errors as Record<string, string>), [configId]: error },
     }));
   } else {
     clearError(set, configId);
   }
 }
 
-/**
- * Clear error
- */
 export function clearError(set: SetState, configId: string): void {
-  set((state: any) => {
-    const { [configId]: _, ...rest } = state.errors;
-    return { errors: rest };
+  set((state) => {
+    const errors = { ...(state.errors as Record<string, string>) };
+    delete errors[configId];
+    return { errors };
   });
 }

@@ -1,22 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { Control, Controller } from 'react-hook-form';
-import Editor, { Monaco } from '@monaco-editor/react';
+import Editor, { type Monaco } from '@monaco-editor/react';
 import { Button } from '../components/Button';
-import { HeadersEditor } from '../components/HeadersEditor';
-import { ParamsEditor } from '../components/ParamsEditor';
+import { KeyValueEditor } from '../components/KeyValueEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { AuthConfig } from '../types';
-import { useThemeStore } from '../store/theme';
-import { requestFormSchema, RequestFormData } from './schemas/requestFormSchema';
-import { extractParamsFromUrl } from '../helpers/urlHelpers';
+import type { AuthConfig } from '../store/request/types';
+import { useThemeStore } from '../store/theme/store';
+import { extractParamsFromUrl } from '../helpers/url';
+import type { RequestFormData } from './schemas/requestFormSchema';
 
-export { requestFormSchema, type RequestFormData };
+export { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
-type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'scripts' | 'settings';
+type RequestTab = 'params' | 'auth' | 'headers' | 'body';
 
 interface RequestFormProps {
   control: Control<RequestFormData>;
@@ -51,12 +50,10 @@ export function RequestForm({
   const [showRightScroll, setShowRightScroll] = useState(false);
   const { isDarkMode } = useThemeStore();
 
-  // Handler for URL changes - extract query params and update params state
   const handleUrlChange = (newUrl: string) => {
     const { baseUrl, params: extractedParams } = extractParamsFromUrl(newUrl);
 
     if (extractedParams.length > 0) {
-      // Merge extracted params with existing params
       const existingParamKeys = new Set(params.map(p => p.key));
       const newParams = [...params];
 
@@ -72,17 +69,15 @@ export function RequestForm({
       });
 
       onParamsChange(newParams);
-      onUrlChange(baseUrl); // Update URL without query params
+      onUrlChange(baseUrl);
     } else {
       onUrlChange(newUrl);
     }
   };
 
-  // Calculate counts for enabled params and headers
   const paramsCount = params.filter(p => p.enabled && p.key.trim()).length;
   const headersCount = headers.filter(h => h.enabled && h.key.trim()).length;
 
-  // Check if scrolling is needed and update scroll button visibility
   const checkScrollButtons = () => {
     const container = tabsContainerRef.current;
     if (!container) return;
@@ -92,7 +87,6 @@ export function RequestForm({
     setShowRightScroll(scrollLeft + clientWidth < scrollWidth - 1);
   };
 
-  // Check scroll buttons on mount and when container resizes
   useEffect(() => {
     checkScrollButtons();
     const container = tabsContainerRef.current;
@@ -101,7 +95,6 @@ export function RequestForm({
     container.addEventListener('scroll', checkScrollButtons);
     window.addEventListener('resize', checkScrollButtons);
 
-    // Use ResizeObserver to detect container size changes
     const resizeObserver = new ResizeObserver(checkScrollButtons);
     resizeObserver.observe(container);
 
@@ -123,13 +116,11 @@ export function RequestForm({
     container.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
   };
 
-  // Handle wheel scroll for horizontal scrolling
   useEffect(() => {
     const container = tabsContainerRef.current;
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // Only handle horizontal scroll if there's horizontal overflow
       if (container.scrollWidth > container.clientWidth) {
         e.preventDefault();
         container.scrollLeft += e.deltaY;
@@ -151,16 +142,11 @@ export function RequestForm({
               <div className="relative">
                 <select
                   {...field}
-                  className="w-full px-3 py-2.5 min-w-[100px] text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none cursor-pointer"
-                  style={{
-                    colorScheme: 'dark',
-                  }}
+                  className="w-full px-3 py-2.5 min-w-25 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 appearance-none cursor-pointer"
                   disabled={loading}
                 >
                   {HTTP_METHODS.map(m => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
+                    <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
                 <svg
@@ -197,7 +183,7 @@ export function RequestForm({
         </div>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-[48px]">
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-12">
         {showLeftScroll && (
           <Button
             onClick={() => scrollTabs('left')}
@@ -214,11 +200,11 @@ export function RequestForm({
           ref={tabsContainerRef}
           className="flex px-6 h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
           style={{
-            scrollbarWidth: 'none', // Firefox
-            msOverflowStyle: 'none', // IE/Edge
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
           }}
         >
-          {(['params', 'auth', 'headers', 'body', 'scripts', 'settings'] as RequestTab[]).map(tab => {
+          {(['params', 'auth', 'headers', 'body'] as RequestTab[]).map(tab => {
             let label = tab.charAt(0).toUpperCase() + tab.slice(1);
             if (tab === 'params' && paramsCount > 0) {
               label += ` (${paramsCount})`;
@@ -232,7 +218,7 @@ export function RequestForm({
                 onClick={() => setActiveTab(tab)}
                 variant="ghost"
                 size="sm"
-                className={`flex-shrink-0 px-4 py-3 rounded-none border-b-2 transition-colors ${
+                className={`shrink-0 px-4 py-3 rounded-none border-b-2 transition-colors ${
                   activeTab === tab
                     ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
                     : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -257,17 +243,35 @@ export function RequestForm({
         )}
       </div>
 
-      <div className="flex-1 overflow-auto p-6 bg-white dark:bg-gray-900">
-        {activeTab === 'params' && <ParamsEditor params={params} onParamsChange={onParamsChange} disabled={loading} />}
+      <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-white dark:bg-gray-900">
+        {activeTab === 'params' && (
+          <KeyValueEditor
+            items={params}
+            onItemsChange={onParamsChange}
+            delimiter="="
+            keyPlaceholder="Parameter"
+            valuePlaceholder="Value"
+            disabled={loading}
+          />
+        )}
 
-        {activeTab === 'auth' && <AuthEditor auth={auth} onAuthChange={onAuthChange} disabled={loading} />}
+        {activeTab === 'auth' && (
+          <AuthEditor auth={auth} onAuthChange={onAuthChange} disabled={loading} />
+        )}
 
         {activeTab === 'headers' && (
-          <HeadersEditor headers={headers} onHeadersChange={onHeadersChange} disabled={loading} />
+          <KeyValueEditor
+            items={headers}
+            onItemsChange={onHeadersChange}
+            delimiter=":"
+            keyPlaceholder="Header"
+            valuePlaceholder="Value"
+            disabled={loading}
+          />
         )}
 
         {activeTab === 'body' && (
-          <div className="h-full">
+          <div className="h-full min-h-50">
             <div className="mb-3 flex items-center gap-4">
               <label className="flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
                 <input type="radio" name="bodyType" value="json" defaultChecked />
@@ -327,19 +331,7 @@ export function RequestForm({
           </div>
         )}
 
-        {activeTab === 'scripts' && (
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            <p className="mb-4">Add pre-request and test scripts.</p>
-            <div className="text-gray-400 dark:text-gray-500">Coming soon...</div>
-          </div>
-        )}
 
-        {activeTab === 'settings' && (
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            <p className="mb-4">Configure request settings.</p>
-            <div className="text-gray-400 dark:text-gray-500">Coming soon...</div>
-          </div>
-        )}
       </div>
     </div>
   );

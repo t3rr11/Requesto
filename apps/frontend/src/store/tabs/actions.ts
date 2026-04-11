@@ -1,22 +1,20 @@
-import { Tab, TabRequest, ProxyResponse, StreamingResponse, HistoryItem } from '../../types';
+import type { Tab, TabRequest, HistoryItem } from './types';
+import type { ProxyResponse, StreamingResponse } from '../request/types';
+import { isTabDirty } from '../../helpers/tabs';
 import { API_BASE } from '../../helpers/api/config';
 
-type SetState = (partial: any) => void;
-type GetState = () => any;
+type SetState = (partial: Record<string, unknown> | ((state: Record<string, unknown>) => Record<string, unknown>)) => void;
+type GetState = () => Record<string, unknown>;
 
 let tabCounter = 0;
 
-const createNewTab = (overrides?: Partial<Tab>): Tab => {
+function createNewTab(overrides?: Partial<Tab>): Tab {
   tabCounter++;
   const now = Date.now();
-  
   return {
     id: `tab-${now}-${tabCounter}`,
     label: 'New Request',
-    request: {
-      method: 'GET',
-      url: '',
-    },
+    request: { method: 'GET', url: '' },
     response: null,
     isDirty: false,
     isLoading: false,
@@ -25,256 +23,146 @@ const createNewTab = (overrides?: Partial<Tab>): Tab => {
     lastAccessedAt: now,
     ...overrides,
   };
-};
+}
 
-const calculateDirtyState = (tab: Tab): boolean => {
-  // New unsaved tabs are dirty if they have a URL
-  if (!tab.savedRequestId) {
-    return tab.request.url.trim().length > 0;
-  }
-  
-  // Saved tabs are dirty if they differ from original
-  if (!tab.originalRequest) {
-    return false;
-  }
-  
-  // Normalize auth to prevent false positives from undefined vs { type: 'none' }
-  const normalizeAuth = (auth: any) => auth || { type: 'none' };
-  
-  const current = JSON.stringify({
-    method: tab.request.method,
-    url: tab.request.url,
-    headers: tab.request.headers || {},
-    body: tab.request.body || '',
-    auth: normalizeAuth((tab.request as any).auth),
-  });
-  
-  const original = JSON.stringify({
-    method: tab.originalRequest.method,
-    url: tab.originalRequest.url,
-    headers: tab.originalRequest.headers || {},
-    body: tab.originalRequest.body || '',
-    auth: normalizeAuth((tab.originalRequest as any).auth),
-  });
-  
-  return current !== original;
-};
-
-export const openNewTab = (set: SetState, _get: GetState): string => {
-  const newTab = createNewTab();
-  
-  set((state: any) => ({
-    tabs: {
-      ...state.tabs,
-      [newTab.id]: newTab,
-    },
-    tabOrder: [...state.tabOrder, newTab.id],
-    activeTabId: newTab.id,
+export function openNewTab(set: SetState, _get: GetState): string {
+  const tab = createNewTab();
+  set((state) => ({
+    tabs: { ...(state.tabs as Record<string, Tab>), [tab.id]: tab },
+    tabOrder: [...(state.tabOrder as string[]), tab.id],
+    activeTabId: tab.id,
   }));
-  
-  return newTab.id;
-};
+  return tab.id;
+}
 
-export const openRequestTab = (
+export function openRequestTab(
   set: SetState,
   get: GetState,
-  { savedRequestId, collectionId, request, label }: {
-    savedRequestId: string;
-    collectionId: string;
-    request: TabRequest;
-    label: string;
+  params: { savedRequestId: string; collectionId: string; request: TabRequest; label: string },
+): string {
+  const existing = getTabBySavedRequestId(get, params.savedRequestId);
+  if (existing) {
+    activateTab(set, get, existing.id);
+    return existing.id;
   }
-): string => {
-  // Check if tab already exists for this saved request
-  const existingTab = getTabBySavedRequestId(get, savedRequestId);
-  if (existingTab) {
-    activateTab(set, get, existingTab.id);
-    return existingTab.id;
-  }
-  
-  // Normalize auth field to prevent false dirty state
-  // If auth is undefined, set it to { type: 'none' } to match form defaults
+
   const normalizedRequest = {
-    ...request,
-    auth: request.auth || { type: 'none' as const },
+    ...params.request,
+    auth: params.request.auth || { type: 'none' as const },
   };
-  
-  // Create new tab with request data
-  const newTab = createNewTab({
-    label,
+
+  const tab = createNewTab({
+    label: params.label,
     request: { ...normalizedRequest },
-    savedRequestId,
-    collectionId,
-    originalRequest: { ...normalizedRequest }, // Store original for dirty detection
+    savedRequestId: params.savedRequestId,
+    collectionId: params.collectionId,
+    originalRequest: { ...normalizedRequest },
     isDirty: false,
   });
-  
-  set((state: any) => ({
-    tabs: {
-      ...state.tabs,
-      [newTab.id]: newTab,
-    },
-    tabOrder: [...state.tabOrder, newTab.id],
-    activeTabId: newTab.id,
-  }));
-  
-  return newTab.id;
-};
 
-export const activateTab = (set: SetState, get: GetState, tabId: string): void => {
-  const tab = get().tabs[tabId];
+  set((state) => ({
+    tabs: { ...(state.tabs as Record<string, Tab>), [tab.id]: tab },
+    tabOrder: [...(state.tabOrder as string[]), tab.id],
+    activeTabId: tab.id,
+  }));
+  return tab.id;
+}
+
+export function activateTab(set: SetState, get: GetState, tabId: string): void {
+  const tabs = get().tabs as Record<string, Tab>;
+  const tab = tabs[tabId];
   if (!tab) return;
-  
-  set((state: any) => ({
+
+  set((state) => ({
     tabs: {
-      ...state.tabs,
-      [tabId]: {
-        ...tab,
-        lastAccessedAt: Date.now(),
-      },
+      ...(state.tabs as Record<string, Tab>),
+      [tabId]: { ...tab, lastAccessedAt: Date.now() },
     },
     activeTabId: tabId,
   }));
-};
+}
 
-export const closeTab = (set: SetState, get: GetState, tabId: string): void => {
+export function closeTab(set: SetState, get: GetState, tabId: string): void {
   const state = get();
-  const { tabs, tabOrder, activeTabId } = state;
-  
-  // Don't close if it's the last tab - create a new empty tab instead
+  const tabs = state.tabs as Record<string, Tab>;
+  const tabOrder = state.tabOrder as string[];
+  const activeTabId = state.activeTabId as string | null;
+
   if (tabOrder.length === 1) {
-    const emptyTab = createNewTab();
-    set({
-      tabs: { [emptyTab.id]: emptyTab },
-      tabOrder: [emptyTab.id],
-      activeTabId: emptyTab.id,
-    });
+    const empty = createNewTab();
+    set({ tabs: { [empty.id]: empty }, tabOrder: [empty.id], activeTabId: empty.id });
     return;
   }
-  
-  // Remove tab
+
   const newTabs = { ...tabs };
   delete newTabs[tabId];
-  const newTabOrder = tabOrder.filter((id: string) => id !== tabId);
-  
-  // Determine new active tab if we're closing the active one
-  let newActiveTabId = activeTabId;
+  const newOrder = tabOrder.filter((id) => id !== tabId);
+
+  let newActiveId = activeTabId;
   if (activeTabId === tabId) {
-    const closedIndex = tabOrder.indexOf(tabId);
-    // Activate the tab to the right, or the one to the left if we're closing the rightmost
-    const nextIndex = closedIndex < tabOrder.length - 1 ? closedIndex + 1 : closedIndex - 1;
-    newActiveTabId = tabOrder[nextIndex];
+    const idx = tabOrder.indexOf(tabId);
+    const nextIdx = idx < tabOrder.length - 1 ? idx + 1 : idx - 1;
+    newActiveId = tabOrder[nextIdx];
   }
-  
-  set({
-    tabs: newTabs,
-    tabOrder: newTabOrder,
-    activeTabId: newActiveTabId,
-  });
-};
 
-export const updateTabRequest = (
-  set: SetState,
-  get: GetState,
-  tabId: string,
-  requestUpdate: Partial<TabRequest>
-): void => {
-  const state = get();
-  const tab = state.tabs[tabId];
+  set({ tabs: newTabs, tabOrder: newOrder, activeTabId: newActiveId });
+}
+
+export function updateTabRequest(
+  set: SetState, get: GetState, tabId: string, requestUpdate: Partial<TabRequest>,
+): void {
+  const tabs = get().tabs as Record<string, Tab>;
+  const tab = tabs[tabId];
   if (!tab) return;
-  
-  const updatedRequest = {
-    ...tab.request,
-    ...requestUpdate,
-  };
-  
-  const updatedTab = {
-    ...tab,
-    request: updatedRequest,
-    isDirty: calculateDirtyState({
-      ...tab,
-      request: updatedRequest,
-    }),
-  };
-  
-  set((state: any) => ({
-    tabs: {
-      ...state.tabs,
-      [tabId]: updatedTab,
-    },
+
+  const updatedRequest = { ...tab.request, ...requestUpdate };
+  const updatedTab: Tab = { ...tab, request: updatedRequest };
+  updatedTab.isDirty = isTabDirty(updatedTab);
+
+  set((state) => ({
+    tabs: { ...(state.tabs as Record<string, Tab>), [tabId]: updatedTab },
   }));
-};
+}
 
-export const setTabResponse = (
-  set: SetState,
-  tabId: string,
-  response: ProxyResponse | StreamingResponse | null
-): void => {
-  set((state: any) => {
-    const tab = state.tabs[tabId];
+export function setTabResponse(
+  set: SetState, tabId: string, response: ProxyResponse | StreamingResponse | null,
+): void {
+  set((state) => {
+    const tabs = state.tabs as Record<string, Tab>;
+    const tab = tabs[tabId];
     if (!tab) return state;
-    
-    return {
-      tabs: {
-        ...state.tabs,
-        [tabId]: {
-          ...tab,
-          response,
-          error: null, // Clear error on successful response
-        },
-      },
-    };
+    return { tabs: { ...tabs, [tabId]: { ...tab, response, error: null } } };
   });
-};
+}
 
-export const setTabLoading = (set: SetState, tabId: string, isLoading: boolean): void => {
-  set((state: any) => {
-    const tab = state.tabs[tabId];
+export function setTabLoading(set: SetState, tabId: string, isLoading: boolean): void {
+  set((state) => {
+    const tabs = state.tabs as Record<string, Tab>;
+    const tab = tabs[tabId];
     if (!tab) return state;
-    
-    return {
-      tabs: {
-        ...state.tabs,
-        [tabId]: {
-          ...tab,
-          isLoading,
-        },
-      },
-    };
+    return { tabs: { ...tabs, [tabId]: { ...tab, isLoading } } };
   });
-};
+}
 
-export const setTabError = (set: SetState, tabId: string, error: string | null): void => {
-  set((state: any) => {
-    const tab = state.tabs[tabId];
+export function setTabError(set: SetState, tabId: string, error: string | null): void {
+  set((state) => {
+    const tabs = state.tabs as Record<string, Tab>;
+    const tab = tabs[tabId];
     if (!tab) return state;
-    
-    return {
-      tabs: {
-        ...state.tabs,
-        [tabId]: {
-          ...tab,
-          error,
-          response: null, // Clear response on error
-        },
-      },
-    };
+    return { tabs: { ...tabs, [tabId]: { ...tab, error, response: null } } };
   });
-};
+}
 
-export const markTabAsSaved = (
-  set: SetState,
-  tabId: string,
-  savedRequestId: string,
-  collectionId: string
-): void => {
-  set((state: any) => {
-    const tab = state.tabs[tabId];
+export function markTabAsSaved(
+  set: SetState, tabId: string, savedRequestId: string, collectionId: string,
+): void {
+  set((state) => {
+    const tabs = state.tabs as Record<string, Tab>;
+    const tab = tabs[tabId];
     if (!tab) return state;
-    
     return {
       tabs: {
-        ...state.tabs,
+        ...tabs,
         [tabId]: {
           ...tab,
           savedRequestId,
@@ -285,74 +173,47 @@ export const markTabAsSaved = (
       },
     };
   });
-};
+}
 
-export const updateTabLabel = (set: SetState, tabId: string, label: string): void => {
-  set((state: any) => {
-    const tab = state.tabs[tabId];
+export function updateTabLabel(set: SetState, tabId: string, label: string): void {
+  set((state) => {
+    const tabs = state.tabs as Record<string, Tab>;
+    const tab = tabs[tabId];
     if (!tab) return state;
-    
-    return {
-      tabs: {
-        ...state.tabs,
-        [tabId]: {
-          ...tab,
-          label,
-        },
-      },
-    };
+    return { tabs: { ...tabs, [tabId]: { ...tab, label } } };
   });
-};
+}
 
-export const getTabBySavedRequestId = (get: GetState, savedRequestId: string): Tab | null => {
+export function getTabBySavedRequestId(get: GetState, savedRequestId: string): Tab | null {
+  const tabs = get().tabs as Record<string, Tab>;
+  return Object.values(tabs).find((t) => t.savedRequestId === savedRequestId) ?? null;
+}
+
+export function getActiveTab(get: GetState): Tab | null {
   const state = get();
-  const tab = Object.values(state.tabs).find(
-    (t: any) => t.savedRequestId === savedRequestId
-  );
-  return (tab as Tab) || null;
-};
+  const activeTabId = state.activeTabId as string | null;
+  if (!activeTabId) return null;
+  return (state.tabs as Record<string, Tab>)[activeTabId] ?? null;
+}
 
-export const getActiveTab = (get: GetState): Tab | null => {
-  const state = get();
-  if (!state.activeTabId) return null;
-  return state.tabs[state.activeTabId] || null;
-};
+export function closeAllTabs(set: SetState): void {
+  const empty = createNewTab();
+  set({ tabs: { [empty.id]: empty }, tabOrder: [empty.id], activeTabId: empty.id });
+}
 
-export const closeAllTabs = (set: SetState): void => {
-  const emptyTab = createNewTab();
-  set({
-    tabs: { [emptyTab.id]: emptyTab },
-    tabOrder: [emptyTab.id],
-    activeTabId: emptyTab.id,
-  });
-};
-
-export const reorderTabs = (set: SetState, newOrder: string[]): void => {
+export function reorderTabs(set: SetState, newOrder: string[]): void {
   set({ tabOrder: newOrder });
-};
+}
 
-/**
- * Get request history
- */
-export const getHistory = async (): Promise<HistoryItem[]> => {
-  const response = await fetch(`${API_BASE}/history`);
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch history');
-  }
-  
-  return response.json();
-};
+// ── History API helpers ──────────────────────────────────────────────────────
 
-/**
- * Clear all history
- */
-export const clearHistory = async (): Promise<void> => {
-  const response = await fetch(`${API_BASE}/history`, {
-    method: 'DELETE',
-  });
+export async function getHistory(): Promise<HistoryItem[]> {
+  const res = await fetch(`${API_BASE}/history`);
+  if (!res.ok) throw new Error('Failed to fetch history');
+  return res.json();
+}
 
-  if (!response.ok) {
-    throw new Error('Failed to clear history');
-  }
-};
+export async function clearHistory(): Promise<void> {
+  const res = await fetch(`${API_BASE}/history`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to clear history');
+}

@@ -1,41 +1,41 @@
 import { useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router';
+import { HashRouter, Routes, Route } from 'react-router';
+import { useCollectionsStore } from './store/collections/store';
+import { useEnvironmentStore } from './store/environments/store';
+import { useThemeStore } from './store/theme/store';
+import { useAlertStore } from './store/alert/store';
 import { Header } from './components/Header';
 import { AlertDialog } from './components/AlertDialog';
-import { useAlertStore } from './store/alert';
-import { useCollectionsStore } from './store/collections';
-import { useEnvironmentStore } from './store/environments';
-import { RequestPage } from './pages/RequestsPage';
-import { EnvironmentsPage } from './pages/EnvironmentsPage';
-import { OAuthPage } from './pages/OAuthPage';
+import { RequestsPage } from './pages/RequestsPage';
 import { OAuthCallback } from './components/OAuthCallback';
 
 function App() {
-  const { isOpen: isAlertOpen, title: alertTitle, message: alertMessage, variant: alertVariant, closeAlert } = useAlertStore();
   const { loadCollections } = useCollectionsStore();
   const { loadEnvironments } = useEnvironmentStore();
+  const { isDarkMode } = useThemeStore();
+  const { isOpen: alertOpen, title: alertTitle, message: alertMessage, variant: alertVariant, closeAlert } = useAlertStore();
 
-  // Load initial data
   useEffect(() => {
     loadCollections();
     loadEnvironments();
   }, [loadCollections, loadEnvironments]);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
+
   return (
     <HashRouter>
       <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
         <Header />
-        
-        <Routes>
-          <Route path="/" element={<Navigate to="/requests" replace />} />
-          <Route path="/requests" element={<RequestPage />} />
-          <Route path="/environments" element={<EnvironmentsPage />} />
-          <Route path="/oauth" element={<OAuthPage />} />
-          <Route path="/oauth/callback" element={<OAuthCallback />} />
-        </Routes>
-        
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <Routes>
+            <Route path="/" element={<RequestsPage />} />
+            <Route path="/oauth/callback" element={<OAuthCallback />} />
+          </Routes>
+        </div>
         <AlertDialog
-          isOpen={isAlertOpen}
+          isOpen={alertOpen}
           onClose={closeAlert}
           title={alertTitle}
           message={alertMessage}

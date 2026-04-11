@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useEnvironmentStore } from '../store/environments';
-import { extractVariableNames } from '../helpers/environmentHelpers';
+import { useEnvironmentStore } from '../store/environments/store';
+import { extractVariableNames } from '../helpers/environment';
 import { useVariableDetection } from '../hooks/useVariableDetection';
 import { VariableHighlight } from './variable-input/VariableHighlight';
 import { VariableSuggestions } from './variable-input/VariableSuggestions';
@@ -16,39 +16,50 @@ interface VariableAwareInputProps {
   type?: string;
 }
 
-interface TooltipState {
+type TooltipState = {
   show: boolean;
   x: number;
   y: number;
   variableKey: string;
   variableValue: string;
   isSecret: boolean;
-}
+};
 
-export function VariableAwareInput({ value, onChange, placeholder, disabled, className, type = 'text' }: VariableAwareInputProps) {
-  const [tooltip, setTooltip] = useState<TooltipState>({
-    show: false,
-    x: 0,
-    y: 0,
-    variableKey: '',
-    variableValue: '',
-    isSecret: false,
-  });
+const emptyTooltip: TooltipState = {
+  show: false,
+  x: 0,
+  y: 0,
+  variableKey: '',
+  variableValue: '',
+  isSecret: false,
+};
+
+export function VariableAwareInput({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  className,
+  type = 'text',
+}: VariableAwareInputProps) {
+  const [tooltip, setTooltip] = useState<TooltipState>(emptyTooltip);
   const [manualSuggestions, setManualSuggestions] = useState(false);
-  const [clickedVariableStart, setClickedVariableStart] = useState<number>(-1);
+  const [clickedVariableStart, setClickedVariableStart] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const { environmentsData } = useEnvironmentStore();
 
-  // Get active environment and its variables
-  const activeEnvironment = environmentsData.environments.find(e => e.id === environmentsData.activeEnvironmentId);
+  const activeEnvironment = environmentsData.environments.find(
+    e => e.id === environmentsData.activeEnvironmentId,
+  );
   const enabledVariables = activeEnvironment?.variables.filter(v => v.enabled) || [];
 
-  // Use custom hook for variable detection
-  const { showSuggestions: autoShowSuggestions, currentVariable } = useVariableDetection(value, inputRef);
+  const { showSuggestions: autoShowSuggestions, currentVariable } = useVariableDetection(
+    value,
+    inputRef,
+  );
   const showSuggestions = autoShowSuggestions || manualSuggestions;
 
-  // Click outside to close manual suggestions
   useEffect(() => {
     if (!manualSuggestions) return;
 
@@ -63,7 +74,6 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [manualSuggestions]);
 
-  // Extract and validate variables
   const usedVariables = extractVariableNames(value);
   const definedVariableKeys = new Set(enabledVariables.map(v => v.key));
   const hasUndefinedVariables = usedVariables.some(v => !definedVariableKeys.has(v));
@@ -78,21 +88,14 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
     if (e.key === 'Backspace' && inputRef.current) {
       const position = inputRef.current.selectionStart || 0;
       const textBeforeCursor = value.substring(0, position);
-      
-      // Check if cursor is right after a variable (}}
+
       if (textBeforeCursor.endsWith('}}')) {
-        // Find the start of this variable
         const lastOpenBrace = textBeforeCursor.lastIndexOf('{{');
-        
         if (lastOpenBrace !== -1) {
           e.preventDefault();
-          
-          // Delete the entire variable
           const before = value.substring(0, lastOpenBrace);
           const after = value.substring(position);
           onChange(before + after);
-          
-          // Set cursor position after deletion
           setTimeout(() => {
             inputRef.current?.setSelectionRange(lastOpenBrace, lastOpenBrace);
           }, 0);
@@ -101,40 +104,31 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
     }
   };
 
-  const insertVariable = (varKey: string) => {
+  const handleInsertVariable = (varKey: string) => {
     if (!inputRef.current) return;
 
     const input = inputRef.current;
     const position = input.selectionStart || 0;
     const textBeforeCursor = value.substring(0, position);
-
-    // Use clicked variable position if available, otherwise search from cursor
-    let lastOpenBrace = clickedVariableStart >= 0 ? clickedVariableStart : textBeforeCursor.lastIndexOf('{{');
+    const lastOpenBrace =
+      clickedVariableStart >= 0 ? clickedVariableStart : textBeforeCursor.lastIndexOf('{{');
 
     if (lastOpenBrace !== -1) {
-      // Find the end of the variable to replace
       const textFromStart = value.substring(lastOpenBrace);
       const closingBraces = textFromStart.indexOf('}}');
-      
-      let endPosition = position;
-      if (closingBraces !== -1) {
-        // We found the closing braces, include them for replacement
-        endPosition = lastOpenBrace + closingBraces + 2;
-      }
-      
+      const endPosition = closingBraces !== -1 ? lastOpenBrace + closingBraces + 2 : position;
+
       const before = value.substring(0, lastOpenBrace);
       const after = value.substring(endPosition);
-      const newValue = `${before}{{${varKey}}}${after}`;
-      onChange(newValue);
+      onChange(`${before}{{${varKey}}}${after}`);
 
-      // Set cursor after inserted variable
       setTimeout(() => {
-        const newPosition = lastOpenBrace + varKey.length + 4; // {{ + varKey + }}
+        const newPosition = lastOpenBrace + varKey.length + 4;
         input.setSelectionRange(newPosition, newPosition);
         input.focus();
       }, 0);
     }
-    
+
     setManualSuggestions(false);
     setClickedVariableStart(-1);
   };
@@ -155,50 +149,33 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
     }
   };
 
-  const handleVariableLeave = () => {
-    setTooltip({
-      show: false,
-      x: 0,
-      y: 0,
-      variableKey: '',
-      variableValue: '',
-      isSecret: false,
-    });
-  };
+  const handleVariableLeave = () => setTooltip(emptyTooltip);
 
   const handleVariableClick = (varKey: string, clickIndex: number) => {
     if (!inputRef.current) return;
-    
-    // Find the specific clicked variable instance
+
     const regex = /\{\{([^}]+)\}\}/g;
     let match;
     let instanceCount = 0;
     let targetStart = -1;
     let targetCursor = -1;
-    
+
     while ((match = regex.exec(value)) !== null) {
       if (match[1].trim() === varKey) {
         if (instanceCount === clickIndex) {
-          targetStart = match.index; // Store the start position
-          targetCursor = match.index + 2; // Position cursor after {{
+          targetStart = match.index;
+          targetCursor = match.index + 2;
           break;
         }
         instanceCount++;
       }
     }
-    
+
     if (targetCursor !== -1) {
-      // Store the start position for replacement
       setClickedVariableStart(targetStart);
-      
-      // Focus input and position cursor
       inputRef.current.focus();
       inputRef.current.setSelectionRange(targetCursor, targetCursor);
-      
-      // Show suggestions
       setManualSuggestions(true);
-      
-      // Hide tooltip
       handleVariableLeave();
     }
   };
@@ -243,7 +220,7 @@ export function VariableAwareInput({ value, onChange, placeholder, disabled, cla
         show={showSuggestions}
         variables={enabledVariables}
         currentVariable={currentVariable}
-        onInsert={insertVariable}
+        onInsert={handleInsertVariable}
       />
     </div>
   );

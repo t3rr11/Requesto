@@ -1,51 +1,57 @@
-import { forwardRef, useImperativeHandle, useEffect, useState, useMemo, useRef } from 'react';
-import { flushSync } from 'react-dom';
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button } from './Button';
-import { Dialog } from './Dialog';
-import { RequestBreadcrumb } from './RequestBreadcrumb';
+import { Save, Play, AlertTriangle } from 'lucide-react';
+import { useTabsStore } from '../store/tabs/store';
+import { useCollectionsStore } from '../store/collections/store';
+import { useEnvironmentStore } from '../store/environments/store';
+import { useRequestStore } from '../store/request/store';
+import { useUIStore } from '../store/ui/store';
+import { useAlertStore } from '../store/alert/store';
+import { useThemeStore } from '../store/theme/store';
 import { RequestForm, requestFormSchema, type RequestFormData } from '../forms/RequestForm';
-import { SaveRequestForm } from '../forms/SaveRequestForm';
 import { ResponsePanel } from './ResponsePanel';
-import { useRequestStore } from '../store/request';
-import { useCollectionsStore } from '../store/collections';
-import { useAlertStore } from '../store/alert';
-import { useEnvironmentStore } from '../store/environments';
-import { substituteInRequest, getUndefinedVariables } from '../helpers/environmentHelpers';
-import { useUIStore } from '../store/ui';
-import { useTabsStore } from '../store/tabs';
+import { RequestBreadcrumb } from './RequestBreadcrumb';
+import { SaveRequestForm } from '../forms/SaveRequestForm';
+import { Dialog } from './Dialog';
+import { Button } from './Button';
 import { useDialog } from '../hooks/useDialog';
+import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
+import { extractParamsFromUrl } from '../helpers/url';
+import type { AuthConfig, StreamingResponse } from '../store/request/types';
 
-export interface RequestResponseViewRef {
-  loadRequest: (item: { method: string; url: string; headers?: Record<string, string>; body?: string }) => void;
-  getCurrentRequest: () => { method: string; url: string; headers?: Record<string, string>; body?: string } | null;
-  setSavedRequestId: (id: string | undefined) => void;
-  clearRequest: () => void;
+export interface RequestResponseViewHandle {
+  sendCurrentRequest: () => void;
+  saveCurrentRequest: () => void;
 }
 
-const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function RequestResponseView(_, ref) {
-  const { getActiveTab, updateTabRequest, setTabResponse, setTabLoading, setTabError, markTabAsSaved, activeTabId } =
-    useTabsStore();
+function buildUrlWithParams(baseUrl: string, params: RequestFormData['params']): string {
+  const enabledParams = params.filter(p => p.enabled && p.key.trim());
+  if (enabledParams.length === 0) return baseUrl;
 
-  const { addConsoleLog, sendRequest, sendStreamingRequest, isStreamingRequest } = useRequestStore();
-  const { collections, updateRequest: updateCollectionRequest } = useCollectionsStore();
-  const { showAlert } = useAlertStore();
+  const queryString = enabledParams.map(p => `${p.key}=${p.value}`).join('&');
+  return baseUrl.includes('?') ? `${baseUrl}&${queryString}` : `${baseUrl}?${queryString}`;
+}
+
+export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props, ref) => {
+  const { getActiveTab, updateTabRequest, setTabResponse, setTabLoading, setTabError, markTabAsSaved } =
+    useTabsStore();
+  const { updateRequest } = useCollectionsStore();
   const { environmentsData } = useEnvironmentStore();
-  const { requestPanelWidth, setRequestPanelWidth, requestPanelHeight, setRequestPanelHeight, panelLayout } = useUIStore();
+  const { sendRequest, sendStreamingRequest, isStreamingRequest, addConsoleLog } = useRequestStore();
+  const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } =
+    useUIStore();
+  const { showAlert } = useAlertStore();
+  const { isDarkMode } = useThemeStore();
+
+  const saveDialog = useDialog();
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const saveRequestDialog = useDialog();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const activeTab = getActiveTab();
-  
-  // Get the active environment
-  const activeEnvironment = useMemo(() => {
-    if (!environmentsData.activeEnvironmentId) return null;
-    return environmentsData.environments.find(e => e.id === environmentsData.activeEnvironmentId) || null;
-  }, [environmentsData]);
 
-  const { control, watch, setValue, getValues, reset } = useForm<RequestFormData>({
+  const form = useForm<RequestFormData>({
     resolver: zodResolver(requestFormSchema),
     defaultValues: {
       method: 'GET',
@@ -54,489 +60,394 @@ const RequestResponseView = forwardRef<RequestResponseViewRef, {}>(function Requ
       params: [{ id: '1', key: '', value: '', enabled: true }],
       body: '',
       auth: { type: 'none' },
-      savedRequestId: undefined,
     },
   });
 
-  const formValues = watch();
-  const savedRequestId = watch('savedRequestId');
-  const isInitialLoadRef = useRef(false);
+  const { control, watch, setValue, reset, getValues } = form;
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const urlValue = watch('url');
+  const headers = watch('headers');
+  const params = watch('params');
+  const auth = watch('auth') as AuthConfig;
+
+  // Sync form with active tab
+  useEffect(() => {
+    if (!activeTab) return;
+    const tabReq = activeTab.request;
+    const { baseUrl, params: urlParams } = extractParamsFromUrl(tabReq.url || '');
+
+    reset({
+      method: tabReq.method || 'GET',
+      url: baseUrl,
+      headers: tabReq.headers && Object.keys(tabReq.headers).length > 0
+        ? Object.entries(tabReq.headers).map(([key, value]) => ({
+            id: `${key}-${Date.now()}`,
+            key,
+            value,
+            enabled: true,
+          }))
+        : [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
+      params:
+        urlParams.length > 0
+          ? urlParams.map(p => ({
+              id: `${p.key}-${Date.now()}`,
+              key: p.key,
+              value: p.value,
+              enabled: true,
+            }))
+          : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }],
+      body: tabReq.body || '',
+      auth: tabReq.auth || { type: 'none' },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab?.id]);
+
+  // Update tab request when form changes
+  useEffect(() => {
+    if (!activeTab) return;
+    const subscription = watch(data => {
+      const fullUrl = buildUrlWithParams(data.url || '', (data.params || []) as RequestFormData['params']);
+      const headersObj: Record<string, string> = {};
+      ((data.headers || []) as RequestFormData['headers']).forEach(h => {
+        if (h && h.enabled && h.key?.trim()) {
+          headersObj[h.key] = h.value || '';
+        }
+      });
+
+      updateTabRequest(activeTab.id, {
+        method: data.method || 'GET',
+        url: fullUrl,
+        headers: headersObj,
+        body: data.body,
+        auth: data.auth as AuthConfig,
+      });
+    });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab?.id, updateTabRequest]);
+
+  const handleSend = useCallback(async () => {
+    if (!activeTab) return;
+
+    const formData = getValues();
+    const fullUrl = buildUrlWithParams(formData.url, formData.params);
+    const headersObj: Record<string, string> = {};
+    formData.headers.forEach(h => {
+      if (h.enabled && h.key.trim()) {
+        headersObj[h.key] = h.value;
+      }
+    });
+
+    const rawRequest = {
+      method: formData.method,
+      url: fullUrl,
+      headers: headersObj,
+      body: formData.body || undefined,
+      auth: formData.auth as AuthConfig,
+    };
+
+    // Get active environment and substitute variables
+    const activeEnv = environmentsData.environments.find(e => e.id === environmentsData.activeEnvironmentId);
+    const request = activeEnv ? substituteInRequest(rawRequest, activeEnv) : rawRequest;
+
+    // Warn about undefined variables
+    if (activeEnv) {
+      const undefinedVars = getUndefinedVariables(rawRequest, activeEnv);
+      if (undefinedVars.length > 0) {
+        showAlert(
+          'Warning',
+          `Undefined variables: ${undefinedVars.join(', ')}`,
+          'warning',
+        );
+      }
+    }
+
+    // Generate a shared ID to link request/response/error logs together
+    const requestId = crypto.randomUUID();
+
+    // Add console log
+    addConsoleLog({
+      id: `req-${Date.now()}`,
+      requestId,
+      timestamp: Date.now(),
+      type: 'request',
+      method: request.method,
+      url: request.url,
+      requestData: request,
+    });
+
+    setTabLoading(activeTab.id, true);
+    setTabError(activeTab.id, null);
+
+    try {
+      if (isStreamingRequest(request)) {
+        const streamResponse = await sendStreamingRequest(request, (partial: StreamingResponse) => {
+          setTabResponse(activeTab.id, partial);
+        });
+        setTabResponse(activeTab.id, streamResponse);
+        addConsoleLog({
+          id: `res-${Date.now()}`,
+          requestId,
+          timestamp: Date.now(),
+          type: 'response',
+          method: request.method,
+          url: request.url,
+          status: streamResponse.status,
+          duration: streamResponse.duration,
+          responseData: streamResponse,
+        });
+      } else {
+        const response = await sendRequest(request);
+        setTabResponse(activeTab.id, response);
+        addConsoleLog({
+          id: `res-${Date.now()}`,
+          requestId,
+          timestamp: Date.now(),
+          type: 'response',
+          method: request.method,
+          url: request.url,
+          status: response.status,
+          duration: response.duration,
+          responseData: response,
+        });
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Request failed';
+      setTabError(activeTab.id, errorMsg);
+      addConsoleLog({
+        id: `err-${Date.now()}`,
+        requestId,
+        timestamp: Date.now(),
+        type: 'error',
+        method: request.method,
+        url: request.url,
+        message: errorMsg,
+      });
+    } finally {
+      setTabLoading(activeTab.id, false);
+    }
+  }, [
+    activeTab,
+    getValues,
+    environmentsData,
+    sendRequest,
+    sendStreamingRequest,
+    isStreamingRequest,
+    setTabLoading,
+    setTabError,
+    setTabResponse,
+    addConsoleLog,
+    showAlert,
+  ]);
+
+  const handleSave = useCallback(async () => {
+    if (!activeTab) return;
+
+    if (activeTab.savedRequestId && activeTab.collectionId) {
+      // Update existing saved request
+      const formData = getValues();
+      const fullUrl = buildUrlWithParams(formData.url, formData.params);
+      const headersObj: Record<string, string> = {};
+      formData.headers.forEach(h => {
+        if (h.enabled && h.key.trim()) {
+          headersObj[h.key] = h.value;
+        }
+      });
+
+      try {
+        await updateRequest(activeTab.collectionId, activeTab.savedRequestId, {
+          method: formData.method,
+          url: fullUrl,
+          headers: headersObj,
+          body: formData.body || undefined,
+          auth: formData.auth as AuthConfig,
+        });
+        markTabAsSaved(activeTab.id, activeTab.savedRequestId, activeTab.collectionId);
+      } catch {
+        showAlert('Failed to save request', 'error');
+      }
+    } else {
+      saveDialog.open();
+    }
+  }, [activeTab, getValues, updateRequest, markTabAsSaved, showAlert, saveDialog]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      sendCurrentRequest: handleSend,
+      saveCurrentRequest: handleSave,
+    }),
+    [handleSend, handleSave],
+  );
+
+  // Keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleSend();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (activeTab?.isDirty && !activeTab?.isLoading) {
+          handleSave();
+        }
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleSend, handleSave, activeTab]);
+
+  // Resize handling
+  const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !containerRef.current) return;
+    if (!isResizing) return;
 
-      const containerRect = containerRef.current.getBoundingClientRect();
-      
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
       if (panelLayout === 'horizontal') {
-        const newWidth = e.clientX - containerRect.left;
-        const clampedWidth = Math.max(300, Math.min(newWidth, containerRect.width - 300));
+        const newWidth = e.clientX - rect.left;
+        const clampedWidth = Math.max(300, Math.min(newWidth, rect.width - 300));
         setRequestPanelWidth(clampedWidth);
       } else {
-        const newHeight = e.clientY - containerRect.top;
-        const clampedHeight = Math.max(200, Math.min(newHeight, containerRect.height - 200));
+        const newHeight = e.clientY - rect.top;
+        const clampedHeight = Math.max(200, Math.min(newHeight, rect.height - 200));
         setRequestPanelHeight(clampedHeight);
       }
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
+    const handleMouseUp = () => setIsResizing(false);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, setRequestPanelWidth, setRequestPanelHeight, panelLayout]);
+  }, [isResizing, panelLayout, setRequestPanelWidth, setRequestPanelHeight]);
 
-  const hasChanges = useMemo(() => {
-    return activeTab?.isDirty || false;
-  }, [activeTab]);
-
+  // Cleanup abort controller
   useEffect(() => {
-    if (!activeTab) return;
-
-    isInitialLoadRef.current = true;
-
-    const loadedHeaders =
-      activeTab.request.headers && Object.keys(activeTab.request.headers).length > 0
-        ? Object.entries(activeTab.request.headers).map(([key, value], index) => ({
-            id: Date.now().toString() + index,
-            key,
-            value,
-            enabled: true,
-          }))
-        : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
-
-    const { baseUrl, params: extractedParams } = extractParamsFromUrl(activeTab.request.url);
-    const loadedParams = extractedParams.length > 0
-      ? extractedParams.map((p, index) => ({
-          id: (Date.now() + index + 1000).toString(),
-          key: p.key,
-          value: p.value,
-          enabled: true,
-        }))
-      : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }];
-
-    const formData = {
-      method: activeTab.request.method,
-      url: baseUrl, // Use base URL without query params
-      headers: loadedHeaders,
-      params: loadedParams,
-      body: activeTab.request.body || '',
-      auth: (activeTab.request as any).auth || { type: 'none' as const },
-      savedRequestId: activeTab.savedRequestId,
+    return () => {
+      abortControllerRef.current?.abort();
     };
+  }, []);
 
-    reset(formData);
-    
-    // Clear the initial load flag after a short delay to allow the form sync to run once
-    setTimeout(() => {
-      isInitialLoadRef.current = false;
-    }, 0);
-  }, [activeTab?.id, reset]); // Only reload when tab ID changes
+  const handleUrlChange = (newUrl: string) => {
+    setValue('url', newUrl, { shouldDirty: true });
+  };
 
-/**
- * Extract query parameters from URL and return both the base URL and params
- */
-function extractParamsFromUrl(url: string): { baseUrl: string; params: { key: string; value: string }[] } {
-  try {
-    // Check if URL has a protocol, if not, try to parse as a relative URL
-    let urlObj: URL;
-    if (url.match(/^https?:\/\//i)) {
-      urlObj = new URL(url);
-    } else {
-      // For relative URLs or URLs without protocol, add a dummy base
-      urlObj = new URL(url, 'http://dummy');
-    }
+  const handleHeadersChange = (newHeaders: RequestFormData['headers']) => {
+    setValue('headers', newHeaders, { shouldDirty: true });
+  };
 
-    const params: { key: string; value: string }[] = [];
-    urlObj.searchParams.forEach((value, key) => {
-      params.push({ key, value });
-    });
+  const handleParamsChange = (newParams: RequestFormData['params']) => {
+    setValue('params', newParams, { shouldDirty: true });
+  };
 
-    // Build base URL without query params
-    let baseUrl = url.split('?')[0];
-    
-    return { baseUrl, params };
-  } catch {
-    // If URL parsing fails, return as-is
-    return { baseUrl: url, params: [] };
+  const handleAuthChange = (newAuth: AuthConfig) => {
+    setValue('auth', newAuth as RequestFormData['auth'], { shouldDirty: true });
+  };
+
+  if (!activeTab) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
+        <div className="text-center">
+          <Play className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p className="text-lg">Create or select a request to get started</p>
+          <p className="text-sm mt-2">Press Ctrl+N to create a new tab</p>
+        </div>
+      </div>
+    );
   }
-}
 
-/**
- * Build URL from base URL and params
- */
-function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value: string; enabled: boolean }>): string {
-  const enabledParams = params.filter(p => p.enabled && p.key.trim());
-  if (enabledParams.length === 0) return baseUrl;
-
-  const queryString = enabledParams.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
-  const separator = baseUrl.includes('?') ? '&' : '?';
-  return `${baseUrl}${separator}${queryString}`;
-}
-
-  // Sync form changes back to active tab
-  useEffect(() => {
-    if (!activeTab || !activeTabId) return;
-    
-    // Skip the first sync after loading a tab to prevent false dirty state
-    if (isInitialLoadRef.current) return;
-
-    // Build headers object
-    const requestHeaders: Record<string, string> = {};
-    formValues.headers.forEach(h => {
-      if (h.enabled && h.key.trim()) {
-        requestHeaders[h.key.trim()] = h.value;
-      }
-    });
-
-    // Build URL with params
-    const fullUrl = buildUrlWithParams(formValues.url.trim(), formValues.params);
-
-    // Update the tab's request data
-    updateTabRequest(activeTabId, {
-      method: formValues.method,
-      url: fullUrl,
-      headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
-      body: formValues.body.trim() || undefined,
-      auth: formValues.auth,
-    } as any);
-  }, [formValues.method, formValues.url, formValues.headers, formValues.params, formValues.body, formValues.auth, activeTabId, updateTabRequest]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + S to save request
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        const currentUrl = getValues('url');
-        if (hasChanges && !activeTab?.isLoading && currentUrl.trim()) {
-          handleSave();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab?.isLoading, getValues, hasChanges]);
-
-  const handleSend = async () => {
-    if (!activeTab || !activeTabId) return;
-
-    const values = getValues();
-    if (!values.url.trim()) {
-      return;
-    }
-
-    // Build headers object
-    const requestHeaders: Record<string, string> = {};
-    values.headers.forEach(h => {
-      if (h.enabled && h.key.trim()) {
-        requestHeaders[h.key.trim()] = h.value;
-      }
-    });
-
-    // Build URL with params
-    const fullUrl = buildUrlWithParams(values.url.trim(), values.params);
-
-    const requestData = {
-      method: values.method,
-      url: fullUrl,
-      headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
-      body: values.body.trim() || undefined,
-      auth: values.auth,
-    };
-
-    // Check for undefined variables
-    const undefinedVars = getUndefinedVariables(requestData, activeEnvironment);
-    if (undefinedVars.length > 0) {
-      const confirmed = confirm(
-        `The following variables are not defined in the active environment:\n\n${undefinedVars.map(v => `• {{${v}}}`).join('\n')}\n\nDo you want to send the request anyway?`
-      );
-      if (!confirmed) return;
-    }
-
-    // Substitute environment variables
-    const substitutedRequest = substituteInRequest(requestData, activeEnvironment);
-
-    setTabLoading(activeTabId, true);
-    setTabError(activeTabId, null);
-
-    const startTime = Date.now();
-    addConsoleLog({
-      id: Date.now().toString(),
-      timestamp: startTime,
-      type: 'request',
-      method: substitutedRequest.method,
-      url: substitutedRequest.url,
-      requestData: substitutedRequest,
-    });
-
-    try {
-      // Check if this is a streaming request
-      if (isStreamingRequest(substitutedRequest)) {
-        // Handle streaming separately with progressive updates
-        await sendStreamingRequest(substitutedRequest, (streamResponse) => {
-          // Use flushSync to force immediate render, bypassing React 18's automatic batching
-          flushSync(() => {
-            setTabResponse(activeTabId, streamResponse);
-          });
-        });
-        
-        const duration = Date.now() - startTime;
-        const finalResponse = getActiveTab()?.response;
-        
-        if (finalResponse) {
-          addConsoleLog({
-            id: (Date.now() + 1).toString(),
-            timestamp: Date.now(),
-            type: 'response',
-            method: substitutedRequest.method,
-            url: substitutedRequest.url,
-            status: finalResponse.status,
-            duration,
-            requestData: substitutedRequest,
-            responseData: finalResponse,
-          });
-        }
-      } else {
-        // Regular non-streaming request
-        const response = await sendRequest(substitutedRequest);
-        const duration = Date.now() - startTime;
-
-        setTabResponse(activeTabId, response);
-        addConsoleLog({
-          id: (Date.now() + 1).toString(),
-          timestamp: Date.now(),
-          type: 'response',
-          method: substitutedRequest.method,
-          url: substitutedRequest.url,
-          status: response.status,
-          duration,
-          requestData: substitutedRequest,
-          responseData: response,
-        });
-      }
-    } catch (error: any) {
-      setTabError(activeTabId, error.message || 'Failed to send request');
-      addConsoleLog({
-        id: (Date.now() + 1).toString(),
-        timestamp: Date.now(),
-        type: 'error',
-        message: error.message || 'Failed to send request',
-        method: substitutedRequest.method,
-        url: substitutedRequest.url,
-        requestData: substitutedRequest,
-      });
-    } finally {
-      setTabLoading(activeTabId, false);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!activeTab || !activeTabId) return;
-
-    const values = getValues();
-    if (!values.url.trim()) return;
-
-    // Build headers object
-    const requestHeaders: Record<string, string> = {};
-    values.headers.forEach(h => {
-      if (h.enabled && h.key.trim()) {
-        requestHeaders[h.key.trim()] = h.value;
-      }
-    });
-
-    // Build URL with params
-    const fullUrl = buildUrlWithParams(values.url.trim(), values.params);
-
-    const requestData = {
-      method: values.method,
-      url: fullUrl,
-      headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
-      body: values.body.trim() || undefined,
-      auth: values.auth,
-    };
-
-    // If no savedRequestId, open save dialog to create new request
-    if (!values.savedRequestId) {
-      saveRequestDialog.open();
-      return;
-    }
-
-    const collection = collections.find(c => c.requests.some(r => r.id === values.savedRequestId));
-
-    // If collection not found (request was deleted), treat as new request
-    if (!collection) {
-      setValue('savedRequestId', undefined);
-      saveRequestDialog.open();
-      return;
-    }
-
-    try {
-      await updateCollectionRequest(collection.id, values.savedRequestId!, {
-        method: requestData.method,
-        url: requestData.url,
-        headers: requestData.headers,
-        body: requestData.body,
-        auth: requestData.auth,
-      });
-
-      markTabAsSaved(activeTabId, values.savedRequestId!, collection.id);
-
-      setValue('savedRequestId', values.savedRequestId);
-    } catch (error) {
-      showAlert('Update Failed', 'Failed to update the request. Please try again.', 'error');
-    }
-  };
-
-  useImperativeHandle(
-    ref,
-    () => ({
-      loadRequest: (item: { method: string; url: string; headers?: Record<string, string>; body?: string }) => {
-        const loadedHeaders =
-          item.headers && Object.keys(item.headers).length > 0
-            ? Object.entries(item.headers).map(([key, value], index) => ({
-                id: Date.now().toString() + index,
-                key,
-                value,
-                enabled: true,
-              }))
-            : [{ id: Date.now().toString(), key: '', value: '', enabled: true }];
-
-        // Extract params from URL if present
-        const { baseUrl, params: extractedParams } = extractParamsFromUrl(item.url);
-        const loadedParams = extractedParams.length > 0
-          ? extractedParams.map((p, index) => ({
-              id: (Date.now() + index + 1000).toString(),
-              key: p.key,
-              value: p.value,
-              enabled: true,
-            }))
-          : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }];
-
-        const formData = {
-          method: item.method,
-          url: baseUrl, // Use base URL without query params
-          headers: loadedHeaders,
-          params: loadedParams,
-          body: item.body || '',
-          auth: (item as any).auth || { type: 'none' as const },
-          savedRequestId: undefined,
-        };
-
-        reset(formData);
-      },
-      getCurrentRequest: () => {
-        const values = getValues();
-        if (!values.url.trim()) {
-          return null;
-        }
-
-        const requestHeaders: Record<string, string> = {};
-        values.headers.forEach(h => {
-          if (h.enabled && h.key.trim()) {
-            requestHeaders[h.key] = h.value;
-          }
-        });
-
-        // Build URL with params
-        const fullUrl = buildUrlWithParams(values.url.trim(), values.params);
-
-        return {
-          method: values.method,
-          url: fullUrl,
-          headers: Object.keys(requestHeaders).length > 0 ? requestHeaders : undefined,
-          body: values.body.trim() || undefined,
-        };
-      },
-      setSavedRequestId: (id: string | undefined) => {
-        setValue('savedRequestId', id);
-      },
-      clearRequest: () => {
-        if (!activeTab || !activeTabId) return;
-
-        const formData = {
-          method: 'GET' as const,
-          url: '',
-          headers: [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
-          params: [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }],
-          body: '',
-          auth: { type: 'none' as const },
-          savedRequestId: undefined,
-        };
-        reset(formData);
-        setTabResponse(activeTabId, null);
-        setTabError(activeTabId, null);
-      },
-    }),
-    [getValues, reset, setValue, setTabResponse, setTabError, activeTab, activeTabId]
-  );
+  const isHorizontal = panelLayout === 'horizontal';
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-gray-50">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between h-14 flex-shrink-0">
-        <RequestBreadcrumb savedRequestId={savedRequestId} />
-        <Button onClick={handleSave} size="sm" disabled={activeTab?.isLoading || !hasChanges}>
-          Save
-        </Button>
-      </div>
+    <div ref={containerRef} className={`flex-1 flex ${isHorizontal ? 'flex-row' : 'flex-col'} min-h-0 overflow-hidden relative`}>
+      {/* Request Panel */}
+      <div
+        className="flex flex-col overflow-hidden bg-white dark:bg-gray-900 relative"
+        style={
+          isHorizontal
+            ? { width: requestPanelWidth }
+            : { height: requestPanelHeight }
+        }
+      >
+        {/* Breadcrumb + Save toolbar */}
+        <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700 h-14 shrink-0">
+          <RequestBreadcrumb savedRequestId={activeTab.savedRequestId} />
+          <div className="flex items-center gap-2">
+            {activeTab.isDirty && (
+              <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="w-3 h-3" />
+                <span>Unsaved changes</span>
+              </div>
+            )}
+            <Button onClick={handleSave} variant="secondary" size="sm" disabled={activeTab.isLoading || !activeTab.isDirty}>
+              <Save className="w-4 h-4 mr-1" />
+              Save
+            </Button>
+          </div>
+        </div>
 
-      <div ref={containerRef} className={`flex-1 flex ${panelLayout === 'horizontal' ? 'flex-row' : 'flex-col'} overflow-hidden relative min-h-0`}>
-        <div
-          className={`flex flex-col ${panelLayout === 'horizontal' ? 'border-r' : 'border-b'} border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative`}
-          style={panelLayout === 'horizontal' ? { width: `${requestPanelWidth}px` } : { height: `${requestPanelHeight}px` }}
-        >
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <RequestForm
             control={control}
             onSend={handleSend}
-            loading={activeTab?.isLoading || false}
-            urlValue={formValues.url}
-            headers={formValues.headers}
-            onHeadersChange={headers => setValue('headers', headers)}
-            params={formValues.params}
-            onParamsChange={params => setValue('params', params)}
-            onUrlChange={url => setValue('url', url)}
-            auth={formValues.auth}
-            onAuthChange={auth => setValue('auth', auth, { shouldDirty: true })}
+            loading={activeTab.isLoading}
+            urlValue={urlValue}
+            headers={headers}
+            onHeadersChange={handleHeadersChange}
+            params={params}
+            onParamsChange={handleParamsChange}
+            onUrlChange={handleUrlChange}
+            auth={auth}
+            onAuthChange={handleAuthChange}
           />
-          <div
-            className={panelLayout === 'horizontal'
-              ? 'absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ew-resize transition-colors z-10'
-              : 'absolute bottom-0 left-0 h-1 w-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ns-resize transition-colors z-10'
-            }
-            onMouseDown={handleMouseDown}
-            title="Drag to resize"
-          />
-        </div>
-        <div style={{ pointerEvents: isResizing ? 'none' : 'auto' }} className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <ResponsePanel />
         </div>
       </div>
 
-      <Dialog isOpen={saveRequestDialog.isOpen} onClose={saveRequestDialog.close} title="Save Request">
+      {/* Resize Handle */}
+      <div
+        className={`${
+          isHorizontal
+            ? 'w-1 cursor-ew-resize hover:bg-orange-500'
+            : 'h-1 cursor-ns-resize hover:bg-orange-500'
+        } bg-gray-200 dark:bg-gray-700 transition-colors ${isResizing ? 'bg-orange-500' : ''}`}
+        onMouseDown={handleResizeStart}
+      />
+
+      {/* Response Panel */}
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0 min-w-0">
+        <ResponsePanel
+          response={activeTab.response}
+          loading={activeTab.isLoading}
+          error={activeTab.error}
+          isDarkMode={isDarkMode}
+        />
+      </div>
+
+      {/* Save Dialog */}
+      <Dialog isOpen={saveDialog.isOpen} onClose={saveDialog.close} title="Save Request">
         <SaveRequestForm
-          currentRequest={activeTab ? {
-            method: activeTab.request.method,
-            url: activeTab.request.url,
-            headers: activeTab.request.headers,
-            body: activeTab.request.body,
-            auth: activeTab.request.auth,
-          } : null}
-          onSuccess={saveRequestDialog.close}
-          onCancel={saveRequestDialog.close}
+          currentRequest={{
+            method: getValues('method'),
+            url: buildUrlWithParams(getValues('url'), getValues('params')),
+            headers: Object.fromEntries(
+              getValues('headers')
+                .filter(h => h.enabled && h.key.trim())
+                .map(h => [h.key, h.value]),
+            ),
+            body: getValues('body') || undefined,
+            auth: getValues('auth') as AuthConfig,
+          }}
+          onSuccess={saveDialog.close}
+          onCancel={saveDialog.close}
         />
       </Dialog>
     </div>
@@ -544,5 +455,3 @@ function buildUrlWithParams(baseUrl: string, params: Array<{ key: string; value:
 });
 
 RequestResponseView.displayName = 'RequestResponseView';
-
-export default RequestResponseView;

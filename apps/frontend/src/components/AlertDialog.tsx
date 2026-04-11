@@ -1,33 +1,26 @@
-import React from 'react';
-import { XCircle, AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
+import { XCircle, AlertTriangle, Info, CheckCircle2, type LucideIcon } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { Button } from './Button';
+
+type AlertVariant = 'error' | 'warning' | 'info' | 'success';
 
 interface AlertDialogProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   message: string;
-  variant?: 'error' | 'warning' | 'info' | 'success';
+  variant?: AlertVariant;
 }
 
-const iconConfig = {
+const iconConfig: Record<AlertVariant, { Icon: LucideIcon; bg: string; color: string }> = {
   error: { Icon: XCircle, bg: 'bg-red-50 dark:bg-red-900/20', color: 'text-red-500 dark:text-red-400' },
   warning: { Icon: AlertTriangle, bg: 'bg-orange-50 dark:bg-orange-900/20', color: 'text-orange-500 dark:text-orange-400' },
   info: { Icon: Info, bg: 'bg-blue-50 dark:bg-blue-900/20', color: 'text-blue-500 dark:text-blue-400' },
   success: { Icon: CheckCircle2, bg: 'bg-green-50 dark:bg-green-900/20', color: 'text-green-500 dark:text-green-400' },
 };
 
-export const AlertDialog: React.FC<AlertDialogProps> = ({
-  isOpen,
-  onClose,
-  title,
-  message,
-  variant = 'info',
-}) => {
+export function AlertDialog({ isOpen, onClose, title, message, variant = 'info' }: AlertDialogProps) {
   const { Icon, bg, color } = iconConfig[variant];
-  // When the title already conveys the full message (e.g. auto-generated from variant),
-  // show the message as the main content with the icon inline.
   const hasDistinctMessage = message && message !== title;
 
   return (
@@ -51,4 +44,4 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
       </div>
     </Dialog>
   );
-};
+}

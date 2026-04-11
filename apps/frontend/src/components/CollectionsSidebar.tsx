@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
-import { Folder as FolderIcon, FolderPlus, Upload } from 'lucide-react';
-import { useUIStore } from '../store/ui';
-import { useCollectionsStore } from '../store/collections';
-import { SavedRequest } from '../types';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Folder as FolderIcon, FolderPlus, Upload, Search, X } from 'lucide-react';
+import { useUIStore } from '../store/ui/store';
+import { useCollectionsStore } from '../store/collections/store';
+import { useAlertStore } from '../store/alert/store';
+import type { SavedRequest } from '../store/collections/types';
 import { Dialog } from './Dialog';
 import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
@@ -10,7 +11,6 @@ import { NewRequestForm } from '../forms/NewRequestForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
-import { useAlertStore } from '../store/alert';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -32,22 +32,34 @@ interface NewRequestContext {
   folderId?: string;
 }
 
-export const CollectionsSidebar = () => {
+export function CollectionsSidebar() {
   const { isSidebarOpen, sidebarWidth, setSidebarWidth, clearSelection } = useUIStore();
   const [isResizing, setIsResizing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { collections, loading, importCollection } = useCollectionsStore();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder } =
+    useCollectionsStore();
   const { showAlert } = useAlertStore();
-  
-  // Dialog hooks
+
+  const filteredCollections = useMemo(() => {
+    if (!searchQuery.trim()) return collections;
+    const query = searchQuery.toLowerCase();
+    return collections.filter(collection => {
+      if (collection.name.toLowerCase().includes(query)) return true;
+      if (collection.requests.some(r => r.name.toLowerCase().includes(query) || r.url.toLowerCase().includes(query)))
+        return true;
+      if (collection.folders?.some(f => f.name.toLowerCase().includes(query))) return true;
+      return false;
+    });
+  }, [collections, searchQuery]);
+
   const newCollectionDialog = useDialog();
   const newRequestDialog = useDialogWithData<NewRequestContext>();
   const renameRequestDialog = useDialogWithData<RenameRequestData>();
   const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
   const renameFolderDialog = useDialogWithData<RenameFolderData>();
-
-  const { updateCollection, updateRequest, updateFolder } = useCollectionsStore();
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -57,34 +69,26 @@ export const CollectionsSidebar = () => {
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing || !sidebarRef.current) return;
-
-      const newWidth = e.clientX;
-      const clampedWidth = Math.max(200, Math.min(newWidth, 600));
+      const clampedWidth = Math.max(200, Math.min(e.clientX, 600));
       setSidebarWidth(clampedWidth);
     };
-
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
+    const handleMouseUp = () => setIsResizing(false);
 
     if (isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
-
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizing, setSidebarWidth]);
-  
-  // Clear selection when clicking on empty space
+
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      // Check if click is outside request items (on sidebar background)
       if (
-        sidebarRef.current?.contains(target) && 
+        sidebarRef.current?.contains(target) &&
         !target.closest('[data-request-item]') &&
         !target.closest('[data-folder-item]') &&
         !target.closest('button')
@@ -92,63 +96,42 @@ export const CollectionsSidebar = () => {
         clearSelection();
       }
     };
-
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, [clearSelection]);
 
-  const handleRenameRequest = (request: SavedRequest) => {
-    renameRequestDialog.open({ request });
-  };
-
-  const handleRenameCollection = (collectionId: string, collectionName: string) => {
-    renameCollectionDialog.open({ id: collectionId, name: collectionName });
-  };
-
-  const handleRenameFolder = (collectionId: string, folderId: string, folderName: string) => {
-    renameFolderDialog.open({ collectionId, id: folderId, name: folderName });
-  };
-
   const handleSaveRequestRename = async (newName: string) => {
     if (!renameRequestDialog.data) return;
-
-    await updateRequest(renameRequestDialog.data.request.collectionId, renameRequestDialog.data.request.id, { name: newName });
+    await updateRequest(renameRequestDialog.data.request.collectionId, renameRequestDialog.data.request.id, {
+      name: newName,
+    });
     renameRequestDialog.close();
   };
 
   const handleSaveCollectionRename = async (newName: string) => {
     if (!renameCollectionDialog.data) return;
-
     await updateCollection(renameCollectionDialog.data.id, { name: newName });
     renameCollectionDialog.close();
   };
 
   const handleSaveFolderRename = async (newName: string) => {
     if (!renameFolderDialog.data) return;
-
     await updateFolder(renameFolderDialog.data.collectionId, renameFolderDialog.data.id, { name: newName });
     renameFolderDialog.close();
   };
 
-  const handleImportClick = () => {
-    fileInputRef.current?.click();
-  };
+  const handleImportClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       await importCollection(file);
       showAlert('Collection imported successfully', 'success');
-    } catch (error) {
+    } catch {
       showAlert('Failed to import collection. Please check the file format.', 'error');
     }
-
-    // Reset input so the same file can be imported again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   if (!isSidebarOpen) return null;
@@ -156,7 +139,7 @@ export const CollectionsSidebar = () => {
   return (
     <div
       ref={sidebarRef}
-      className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col relative flex-1 min-h-0"
+      className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col relative flex-none min-h-0"
       style={{ width: `${sidebarWidth}px` }}
     >
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -178,6 +161,28 @@ export const CollectionsSidebar = () => {
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
+        <div className="relative mt-2">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search collections..."
+            className="w-full pl-8 pr-7 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                searchInputRef.current?.focus();
+              }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              <X className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -189,18 +194,23 @@ export const CollectionsSidebar = () => {
             <p className="text-sm">No collections yet</p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Create one to organize your requests</p>
           </div>
+        ) : filteredCollections.length === 0 ? (
+          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+            <Search className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+            <p className="text-sm">No matching results</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try a different search term</p>
+          </div>
         ) : (
           <div className="py-2">
-            {collections.map(collection => (
-              <CollectionItem 
-                key={collection.id} 
-                collection={collection} 
-                onOpenNewRequest={(collectionId, folderId) => 
-                  newRequestDialog.open({ collectionId, folderId })
-                }
-                onRenameRequest={handleRenameRequest}
-                onRenameCollection={handleRenameCollection}
-                onRenameFolder={handleRenameFolder}
+            {filteredCollections.map(collection => (
+              <CollectionItem
+                key={collection.id}
+                collection={collection}
+                searchQuery={searchQuery}
+                onOpenNewRequest={(collectionId, folderId) => newRequestDialog.open({ collectionId, folderId })}
+                onRenameRequest={request => renameRequestDialog.open({ request })}
+                onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
+                onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
               />
             ))}
           </div>
@@ -222,52 +232,40 @@ export const CollectionsSidebar = () => {
         )}
       </Dialog>
 
-      {renameRequestDialog.data && (
-        <Dialog isOpen={renameRequestDialog.isOpen} onClose={renameRequestDialog.close} title="Rename Request">
-          <RenameForm
-            isOpen={true}
-            onClose={renameRequestDialog.close}
-            onSave={handleSaveRequestRename}
-            currentName={renameRequestDialog.data.request.name}
-            title="Rename Request"
-            label="Request Name"
-          />
-        </Dialog>
-      )}
+      <RenameForm
+        isOpen={renameRequestDialog.isOpen}
+        onClose={renameRequestDialog.close}
+        onSave={handleSaveRequestRename}
+        currentName={renameRequestDialog.data?.request.name ?? ''}
+        title="Rename Request"
+        label="Request Name"
+      />
 
-      {renameCollectionDialog.data && (
-        <Dialog isOpen={renameCollectionDialog.isOpen} onClose={renameCollectionDialog.close} title="Rename Collection">
-          <RenameForm
-            isOpen={true}
-            onClose={renameCollectionDialog.close}
-            onSave={handleSaveCollectionRename}
-            currentName={renameCollectionDialog.data.name}
-            title="Rename Collection"
-            label="Collection Name"
-            placeholder="Enter collection name..."
-          />
-        </Dialog>
-      )}
+      <RenameForm
+        isOpen={renameCollectionDialog.isOpen}
+        onClose={renameCollectionDialog.close}
+        onSave={handleSaveCollectionRename}
+        currentName={renameCollectionDialog.data?.name ?? ''}
+        title="Rename Collection"
+        label="Collection Name"
+        placeholder="Enter collection name..."
+      />
 
-      {renameFolderDialog.data && (
-        <Dialog isOpen={renameFolderDialog.isOpen} onClose={renameFolderDialog.close} title="Rename Folder">
-          <RenameForm
-            isOpen={true}
-            onClose={renameFolderDialog.close}
-            onSave={handleSaveFolderRename}
-            currentName={renameFolderDialog.data.name}
-            title="Rename Folder"
-            label="Folder Name"
-            placeholder="Enter folder name..."
-          />
-        </Dialog>
-      )}
+      <RenameForm
+        isOpen={renameFolderDialog.isOpen}
+        onClose={renameFolderDialog.close}
+        onSave={handleSaveFolderRename}
+        currentName={renameFolderDialog.data?.name ?? ''}
+        title="Rename Folder"
+        label="Folder Name"
+        placeholder="Enter folder name..."
+      />
 
       <div
-        className="absolute top-0 right-0 w-1 h-full bg-transparent hover:bg-orange-500 dark:hover:bg-orange-600 cursor-ew-resize transition-colors"
+        className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"
         onMouseDown={handleMouseDown}
         title="Drag to resize"
       />
     </div>
   );
-};
+}

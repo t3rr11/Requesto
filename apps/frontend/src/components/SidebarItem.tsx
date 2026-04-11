@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 interface SidebarItemProps {
   isSelected: boolean;
@@ -7,12 +7,7 @@ interface SidebarItemProps {
   children: ReactNode;
 }
 
-export const SidebarItem = ({
-  isSelected,
-  onClick,
-  onContextMenu,
-  children,
-}: SidebarItemProps) => {
+export function SidebarItem({ isSelected, onClick, onContextMenu, children }: SidebarItemProps) {
   return (
     <button
       type="button"
@@ -27,4 +22,4 @@ export const SidebarItem = ({
       {children}
     </button>
   );
-};
+}

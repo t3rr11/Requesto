@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from './Button';
 
@@ -9,27 +9,24 @@ interface HorizontalScrollContainerProps {
   showScrollbar?: boolean;
 }
 
-export const HorizontalScrollContainer = ({
+export function HorizontalScrollContainer({
   children,
   className = '',
   contentClassName = '',
   showScrollbar = false,
-}: HorizontalScrollContainerProps) => {
+}: HorizontalScrollContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
 
-  // Check if scrolling is needed and update scroll button visibility
   const checkScrollButtons = () => {
     const container = containerRef.current;
     if (!container) return;
-
     const { scrollLeft, scrollWidth, clientWidth } = container;
     setShowLeftScroll(scrollLeft > 0);
     setShowRightScroll(scrollLeft + clientWidth < scrollWidth - 1);
   };
 
-  // Check scroll buttons on mount and when content changes
   useEffect(() => {
     checkScrollButtons();
     const container = containerRef.current;
@@ -37,8 +34,6 @@ export const HorizontalScrollContainer = ({
 
     container.addEventListener('scroll', checkScrollButtons);
     window.addEventListener('resize', checkScrollButtons);
-
-    // Use ResizeObserver to detect content size changes
     const resizeObserver = new ResizeObserver(checkScrollButtons);
     resizeObserver.observe(container);
 
@@ -49,24 +44,18 @@ export const HorizontalScrollContainer = ({
     };
   }, [children]);
 
-  const scrollContent = (direction: 'left' | 'right') => {
+  const handleScroll = (direction: 'left' | 'right') => {
     const container = containerRef.current;
     if (!container) return;
-
-    const scrollAmount = 200;
-    const newScrollLeft =
-      direction === 'left' ? container.scrollLeft - scrollAmount : container.scrollLeft + scrollAmount;
-
-    container.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
+    const offset = direction === 'left' ? -200 : 200;
+    container.scrollTo({ left: container.scrollLeft + offset, behavior: 'smooth' });
   };
 
-  // Handle wheel scroll for horizontal scrolling
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // Only handle horizontal scroll if there's horizontal overflow
       if (container.scrollWidth > container.clientWidth) {
         e.preventDefault();
         container.scrollLeft += e.deltaY;
@@ -81,7 +70,7 @@ export const HorizontalScrollContainer = ({
     <div className={`relative ${className}`}>
       {showLeftScroll && (
         <Button
-          onClick={() => scrollContent('left')}
+          onClick={() => handleScroll('left')}
           variant="icon"
           size="md"
           className="absolute left-0 z-10 h-full rounded-none bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
@@ -94,21 +83,14 @@ export const HorizontalScrollContainer = ({
       <div
         ref={containerRef}
         className={`overflow-x-auto overflow-y-hidden ${!showScrollbar ? 'scrollbar-hide' : ''} ${contentClassName}`}
-        style={
-          !showScrollbar
-            ? {
-                scrollbarWidth: 'none', // Firefox
-                msOverflowStyle: 'none', // IE/Edge
-              }
-            : undefined
-        }
+        style={!showScrollbar ? { scrollbarWidth: 'none', msOverflowStyle: 'none' } : undefined}
       >
         {children}
       </div>
 
       {showRightScroll && (
         <Button
-          onClick={() => scrollContent('right')}
+          onClick={() => handleScroll('right')}
           variant="icon"
           size="md"
           className="absolute right-0 z-10 h-full rounded-none bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
@@ -119,4 +101,4 @@ export const HorizontalScrollContainer = ({
       )}
     </div>
   );
-};
+}

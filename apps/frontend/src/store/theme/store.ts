@@ -1,30 +1,29 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import * as actions from './actions';
+import { toggleTheme, setTheme } from './actions';
 
-interface ThemeState {
+type ThemeState = {
   isDarkMode: boolean;
   toggleTheme: () => void;
   setTheme: (isDark: boolean) => void;
-}
+};
 
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
       isDarkMode: false,
-      toggleTheme: () => actions.toggleTheme(set),
-      setTheme: (isDark: boolean) => actions.setTheme(set, isDark),
+      toggleTheme: () => toggleTheme(set),
+      setTheme: (isDark) => setTheme(set, isDark),
     }),
     {
       name: 'theme-storage',
       onRehydrateStorage: () => (state) => {
-        // Apply theme on page load
         if (state?.isDarkMode) {
           document.documentElement.classList.add('dark');
         } else {
           document.documentElement.classList.remove('dark');
         }
       },
-    }
-  )
+    },
+  ),
 );

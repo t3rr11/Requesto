@@ -1,26 +1,17 @@
-import { useCollectionsStore } from '../store/collections';
+import { useCollectionsStore } from '../store/collections/store';
 
 interface RequestBreadcrumbProps {
-  savedRequestId?: string;
+  savedRequestId: string | undefined;
 }
 
 export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
-  const { collections, activeRequestId } = useCollectionsStore();
+  const { collections } = useCollectionsStore();
 
-  const getBreadcrumbInfo = () => {
-    // If no savedRequestId, this is a new unsaved request
-    if (!savedRequestId) {
-      return { collectionName: null, requestName: 'Untitled Request' };
-    }
-
-    const requestId = savedRequestId || activeRequestId;
-    
-    if (!requestId) {
-      return { collectionName: null, requestName: 'Untitled Request' };
-    }
+  const getBreadcrumbInfo = (): { collectionName: string | null; requestName: string } => {
+    if (!savedRequestId) return { collectionName: null, requestName: 'Untitled Request' };
 
     for (const collection of collections) {
-      const request = collection.requests.find(r => r.id === requestId);
+      const request = collection.requests.find(r => r.id === savedRequestId);
       if (request) {
         return { collectionName: collection.name, requestName: request.name };
       }
@@ -29,19 +20,19 @@ export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
     return { collectionName: null, requestName: 'Untitled Request' };
   };
 
-  const breadcrumbInfo = getBreadcrumbInfo();
+  const { collectionName, requestName } = getBreadcrumbInfo();
 
   return (
     <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
       <span>Collections</span>
-      {breadcrumbInfo.collectionName && (
+      {collectionName && (
         <>
           <span>›</span>
-          <span>{breadcrumbInfo.collectionName}</span>
+          <span>{collectionName}</span>
         </>
       )}
       <span>›</span>
-      <span className="text-gray-900 dark:text-gray-100 font-medium">{breadcrumbInfo.requestName}</span>
+      <span className="text-gray-900 dark:text-gray-100 font-medium">{requestName}</span>
     </div>
   );
 }

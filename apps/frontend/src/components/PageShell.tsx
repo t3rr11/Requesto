@@ -1,13 +1,13 @@
-import { ReactNode } from 'react';
-import { Button } from './Button';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
+import { Button } from './Button';
 
-interface PageAction {
+type PageAction = {
   label: string;
   icon?: ReactNode;
   onClick: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
-}
+};
 
 interface PageShellProps {
   icon: ReactNode;
@@ -19,15 +19,7 @@ interface PageShellProps {
   children: ReactNode;
 }
 
-export const PageShell = ({
-  icon,
-  title,
-  subtitle,
-  actions = [],
-  showClose = true,
-  sidebar,
-  children,
-}: PageShellProps) => {
+export function PageShell({ icon, title, subtitle, actions = [], showClose = true, sidebar, children }: PageShellProps) {
   const navigate = useNavigate();
 
   return (
@@ -44,19 +36,13 @@ export const PageShell = ({
             </div>
             <div className="flex items-center gap-2">
               {actions.map((action, i) => (
-                <Button
-                  key={i}
-                  onClick={action.onClick}
-                  variant={action.variant || 'primary'}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
+                <Button key={i} onClick={action.onClick} variant={action.variant || 'primary'} size="sm" className="flex items-center gap-2">
                   {action.icon}
                   {action.label}
                 </Button>
               ))}
               {showClose && (
-                <Button onClick={() => navigate('/requests')} variant="secondary" size="sm">
+                <Button onClick={() => navigate('/')} variant="secondary" size="sm">
                   Close
                 </Button>
               )}
@@ -66,11 +52,9 @@ export const PageShell = ({
 
         <div className="flex-1 overflow-hidden flex min-h-0">
           {sidebar}
-          <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-            {children}
-          </div>
+          <div className="flex-1 overflow-hidden flex flex-col min-w-0">{children}</div>
         </div>
       </div>
     </main>
   );
-};
+}

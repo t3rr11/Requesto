@@ -1,12 +1,11 @@
 import { create } from 'zustand';
-import { Environment, EnvironmentsData } from '../../types';
+import type { Environment, EnvironmentsData } from './types';
 import * as actions from './actions';
 
-interface EnvironmentState {
+type EnvironmentState = {
   environmentsData: EnvironmentsData;
+  loading: boolean;
 
-  // Actions
-  setEnvironmentsData: (data: EnvironmentsData) => void;
   loadEnvironments: () => Promise<void>;
   setActiveEnvironment: (id: string) => Promise<void>;
   saveEnvironment: (environment: Environment) => Promise<void>;
@@ -15,22 +14,17 @@ interface EnvironmentState {
   updateEnvironment: (environment: Environment) => void;
   importEnvironment: (file: File) => Promise<Environment>;
   exportEnvironment: (environmentId: string) => Promise<void>;
-}
+};
 
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
-  environmentsData: {
-    activeEnvironmentId: null,
-    environments: [],
-  },
+  environmentsData: { activeEnvironmentId: null, environments: [] },
+  loading: false,
 
-  setEnvironmentsData: (data) => set({ environmentsData: data }),
-
-  // Action implementations
   loadEnvironments: () => actions.loadEnvironments(set),
   setActiveEnvironment: (id) => actions.setActiveEnvironment(set, id),
   saveEnvironment: (environment) => actions.saveEnvironment(set, get, environment),
   deleteEnvironment: (id) => actions.deleteEnvironment(set, get, id),
-  
+
   addEnvironment: (environment) => {
     const { environmentsData } = get();
     set({
@@ -43,16 +37,13 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   updateEnvironment: (environment) => {
     const { environmentsData } = get();
-    const existingIndex = environmentsData.environments.findIndex(e => e.id === environment.id);
-
-    if (existingIndex >= 0) {
-      const updated = [...environmentsData.environments];
-      updated[existingIndex] = environment;
-      set({ environmentsData: { ...environmentsData, environments: updated } });
-    }
+    const idx = environmentsData.environments.findIndex((e) => e.id === environment.id);
+    if (idx < 0) return;
+    const updated = [...environmentsData.environments];
+    updated[idx] = environment;
+    set({ environmentsData: { ...environmentsData, environments: updated } });
   },
 
   importEnvironment: (file) => actions.importEnvironment(set, file),
   exportEnvironment: (environmentId) => actions.exportEnvironment(environmentId),
 }));
-

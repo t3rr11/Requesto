@@ -1,4 +1,3 @@
-import React from 'react';
 import { Dialog } from './Dialog';
 import { Button } from './Button';
 
@@ -13,7 +12,7 @@ interface ConfirmDialogProps {
   variant?: 'danger' | 'warning' | 'info';
 }
 
-export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
+export function ConfirmDialog({
   isOpen,
   onClose,
   onConfirm,
@@ -22,13 +21,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'danger',
-}) => {
+}: ConfirmDialogProps) {
   const handleConfirm = () => {
     onConfirm();
     onClose();
   };
 
-  const buttonVariant = variant === 'danger' ? 'danger' : variant === 'warning' ? 'danger' : 'primary';
+  const buttonVariant = variant === 'info' ? 'primary' : 'danger';
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={title} size="sm">
@@ -43,4 +42,4 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       </div>
     </Dialog>
   );
-};
+}

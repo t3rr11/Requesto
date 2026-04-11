@@ -1,67 +1,54 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import * as actions from './actions';
+import type { LayoutMode } from './types';
 
-export type PanelLayout = 'horizontal' | 'vertical';
-
-interface UIState {  
-  // Sidebar and console
+type UIState = {
   isSidebarOpen: boolean;
   sidebarWidth: number;
   requestPanelWidth: number;
   requestPanelHeight: number;
-  panelLayout: PanelLayout;
+  panelLayout: LayoutMode;
   isConsoleOpen: boolean;
   consoleHeight: number;
-  
-  // Collections and folders expand/collapse state
   expandedCollections: Set<string>;
   expandedFolders: Set<string>;
-  
-  // Multi-select state
   selectedRequestIds: Set<string>;
   lastSelectedRequestId: string | null;
-  
-  // Actions
+
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
   setSidebarWidth: (width: number) => void;
   setRequestPanelWidth: (width: number) => void;
   setRequestPanelHeight: (height: number) => void;
   togglePanelLayout: () => void;
-  setPanelLayout: (layout: PanelLayout) => void;
-  
+  setPanelLayout: (layout: LayoutMode) => void;
   toggleConsole: () => void;
   setConsoleOpen: (isOpen: boolean) => void;
   setConsoleHeight: (height: number) => void;
-  
   toggleCollection: (id: string) => void;
   toggleFolder: (id: string) => void;
   expandCollection: (id: string) => void;
   expandFolder: (id: string) => void;
-  
-  // Multi-select actions
   toggleRequestSelection: (requestId: string, ctrlKey: boolean, shiftKey: boolean, allRequestIds?: string[]) => void;
   clearSelection: () => void;
-}
+};
 
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      // Initial state
       isSidebarOpen: true,
       sidebarWidth: 320,
       requestPanelWidth: 600,
       requestPanelHeight: 400,
-      panelLayout: 'horizontal' as PanelLayout,
+      panelLayout: 'horizontal' as LayoutMode,
       isConsoleOpen: false,
       consoleHeight: 250,
       expandedCollections: new Set<string>(),
       expandedFolders: new Set<string>(),
       selectedRequestIds: new Set<string>(),
       lastSelectedRequestId: null,
-      
-      // Actions
+
       toggleSidebar: () => actions.toggleSidebar(set),
       setSidebarOpen: (isOpen) => actions.setSidebarOpen(set, isOpen),
       setSidebarWidth: (width) => actions.setSidebarWidth(set, width),
@@ -69,17 +56,15 @@ export const useUIStore = create<UIState>()(
       setRequestPanelHeight: (height) => actions.setRequestPanelHeight(set, height),
       togglePanelLayout: () => actions.togglePanelLayout(set),
       setPanelLayout: (layout) => actions.setPanelLayout(set, layout),
-      
       toggleConsole: () => actions.toggleConsole(set),
       setConsoleOpen: (isOpen) => actions.setConsoleOpen(set, isOpen),
       setConsoleHeight: (height) => actions.setConsoleHeight(set, height),
-      
       toggleCollection: (id) => actions.toggleCollection(set, id),
       toggleFolder: (id) => actions.toggleFolder(set, id),
       expandCollection: (id) => actions.expandCollection(set, id),
       expandFolder: (id) => actions.expandFolder(set, id),
-      
-      toggleRequestSelection: (requestId, ctrlKey, shiftKey, allRequestIds) => actions.toggleRequestSelection(set, requestId, ctrlKey, shiftKey, allRequestIds),
+      toggleRequestSelection: (requestId, ctrlKey, shiftKey, allRequestIds) =>
+        actions.toggleRequestSelection(set, requestId, ctrlKey, shiftKey, allRequestIds),
       clearSelection: () => actions.clearSelection(set),
     }),
     {
@@ -94,37 +79,32 @@ export const useUIStore = create<UIState>()(
               ...state,
               expandedCollections: new Set(state.expandedCollections || []),
               expandedFolders: new Set(state.expandedFolders || []),
-              selectedRequestIds: new Set(),
+              selectedRequestIds: new Set<string>(),
               lastSelectedRequestId: null,
             },
           };
         },
         setItem: (name, value) => {
-          const { state } = value;
+          const { state } = value as { state: UIState };
           localStorage.setItem(
             name,
             JSON.stringify({
               state: {
-                ...state,
+                isSidebarOpen: state.isSidebarOpen,
+                sidebarWidth: state.sidebarWidth,
+                requestPanelWidth: state.requestPanelWidth,
+                requestPanelHeight: state.requestPanelHeight,
+                panelLayout: state.panelLayout,
+                isConsoleOpen: state.isConsoleOpen,
+                consoleHeight: state.consoleHeight,
                 expandedCollections: Array.from(state.expandedCollections),
                 expandedFolders: Array.from(state.expandedFolders),
               },
-            })
+            }),
           );
         },
         removeItem: (name) => localStorage.removeItem(name),
       },
-      partialize: (state) => ({
-        isSidebarOpen: state.isSidebarOpen,
-        sidebarWidth: state.sidebarWidth,
-        requestPanelWidth: state.requestPanelWidth,
-        requestPanelHeight: state.requestPanelHeight,
-        panelLayout: state.panelLayout,
-        isConsoleOpen: state.isConsoleOpen,
-        consoleHeight: state.consoleHeight,
-        expandedCollections: state.expandedCollections,
-        expandedFolders: state.expandedFolders,
-      }),
-    }
-  )
+    },
+  ),
 );

@@ -1,191 +1,218 @@
-import { useRef, useEffect, useState } from 'react';
-import { Check, MoreVertical, Copy, Trash2, Save, Download } from 'lucide-react';
-import { Button } from './Button';
+import { useState, useRef, useEffect } from 'react';
+import {
+  MoreVertical,
+  Check,
+  Copy,
+  Download,
+  Trash2,
+  Zap,
+} from 'lucide-react';
+import type { Environment } from '../store/environments/types';
+import { useEnvironmentStore } from '../store/environments/store';
+import { useAlertStore } from '../store/alert/store';
+import { useConfirmDialog } from '../hooks/useDialog';
+import { ConfirmDialog } from './ConfirmDialog';
+import { duplicateEnvironment } from '../helpers/environment';
 
 interface EnvironmentHeaderProps {
-  name: string;
-  isActive: boolean;
-  hasUnsavedChanges: boolean;
-  onNameChange: (name: string) => void;
-  onSetActive: () => void;
-  onDuplicate: () => void;
-  onDelete: () => void;
+  environment: Environment;
+  hasChanges: boolean;
   onSave: () => void;
-  onExport: () => void;
-  canDelete: boolean;
+  onNameChange: (name: string) => void;
 }
 
-export const EnvironmentHeader = ({
-  name,
-  isActive,
-  hasUnsavedChanges,
-  onNameChange,
-  onSetActive,
-  onDuplicate,
-  onDelete,
+export function EnvironmentHeader({
+  environment,
+  hasChanges,
   onSave,
-  onExport,
-  canDelete,
-}: EnvironmentHeaderProps) => {
+  onNameChange,
+}: EnvironmentHeaderProps) {
+  const { environmentsData, setActiveEnvironment, deleteEnvironment, addEnvironment, exportEnvironment } =
+    useEnvironmentStore();
+  const { showAlert } = useAlertStore();
+  const confirmDialog = useConfirmDialog();
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [localName, setLocalName] = useState(name);
+  const [editName, setEditName] = useState(environment.name);
+  const menuRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setLocalName(name);
-  }, [name]);
+  const isActive = environmentsData.activeEnvironmentId === environment.id;
 
   useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus();
-      nameInputRef.current.select();
+    setEditName(environment.name);
+  }, [environment.name]);
+
+  useEffect(() => {
+    if (isEditingName) {
+      nameInputRef.current?.focus();
+      nameInputRef.current?.select();
     }
   }, [isEditingName]);
 
-  const handleNameBlur = () => {
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen]);
+
+  const handleNameSubmit = () => {
     setIsEditingName(false);
-    if (localName.trim() && localName !== name) {
-      onNameChange(localName.trim());
+    if (editName.trim() && editName !== environment.name) {
+      onNameChange(editName.trim());
     } else {
-      setLocalName(name);
+      setEditName(environment.name);
     }
   };
 
-  const handleNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleNameBlur();
+  const handleSetActive = () => {
+    if (!isActive) {
+      setActiveEnvironment(environment.id);
     }
-    if (e.key === 'Escape') {
-      setIsEditingName(false);
-      setLocalName(name);
+    setIsMenuOpen(false);
+  };
+
+  const handleDuplicate = async () => {
+    setIsMenuOpen(false);
+    try {
+      const dup = duplicateEnvironment(environment);
+      await addEnvironment(dup);
+      showAlert('Environment duplicated', 'success');
+    } catch {
+      showAlert('Failed to duplicate environment', 'error');
     }
+  };
+
+  const handleExport = async () => {
+    setIsMenuOpen(false);
+    try {
+      await exportEnvironment(environment.id);
+      showAlert('Environment exported', 'success');
+    } catch {
+      showAlert('Failed to export environment', 'error');
+    }
+  };
+
+  const handleDelete = () => {
+    setIsMenuOpen(false);
+    confirmDialog.open({
+      title: 'Delete Environment',
+      message: `Are you sure you want to delete "${environment.name}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteEnvironment(environment.id);
+          showAlert('Environment deleted', 'success');
+        } catch {
+          showAlert('Failed to delete environment', 'error');
+        }
+      },
+    });
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex-shrink-0">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          {isEditingName ? (
-            <input
-              ref={nameInputRef}
-              type="text"
-              value={localName}
-              onChange={e => setLocalName(e.target.value)}
-              placeholder="Environment name"
-              className="text-xl font-semibold px-2 py-1 -ml-2 border-2 border-blue-500 rounded focus:outline-none w-full dark:bg-gray-800 dark:text-gray-100"
-              onBlur={handleNameBlur}
-              onKeyDown={handleNameKeyDown}
-            />
-          ) : (
-            <div className="flex items-center gap-3">
-              <h2
-                onClick={() => setIsEditingName(true)}
-                className="text-xl font-semibold text-gray-900 dark:text-gray-100 cursor-text hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-1 -ml-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
-                title="Click to edit"
+    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {isEditingName ? (
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={editName}
+            onChange={e => setEditName(e.target.value)}
+            onBlur={handleNameSubmit}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleNameSubmit();
+              if (e.key === 'Escape') {
+                setEditName(environment.name);
+                setIsEditingName(false);
+              }
+            }}
+            className="text-xl font-semibold bg-transparent border-b-2 border-blue-500 focus:outline-none text-gray-900 dark:text-gray-100"
+          />
+        ) : (
+          <h2
+            className="text-xl font-semibold text-gray-900 dark:text-gray-100 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
+            onDoubleClick={() => setIsEditingName(true)}
+            title="Double-click to rename"
+          >
+            {environment.name}
+          </h2>
+        )}
+
+        {isActive && (
+          <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30 rounded-full">
+            <Zap className="w-3 h-3" />
+            Active
+          </span>
+        )}
+
+        {hasChanges && (
+          <span className="text-xs text-amber-500 dark:text-amber-400">(unsaved)</span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {hasChanges && (
+          <button
+            onClick={onSave}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+          >
+            Save
+          </button>
+        )}
+
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <MoreVertical className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          </button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+              <button
+                onClick={handleSetActive}
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-lg"
               >
-                {name || 'Untitled Environment'}
-              </h2>
-              {isActive && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                  <Check className="w-3.5 h-3.5" />
-                  Active
-                </span>
-              )}
-              {hasUnsavedChanges && <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">● Unsaved changes</span>}
+                <Check className={`w-4 h-4 ${isActive ? 'text-green-500' : 'text-transparent'}`} />
+                {isActive ? 'Deactivate' : 'Set Active'}
+              </button>
+              <button
+                onClick={handleDuplicate}
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Copy className="w-4 h-4" />
+                Duplicate
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 last:rounded-b-lg"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
             </div>
           )}
         </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            type="button"
-            onClick={onSave}
-            variant="primary"
-            size="sm"
-            className="flex items-center gap-1.5"
-            disabled={!hasUnsavedChanges}
-          >
-            <Save className="w-4 h-4" />
-            Save
-          </Button>
-
-          {!isActive && (
-            <Button
-              type="button"
-              onClick={onSetActive}
-              variant="primary"
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 flex items-center gap-1.5"
-            >
-              <Check className="w-4 h-4" />
-              Set Active
-            </Button>
-          )}
-
-          <div className="relative">
-            <Button
-              type="button"
-              onClick={() => setShowMenu(!showMenu)}
-              variant="ghost"
-              size="sm"
-              className="flex items-center gap-1"
-            >
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-
-            {showMenu && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      onDuplicate();
-                      setShowMenu(false);
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start px-4 py-2 text-sm rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    <Copy className="w-4 h-4 mr-2" />
-                    Duplicate
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      onExport();
-                      setShowMenu(false);
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start px-4 py-2 text-sm rounded-none hover:bg-gray-50 dark:hover:bg-gray-700"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
-                  <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setShowMenu(false);
-                      onDelete();
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start px-4 py-2 text-sm rounded-none text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    disabled={!canDelete}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       </div>
+
+      <ConfirmDialog {...confirmDialog.props} />
     </div>
   );
-};
+}

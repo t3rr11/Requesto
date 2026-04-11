@@ -1,1 +1,0 @@
-export { useCollectionsStore } from './store';

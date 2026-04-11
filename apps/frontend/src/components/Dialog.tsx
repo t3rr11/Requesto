@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
-export interface DialogProps {
+interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
 
-export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
+export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }: DialogProps) {
   const [visible, setVisible] = useState(false);
   const [animate, setAnimate] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -36,7 +36,6 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
       document.body.style.overflow = 'unset';
       return () => clearTimeout(timer);
     }
-
     return () => {
       document.body.style.overflow = 'unset';
     };
@@ -46,15 +45,13 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose();
     };
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape);
-    }
+    if (isOpen) document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, handleClose]);
 
   if (!visible) return null;
 
-  const sizes = {
+  const sizes: Record<NonNullable<DialogProps['size']>, string> = {
     sm: 'max-w-md',
     md: 'max-w-lg',
     lg: 'max-w-2xl',
@@ -76,15 +73,14 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
           ring-1 ring-black/8 dark:ring-white/8
           transition-all duration-150 ease-out origin-center
           ${animate ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.97] translate-y-1'}`}
-        onMouseDown={e => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         {title ? (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 shrink-0">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">{title}</h2>
             <button
               onClick={handleClose}
-              className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300
-                hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors duration-100"
+              className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors duration-100"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -94,8 +90,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
           <div className="flex justify-end px-4 pt-3 shrink-0">
             <button
               onClick={handleClose}
-              className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300
-                hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors duration-100"
+              className="rounded-lg p-1.5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors duration-100"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -113,12 +108,12 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
       </div>
     </div>
   );
-};
-
-interface DialogFooterProps {
-  children: React.ReactNode;
 }
 
-export const DialogFooter: React.FC<DialogFooterProps> = ({ children }) => {
+interface DialogFooterProps {
+  children: ReactNode;
+}
+
+export function DialogFooter({ children }: DialogFooterProps) {
   return <div className="flex justify-end gap-2">{children}</div>;
-};
+}

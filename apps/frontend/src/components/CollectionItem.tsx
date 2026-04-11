@@ -1,39 +1,49 @@
-import { ChevronRight, ChevronDown, Folder as FolderIcon, FolderPlus, FileText, Trash2, Plus, Download } from 'lucide-react';
-import { useCollectionsStore } from '../store/collections';
-import { Collection, SavedRequest } from '../types';
-import { useUIStore } from '../store/ui';
+import React, { useMemo } from 'react';
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder as FolderIcon,
+  FolderPlus,
+  FileText,
+  Trash2,
+  Plus,
+  Download,
+} from 'lucide-react';
+import type { Collection, SavedRequest } from '../store/collections/types';
+import { useCollectionsStore } from '../store/collections/store';
+import { useUIStore } from '../store/ui/store';
+import { useAlertStore } from '../store/alert/store';
 import { FolderItem } from './FolderItem';
-import { getMethodColor } from '../helpers/collectionHelpers';
+import { getMethodColor } from '../helpers/collections';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
-import React from 'react';
 import { useItemContextMenu } from '../hooks/useItemContextMenu';
 import { useItemDragDrop } from '../hooks/useItemDragDrop';
 import { useItemActions } from '../hooks/useItemActions';
-import { useAlertStore } from '../store/alert';
 
 interface CollectionItemProps {
   collection: Collection;
+  searchQuery?: string;
   onOpenNewRequest: (collectionId?: string, folderId?: string) => void;
   onRenameRequest: (request: SavedRequest) => void;
   onRenameCollection: (collectionId: string, collectionName: string) => void;
   onRenameFolder: (collectionId: string, folderId: string, folderName: string) => void;
 }
 
-export const CollectionItem = ({
+export function CollectionItem({
   collection,
+  searchQuery,
   onOpenNewRequest,
   onRenameRequest,
   onRenameCollection,
   onRenameFolder,
-}: CollectionItemProps) => {
+}: CollectionItemProps) {
   const { moveRequest, exportCollection, exportRequest } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { expandedCollections, toggleCollection, selectedRequestIds, toggleRequestSelection, clearSelection } =
     useUIStore();
 
-  // Use custom hooks for shared logic
   const {
     requestContextMenu,
     openRequestContextMenu,
@@ -78,7 +88,6 @@ export const CollectionItem = ({
       }
     },
     onDropMultipleRequests: async (requests, targetOrder) => {
-      // Move all selected requests
       for (const req of requests) {
         await moveRequest(req.collectionId, req.requestId, collection.id, undefined, targetOrder);
       }
@@ -87,22 +96,46 @@ export const CollectionItem = ({
   });
 
   const isExpanded = expandedCollections.has(collection.id);
+  const isSearching = !!searchQuery?.trim();
+  const query = searchQuery?.toLowerCase() ?? '';
 
-  // Custom drop handler for collection
+  const { filteredRootFolders, filteredRootRequests } = useMemo(() => {
+    const rootFolders = (collection.folders || []).filter(f => !f.parentId);
+    const rootRequests = collection.requests.filter(r => !r.folderId).sort((a, b) => (a.order || 0) - (b.order || 0));
+    if (!query) return { filteredRootFolders: rootFolders, filteredRootRequests: rootRequests };
+    const matchedFolderIds = new Set<string>();
+    for (const folder of collection.folders || []) {
+      if (folder.name.toLowerCase().includes(query)) matchedFolderIds.add(folder.id);
+      const folderReqs = collection.requests.filter(r => r.folderId === folder.id);
+      if (folderReqs.some(r => r.name.toLowerCase().includes(query) || r.url.toLowerCase().includes(query))) matchedFolderIds.add(folder.id);
+    }
+    // Also include parent folders of matched folders
+    for (const folder of collection.folders || []) {
+      if (matchedFolderIds.has(folder.id) && folder.parentId) {
+        let parentId: string | undefined = folder.parentId;
+        while (parentId) {
+          matchedFolderIds.add(parentId);
+          const parent = collection.folders?.find(f => f.id === parentId);
+          parentId = parent?.parentId;
+        }
+      }
+    }
+    return {
+      filteredRootFolders: rootFolders.filter(f => matchedFolderIds.has(f.id)),
+      filteredRootRequests: rootRequests.filter(r => r.name.toLowerCase().includes(query) || r.url.toLowerCase().includes(query)),
+    };
+  }, [collection, query]);
+
+  const showExpanded = isSearching || isExpanded;
+
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
     const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
-
     if (dragType === 'application/request') {
       const data = JSON.parse(e.dataTransfer.getData('application/request'));
-
       if (data.isMultiSelect) {
-        // Move all selected requests
-        for (const req of data.requests) {
-          await moveRequest(req.collectionId, req.requestId, collection.id, undefined);
-        }
+        for (const req of data.requests) await moveRequest(req.collectionId, req.requestId, collection.id, undefined);
         clearSelection();
       } else {
         await moveRequest(data.collectionId, data.requestId, collection.id, undefined);
@@ -162,7 +195,7 @@ export const CollectionItem = ({
     try {
       await exportCollection(collectionContextMenu!.collectionId);
       showAlert('Collection exported successfully', 'success');
-    } catch (error) {
+    } catch {
       showAlert('Failed to export collection', 'error');
     }
     closeCollectionContextMenu();
@@ -170,22 +203,17 @@ export const CollectionItem = ({
 
   const handleExportRequest = async () => {
     try {
-      await exportRequest(
-        requestContextMenu!.request.collectionId,
-        requestContextMenu!.request.id
-      );
+      await exportRequest(requestContextMenu!.request.collectionId, requestContextMenu!.request.id);
       showAlert('Request exported successfully', 'success');
-    } catch (error) {
+    } catch {
       showAlert('Failed to export request', 'error');
     }
     closeRequestContextMenu();
   };
 
-  const rootFolders = (collection.folders || []).filter(f => !f.parentId);
-  const rootRequests = collection.requests.filter(r => !r.folderId).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const rootFolders = filteredRootFolders;
+  const rootRequests = filteredRootRequests;
   const totalItems = collection.requests.length;
-
-  // Get all request IDs in display order for range selection
   const allRequestIds = rootRequests.map(r => r.id);
 
   return (
@@ -202,56 +230,32 @@ export const CollectionItem = ({
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isExpanded ? (
-            <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+            <ChevronDown className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+            <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
           )}
-          <FolderIcon className="w-4 h-4 text-orange-500 dark:text-orange-400 flex-shrink-0" />
+          <FolderIcon className="w-4 h-4 text-orange-500 dark:text-orange-400 shrink-0" />
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{collection.name}</span>
           <span className="text-xs text-gray-400 dark:text-gray-500">({totalItems})</span>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-          <Button
-            onClick={e => {
-              e.stopPropagation();
-              onOpenNewRequest(collection.id);
-            }}
-            variant="icon"
-            size="sm"
-            title="Add Request"
-            className="hover:bg-gray-200"
-          >
+          <Button onClick={e => { e.stopPropagation(); onOpenNewRequest(collection.id); }} variant="icon" size="sm" title="Add Request" className="hover:bg-gray-200">
             <Plus className="w-3.5 h-3.5" />
           </Button>
-          <Button
-            onClick={e => {
-              e.stopPropagation();
-              startCreateFolder(collection.id);
-            }}
-            variant="icon"
-            size="sm"
-            title="New Folder"
-            className="hover:bg-gray-200"
-          >
+          <Button onClick={e => { e.stopPropagation(); startCreateFolder(collection.id); }} variant="icon" size="sm" title="New Folder" className="hover:bg-gray-200">
             <FolderPlus className="w-3.5 h-3.5" />
           </Button>
-          <Button
-            onClick={e => handleDeleteCollection(collection.id, e)}
-            variant="icon"
-            size="sm"
-            title="Delete Collection"
-            className="hover:bg-gray-200"
-          >
+          <Button onClick={e => handleDeleteCollection(collection.id, e)} variant="icon" size="sm" title="Delete Collection" className="hover:bg-gray-200">
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
       </div>
 
-      {isExpanded && (
+      {showExpanded && (
         <div>
           {newFolderInput?.collectionId === collection.id && !newFolderInput?.parentId && (
             <div className="px-4 py-2 flex items-center gap-2 ml-6">
-              <FolderIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+              <FolderIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
               <input
                 type="text"
                 value={folderName}
@@ -264,12 +268,8 @@ export const CollectionItem = ({
                 className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
                 autoFocus
               />
-              <Button onClick={() => handleSaveFolder(collection.id)} variant="primary" size="sm">
-                Save
-              </Button>
-              <Button onClick={handleCancelFolder} variant="secondary" size="sm">
-                Cancel
-              </Button>
+              <Button onClick={() => handleSaveFolder(collection.id)} variant="primary" size="sm">Save</Button>
+              <Button onClick={handleCancelFolder} variant="secondary" size="sm">Cancel</Button>
             </div>
           )}
 
@@ -279,6 +279,7 @@ export const CollectionItem = ({
               folder={folder}
               collection={collection}
               depth={0}
+              searchQuery={searchQuery}
               onOpenNewRequest={onOpenNewRequest}
               onRenameRequest={onRenameRequest}
               onRenameFolder={onRenameFolder}
@@ -296,18 +297,11 @@ export const CollectionItem = ({
                   onDragLeave={handleDragLeaveIndex}
                   onDrop={e => handleDropAtIndex(e, index)}
                 />
-
                 <div
                   data-request-item
                   className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
-                    activeSavedRequestId === request.id
-                      ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500'
-                      : ''
-                  } ${
-                    selectedRequestIds.has(request.id)
-                      ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500'
-                      : ''
-                  }`}
+                    activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
+                  } ${selectedRequestIds.has(request.id) ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''}`}
                   style={{ paddingLeft: '32px' }}
                   onClick={e => {
                     if (e.ctrlKey || e.metaKey) {
@@ -316,15 +310,15 @@ export const CollectionItem = ({
                       toggleRequestSelection(request.id, false, true, allRequestIds);
                     } else {
                       handleSelectRequest(request);
-                      toggleRequestSelection(request.id, false, false);
+                      clearSelection();
                     }
                   }}
                   onContextMenu={e => openRequestContextMenu(e, request)}
                   {...createRequestDragHandlers(request.id, collection.id)}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
-                    <span className={`text-xs font-medium ${getMethodColor(request.method)} min-w-[45px]`}>
+                    <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                    <span className={`text-xs font-medium ${getMethodColor(request.method)} min-w-11.25`}>
                       {request.method}
                     </span>
                     <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
@@ -337,7 +331,6 @@ export const CollectionItem = ({
                     <Trash2 className="w-3 h-3 text-gray-500 dark:text-gray-400" />
                   </button>
                 </div>
-
                 {index === rootRequests.length - 1 && (
                   <div
                     className={`transition-all ${dragOverIndex === index + 1 ? 'bg-blue-400 h-1' : 'h-0'}`}
@@ -356,22 +349,9 @@ export const CollectionItem = ({
         <ContextMenu
           position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
           items={[
-            {
-              label: 'Rename',
-              icon: <FileText className="w-4 h-4" />,
-              onClick: handleRenameRequestFromContext,
-            },
-            {
-              label: 'Export',
-              icon: <Download className="w-4 h-4" />,
-              onClick: handleExportRequest,
-            },
-            {
-              label: 'Delete',
-              icon: <Trash2 className="w-4 h-4" />,
-              onClick: handleDeleteRequestFromContext,
-              danger: true,
-            },
+            { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameRequestFromContext },
+            { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportRequest },
+            { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteRequestFromContext, danger: true },
           ]}
           onClose={closeRequestContextMenu}
         />
@@ -381,22 +361,9 @@ export const CollectionItem = ({
         <ContextMenu
           position={{ x: collectionContextMenu.x, y: collectionContextMenu.y }}
           items={[
-            {
-              label: 'Rename',
-              icon: <FileText className="w-4 h-4" />,
-              onClick: handleRenameCollectionFromContext,
-            },
-            {
-              label: 'Export',
-              icon: <Download className="w-4 h-4" />,
-              onClick: handleExportCollection,
-            },
-            {
-              label: 'Delete',
-              icon: <Trash2 className="w-4 h-4" />,
-              onClick: handleDeleteCollectionFromContext,
-              danger: true,
-            },
+            { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
+            { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportCollection },
+            { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollectionFromContext, danger: true },
           ]}
           onClose={closeCollectionContextMenu}
         />
@@ -405,4 +372,4 @@ export const CollectionItem = ({
       <ConfirmDialog {...confirmDialog.props} />
     </div>
   );
-};
+}

@@ -1,137 +1,123 @@
-import { StoreApi } from 'zustand';
+import type { LayoutMode } from './types';
 
-type SetState = StoreApi<any>['setState'];
+type UISetState = (partial: Record<string, unknown> | ((state: Record<string, unknown>) => Record<string, unknown>)) => void;
 
-// Sidebar actions
-export const toggleSidebar = (set: SetState) => {
-  set((state: any) => ({ isSidebarOpen: !state.isSidebarOpen }));
-};
+// ── Sidebar ──────────────────────────────────────────────────────────────────
 
-export const setSidebarOpen = (set: SetState, isOpen: boolean) => {
+export function toggleSidebar(set: UISetState): void {
+  set((state) => ({ isSidebarOpen: !state.isSidebarOpen }));
+}
+
+export function setSidebarOpen(set: UISetState, isOpen: boolean): void {
   set({ isSidebarOpen: isOpen });
-};
+}
 
-export const setSidebarWidth = (set: SetState, width: number) => {
+export function setSidebarWidth(set: UISetState, width: number): void {
   set({ sidebarWidth: width });
-};
+}
 
-export const setRequestPanelWidth = (set: SetState, width: number) => {
+// ── Panel dimensions ─────────────────────────────────────────────────────────
+
+export function setRequestPanelWidth(set: UISetState, width: number): void {
   set({ requestPanelWidth: width });
-};
+}
 
-export const setRequestPanelHeight = (set: SetState, height: number) => {
+export function setRequestPanelHeight(set: UISetState, height: number): void {
   set({ requestPanelHeight: height });
-};
+}
 
-export const togglePanelLayout = (set: SetState) => {
-  set((state: any) => ({
+export function togglePanelLayout(set: UISetState): void {
+  set((state) => ({
     panelLayout: state.panelLayout === 'horizontal' ? 'vertical' : 'horizontal',
   }));
-};
+}
 
-export const setPanelLayout = (set: SetState, layout: 'horizontal' | 'vertical') => {
+export function setPanelLayout(set: UISetState, layout: LayoutMode): void {
   set({ panelLayout: layout });
-};
+}
 
-// Console actions
-export const toggleConsole = (set: SetState) => {
-  set((state: any) => ({ isConsoleOpen: !state.isConsoleOpen }));
-};
+// ── Console ──────────────────────────────────────────────────────────────────
 
-export const setConsoleOpen = (set: SetState, isOpen: boolean) => {
+export function toggleConsole(set: UISetState): void {
+  set((state) => ({ isConsoleOpen: !state.isConsoleOpen }));
+}
+
+export function setConsoleOpen(set: UISetState, isOpen: boolean): void {
   set({ isConsoleOpen: isOpen });
-};
+}
 
-export const setConsoleHeight = (set: SetState, height: number) => {
+export function setConsoleHeight(set: UISetState, height: number): void {
   set({ consoleHeight: height });
-};
+}
 
-// Collection expand/collapse actions
-export const toggleCollection = (set: SetState, id: string) => {
-  set((state: any) => {
-    const newExpanded = new Set(state.expandedCollections);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
-    }
-    return { expandedCollections: newExpanded };
+// ── Collection / folder expand ───────────────────────────────────────────────
+
+export function toggleCollection(set: UISetState, id: string): void {
+  set((state) => {
+    const prev = state.expandedCollections as Set<string>;
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return { expandedCollections: next };
   });
-};
+}
 
-export const expandCollection = (set: SetState, id: string) => {
-  set((state: any) => ({
-    expandedCollections: new Set(state.expandedCollections).add(id),
+export function expandCollection(set: UISetState, id: string): void {
+  set((state) => ({
+    expandedCollections: new Set(state.expandedCollections as Set<string>).add(id),
   }));
-};
+}
 
-// Folder expand/collapse actions
-export const toggleFolder = (set: SetState, id: string) => {
-  set((state: any) => {
-    const newExpanded = new Set(state.expandedFolders);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
-    }
-    return { expandedFolders: newExpanded };
+export function toggleFolder(set: UISetState, id: string): void {
+  set((state) => {
+    const prev = state.expandedFolders as Set<string>;
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return { expandedFolders: next };
   });
-};
+}
 
-export const expandFolder = (set: SetState, id: string) => {
-  set((state: any) => ({
-    expandedFolders: new Set(state.expandedFolders).add(id),
+export function expandFolder(set: UISetState, id: string): void {
+  set((state) => ({
+    expandedFolders: new Set(state.expandedFolders as Set<string>).add(id),
   }));
-};
+}
 
-// Multi-select actions
-export const toggleRequestSelection = (
-  set: SetState, 
-  requestId: string, 
-  ctrlKey: boolean, 
+// ── Multi-select ─────────────────────────────────────────────────────────────
+
+export function toggleRequestSelection(
+  set: UISetState,
+  requestId: string,
+  ctrlKey: boolean,
   shiftKey: boolean,
-  allRequestIds?: string[]
-) => {
-  set((state: any) => {
-    const newSelected = new Set(state.selectedRequestIds);
-    
-    if (shiftKey && state.lastSelectedRequestId && allRequestIds) {
-      // Range select - select all items between last selected and current
-      const lastIndex = allRequestIds.indexOf(state.lastSelectedRequestId);
-      const currentIndex = allRequestIds.indexOf(requestId);
-      
-      if (lastIndex !== -1 && currentIndex !== -1) {
-        const start = Math.min(lastIndex, currentIndex);
-        const end = Math.max(lastIndex, currentIndex);
-        
-        // Select all items in range
-        for (let i = start; i <= end; i++) {
-          newSelected.add(allRequestIds[i]);
-        }
+  allRequestIds?: string[],
+): void {
+  set((state) => {
+    const prev = state.selectedRequestIds as Set<string>;
+    const next = new Set(prev);
+    const lastId = state.lastSelectedRequestId as string | null;
+
+    if (shiftKey && lastId && allRequestIds) {
+      const lastIdx = allRequestIds.indexOf(lastId);
+      const curIdx = allRequestIds.indexOf(requestId);
+      if (lastIdx !== -1 && curIdx !== -1) {
+        const start = Math.min(lastIdx, curIdx);
+        const end = Math.max(lastIdx, curIdx);
+        for (let i = start; i <= end; i++) next.add(allRequestIds[i]);
       }
     } else if (!ctrlKey) {
-      // Single select - clear all and select only this one
-      newSelected.clear();
-      newSelected.add(requestId);
+      next.clear();
+      next.add(requestId);
     } else {
-      // Multi-select with CTRL - toggle selection
-      if (newSelected.has(requestId)) {
-        newSelected.delete(requestId);
-      } else {
-        newSelected.add(requestId);
-      }
+      if (next.has(requestId)) next.delete(requestId);
+      else next.add(requestId);
     }
-    
-    return { 
-      selectedRequestIds: newSelected,
-      lastSelectedRequestId: requestId,
-    };
-  });
-};
 
-export const clearSelection = (set: SetState) => {
-  set({ 
-    selectedRequestIds: new Set(),
-    lastSelectedRequestId: null,
+    return { selectedRequestIds: next, lastSelectedRequestId: requestId };
   });
-};
+}
+
+export function clearSelection(set: UISetState): void {
+  set({ selectedRequestIds: new Set<string>(), lastSelectedRequestId: null });
+}

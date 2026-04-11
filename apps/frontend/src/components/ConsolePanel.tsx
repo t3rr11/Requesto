@@ -1,7 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
-import { useUIStore } from '../store/ui';
-import { ConsoleLog } from '../types';
-import { useRequestStore } from '../store/request';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Terminal,
   X,
@@ -17,44 +14,152 @@ import {
   Check,
 } from 'lucide-react';
 import { Button } from './Button';
+import type { ConsoleLog } from '../store/request/types';
 
-export const ConsolePanel = () => {
-  const { isConsoleOpen, toggleConsole, consoleHeight, setConsoleHeight } = useUIStore();
-  const { consoleLogs, clearConsoleLogs } = useRequestStore();
+interface ConsolePanelProps {
+  isOpen: boolean;
+  consoleHeight: number;
+  consoleLogs: ConsoleLog[];
+  onToggle: () => void;
+  onClear: () => void;
+  onHeightChange: (height: number) => void;
+}
+
+type ConsoleGroup = {
+  id: string;
+  requestLog?: ConsoleLog;
+  responseLog?: ConsoleLog;
+  errorLog?: ConsoleLog;
+  infoLog?: ConsoleLog;
+  timestamp: number;
+};
+
+function groupConsoleLogs(logs: ConsoleLog[]): ConsoleGroup[] {
+  const groups = new Map<string, ConsoleGroup>();
+  const order: string[] = [];
+
+  for (const log of logs) {
+    const groupId = log.requestId || log.id;
+    if (!groups.has(groupId)) {
+      groups.set(groupId, { id: groupId, timestamp: log.timestamp });
+      order.push(groupId);
+    }
+    const group = groups.get(groupId)!;
+
+    switch (log.type) {
+      case 'request':
+        group.requestLog = log;
+        break;
+      case 'response':
+        group.responseLog = log;
+        break;
+      case 'error':
+        group.errorLog = log;
+        break;
+      default:
+        group.infoLog = log;
+        break;
+    }
+  }
+
+  // Reverse: newest first
+  return order.map(id => groups.get(id)!).reverse();
+}
+
+function formatTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  const time = date.toLocaleTimeString('en-US', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const ms = date.getMilliseconds().toString().padStart(3, '0');
+  return `${time}.${ms}`;
+}
+
+function formatRelativeTime(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const seconds = Math.floor(diff / 1000);
+
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function formatHeaders(headers?: Record<string, string>): string {
+  if (!headers || Object.keys(headers).length === 0) return 'No headers';
+  return Object.entries(headers)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('\n');
+}
+
+function getStatusColor(status?: number): string {
+  if (!status) return 'text-gray-400';
+  if (status >= 200 && status < 300) return 'text-green-400';
+  if (status >= 300 && status < 400) return 'text-yellow-400';
+  if (status >= 400 && status < 500) return 'text-orange-400';
+  return 'text-red-400';
+}
+
+function getGroupIcon(group: ConsoleGroup) {
+  if (group.errorLog) return <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />;
+  if (group.responseLog) return <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />;
+  if (group.requestLog) return <Send className="w-4 h-4 text-blue-500 shrink-0" />;
+  return <Info className="w-4 h-4 text-gray-500 shrink-0" />;
+}
+
+function getGroupColor(group: ConsoleGroup): string {
+  if (group.errorLog) return 'text-red-400';
+  if (group.responseLog) return 'text-green-400';
+  if (group.requestLog) return 'text-blue-400';
+  return 'text-gray-400';
+}
+
+export function ConsolePanel({
+  isOpen,
+  consoleHeight,
+  consoleLogs,
+  onToggle,
+  onClear,
+  onHeightChange,
+}: ConsolePanelProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
+  const [, setTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const logsEndRef = useRef<HTMLDivElement>(null);
 
+  const groups = useMemo(() => groupConsoleLogs(consoleLogs), [consoleLogs]);
+
+  // Periodically re-render to keep relative times fresh
   useEffect(() => {
-    // Auto-scroll to bottom when new logs arrive
-    if (isConsoleOpen && logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [consoleLogs, isConsoleOpen]);
+    if (!isOpen || consoleLogs.length === 0) return;
+    const interval = setInterval(() => setTick(t => t + 1), 30_000);
+    return () => clearInterval(interval);
+  }, [isOpen, consoleLogs.length]);
 
-  const toggleLogExpanded = (logId: string) => {
+  const handleToggleLog = (groupId: string) => {
     setExpandedLogs(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(logId)) {
-        newSet.delete(logId);
-      } else {
-        newSet.add(logId);
-      }
-      return newSet;
+      const next = new Set(prev);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
     });
   };
 
-  const copyToClipboard = async (text: string, key: string) => {
+  const handleCopy = async (text: string, key: string) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedStates(prev => ({ ...prev, [key]: true }));
-      setTimeout(() => {
-        setCopiedStates(prev => ({ ...prev, [key]: false }));
-      }, 2000);
-    } catch (err) {
-      // Silently fail - clipboard access may be denied
+      setTimeout(() => setCopiedStates(prev => ({ ...prev, [key]: false })), 2000);
+    } catch {
+      // Clipboard access may be denied
     }
   };
 
@@ -64,351 +169,268 @@ export const ConsolePanel = () => {
   };
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !containerRef.current) return;
+    if (!isResizing) return;
 
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
       const container = containerRef.current.parentElement;
       if (!container) return;
-
       const containerRect = container.getBoundingClientRect();
       const newHeight = containerRect.bottom - e.clientY;
-      const clampedHeight = Math.max(150, Math.min(newHeight, containerRect.height - 200));
-      setConsoleHeight(clampedHeight);
+      onHeightChange(Math.max(150, Math.min(newHeight, containerRect.height - 200)));
     };
 
-    const handleMouseUp = () => {
-      setIsResizing(false);
-    };
+    const handleMouseUp = () => setIsResizing(false);
 
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, setConsoleHeight]);
+  }, [isResizing, onHeightChange]);
 
-  const getLogIcon = (type: string) => {
-    switch (type) {
-      case 'error':
-        return <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />;
-      case 'request':
-        return <Send className="w-4 h-4 text-blue-500 flex-shrink-0" />;
-      case 'response':
-        return <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />;
-      case 'info':
-      default:
-        return <Info className="w-4 h-4 text-gray-500 flex-shrink-0" />;
-    }
-  };
+  const renderCopyButton = (text: string, key: string) => (
+    <Button
+      onClick={e => {
+        e.stopPropagation();
+        handleCopy(text, key);
+      }}
+      variant="icon"
+      size="sm"
+      title="Copy"
+      className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400"
+    >
+      {copiedStates[key] ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+    </Button>
+  );
 
-  const getLogColor = (type: string) => {
-    switch (type) {
-      case 'error':
-        return 'text-red-400';
-      case 'request':
-        return 'text-blue-400';
-      case 'response':
-        return 'text-green-400';
-      case 'info':
-      default:
-        return 'text-gray-400';
-    }
-  };
-
-  const getStatusColor = (status?: number) => {
-    if (!status) return 'text-gray-400';
-    if (status >= 200 && status < 300) return 'text-green-400';
-    if (status >= 300 && status < 400) return 'text-yellow-400';
-    if (status >= 400 && status < 500) return 'text-orange-400';
-    return 'text-red-400';
-  };
-
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      fractionalSecondDigits: 3,
-    } as any);
-  };
-
-  const formatHeaders = (headers?: Record<string, string>) => {
-    if (!headers || Object.keys(headers).length === 0) return 'No headers';
-    return Object.entries(headers)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join('\n');
-  };
-
-  const renderLogDetails = (log: ConsoleLog) => {
-    const isExpanded = expandedLogs.has(log.id);
+  const renderHeaders = (
+    headers: Record<string, string> | undefined,
+    prefix: string,
+    groupId: string,
+    highlightAuth = false,
+  ) => {
+    if (!headers || Object.keys(headers).length === 0) return null;
 
     return (
-      <div key={log.id} className="border-b border-gray-800 dark:border-gray-900">
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">Headers</span>
+          {renderCopyButton(formatHeaders(headers), `${prefix}-headers-${groupId}`)}
+        </div>
+        <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-40 overflow-auto">
+          {Object.entries(headers).map(([key, value]) => {
+            const isAuth = highlightAuth && key.toLowerCase() === 'authorization';
+            return (
+              <div key={key} className="py-0.5 flex items-center gap-2">
+                <span
+                  className={
+                    isAuth
+                      ? 'text-yellow-300 font-bold'
+                      : prefix === 'req'
+                        ? 'text-blue-300 dark:text-blue-400'
+                        : 'text-green-300'
+                  }
+                >
+                  {key}
+                </span>
+                <span className="text-gray-500 dark:text-gray-600">: </span>
+                <span
+                  className={
+                    isAuth ? 'text-yellow-200 truncate max-w-64' : 'text-gray-300 dark:text-gray-400'
+                  }
+                  title={value}
+                >
+                  {isAuth && value.length > 60 ? value.slice(0, 60) + '…' : value}
+                </span>
+                {isAuth && (
+                  <span className="ml-2 px-2 py-0.5 bg-yellow-900/40 text-yellow-200 text-[10px] rounded">
+                    AUTH
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderBody = (body: string | undefined, prefix: string, groupId: string) => {
+    if (!body) return null;
+
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">Body</span>
+          <div className="flex items-center gap-1">
+            {prefix === 'res' && (
+              <span className="text-gray-500 text-xs">{new Blob([body]).size} bytes</span>
+            )}
+            {renderCopyButton(body, `${prefix}-body-${groupId}`)}
+          </div>
+        </div>
+        <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-60 overflow-auto">
+          <pre className="text-gray-300 dark:text-gray-400 whitespace-pre-wrap wrap-break-word">
+            {(() => {
+              try {
+                return JSON.stringify(JSON.parse(body), null, 2);
+              } catch {
+                return body;
+              }
+            })()}
+          </pre>
+        </div>
+      </div>
+    );
+  };
+
+  const renderGroupEntry = (group: ConsoleGroup) => {
+    const isExpanded = expandedLogs.has(group.id);
+    const method = group.requestLog?.method || group.responseLog?.method || group.errorLog?.method;
+    const url = group.requestLog?.url || group.responseLog?.url || group.errorLog?.url;
+    const status = group.responseLog?.status;
+    const duration = group.responseLog?.duration;
+
+    return (
+      <div key={group.id} className="border-b border-gray-800 dark:border-gray-900">
+        {/* Collapsed header row */}
         <div
           className="py-2 px-3 hover:bg-gray-800 dark:hover:bg-gray-900 cursor-pointer flex items-center gap-3"
-          onClick={() => toggleLogExpanded(log.id)}
+          onClick={() => handleToggleLog(group.id)}
         >
           <span className="text-gray-500 dark:text-gray-600 text-xs font-mono select-none mt-0.5">
-            {formatTime(log.timestamp)}
+            {formatTime(group.timestamp)}
           </span>
-          {getLogIcon(log.type)}
-          <div className={`flex-1 ${getLogColor(log.type)}`}>
+          {getGroupIcon(group)}
+          <div className={`flex-1 min-w-0 ${getGroupColor(group)}`}>
             <div className="flex items-center gap-2">
-              {log.method && <span className="font-bold text-xs">{log.method}</span>}
-              {log.url && <span className="text-gray-300 dark:text-gray-400 text-xs truncate flex-1">{log.url}</span>}
-              {log.status !== undefined && (
-                <span className={`font-semibold text-sm ${getStatusColor(log.status)}`}>{log.status}</span>
+              {method && <span className="font-bold text-xs">{method}</span>}
+              {url && (
+                <span className="text-gray-300 dark:text-gray-400 text-xs truncate flex-1">
+                  {url}
+                </span>
               )}
-              {log.duration !== undefined && (
-                <span className="text-gray-400 dark:text-gray-500 text-xs">{log.duration}ms</span>
+              {status !== undefined && (
+                <span className={`font-semibold text-sm ${getStatusColor(status)}`}>
+                  {status}
+                </span>
+              )}
+              {duration !== undefined && (
+                <span className="text-gray-400 dark:text-gray-500 text-xs">{duration}ms</span>
+              )}
+              {group.errorLog && !status && (
+                <span className="text-red-400 text-xs truncate">{group.errorLog.message}</span>
               )}
             </div>
-            {log.message && !log.url && <div className="text-sm mt-1">{log.message}</div>}
+            {group.infoLog?.message && !url && (
+              <div className="text-sm mt-1">{group.infoLog.message}</div>
+            )}
           </div>
-          <Button variant="icon" size="sm" className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400">
+          <span
+            className="text-gray-600 dark:text-gray-700 text-xs whitespace-nowrap"
+            title={new Date(group.timestamp).toLocaleString()}
+          >
+            {formatRelativeTime(group.timestamp)}
+          </span>
+          <Button
+            variant="icon"
+            size="sm"
+            className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400"
+          >
             {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </Button>
         </div>
 
+        {/* Expanded details */}
         {isExpanded && (
           <div className="px-3 pb-3 pl-20 space-y-3 text-sm">
-            {log.requestData && (
+            {/* Request section */}
+            {group.requestLog && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-blue-400 dark:text-blue-300 font-semibold pt-2">
+                  <Send className="w-3.5 h-3.5" />
                   <span>Request</span>
                 </div>
 
-                {log.requestData.headers && Object.keys(log.requestData.headers).length > 0 && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">Headers</span>
-                      <Button
-                        onClick={e => {
-                          e.stopPropagation();
-                          copyToClipboard(formatHeaders(log.requestData?.headers), `req-headers-${log.id}`);
-                        }}
-                        variant="icon"
-                        size="sm"
-                        title="Copy headers"
-                        className="text-gray-500 dark:text-gray-600 hover:text-gray-300 dark:hover:text-gray-400"
-                      >
-                        {copiedStates[`req-headers-${log.id}`] ? (
-                          <Check className="w-3 h-3 text-green-400" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </Button>
-                    </div>
-                    <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
-                      {Object.entries(log.requestData.headers).map(([key, value]) => {
-                        const isAuth = key.toLowerCase() === 'authorization';
-                        return (
-                          <div key={key} className="py-0.5 flex items-center gap-2">
-                            <span className={isAuth ? "text-yellow-300 font-bold" : "text-blue-300 dark:text-blue-400"}>{key}</span>
-                            <span className="text-gray-500 dark:text-gray-600">: </span>
-                            <span className={isAuth ? "text-yellow-200 truncate max-w-[16rem]" : "text-gray-300 dark:text-gray-400"} title={value}>
-                              {isAuth ? (value.length > 60 ? value.slice(0, 60) + '…' : value) : value}
-                            </span>
-                            {isAuth && (
-                              <span className="ml-2 px-2 py-0.5 bg-yellow-900/40 text-yellow-200 text-[10px] rounded">AUTH</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                {/* Always show method + URL for context */}
+                <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs">
+                  <span className="text-blue-300 font-bold">{group.requestLog.method}</span>
+                  <span className="text-gray-300 dark:text-gray-400 ml-2 break-all">
+                    {group.requestLog.url}
+                  </span>
+                </div>
 
-                {log.requestData.body && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-xs font-semibold">Body</span>
-                      <Button
-                        onClick={e => {
-                          e.stopPropagation();
-                          copyToClipboard(log.requestData?.body || '', `req-body-${log.id}`);
-                        }}
-                        variant="icon"
-                        size="sm"
-                        title="Copy body"
-                        className="text-gray-500 hover:text-gray-300"
-                      >
-                        {copiedStates[`req-body-${log.id}`] ? (
-                          <Check className="w-3 h-3 text-green-400" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </Button>
-                    </div>
-                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
-                      <pre className="text-gray-300 whitespace-pre-wrap break-words">
-                        {(() => {
-                          try {
-                            return JSON.stringify(JSON.parse(log.requestData.body!), null, 2);
-                          } catch {
-                            return log.requestData.body;
-                          }
-                        })()}
-                      </pre>
-                    </div>
-                  </div>
-                )}
-
-                {log.requestData.auth && log.requestData.auth.type !== 'none' && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-xs font-semibold">Auth</span>
-                      {log.requestData.auth.type === 'oauth' && log.requestData.auth.oauth?.tokens?.accessToken && (
-                        <Button
-                          onClick={e => {
-                            e.stopPropagation();
-                            copyToClipboard(log.requestData?.auth?.oauth?.tokens?.accessToken || '', `auth-token-${log.id}`);
-                          }}
-                          variant="icon"
-                          size="sm"
-                          title="Copy access token"
-                          className="text-gray-500 hover:text-gray-300"
-                        >
-                          {copiedStates[`auth-token-${log.id}`] ? (
-                            <Check className="w-3 h-3 text-green-400" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </Button>
+                {group.requestLog.requestData && (
+                  <>
+                    {renderHeaders(group.requestLog.requestData.headers, 'req', group.id, true)}
+                    {renderBody(group.requestLog.requestData.body, 'req', group.id)}
+                    {(!group.requestLog.requestData.headers ||
+                      Object.keys(group.requestLog.requestData.headers).length === 0) &&
+                      !group.requestLog.requestData.body && (
+                        <div className="text-gray-500 dark:text-gray-600 text-xs italic">
+                          No headers or body
+                        </div>
                       )}
-                    </div>
-                    <div className="bg-gray-800 rounded p-2 font-mono text-xs space-y-2">
-                      <div>
-                        <span className="text-purple-400">{log.requestData.auth.type}</span>
-                      </div>
-                      {log.requestData.auth.type === 'oauth' && log.requestData.auth.oauth && (
-                        <>
-                          {log.requestData.auth.oauth.tokens?.accessToken ? (
-                            <div className="space-y-1">
-                              <div className="text-green-400 text-xs">✓ Authenticated</div>
-                              <div className="bg-gray-900 rounded p-2 break-all text-yellow-300">
-                                <span className="text-gray-500">Bearer </span>
-                                {log.requestData.auth.oauth.tokens.accessToken}
-                              </div>
-                              {log.requestData.auth.oauth.tokens.expiresAt && (
-                                <div className="text-gray-500 text-[10px]">
-                                  Expires: {new Date(log.requestData.auth.oauth.tokens.expiresAt).toLocaleString()}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-yellow-400 text-xs">⚠ No token available (configId: {log.requestData.auth.oauth.configId})</div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
+                  </>
                 )}
               </div>
             )}
 
-            {log.responseData && (
-              <div className="space-y-2 border-t border-gray-700 pt-3">
+            {/* Response section */}
+            {group.responseLog?.responseData && (
+              <div className="space-y-2 border-t border-gray-700 dark:border-gray-800 pt-3">
                 <div className="flex items-center gap-2 text-green-400 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Response</span>
-                  <span className={`text-xs ${getStatusColor(log.responseData.status)}`}>
-                    {log.responseData.status} {log.responseData.statusText}
+                  <span className={`text-xs ${getStatusColor(group.responseLog.responseData.status)}`}>
+                    {group.responseLog.responseData.status} {group.responseLog.responseData.statusText}
                   </span>
+                  {group.responseLog.duration !== undefined && (
+                    <span className="text-gray-500 dark:text-gray-600 text-xs">
+                      ({group.responseLog.duration}ms)
+                    </span>
+                  )}
                 </div>
 
-                {log.responseData.headers && Object.keys(log.responseData.headers).length > 0 && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-xs font-semibold">Headers</span>
-                      <Button
-                        onClick={e => {
-                          e.stopPropagation();
-                          copyToClipboard(formatHeaders(log.responseData?.headers), `res-headers-${log.id}`);
-                        }}
-                        variant="icon"
-                        size="sm"
-                        title="Copy headers"
-                        className="text-gray-500 hover:text-gray-300"
-                      >
-                        {copiedStates[`res-headers-${log.id}`] ? (
-                          <Check className="w-3 h-3 text-green-400" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </Button>
-                    </div>
-                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-40 overflow-auto scrollbar-dark">
-                      {Object.entries(log.responseData.headers).map(([key, value]) => (
-                        <div key={key} className="py-0.5">
-                          <span className="text-green-300">{key}</span>
-                          <span className="text-gray-500">: </span>
-                          <span className="text-gray-300">{value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {renderHeaders(group.responseLog.responseData.headers, 'res', group.id)}
+
+                {'body' in group.responseLog.responseData && group.responseLog.responseData.body && (
+                  renderBody(group.responseLog.responseData.body, 'res', group.id)
                 )}
 
-                {log.responseData && 'body' in log.responseData && log.responseData.body && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-xs font-semibold">Body</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-gray-500 text-xs">{new Blob([log.responseData.body]).size} bytes</span>
-                        <Button
-                          onClick={e => {
-                            e.stopPropagation();
-                            copyToClipboard(
-                              'body' in log.responseData! ? log.responseData.body || '' : '',
-                              `res-body-${log.id}`
-                            );
-                          }}
-                          variant="icon"
-                          size="sm"
-                          title="Copy body"
-                          className="text-gray-500 hover:text-gray-300"
-                        >
-                          {copiedStates[`res-body-${log.id}`] ? (
-                            <Check className="w-3 h-3 text-green-400" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </Button>
+                {'isStreaming' in group.responseLog.responseData &&
+                  group.responseLog.responseData.isStreaming && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">
+                          SSE Events
+                        </span>
+                        <span className="text-gray-500 text-xs">
+                          {group.responseLog.responseData.events.length} events
+                        </span>
+                      </div>
+                      <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-60 overflow-auto">
+                        <pre className="text-gray-300 dark:text-gray-400 whitespace-pre-wrap wrap-break-word">
+                          {JSON.stringify(group.responseLog.responseData.events, null, 2)}
+                        </pre>
                       </div>
                     </div>
-                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
-                      <pre className="text-gray-300 whitespace-pre-wrap break-words">
-                        {(() => {
-                          try {
-                            return JSON.stringify(JSON.parse(log.responseData.body), null, 2);
-                          } catch {
-                            return log.responseData.body;
-                          }
-                        })()}
-                      </pre>
-                    </div>
-                  </div>
-                )}
+                  )}
+              </div>
+            )}
 
-                {log.responseData && 'isStreaming' in log.responseData && log.responseData.isStreaming && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400 text-xs font-semibold">SSE Events</span>
-                      <span className="text-gray-500 text-xs">{log.responseData.events.length} events</span>
-                    </div>
-                    <div className="bg-gray-800 rounded p-2 font-mono text-xs max-h-60 overflow-auto scrollbar-dark">
-                      <pre className="text-gray-300 whitespace-pre-wrap break-words">
-                        {JSON.stringify(log.responseData.events, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                )}
+            {/* Error section */}
+            {group.errorLog && (
+              <div className="space-y-2 border-t border-gray-700 dark:border-gray-800 pt-3">
+                <div className="flex items-center gap-2 text-red-400 font-semibold">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Error</span>
+                </div>
+                <div className="bg-red-900/20 border border-red-800/50 rounded p-3 text-red-300 text-xs font-mono">
+                  {group.errorLog.message}
+                </div>
               </div>
             )}
           </div>
@@ -417,17 +439,19 @@ export const ConsolePanel = () => {
     );
   };
 
-  if (!isConsoleOpen) {
+  if (!isOpen) {
     return (
       <div
         className="fixed bottom-0 left-0 right-0 bg-gray-800 dark:bg-gray-900 text-white px-4 py-2 flex items-center justify-between shadow-lg cursor-pointer hover:bg-gray-700 dark:hover:bg-gray-800 transition-colors z-10 dark:border-t dark:border-gray-700"
-        onClick={toggleConsole}
+        onClick={onToggle}
       >
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4" />
           <span className="text-sm font-medium">Console</span>
-          {consoleLogs.length > 0 && (
-            <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">{consoleLogs.length}</span>
+          {groups.length > 0 && (
+            <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+              {groups.length}
+            </span>
           )}
         </div>
         <ChevronUp className="w-4 h-4" />
@@ -438,71 +462,64 @@ export const ConsolePanel = () => {
   return (
     <div
       ref={containerRef}
-      className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-black text-gray-100 dark:text-gray-200 flex flex-col shadow-2xl z-10"
+      className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-black text-white flex flex-col shadow-2xl z-10"
       style={{ height: `${consoleHeight}px` }}
     >
       <div
-        className="h-1 bg-gray-700 dark:bg-gray-800 hover:bg-orange-500 cursor-ns-resize transition-colors"
+        className="h-1 bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-row-resize shrink-0"
         onMouseDown={handleMouseDown}
       />
 
-      <div
-        className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-950 border-b border-gray-700 dark:border-gray-800 cursor-pointer hover:bg-gray-750 dark:hover:bg-gray-900"
-        onClick={toggleConsole}
-      >
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-900 border-b border-gray-700 dark:border-gray-800 shrink-0 cursor-pointer hover:bg-gray-750 dark:hover:bg-gray-800" onClick={onToggle}>
         <div className="flex items-center gap-2">
           <Terminal className="w-4 h-4" />
           <span className="text-sm font-medium">Console</span>
-          {consoleLogs.length > 0 && (
-            <span className="bg-gray-700 text-gray-300 text-xs px-2 py-0.5 rounded">
-              {consoleLogs.length} {consoleLogs.length === 1 ? 'log' : 'logs'}
+          {groups.length > 0 && (
+            <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
+              {groups.length}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Button
             onClick={e => {
               e.stopPropagation();
-              clearConsoleLogs();
+              onClear();
             }}
             variant="icon"
             size="sm"
-            title="Clear Console"
-            className="hover:bg-gray-700 dark:hover:bg-gray-800"
+            title="Clear console"
+            className="text-gray-400 hover:text-white"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
           <Button
             onClick={e => {
               e.stopPropagation();
-              toggleConsole();
+              onToggle();
             }}
             variant="icon"
             size="sm"
-            title="Close Console"
-            className="hover:bg-gray-700 dark:hover:bg-gray-800"
+            title="Close console"
+            className="text-gray-400 hover:text-white"
           >
             <X className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto font-mono text-xs scrollbar-dark">
-        {consoleLogs.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex-1 overflow-y-auto">
+        {groups.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-600">
             <div className="text-center">
-              <Terminal className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No logs yet</p>
-              <p className="text-xs mt-1">Request logs will appear here</p>
+              <Terminal className="w-6 h-6 mx-auto mb-2 opacity-50" />
+              <p className="text-xs">No console output yet</p>
             </div>
           </div>
         ) : (
-          <>
-            {consoleLogs.map(log => renderLogDetails(log))}
-            <div ref={logsEndRef} />
-          </>
+          groups.map(group => renderGroupEntry(group))
         )}
       </div>
     </div>
   );
-};
+}

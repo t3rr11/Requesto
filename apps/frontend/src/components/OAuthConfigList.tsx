@@ -1,32 +1,35 @@
-import { Shield } from 'lucide-react';
-import { OAuthConfig } from '../types';
+import { Shield, Plus } from 'lucide-react';
+import type { OAuthConfig } from '../store/oauth/types';
 import { SidebarPanel } from './SidebarPanel';
 import { SidebarItem } from './SidebarItem';
 import { EmptyState } from './EmptyState';
+import { Button } from './Button';
 
 interface OAuthConfigListProps {
   configs: OAuthConfig[];
   selectedConfigId: string | null;
   isLoadingConfigs: boolean;
   onConfigSelect: (config: OAuthConfig) => void;
+  onAdd: () => void;
 }
 
 const flowTypeLabels: Record<string, string> = {
   'authorization-code-pkce': 'Auth Code (PKCE)',
   'authorization-code': 'Auth Code',
   'client-credentials': 'Client Credentials',
-  'implicit': 'Implicit',
-  'password': 'Password',
+  implicit: 'Implicit',
+  password: 'Password',
 };
 
-export const OAuthConfigList = ({
-  configs,
-  selectedConfigId,
-  isLoadingConfigs,
-  onConfigSelect,
-}: OAuthConfigListProps) => {
+export function OAuthConfigList({ configs, selectedConfigId, isLoadingConfigs, onConfigSelect, onAdd }: OAuthConfigListProps) {
+  const headerActions = (
+    <Button onClick={onAdd} variant="icon" size="sm" title="New Config">
+      <Plus className="w-4 h-4" />
+    </Button>
+  );
+
   return (
-    <SidebarPanel title="Your Configurations" isLoading={isLoadingConfigs}>
+    <SidebarPanel title="Configurations" headerActions={headerActions} isLoading={isLoadingConfigs}>
       {configs.length === 0 ? (
         <EmptyState
           icon={<Shield className="w-12 h-12" />}
@@ -57,4 +60,4 @@ export const OAuthConfigList = ({
       )}
     </SidebarPanel>
   );
-};
+}

@@ -1,39 +1,35 @@
-import { useTabsStore } from '../store/tabs';
-import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import { Button } from './Button';
-import { ConfirmDialog } from './ConfirmDialog';
-import { EnvironmentSelectorCompact } from './EnvironmentSelector';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   DndContext,
   closestCenter,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
-  DragEndEvent,
+  type DragEndEvent,
 } from '@dnd-kit/core';
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
   horizontalListSortingStrategy,
+  useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTabsStore } from '../store/tabs/store';
+import { ConfirmDialog } from './ConfirmDialog';
+import { EnvironmentSelectorCompact } from './EnvironmentSelector';
 
-// Sortable Tab Component
 interface SortableTabProps {
   tabId: string;
-  tab: any;
+  label: string;
   isActive: boolean;
-  onTabClick: (tabId: string) => void;
-  onCloseTab: (e: React.MouseEvent, tabId: string) => void;
-  getTabTitle: (tabId: string) => string;
+  isDirty: boolean;
+  onActivate: () => void;
+  onClose: (e: React.MouseEvent) => void;
+  onAuxClick: (e: React.MouseEvent) => void;
 }
 
-const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle }: SortableTabProps) => {
+function SortableTab({ tabId, label, isActive, isDirty, onActivate, onClose, onAuxClick }: SortableTabProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tabId });
 
   const style = {
@@ -46,313 +42,255 @@ const SortableTab = ({ tabId, tab, isActive, onTabClick, onCloseTab, getTabTitle
     <div
       ref={setNodeRef}
       style={style}
+      data-tab-id={tabId}
       {...attributes}
       {...listeners}
-      onClick={() => onTabClick(tabId)}
-      onAuxClick={e => {
-        // Middle click (button 1) closes the tab
-        if (e.button === 1) {
-          e.preventDefault();
-          onCloseTab(e, tabId);
-        }
-      }}
-      title={getTabTitle(tabId)}
-      className={`
-        group flex items-center gap-2 px-4 border-r border-gray-300 dark:border-gray-600 cursor-grab active:cursor-grabbing
-        transition-colors duration-150 flex-shrink-0 min-w-[120px] max-w-[200px] h-full
-        ${
-          isActive
-            ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-b-blue-500 dark:border-b-blue-700'
-            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-        }
-      `}
+      onClick={onActivate}
+      onAuxClick={onAuxClick}
+      onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}
+      className={`group flex items-center gap-2 px-4 border-r border-gray-300 dark:border-gray-600 cursor-grab active:cursor-grabbing transition-colors shrink-0 min-w-30 max-w-50 h-full text-sm whitespace-nowrap select-none ${
+        isActive
+          ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-b-blue-500 dark:border-b-blue-700'
+          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+      }`}
     >
-      <span className="flex-1 truncate select-none text-sm flex items-center gap-1">
-        {tab.isDirty && (
+      <span className="flex-1 truncate flex items-center gap-1">
+        {isDirty && (
           <span className="text-orange-500 dark:text-orange-400 font-bold text-xs" title="Unsaved changes">
             ●
           </span>
         )}
-        <span className="truncate">{tab.label}</span>
+        <span className="truncate">{label}</span>
       </span>
-
-      <Button
-        onClick={e => onCloseTab(e, tabId)}
-        variant="icon"
-        size="sm"
-        className={`flex-shrink-0 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-        aria-label={`Close ${tab.label}`}
+      <button
+        onClick={onClose}
+        className={`p-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors shrink-0 ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        aria-label={`Close ${label}`}
       >
-        <X size={14} />
-      </Button>
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
-};
+}
 
-export const TabsBar = () => {
-  const { tabs, tabOrder, activeTabId, activateTab, closeTab, openNewTab, reorderTabs } = useTabsStore();
-  const tabsContainerRef = useRef<HTMLDivElement>(null);
-  const [tabToClose, setTabToClose] = useState<string | null>(null);
-  const [showLeftScroll, setShowLeftScroll] = useState(false);
-  const [showRightScroll, setShowRightScroll] = useState(false);
+export function TabsBar() {
+  const {
+    tabs,
+    tabOrder,
+    activeTabId,
+    activateTab,
+    closeTab,
+    openNewTab,
+    reorderTabs,
+  } = useTabsStore();
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [pendingCloseTabId, setPendingCloseTabId] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // 8px movement required before drag starts
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
-  // Handle drag end
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  }, []);
 
-    if (over && active.id !== over.id) {
-      const oldIndex = tabOrder.indexOf(active.id as string);
-      const newIndex = tabOrder.indexOf(over.id as string);
-
-      const newOrder = arrayMove(tabOrder, oldIndex, newIndex);
-      reorderTabs(newOrder);
-    }
-  };
-
-  // Check if scrolling is needed and update scroll button visibility
-  const checkScrollButtons = () => {
-    const container = tabsContainerRef.current;
-    if (!container) return;
-
-    const { scrollLeft, scrollWidth, clientWidth } = container;
-    setShowLeftScroll(scrollLeft > 0);
-    setShowRightScroll(scrollLeft + clientWidth < scrollWidth - 1);
-  };
-
-  // Check scroll buttons on mount and when tabs change
   useEffect(() => {
-    checkScrollButtons();
-    const container = tabsContainerRef.current;
-    if (!container) return;
-
-    container.addEventListener('scroll', checkScrollButtons);
-    window.addEventListener('resize', checkScrollButtons);
-
+    updateScrollButtons();
+    const el = scrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', updateScrollButtons);
+    const observer = new ResizeObserver(updateScrollButtons);
+    observer.observe(el);
     return () => {
-      container.removeEventListener('scroll', checkScrollButtons);
-      window.removeEventListener('resize', checkScrollButtons);
+      el.removeEventListener('scroll', updateScrollButtons);
+      observer.disconnect();
     };
-  }, [tabOrder]);
+  }, [tabOrder.length, updateScrollButtons]);
 
-  const scrollTabs = (direction: 'left' | 'right') => {
-    const container = tabsContainerRef.current;
-    if (!container) return;
-
-    const scrollAmount = 200;
-    const newScrollLeft =
-      direction === 'left' ? container.scrollLeft - scrollAmount : container.scrollLeft + scrollAmount;
-
-    container.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
-  };
+  // Auto-scroll to active tab when it changes
+  useEffect(() => {
+    if (!activeTabId || !scrollRef.current) return;
+    const activeEl = scrollRef.current.querySelector(`[data-tab-id="${activeTabId}"]`) as HTMLElement | null;
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [activeTabId]);
 
   // Handle wheel scroll for horizontal scrolling
   useEffect(() => {
-    const container = tabsContainerRef.current;
-    if (!container) return;
+    const el = scrollRef.current;
+    if (!el) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // Only handle horizontal scroll if there's horizontal overflow
-      if (container.scrollWidth > container.clientWidth) {
+      if (el.scrollWidth > el.clientWidth) {
         e.preventDefault();
-        container.scrollLeft += e.deltaY;
+        // Use deltaY (vertical scroll → horizontal) or deltaX (trackpad horizontal)
+        el.scrollLeft += e.deltaY || e.deltaX;
       }
     };
 
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
   }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + W to close active tab
-      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
-        e.preventDefault();
-        if (activeTabId) {
-          closeTab(activeTabId);
-        }
-      }
-
-      // Ctrl/Cmd + T to open new tab
-      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-        e.preventDefault();
-        openNewTab();
-      }
-
-      // Ctrl/Cmd + Tab or Ctrl/Cmd + Shift + Tab for tab navigation
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Tab') {
-        e.preventDefault();
-        const currentIndex = tabOrder.indexOf(activeTabId || '');
-        if (currentIndex === -1) return;
-
-        let nextIndex: number;
-        if (e.shiftKey) {
-          // Previous tab
-          nextIndex = currentIndex > 0 ? currentIndex - 1 : tabOrder.length - 1;
-        } else {
-          // Next tab
-          nextIndex = currentIndex < tabOrder.length - 1 ? currentIndex + 1 : 0;
-        }
-
-        const nextTabId = tabOrder[nextIndex];
-        if (nextTabId) {
-          activateTab(nextTabId);
-        }
-      }
-
-      // Ctrl/Cmd + [1-9] to jump to specific tab
-      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '9') {
-        e.preventDefault();
-        const tabIndex = parseInt(e.key) - 1;
-        if (tabIndex < tabOrder.length) {
-          activateTab(tabOrder[tabIndex]);
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'w') {
+          e.preventDefault();
+          if (activeTabId) handleCloseTab(activeTabId);
+        } else if (e.key === 't') {
+          e.preventDefault();
+          openNewTab();
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          if (tabOrder.length < 2) return;
+          const idx = activeTabId ? tabOrder.indexOf(activeTabId) : -1;
+          const next = e.shiftKey
+            ? (idx - 1 + tabOrder.length) % tabOrder.length
+            : (idx + 1) % tabOrder.length;
+          activateTab(tabOrder[next]);
+        } else if (e.key >= '1' && e.key <= '9') {
+          e.preventDefault();
+          const num = parseInt(e.key, 10);
+          const targetIdx = num === 9 ? tabOrder.length - 1 : num - 1;
+          if (targetIdx < tabOrder.length) activateTab(tabOrder[targetIdx]);
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTabId, tabOrder, activateTab, closeTab, openNewTab]);
+  }, [activeTabId, tabOrder, activateTab, openNewTab]);
 
-  const handleTabClick = (tabId: string) => {
-    activateTab(tabId);
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      const tab = tabs[tabId];
+      if (tab?.isDirty) {
+        setPendingCloseTabId(tabId);
+      } else {
+        closeTab(tabId);
+      }
+    },
+    [tabs, closeTab],
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = tabOrder.indexOf(active.id as string);
+      const newIndex = tabOrder.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newOrder = [...tabOrder];
+      newOrder.splice(oldIndex, 1);
+      newOrder.splice(newIndex, 0, active.id as string);
+      reorderTabs(newOrder);
+    },
+    [tabOrder, reorderTabs],
+  );
+
+  const scroll = (direction: 'left' | 'right') => {
+    scrollRef.current?.scrollTo({
+      left: scrollRef.current.scrollLeft + (direction === 'left' ? -200 : 200),
+      behavior: 'smooth',
+    });
   };
 
-  const handleCloseTab = (e: React.MouseEvent, tabId: string) => {
-    e.stopPropagation();
-    const tab = tabs[tabId];
-
-    // If tab has unsaved changes, show confirmation dialog
-    if (tab?.isDirty) {
-      setTabToClose(tabId);
-    } else {
-      closeTab(tabId);
-    }
-  };
-
-  const confirmCloseTab = () => {
-    if (tabToClose) {
-      closeTab(tabToClose);
-      setTabToClose(null);
-    }
-  };
-
-  const cancelCloseTab = () => {
-    setTabToClose(null);
-  };
-
-  const handleNewTab = () => {
-    openNewTab();
-  };
-
-  const getTabTitle = (tabId: string) => {
-    const tab = tabs[tabId];
-    if (!tab) return '';
-
-    let title = tab.label;
-    if (tab.request.url) {
-      title += `\n${tab.request.method} ${tab.request.url}`;
-    }
-    if (tab.isDirty) {
-      title += '\n(unsaved changes)';
-    }
-    return title;
-  };
+  const orderedTabs = useMemo(
+    () => tabOrder.map(id => tabs[id]).filter(Boolean),
+    [tabOrder, tabs],
+  );
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-      modifiers={[restrictToHorizontalAxis]}
-    >
-      <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 flex items-center h-10 relative dark:border-t dark:border-t-gray-700">
-        {showLeftScroll && (
-          <Button
-            onClick={() => scrollTabs('left')}
-            variant="icon"
-            className="absolute left-0 z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)]"
-            aria-label="Scroll left"
+    <>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToHorizontalAxis]}>
+        <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 flex items-center h-10 shrink-0">
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="shrink-0 h-full px-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-r border-gray-300 dark:border-gray-600"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          )}
+
+          <div
+            ref={scrollRef}
+            className="flex-1 flex items-stretch overflow-x-auto overflow-y-hidden h-full scrollbar-hide min-w-0"
           >
-            <ChevronLeft size={16} />
-          </Button>
-        )}
-
-        <div
-          ref={tabsContainerRef}
-          className="flex-1 flex items-stretch overflow-x-auto overflow-y-hidden h-full scrollbar-hide"
-          style={{
-            scrollbarWidth: 'none', // Firefox
-            msOverflowStyle: 'none', // IE/Edge
-          }}
-        >
-          <SortableContext items={tabOrder} strategy={horizontalListSortingStrategy}>
-            {tabOrder.map(tabId => {
-              const tab = tabs[tabId];
-              if (!tab) return null;
-
-              const isActive = tabId === activeTabId;
-
-              return (
+            <SortableContext items={tabOrder} strategy={horizontalListSortingStrategy}>
+              {orderedTabs.map(tab => (
                 <SortableTab
-                  key={tabId}
-                  tabId={tabId}
-                  tab={tab}
-                  isActive={isActive}
-                  onTabClick={handleTabClick}
-                  onCloseTab={handleCloseTab}
-                  getTabTitle={getTabTitle}
+                  key={tab.id}
+                  tabId={tab.id}
+                  label={tab.label}
+                  isActive={tab.id === activeTabId}
+                  isDirty={tab.isDirty}
+                  onActivate={() => activateTab(tab.id)}
+                  onClose={e => {
+                    e.stopPropagation();
+                    handleCloseTab(tab.id);
+                  }}
+                  onAuxClick={e => {
+                    if (e.button === 1) {
+                      e.preventDefault();
+                      handleCloseTab(tab.id);
+                    }
+                  }}
                 />
-              );
-            })}
-          </SortableContext>
+              ))}
+            </SortableContext>
+          </div>
 
-          <Button
-            onClick={handleNewTab}
-            variant="icon"
-            className="flex-shrink-0 p-2 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-gray-300 dark:border-gray-600 h-full"
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="shrink-0 h-full px-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-300 dark:border-gray-600"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
+
+          <button
+            onClick={openNewTab}
+            className="shrink-0 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 h-full border-l border-gray-300 dark:border-gray-600"
             aria-label="New tab"
-            title="New tab (Ctrl/Cmd + T)"
+            title="New tab (Ctrl+T)"
           >
             <Plus size={18} />
-          </Button>
+          </button>
+
+          <div className="shrink-0 flex items-center px-2 border-l border-gray-300 dark:border-gray-600 h-full">
+            <EnvironmentSelectorCompact />
+          </div>
         </div>
+      </DndContext>
 
-        {showRightScroll && (
-          <Button
-            onClick={() => scrollTabs('right')}
-            variant="icon"
-            className="absolute right-[160px] border-r z-10 h-full px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-none border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)]"
-            aria-label="Scroll right"
-          >
-            <ChevronRight size={16} />
-          </Button>
-        )}
-
-        <EnvironmentSelectorCompact />
-
-        <ConfirmDialog
-          isOpen={tabToClose !== null}
-          onClose={cancelCloseTab}
-          onConfirm={confirmCloseTab}
-          title="Unsaved Changes"
-          message={`Tab "${tabs[tabToClose || '']?.label || ''}" has unsaved changes. Are you sure you want to close it?`}
-          confirmText="Close Tab"
-          cancelText="Cancel"
-          variant="warning"
-        />
-      </div>
-    </DndContext>
+      <ConfirmDialog
+        isOpen={pendingCloseTabId !== null}
+        onClose={() => setPendingCloseTabId(null)}
+        onConfirm={() => {
+          if (pendingCloseTabId) {
+            closeTab(pendingCloseTabId);
+            setPendingCloseTabId(null);
+          }
+        }}
+        title="Unsaved Changes"
+        message="This tab has unsaved changes. Close it anyway?"
+        confirmText="Close"
+        variant="warning"
+      />
+    </>
   );
-};
+}

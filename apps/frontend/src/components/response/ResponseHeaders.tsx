@@ -1,17 +1,22 @@
-import { useTabsStore } from '../../store/tabs';
+interface ResponseHeadersProps {
+  headers: Record<string, string>;
+}
 
-export function ResponseHeaders() {
-  const { getActiveTab } = useTabsStore();
-  const activeTab = getActiveTab();
-  const response = activeTab?.response || null;
+export function ResponseHeaders({ headers }: ResponseHeadersProps) {
+  const entries = Object.entries(headers);
 
   return (
     <div className="p-6 overflow-y-auto h-full">
-      {response && Object.entries(response.headers).length > 0 ? (
+      {entries.length > 0 ? (
         <div className="space-y-2">
-          {Object.entries(response.headers).map(([key, value]) => (
-            <div key={key} className="flex gap-4 text-sm border-b border-gray-100 dark:border-gray-800 pb-2">
-              <span className="font-medium text-gray-700 dark:text-gray-300 min-w-[200px]">{key}</span>
+          {entries.map(([key, value]) => (
+            <div
+              key={key}
+              className="flex gap-4 text-sm border-b border-gray-100 dark:border-gray-800 pb-2"
+            >
+              <span className="font-medium text-gray-700 dark:text-gray-300 min-w-50">
+                {key}
+              </span>
               <span className="text-gray-600 dark:text-gray-400 flex-1 break-all">{value}</span>
             </div>
           ))}

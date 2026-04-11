@@ -1,14 +1,14 @@
-import { useState, useEffect, RefObject } from 'react';
+import { useState, useEffect, type RefObject } from 'react';
 
-export interface VariableDetectionResult {
+export type VariableDetectionResult = {
   showSuggestions: boolean;
   currentVariable: string;
   cursorPosition: number;
-}
+};
 
 export function useVariableDetection(
   value: string,
-  inputRef: RefObject<HTMLInputElement | null>
+  inputRef: RefObject<HTMLInputElement | null>,
 ): VariableDetectionResult {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [currentVariable, setCurrentVariable] = useState('');
@@ -22,13 +22,10 @@ export function useVariableDetection(
     setCursorPosition(position);
 
     const textBeforeCursor = value.substring(0, position);
-
-    // Check if we're inside a variable placeholder
     const lastOpenBrace = textBeforeCursor.lastIndexOf('{{');
     const lastCloseBrace = textBeforeCursor.lastIndexOf('}}');
 
     if (lastOpenBrace > lastCloseBrace && lastOpenBrace !== -1) {
-      // We're inside {{ }}
       const varStart = lastOpenBrace + 2;
       const currentVar = textBeforeCursor.substring(varStart).trim();
       setCurrentVariable(currentVar);
@@ -39,9 +36,5 @@ export function useVariableDetection(
     }
   }, [value, inputRef]);
 
-  return {
-    showSuggestions,
-    currentVariable,
-    cursorPosition,
-  };
+  return { showSuggestions, currentVariable, cursorPosition };
 }

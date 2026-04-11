@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Dialog } from '../components/Dialog';
 import { Button } from '../components/Button';
-import { RenameFormData, renameSchema } from './schemas/renameSchema';
+import { renameSchema, type RenameFormData } from './schemas/renameSchema';
 
 interface RenameFormProps {
   isOpen: boolean;
@@ -15,15 +15,15 @@ interface RenameFormProps {
   placeholder?: string;
 }
 
-export const RenameForm = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  currentName, 
-  title, 
+export function RenameForm({
+  isOpen,
+  onClose,
+  onSave,
+  currentName,
+  title,
   label,
-  placeholder = 'Enter name...'
-}: RenameFormProps) => {
+  placeholder = 'Enter name...',
+}: RenameFormProps) {
   const {
     register,
     handleSubmit,
@@ -36,7 +36,6 @@ export const RenameForm = ({
     },
   });
 
-  // Update form when currentName changes
   useEffect(() => {
     reset({ name: currentName });
   }, [currentName, reset]);
@@ -59,7 +58,7 @@ export const RenameForm = ({
           <input
             type="text"
             {...register('name')}
-            onKeyDown={(e) => {
+            onKeyDown={e => {
               if (e.key === 'Escape') handleClose();
             }}
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
@@ -82,4 +81,4 @@ export const RenameForm = ({
       </form>
     </Dialog>
   );
-};
+}

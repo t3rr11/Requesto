@@ -10,9 +10,15 @@ export function VariableBadge({ variableCount, hasUndefinedVariables }: Variable
     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none">
       <span
         className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-          hasUndefinedVariables ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+          hasUndefinedVariables
+            ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
         }`}
-        title={hasUndefinedVariables ? 'Some variables are not defined' : `Using ${variableCount} variable(s)`}
+        title={
+          hasUndefinedVariables
+            ? 'Some variables are not defined'
+            : `Using ${variableCount} variable(s)`
+        }
       >
         {variableCount} var{variableCount !== 1 ? 's' : ''}
       </span>

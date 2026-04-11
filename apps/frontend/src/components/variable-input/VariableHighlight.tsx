@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { EnvironmentVariable } from '../../types';
+import type { ReactNode } from 'react';
+import type { EnvironmentVariable } from '../../store/environments/types';
 
 interface VariableHighlightProps {
   value: string;
@@ -25,25 +25,19 @@ export function VariableHighlight({
     let lastIndex = 0;
     const regex = /\{\{([^}]+)\}\}/g;
     let match;
-
-    // Track instance indices for each variable key
     const variableInstances = new Map<string, number>();
 
     while ((match = regex.exec(value)) !== null) {
-      // Add text before variable (visible, normal text)
       if (match.index > lastIndex) {
         parts.push(
           <span key={`text-${lastIndex}`} className="text-gray-900 dark:text-gray-100">
             {value.substring(lastIndex, match.index)}
-          </span>
+          </span>,
         );
       }
 
-      // Add variable with highlighting
       const varKey = match[1].trim();
       const isDefined = enabledVariables.some(v => v.key === varKey);
-
-      // Get and increment instance index for this variable key
       const instanceIndex = variableInstances.get(varKey) || 0;
       variableInstances.set(varKey, instanceIndex + 1);
 
@@ -61,18 +55,17 @@ export function VariableHighlight({
           onClick={() => onVariableClick(varKey, instanceIndex)}
         >
           {match[0]}
-        </span>
+        </span>,
       );
 
       lastIndex = match.index + match[0].length;
     }
 
-    // Add remaining text (visible, normal text)
     if (lastIndex < value.length) {
       parts.push(
         <span key={`text-${lastIndex}`} spellCheck="false" className="text-transparent">
           {value.substring(lastIndex)}
-        </span>
+        </span>,
       );
     }
 

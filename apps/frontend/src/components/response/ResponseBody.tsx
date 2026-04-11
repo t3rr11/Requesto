@@ -1,29 +1,30 @@
-import Editor, { Monaco } from '@monaco-editor/react';
-import { formatResponseBody } from '../../helpers/responseHelpers';
-import { useTabsStore } from '../../store/tabs';
+import Editor, { type Monaco } from '@monaco-editor/react';
+import type { ProxyResponse, StreamingResponse } from '../../store/request/types';
+import { formatResponseBody } from '../../helpers/response';
 import { ResponseBodyStreaming } from './ResponseBodyStreaming';
-import { useThemeStore } from '../../store/theme';
 
-export function ResponseBody() {
-  const { getActiveTab } = useTabsStore();
-  const { isDarkMode } = useThemeStore();
-  const activeTab = getActiveTab();
-  const response = activeTab?.response || null;
+interface ResponseBodyProps {
+  response: ProxyResponse | StreamingResponse;
+  isDarkMode: boolean;
+}
 
-  // Check if this is a streaming response
-  const isStreaming = response && 'isStreaming' in response && response.isStreaming;
+export function ResponseBody({ response, isDarkMode }: ResponseBodyProps) {
+  const isStreaming = 'isStreaming' in response && response.isStreaming;
 
   if (isStreaming) {
+    const streamingResponse = response as StreamingResponse;
     return (
       <div className="h-full">
         <ResponseBodyStreaming
-          events={response.events || []}
-          status={response.status}
-          statusText={response.statusText}
+          events={streamingResponse.events || []}
+          status={streamingResponse.status}
+          statusText={streamingResponse.statusText}
         />
       </div>
     );
   }
+
+  const body = 'body' in response ? response.body : '';
 
   return (
     <div className="h-full p-6">
@@ -31,7 +32,7 @@ export function ResponseBody() {
         <Editor
           height="100%"
           defaultLanguage="json"
-          value={formatResponseBody((response && 'body' in response ? response.body : '') || '')}
+          value={formatResponseBody(body || '')}
           theme={isDarkMode ? 'custom-dark' : 'vs-light'}
           beforeMount={(monaco: Monaco) => {
             monaco.editor.defineTheme('custom-dark', {

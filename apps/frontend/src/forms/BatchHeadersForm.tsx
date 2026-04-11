@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { Button } from '../components/Button';
-import { parseHeaders } from '../helpers/headerHelpers';
+import { parseHeaders } from '../helpers/headers';
 
 interface BatchHeadersFormProps {
   onImport: (headers: Array<{ key: string; value: string }>) => void;
   onCancel: () => void;
 }
 
-export const BatchHeadersForm: React.FC<BatchHeadersFormProps> = ({ onImport, onCancel }) => {
+export function BatchHeadersForm({ onImport, onCancel }: BatchHeadersFormProps) {
   const [inputText, setInputText] = useState('');
   const [format, setFormat] = useState<'auto' | 'keyvalue' | 'json'>('auto');
   const [preview, setPreview] = useState<Array<{ key: string; value: string }>>([]);
@@ -139,4 +139,4 @@ Accept: application/json`,
       </div>
     </div>
   );
-};
+}

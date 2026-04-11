@@ -21,19 +21,16 @@
     "dev:backend": "npm run dev -w requesto-backend",
     "dev:frontend": "npm run dev -w requesto-frontend",
     "dev:electron": "concurrently \"npm run dev -w requesto-backend\" \"npm run dev -w requesto-frontend\" \"npm run dev -w requesto-electron\" --names \"backend,frontend,electron\" --prefix-colors \"blue,green,magenta\"",
-    
     "build": "npm run build -w requesto-backend && npm run build -w requesto-frontend && npm run build -w requesto-electron",
     "build:backend": "npm run build -w requesto-backend",
     "build:frontend": "npm run build -w requesto-frontend",
     "build:electron": "npm run build -w requesto-electron",
-    
+    "test:frontend": "npm run test -w requesto-frontend",
     "package:electron": "npm run build && npm run package -w requesto-electron",
     "package:electron:win": "npm run build && npm run package:win -w requesto-electron",
-
     "docker:build": "docker-compose build",
     "docker:up": "docker-compose up --build",
     "docker:down": "docker-compose down",
-
     "docs:dev": "npm run dev -w requesto-website",
     "docs:build": "npm run build -w requesto-website",
     "docs:preview": "npm run preview -w requesto-website"
