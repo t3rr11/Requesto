@@ -4,6 +4,7 @@ export default defineConfig({
   title: 'Requesto',
   description: 'A lightweight, self-hosted API client',
   base: '/Requesto/',
+  srcDir: 'src',
 
   head: [
     ['link', { rel: 'icon', href: '/Requesto/favicon.ico' }],
@@ -18,13 +19,12 @@ export default defineConfig({
 
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Documentation', link: '/getting-started' },
-      { text: 'Download', link: '/download' },
+      { text: 'Documentation', link: '/guide/introduction' },
+      { text: 'Download', link: '/guide/download' },
       {
         text: 'v1.0.0',
         items: [
           { text: 'Changelog', link: 'https://github.com/t3rr11/Requesto/releases' },
-          { text: 'Contributing', link: '/building.html#contributing' },
         ],
       },
     ],
@@ -33,17 +33,17 @@ export default defineConfig({
       {
         text: 'Introduction',
         items: [
-          { text: 'What is Requesto?', link: '/introduction' },
-          { text: 'Download & Install', link: '/download' },
-          { text: 'Getting Started', link: '/getting-started' },
+          { text: 'What is Requesto?', link: '/guide/introduction' },
+          { text: 'Download & Install', link: '/guide/download' },
+          { text: 'Getting Started', link: '/guide/getting-started' },
         ],
       },
       {
         text: 'Deployment',
         items: [
-          { text: 'Docker Deployment', link: '/deployment' },
-          { text: 'Desktop App', link: '/desktop' },
-          { text: 'Building from Source', link: '/building' },
+          { text: 'Docker Deployment', link: '/deployment/docker' },
+          { text: 'Desktop App', link: '/deployment/desktop' },
+          { text: 'Building from Source', link: '/deployment/building' },
         ],
       },
       {
@@ -52,12 +52,12 @@ export default defineConfig({
           { text: 'Collections & Folders', link: '/features/collections' },
           { text: 'Environments', link: '/features/environments' },
           { text: 'OAuth 2.0', link: '/features/oauth' },
-          { text: 'Request History', link: '/features/history' },
+          { text: 'Console & Logging', link: '/features/console' },
         ],
       },
       {
         text: 'Security',
-        items: [{ text: 'Security Compliance', link: '/security' }],
+        items: [{ text: 'Security', link: '/security' }],
       },
     ],
 
@@ -73,7 +73,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/t3rr11/Requesto/edit/main/website/:path',
+      pattern: 'https://github.com/t3rr11/Requesto/edit/main/website/src/:path',
       text: 'Edit this page on GitHub',
     },
   },

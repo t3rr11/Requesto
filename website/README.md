@@ -48,7 +48,7 @@ website/
 │   ├── collections.md
 │   ├── environments.md
 │   ├── oauth.md
-│   └── history.md
+│   └── console.md
 └── deployment.md         # Deployment guides
 ```
 
