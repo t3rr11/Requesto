@@ -13,8 +13,7 @@
     "http"
   ],
   "workspaces": [
-    "apps/*",
-    "website"
+    "apps/*"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev -w requesto-backend\" \"npm run dev -w requesto-frontend\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
