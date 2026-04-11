@@ -2,6 +2,18 @@
 
 The desktop app is an Electron wrapper around the same web UI. It bundles the backend as a Node.js child process so everything runs locally - no browser or separate server needed.
 
+::: warning Unsigned Binaries
+The desktop installers are **not code-signed**. Windows SmartScreen and macOS Gatekeeper will show warnings when you run them.
+
+Code signing requires purchasing a certificate from a trusted Certificate Authority, which is a cost this project doesn't have the backing for. The binaries are built directly from the public source code, but without a signature your OS has no way to verify that.
+
+If you'd rather not trust a pre-built binary:
+- **Review the source** — the full codebase is on [GitHub](https://github.com/t3rr11/Requesto)
+- **Run with Docker** — no executable to trust, just `docker run` ([instructions](/deployment/docker))
+- **Run in dev mode** — clone the repo, `npm install`, `npm run dev`
+- **Build your own binary** — follow the [Building from Source](/deployment/building) guide to package the `.exe` yourself from code you can audit
+:::
+
 ## Installation
 
 Download the installer for your platform from the [GitHub releases page](https://github.com/t3rr11/Requesto/releases).

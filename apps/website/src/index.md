@@ -6,7 +6,8 @@ hero:
   text: Local API Client
   tagline: A self-hostable API client. No accounts, no cloud, no telemetry.
   image:
-    src: /logo.svg
+    light: /logo-blue.svg
+    dark: /logo.svg
     alt: Requesto Logo
   actions:
     - theme: brand
@@ -45,6 +46,8 @@ features:
 
 Download for Windows, macOS, or Linux from the [releases page](https://github.com/t3rr11/Requesto/releases).
 
+[Read more about desktop deployments](./deployment/desktop.html)
+
 ### Docker
 
 ```bash
@@ -54,6 +57,8 @@ docker run -d \
   ghcr.io/t3rr11/requesto:latest
 ```
 
+[Read more about docker deployments](./deployment/docker.html)
+
 ### From Source
 
 ```bash
@@ -62,3 +67,5 @@ cd Requesto
 npm install
 npm run dev
 ```
+
+[Read more source deployments](./deployment/building.html)

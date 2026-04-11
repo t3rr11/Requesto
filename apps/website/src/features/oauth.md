@@ -37,6 +37,8 @@ Common fields:
 
 ## Using a Token in Requests
 
+<ThemeImage src="/oauth/auth-tab.png" alt="Auth tab" />
+
 In a request's **Auth** tab:
 1. Select **OAuth 2.0** as the auth type
 2. Pick your saved configuration

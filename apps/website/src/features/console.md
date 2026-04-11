@@ -6,6 +6,8 @@ The console panel logs every request and response so you can inspect what was ac
 
 Click the **Console** bar at the bottom of the request view to expand it. Drag the top edge to resize. Click again (or the X) to collapse.
 
+<ThemeImage src="/console/expanded-panel.png" alt="Console expanded" />
+
 ## How Logs Work
 
 Each time you send a request, the console creates a **group** with up to three entries:
@@ -25,6 +27,8 @@ The expanded view shows:
 - **Request**: method, URL, headers (formatted key: value), and body
 - **Response**: status code with color coding, response headers, and body
 - **Error**: error message
+
+<ThemeImage src="/console/expanded-group.png" alt="Expanded console group" />
 
 ## Status Colors
 

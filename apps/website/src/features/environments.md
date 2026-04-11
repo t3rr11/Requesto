@@ -20,6 +20,8 @@ Authorization: Bearer sk_abc123
 
 ## Managing Environments
 
+<ThemeImage src="/environments/manage-dialog.png" alt="Manage Environments dialog" />
+
 Open the **Manage Environments** dialog from the Environments page (or the environment selector in the header).
 
 **Sidebar actions:**
@@ -46,13 +48,19 @@ Each variable has:
 
 Add variables in the editor table. Click the **+** row to add a new one, or remove with the trash icon.
 
+<ThemeImage src="/environments/variable-editor.png" alt="Variable editor table" />
+
 ## Variable Autocomplete
 
 The `VariableAwareInput` fields throughout the app (URL bar, header values, etc.) show an autocomplete dropdown when you start typing a variable reference. It lists all variables from the active environment so you can pick the right name.
 
+<ThemeImage src="/environments/autocomplete.png" alt="Variable autocomplete" />
+
 ## Switching Environments
 
 Use the **environment selector** dropdown in the header bar. Selecting a different environment changes which variables are substituted - you don't need to edit any requests.
+
+<ThemeImage src="/environments/selector-dropdown.png" alt="Environment selector dropdown" />
 
 ## Where Variables Are Substituted
 

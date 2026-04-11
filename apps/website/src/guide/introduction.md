@@ -4,6 +4,8 @@ Requesto is an open-source API client that runs locally on your machine or on yo
 
 You can run it as a desktop app (Electron), in Docker, or straight from source.
 
+<ThemeImage src="/introduction/app-overview.png" alt="Requesto app overview" />
+
 ## What it does
 
 - Send HTTP requests (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)

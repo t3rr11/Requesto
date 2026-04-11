@@ -28,6 +28,8 @@ Hover over a collection in the sidebar to reveal two icon buttons:
 
 Type the folder name inline and press Enter.
 
+<ThemeImage src="/collections/hover-actions.png" alt="Hover actions on collection" />
+
 ## Drag and Drop
 
 Reorder requests and folders within a collection by dragging them. You can move requests between folders or back to the collection root.
@@ -39,6 +41,8 @@ Right-click any collection, folder, or request in the sidebar. The menu has thre
 - **Rename**
 - **Export** - downloads the item as a JSON file
 - **Delete**
+
+<ThemeImage src="/collections/context-menu.png" alt="Context menu" />
 
 ## Import & Export
 
@@ -60,3 +64,5 @@ Click a saved request in the sidebar to open it. Edit it and click **Save** to s
 ## Search
 
 The search box at the top of the sidebar filters collections, folders, and requests by name or URL as you type.
+
+<ThemeImage src="/collections/search-filter.png" alt="Search filter" />

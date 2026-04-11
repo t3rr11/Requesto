@@ -5,6 +5,7 @@ import path from 'path';
 const FIXTURES_DIR = path.resolve(__dirname, '..', 'fixtures');
 const TEST_DATA_DIR = path.resolve(__dirname, '..', 'test-data');
 const SCREENSHOTS_DIR = path.resolve(__dirname, '..', 'screenshots');
+const DOC_SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'website', 'src', 'public', 'screenshots');
 
 const FIXTURE_FILES = [
   'collections.json',
@@ -26,8 +27,8 @@ function resetTestData() {
 }
 
 /** Ensure screenshots directory exists */
-function ensureScreenshotDir(category: string) {
-  const dir = path.join(SCREENSHOTS_DIR, category);
+function ensureScreenshotDir(baseDir: string, category: string) {
+  const dir = path.join(baseDir, category);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -36,6 +37,8 @@ function ensureScreenshotDir(category: string) {
 export type TestFixtures = {
   /** Take a categorised screenshot for documentation */
   takeScreenshot: (category: string, name: string) => Promise<void>;
+  /** Take a screenshot destined for the website docs (apps/website/src/public/screenshots/) */
+  takeDocScreenshot: (category: string, name: string) => Promise<void>;
   /** The test page, navigated to the app root */
   appPage: Page;
 };
@@ -43,13 +46,59 @@ export type TestFixtures = {
 export const test = base.extend<TestFixtures>({
   takeScreenshot: async ({ page }, use, testInfo) => {
     const fn = async (category: string, name: string) => {
-      ensureScreenshotDir(category);
+      ensureScreenshotDir(SCREENSHOTS_DIR, category);
       const filePath = path.join(SCREENSHOTS_DIR, category, `${name}.png`);
       const buffer = await page.screenshot({ path: filePath, fullPage: false });
       await testInfo.attach(`${category}/${name}`, {
         body: buffer,
         contentType: 'image/png',
       });
+    };
+    await use(fn);
+  },
+
+  takeDocScreenshot: async ({ page }, use, testInfo) => {
+    const fn = async (category: string, name: string) => {
+      // Determine current theme
+      const isDark = await page.evaluate(() =>
+        document.documentElement.classList.contains('dark'),
+      );
+      const currentTheme = isDark ? 'dark' : 'light';
+      const otherTheme = isDark ? 'light' : 'dark';
+
+      // Take screenshot in current theme
+      ensureScreenshotDir(DOC_SCREENSHOTS_DIR, `${currentTheme}/${category}`);
+      let filePath = path.join(DOC_SCREENSHOTS_DIR, currentTheme, category, `${name}.png`);
+      let buffer = await page.screenshot({ path: filePath, fullPage: false });
+      await testInfo.attach(`docs/${currentTheme}/${category}/${name}`, {
+        body: buffer,
+        contentType: 'image/png',
+      });
+
+      // Toggle to other theme via DOM click (works even with dialog overlays)
+      const toggleTitle = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      await page.evaluate((title) => {
+        const btn = document.querySelector(`button[title="${title}"]`) as HTMLElement;
+        if (btn) btn.click();
+      }, toggleTitle);
+      await page.waitForTimeout(500);
+
+      // Take screenshot in other theme
+      ensureScreenshotDir(DOC_SCREENSHOTS_DIR, `${otherTheme}/${category}`);
+      filePath = path.join(DOC_SCREENSHOTS_DIR, otherTheme, category, `${name}.png`);
+      buffer = await page.screenshot({ path: filePath, fullPage: false });
+      await testInfo.attach(`docs/${otherTheme}/${category}/${name}`, {
+        body: buffer,
+        contentType: 'image/png',
+      });
+
+      // Restore original theme
+      const restoreTitle = isDark ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+      await page.evaluate((title) => {
+        const btn = document.querySelector(`button[title="${title}"]`) as HTMLElement;
+        if (btn) btn.click();
+      }, restoreTitle);
+      await page.waitForTimeout(300);
     };
     await use(fn);
   },

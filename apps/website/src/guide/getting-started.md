@@ -6,11 +6,15 @@ Head to the [Download & Install](/guide/download) page first.
 
 ## Make Your First Request
 
+<ThemeImage src="/getting-started/blank-request-tab.png" alt="Blank request tab" />
+
 1. Open Requesto - you'll see a blank request tab
 2. Enter a URL in the address bar, e.g. `https://api.github.com/users/octocat`
 3. Pick an HTTP method from the dropdown (defaults to GET)
 4. Click **Send**
 5. The response appears in the right (or bottom) panel with status code, time, size, and formatted body
+
+<ThemeImage src="/getting-started/first-request.png" alt="First GET request with response" />
 
 ## Save It to a Collection
 
@@ -19,6 +23,8 @@ Head to the [Download & Install](/guide/download) page first.
 3. Select a collection (or create a new one)
 4. Optionally choose a folder within the collection
 5. The request now appears in the sidebar - click it anytime to reopen
+
+<ThemeImage src="/getting-started/save-dialog.png" alt="Save request dialog" />
 
 ## Set Up Environment Variables
 
@@ -58,6 +64,8 @@ My API
 6. In any request's Auth tab, select OAuth 2.0 and choose your config
 
 ## Interface Layout
+
+<ThemeImage src="/getting-started/interface-overview.png" alt="Full interface overview" />
 
 **Header**: Navigation between Requests, Environments, and OAuth pages. Also has theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, and help.
 
