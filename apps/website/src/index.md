@@ -14,8 +14,8 @@ hero:
       text: Get Started
       link: /guide/getting-started
     - theme: alt
-      text: Download
-      link: /guide/download
+      text: Install with Docker
+      link: /deployment/docker
     - theme: alt
       text: GitHub
       link: https://github.com/t3rr11/Requesto
