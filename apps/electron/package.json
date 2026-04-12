@@ -2,8 +2,12 @@
   "name": "requesto-electron",
   "version": "1.0.0",
   "description": "Requesto - API Client",
+  "homepage": "https://requesto.com.au",
   "main": "dist/main.js",
-  "author": "Requesto Contributors",
+  "author": {
+    "name": "Matthew Allen",
+    "email": "matt@retoggle.com.au"
+  },
   "license": "MIT",
   "scripts": {
     "dev": "tsc && electron .",
