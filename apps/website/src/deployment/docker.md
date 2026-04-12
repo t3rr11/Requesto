@@ -7,7 +7,7 @@ docker run -d \
   --name requesto \
   -p 4000:4000 \
   -v requesto-data:/app/data \
-  ghcr.io/t3rr11/requesto:latest
+  terrii/requesto:latest
 ```
 
 Open [http://localhost:4000](http://localhost:4000).
@@ -17,7 +17,7 @@ Open [http://localhost:4000](http://localhost:4000).
 ```yaml
 services:
   requesto:
-    image: ghcr.io/t3rr11/requesto:latest
+    image: terrii/requesto:latest
     container_name: requesto
     restart: unless-stopped
     ports:
@@ -127,9 +127,9 @@ docker-compose up -d
 Or without Compose:
 
 ```bash
-docker pull ghcr.io/t3rr11/requesto:latest
+docker pull terrii/requesto:latest
 docker stop requesto && docker rm requesto
-docker run -d --name requesto -p 4000:4000 -v requesto-data:/app/data ghcr.io/t3rr11/requesto:latest
+docker run -d --name requesto -p 4000:4000 -v requesto-data:/app/data terrii/requesto:latest
 ```
 
 ## Troubleshooting

@@ -54,7 +54,7 @@ Download for Windows, macOS, or Linux from the [releases page](https://github.co
 docker run -d \
   -p 4000:4000 \
   -v requesto-data:/app/data \
-  ghcr.io/t3rr11/requesto:latest
+  terrii/requesto:latest
 ```
 
 [Read more about docker deployments](./deployment/docker.html)

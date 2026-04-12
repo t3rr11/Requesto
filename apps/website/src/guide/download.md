@@ -7,7 +7,7 @@ docker run -d \
   --name requesto \
   -p 4000:4000 \
   -v requesto-data:/app/data \
-  ghcr.io/t3rr11/requesto:latest
+  terrii/requesto:latest
 ```
 
 Open [http://localhost:4000](http://localhost:4000). See the [Docker Deployment](/deployment/docker) page for compose files and configuration.
