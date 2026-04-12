@@ -1,0 +1,91 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.0.1)'
+        required: true
+        type: string
+      notes:
+        description: 'Release notes (brief summary of changes)'
+        required: false
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag ${{ inputs.version }}
+          git push origin ${{ inputs.version }}
+          gh release create ${{ inputs.version }} \
+            --title "${{ inputs.version }}" \
+            --notes "${{ inputs.notes || 'No release notes provided.' }}" \
+            --draft
+
+  build:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            build-cmd: npm run package:win -w requesto-electron
+            artifact-pattern: 'dist/*.exe'
+          - os: macos-latest
+            build-cmd: npm run package:mac -w requesto-electron
+            artifact-pattern: 'dist/*.{dmg,zip}'
+          - os: ubuntu-latest
+            build-cmd: npm run package:linux -w requesto-electron
+            artifact-pattern: 'dist/*.{AppImage,deb}'
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build backend & frontend
+        run: |
+          npm run build:backend
+          npm run build:frontend
+
+      - name: Build Electron (${{ matrix.os }})
+        run: |
+          npm run build:electron
+          ${{ matrix.build-cmd }}
+
+      - name: Upload artifacts to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          for file in dist/*.exe dist/*.dmg dist/*.zip dist/*.AppImage dist/*.deb; do
+            [ -f "$file" ] && gh release upload ${{ inputs.version }} "$file" --clobber
+          done
+
+  publish-release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit ${{ inputs.version }} --draft=false
