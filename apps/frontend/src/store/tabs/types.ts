@@ -1,4 +1,4 @@
-import type { AuthConfig } from '../request/types';
+import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
 import type { ProxyResponse, StreamingResponse } from '../request/types';
 
 export type TabRequest = {
@@ -6,6 +6,8 @@ export type TabRequest = {
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  bodyType?: BodyType;
+  formDataEntries?: FormDataEntry[];
   auth?: AuthConfig;
 };
 

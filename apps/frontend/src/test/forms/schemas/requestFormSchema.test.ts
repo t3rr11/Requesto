@@ -8,6 +8,8 @@ describe('requestFormSchema', () => {
     headers: [{ id: '1', key: 'Content-Type', value: 'application/json', enabled: true }],
     params: [{ id: '1', key: 'page', value: '1', enabled: true }],
     body: '{}',
+    bodyType: 'json' as const,
+    formDataEntries: [],
     auth: {
       type: 'none' as const,
     },

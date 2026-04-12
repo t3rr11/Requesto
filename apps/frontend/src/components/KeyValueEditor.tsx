@@ -60,9 +60,9 @@ export function KeyValueEditor({
     setViewMode('bulk');
   };
 
-  const handleSwitchToTable = () => {
-    const lines = bulkText.split('\n').filter(line => line.trim());
-    const parsed = lines.map((line, index) => {
+  const parseBulkText = (text: string): KeyValueRow[] => {
+    const lines = text.split('\n').filter(line => line.trim());
+    return lines.map((line, index) => {
       const delimiterIndex = line.indexOf(delimiter);
       if (delimiterIndex === -1) {
         return { id: (Date.now() + index).toString(), key: line.trim(), value: '', enabled: true };
@@ -74,7 +74,16 @@ export function KeyValueEditor({
         enabled: true,
       };
     });
+  };
 
+  const handleBulkTextChange = (text: string) => {
+    setBulkText(text);
+    const parsed = parseBulkText(text);
+    onItemsChange(parsed.length > 0 ? parsed : [createEmptyRow()]);
+  };
+
+  const handleSwitchToTable = () => {
+    const parsed = parseBulkText(bulkText);
     onItemsChange(parsed.length > 0 ? parsed : [createEmptyRow()]);
     setViewMode('table');
   };
@@ -101,7 +110,7 @@ export function KeyValueEditor({
         </div>
         <textarea
           value={bulkText}
-          onChange={e => setBulkText(e.target.value)}
+          onChange={e => handleBulkTextChange(e.target.value)}
           placeholder={defaultBulkPlaceholder}
           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-mono dark:bg-gray-800 dark:text-gray-200"
           rows={12}

@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { useCollectionsStore } from '../store/collections/store';
 import { useTabsStore } from '../store/tabs/store';
 import { useAlertStore } from '../store/alert/store';
-import type { AuthConfig } from '../store/request/types';
+import type { AuthConfig, BodyType, FormDataEntry } from '../store/request/types';
 import { extractPathnameFromUrl } from '../helpers/url';
 import { saveRequestSchema, type SaveRequestFormData } from './schemas/requestSchemas';
 
@@ -17,6 +17,8 @@ interface SaveRequestFormProps {
     url: string;
     headers?: Record<string, string>;
     body?: string;
+    bodyType?: BodyType;
+    formDataEntries?: FormDataEntry[];
     auth?: AuthConfig;
   } | null;
 }
@@ -71,6 +73,8 @@ export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveReq
         url: currentRequest.url,
         headers: currentRequest.headers,
         body: currentRequest.body,
+        bodyType: currentRequest.bodyType,
+        formDataEntries: currentRequest.formDataEntries,
         auth: currentRequest.auth,
       });
 

@@ -45,6 +45,8 @@ describe('SaveRequestForm', () => {
     url: 'https://api.example.com/users',
     headers: { 'Content-Type': 'application/json' },
     body: '',
+    bodyType: 'json' as const,
+    formDataEntries: [],
   };
 
   beforeEach(() => {

@@ -84,9 +84,9 @@ describe('KeyValueEditor', () => {
     await user.type(textarea, 'Accept:text/html');
     await user.click(screen.getByText('Table View'));
     expect(onItemsChange).toHaveBeenCalled();
-    const callArg = onItemsChange.mock.calls[0][0];
-    expect(callArg[0].key).toBe('Accept');
-    expect(callArg[0].value).toBe('text/html');
+    const lastCall = onItemsChange.mock.calls[onItemsChange.mock.calls.length - 1][0];
+    expect(lastCall[0].key).toBe('Accept');
+    expect(lastCall[0].value).toBe('text/html');
   });
 
   it('renders disabled state', () => {

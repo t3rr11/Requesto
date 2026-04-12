@@ -5,9 +5,8 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { RequestForm, requestFormSchema } from '../../forms/RequestForm';
 import type { RequestFormData } from '../../forms/RequestForm';
-import type { AuthConfig } from '../../store/request/types';
+import type { AuthConfig, FormDataEntry } from '../../store/request/types';
 import type { PropsWithChildren } from 'react';
-
 // Mock Monaco editor
 vi.mock('@monaco-editor/react', () => ({
   default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
@@ -46,9 +45,7 @@ vi.mock('../../components/KeyValueEditor', () => ({
   }) => (
     <div data-testid="key-value-editor">
       <span>{items.length} items</span>
-      <button onClick={() => onItemsChange([...items, { id: 'new', key: '', value: '', enabled: true }])}>
-        Add
-      </button>
+      <button onClick={() => onItemsChange([...items, { id: 'new', key: '', value: '', enabled: true }])}>Add</button>
     </div>
   ),
 }));
@@ -63,14 +60,12 @@ const defaultValues: RequestFormData = {
   headers: [],
   params: [],
   body: '',
+  bodyType: 'json',
+  formDataEntries: [],
   auth: { type: 'none' },
 };
 
-function Wrapper({
-  children,
-  onSend,
-  loading = false,
-}: PropsWithChildren<{ onSend?: () => void; loading?: boolean }>) {
+function Wrapper({ children, onSend, loading = false }: PropsWithChildren<{ onSend?: () => void; loading?: boolean }>) {
   const methods = useForm<RequestFormData>({
     resolver: zodResolver(requestFormSchema),
     defaultValues,
@@ -90,6 +85,10 @@ function Wrapper({
         onUrlChange={(val: string) => methods.setValue('url', val)}
         auth={methods.watch('auth') as AuthConfig}
         onAuthChange={(val: AuthConfig) => methods.setValue('auth', val)}
+        bodyType={methods.watch('bodyType')}
+        onBodyTypeChange={(val: RequestFormData['bodyType']) => methods.setValue('bodyType', val)}
+        formDataEntries={methods.watch('formDataEntries')}
+        onFormDataEntriesChange={(val: FormDataEntry[]) => methods.setValue('formDataEntries', val)}
       />
       {children}
     </FormProvider>
@@ -187,5 +186,46 @@ describe('RequestForm', () => {
 
     // Params tab is default, should show KeyValueEditor
     expect(screen.getByTestId('key-value-editor')).toBeInTheDocument();
+  });
+
+  it('shows body type radio buttons in body tab', async () => {
+    const user = userEvent.setup();
+    render(<Wrapper />);
+
+    await user.click(screen.getByText(/body/i));
+    expect(screen.getByLabelText('JSON')).toBeInTheDocument();
+    expect(screen.getByLabelText('Form Data')).toBeInTheDocument();
+    expect(screen.getByLabelText('URL Encoded')).toBeInTheDocument();
+  });
+
+  it('shows monaco editor when JSON body type is selected', async () => {
+    const user = userEvent.setup();
+    render(<Wrapper />);
+
+    await user.click(screen.getByText(/body/i));
+    expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
+  });
+
+  it('switches to KeyValueEditor when Form Data is selected', async () => {
+    const user = userEvent.setup();
+    render(<Wrapper />);
+
+    await user.click(screen.getByText(/body/i));
+    await user.click(screen.getByLabelText('Form Data'));
+    const editors = screen.getAllByTestId('key-value-editor');
+    expect(editors.length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument();
+  });
+
+  it('switches to KeyValueEditor when URL Encoded is selected', async () => {
+    const user = userEvent.setup();
+    render(<Wrapper />);
+
+    await user.click(screen.getByText(/body/i));
+    await user.click(screen.getByLabelText('URL Encoded'));
+    // Body tab should now show a key-value editor (in addition to params)
+    const editors = screen.getAllByTestId('key-value-editor');
+    expect(editors.length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument();
   });
 });

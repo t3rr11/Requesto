@@ -20,6 +20,18 @@ export const requestFormSchema = z.object({
     })
   ),
   body: z.string(),
+  bodyType: z.enum(['json', 'form-data', 'x-www-form-urlencoded']),
+  formDataEntries: z.array(
+    z.object({
+      id: z.string(),
+      key: z.string(),
+      value: z.string(),
+      type: z.enum(['text', 'file']),
+      fileName: z.string().optional(),
+      fileContent: z.string().optional(),
+      enabled: z.boolean(),
+    })
+  ),
   auth: z.object({
     type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest', 'oauth']),
     basic: z

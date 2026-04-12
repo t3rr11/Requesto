@@ -365,10 +365,28 @@ export function ConsolePanel({
                 {group.requestLog.requestData && (
                   <>
                     {renderHeaders(group.requestLog.requestData.headers, 'req', group.id, true)}
-                    {renderBody(group.requestLog.requestData.body, 'req', group.id)}
+                    {group.requestLog.requestData.bodyType && group.requestLog.requestData.bodyType !== 'json' && group.requestLog.requestData.formDataEntries && group.requestLog.requestData.formDataEntries.length > 0 ? (
+                      <div className="space-y-1">
+                        <span className="text-gray-400 dark:text-gray-500 text-xs font-semibold">
+                          Body ({group.requestLog.requestData.bodyType})
+                        </span>
+                        <div className="bg-gray-800 dark:bg-black rounded p-2 font-mono text-xs max-h-60 overflow-auto">
+                          {group.requestLog.requestData.formDataEntries.map((entry, i) => (
+                            <div key={i} className="text-gray-300 dark:text-gray-400">
+                              <span className="text-blue-400">{entry.key}</span>
+                              <span className="text-gray-500">: </span>
+                              <span>{entry.type === 'file' ? `[file] ${entry.fileName || ''}` : entry.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      renderBody(group.requestLog.requestData.body, 'req', group.id)
+                    )}
                     {(!group.requestLog.requestData.headers ||
                       Object.keys(group.requestLog.requestData.headers).length === 0) &&
-                      !group.requestLog.requestData.body && (
+                      !group.requestLog.requestData.body &&
+                      (!group.requestLog.requestData.formDataEntries || group.requestLog.requestData.formDataEntries.length === 0) && (
                         <div className="text-gray-500 dark:text-gray-600 text-xs italic">
                           No headers or body
                         </div>

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { AuthConfig } from '../types';
+import { AuthConfig, FormDataEntry } from '../types';
 import { initializeFile, atomicWrite } from './storage';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
@@ -13,6 +13,8 @@ export interface SavedRequest {
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  bodyType?: string;
+  formDataEntries?: FormDataEntry[];
   auth?: AuthConfig;
   collectionId: string;
   folderId?: string;

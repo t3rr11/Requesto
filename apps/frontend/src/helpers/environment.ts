@@ -1,5 +1,5 @@
 import type { Environment, EnvironmentVariable } from '../store/environments/types';
-import type { AuthConfig } from '../store/request/types';
+import type { ProxyRequest } from '../store/request/types';
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -24,27 +24,24 @@ export function substituteVariables(text: string, environment: Environment | nul
 /**
  * Substitute variables in all request fields (URL, headers, body).
  */
-export function substituteInRequest(
-  request: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    auth?: AuthConfig;
-  },
-  environment: Environment | null,
-): typeof request {
+export function substituteInRequest(request: ProxyRequest, environment: Environment | null): typeof request {
   if (!environment) return request;
 
   return {
     method: request.method,
     url: substituteVariables(request.url, environment),
     headers: request.headers
-      ? Object.fromEntries(
-          Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, environment)]),
-        )
+      ? Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, environment)]))
       : undefined,
     body: request.body ? substituteVariables(request.body, environment) : undefined,
+    bodyType: request.bodyType,
+    formDataEntries: request.formDataEntries
+      ? request.formDataEntries.map(entry => ({
+          ...entry,
+          key: substituteVariables(entry.key, environment),
+          value: entry.type === 'text' ? substituteVariables(entry.value, environment) : entry.value,
+        }))
+      : undefined,
     auth: request.auth,
   };
 }
@@ -56,7 +53,7 @@ export function extractVariableNames(text: string): string[] {
   if (!text) return [];
   const pattern = /\{\{\s*([a-zA-Z0-9_-]+)\s*\}\}/g;
   const matches = text.matchAll(pattern);
-  return [...new Set(Array.from(matches, (m) => m[1]))];
+  return [...new Set(Array.from(matches, m => m[1]))];
 }
 
 /**
@@ -72,24 +69,24 @@ export function hasVariables(text: string): boolean {
  */
 export function getUndefinedVariables(
   request: { method: string; url: string; headers?: Record<string, string>; body?: string },
-  environment: Environment | null,
+  environment: Environment | null
 ): string[] {
   const used = new Set<string>();
 
-  extractVariableNames(request.url).forEach((v) => used.add(v));
+  extractVariableNames(request.url).forEach(v => used.add(v));
   if (request.headers) {
-    Object.values(request.headers).forEach((val) => {
-      extractVariableNames(val).forEach((v) => used.add(v));
+    Object.values(request.headers).forEach(val => {
+      extractVariableNames(val).forEach(v => used.add(v));
     });
   }
   if (request.body) {
-    extractVariableNames(request.body).forEach((v) => used.add(v));
+    extractVariableNames(request.body).forEach(v => used.add(v));
   }
 
   if (!environment) return Array.from(used);
 
-  const defined = new Set(environment.variables.filter((v) => v.enabled && v.key).map((v) => v.key));
-  return Array.from(used).filter((v) => !defined.has(v));
+  const defined = new Set(environment.variables.filter(v => v.enabled && v.key).map(v => v.key));
+  return Array.from(used).filter(v => !defined.has(v));
 }
 
 export function generateEnvironmentId(): string {
@@ -104,7 +101,7 @@ export function duplicateEnvironment(env: Environment, suffix = 'Copy'): Environ
   return {
     id: generateEnvironmentId(),
     name: `${env.name} ${suffix}`,
-    variables: env.variables.map((v) => ({ ...v })),
+    variables: env.variables.map(v => ({ ...v })),
   };
 }
 
@@ -115,7 +112,7 @@ export function validateEnvironment(env: Partial<Environment>): { valid: boolean
 }
 
 export function filterValidVariables(variables: EnvironmentVariable[]): EnvironmentVariable[] {
-  return variables.filter((v) => v.key.trim() !== '');
+  return variables.filter(v => v.key.trim() !== '');
 }
 
 export function prepareEnvironmentForSave(env: Environment): Environment {

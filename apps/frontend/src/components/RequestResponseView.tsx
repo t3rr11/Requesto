@@ -18,7 +18,7 @@ import { Button } from './Button';
 import { useDialog } from '../hooks/useDialog';
 import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
 import { extractParamsFromUrl } from '../helpers/url';
-import type { AuthConfig, StreamingResponse } from '../store/request/types';
+import type { AuthConfig, FormDataEntry, StreamingResponse } from '../store/request/types';
 
 export interface RequestResponseViewHandle {
   sendCurrentRequest: () => void;
@@ -59,6 +59,8 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
       headers: [{ id: '1', key: '', value: '', enabled: true }],
       params: [{ id: '1', key: '', value: '', enabled: true }],
       body: '',
+      bodyType: 'json' as const,
+      formDataEntries: [{ id: '1', key: '', value: '', type: 'text' as const, enabled: true }],
       auth: { type: 'none' },
     },
   });
@@ -69,6 +71,8 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
   const headers = watch('headers');
   const params = watch('params');
   const auth = watch('auth') as AuthConfig;
+  const bodyType = watch('bodyType');
+  const formDataEntries = watch('formDataEntries');
 
   // Sync form with active tab
   useEffect(() => {
@@ -97,6 +101,10 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
             }))
           : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }],
       body: tabReq.body || '',
+      bodyType: tabReq.bodyType || 'json',
+      formDataEntries: tabReq.formDataEntries && tabReq.formDataEntries.length > 0
+        ? tabReq.formDataEntries
+        : [{ id: Date.now().toString(), key: '', value: '', type: 'text' as const, enabled: true }],
       auth: tabReq.auth || { type: 'none' },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,6 +127,8 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
         url: fullUrl,
         headers: headersObj,
         body: data.body,
+        bodyType: data.bodyType || 'json',
+        formDataEntries: data.formDataEntries as FormDataEntry[],
         auth: data.auth as AuthConfig,
       });
     });
@@ -142,7 +152,11 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
       method: formData.method,
       url: fullUrl,
       headers: headersObj,
-      body: formData.body || undefined,
+      body: formData.bodyType === 'json' ? (formData.body || undefined) : undefined,
+      bodyType: formData.bodyType,
+      formDataEntries: formData.bodyType !== 'json'
+        ? formData.formDataEntries.filter(e => e.enabled && e.key.trim())
+        : undefined,
       auth: formData.auth as AuthConfig,
     };
 
@@ -260,6 +274,8 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
           url: fullUrl,
           headers: headersObj,
           body: formData.body || undefined,
+          bodyType: formData.bodyType,
+          formDataEntries: formData.formDataEntries,
           auth: formData.auth as AuthConfig,
         });
         markTabAsSaved(activeTab.id, activeTab.savedRequestId, activeTab.collectionId);
@@ -353,6 +369,14 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
     setValue('auth', newAuth as RequestFormData['auth'], { shouldDirty: true });
   };
 
+  const handleBodyTypeChange = (newBodyType: RequestFormData['bodyType']) => {
+    setValue('bodyType', newBodyType, { shouldDirty: true });
+  };
+
+  const handleFormDataEntriesChange = (newEntries: FormDataEntry[]) => {
+    setValue('formDataEntries', newEntries, { shouldDirty: true });
+  };
+
   if (!activeTab) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
@@ -408,6 +432,10 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
             onUrlChange={handleUrlChange}
             auth={auth}
             onAuthChange={handleAuthChange}
+            bodyType={bodyType}
+            onBodyTypeChange={handleBodyTypeChange}
+            formDataEntries={formDataEntries}
+            onFormDataEntriesChange={handleFormDataEntriesChange}
           />
         </div>
       </div>
@@ -444,6 +472,8 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
                 .map(h => [h.key, h.value]),
             ),
             body: getValues('body') || undefined,
+            bodyType: getValues('bodyType'),
+            formDataEntries: getValues('formDataEntries'),
             auth: getValues('auth') as AuthConfig,
           }}
           onSuccess={saveDialog.close}

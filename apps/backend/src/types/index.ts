@@ -89,11 +89,25 @@ export interface AuthConfig {
   oauth?: OAuthAuth;
 }
 
+export type BodyType = 'json' | 'form-data' | 'x-www-form-urlencoded';
+
+export interface FormDataEntry {
+  id: string;
+  key: string;
+  value: string;
+  type: 'text' | 'file';
+  fileName?: string;
+  fileContent?: string;
+  enabled: boolean;
+}
+
 export interface ProxyRequest {
   method: string;
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  bodyType?: BodyType;
+  formDataEntries?: FormDataEntry[];
   auth?: AuthConfig;
 }
 
