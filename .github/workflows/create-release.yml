@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create tag and release
         env:
@@ -53,11 +53,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Install dependencies
         run: npm install
@@ -78,7 +78,9 @@ jobs:
         shell: bash
         run: |
           for file in dist/*.exe dist/*.dmg dist/*.zip dist/*.AppImage dist/*.deb; do
-            [ -f "$file" ] && gh release upload ${{ inputs.version }} "$file" --clobber
+            if [ -f "$file" ]; then
+              gh release upload ${{ inputs.version }} "$file" --clobber
+            fi
           done
 
   docker:
@@ -88,7 +90,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

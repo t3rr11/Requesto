@@ -1,5 +1,5 @@
 # Multi-stage build for backend
-FROM node:20-alpine AS backend-build
+FROM node:24-alpine AS backend-build
 
 WORKDIR /app/backend
 
@@ -10,7 +10,7 @@ COPY apps/backend/ ./
 RUN npm run build
 
 # Multi-stage build for frontend
-FROM node:20-alpine AS frontend-build
+FROM node:24-alpine AS frontend-build
 
 WORKDIR /app/frontend
 
@@ -21,7 +21,7 @@ COPY apps/frontend/ ./
 RUN npm run build
 
 # Production image
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
