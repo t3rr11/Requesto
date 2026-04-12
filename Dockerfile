@@ -23,11 +23,14 @@ RUN npm run build
 # Production image
 FROM node:24-alpine
 
+# Upgrade Alpine system packages to patch known CVEs
+RUN apk update && apk upgrade --no-cache && rm -rf /var/cache/apk/*
+
 WORKDIR /app
 
-# Copy backend production dependencies and build
+# Copy backend production dependencies, install, then remove npm to reduce attack surface
 COPY apps/backend/package*.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev && npm cache clean --force && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 COPY --from=backend-build /app/backend/dist ./dist
 
