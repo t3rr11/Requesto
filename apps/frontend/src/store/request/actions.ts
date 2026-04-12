@@ -9,7 +9,7 @@ function isLikelyStreamingRequest(request: ProxyRequest): boolean {
   return accept.includes('text/event-stream') || request.url.includes('/sse/');
 }
 
-async function sendRequestApi(request: ProxyRequest): Promise<ProxyResponse> {
+async function sendRequestApi(request: ProxyRequest, signal?: AbortSignal): Promise<ProxyResponse> {
   if (isLikelyStreamingRequest(request)) {
     throw new Error('Streaming requests must use sendStreamingRequest');
   }
@@ -19,10 +19,20 @@ async function sendRequestApi(request: ProxyRequest): Promise<ProxyResponse> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(authenticated),
+    signal,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    throw new Error(text || `HTTP error! status: ${res.status}`);
+    let errorMessage = `HTTP error! status: ${res.status}`;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        errorMessage = parsed.message || parsed.error || text;
+      } catch {
+        errorMessage = text;
+      }
+    }
+    throw new Error(errorMessage);
   }
   return res.json();
 }
@@ -30,6 +40,7 @@ async function sendRequestApi(request: ProxyRequest): Promise<ProxyResponse> {
 async function sendStreamingRequestApi(
   request: ProxyRequest,
   onUpdate: (response: StreamingResponse) => void,
+  signal?: AbortSignal,
 ): Promise<StreamingResponse> {
   const startTime = Date.now();
   const events: SSEEvent[] = [];
@@ -39,6 +50,7 @@ async function sendStreamingRequestApi(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(authenticated),
+    signal,
   });
   if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
@@ -168,9 +180,9 @@ export function createSSEConnection(url: string, handlers: SSEEventHandler): SSE
 
 // ── Exported store actions ───────────────────────────────────────────────────
 
-export async function sendRequest(request: ProxyRequest): Promise<ProxyResponse> {
+export async function sendRequest(request: ProxyRequest, signal?: AbortSignal): Promise<ProxyResponse> {
   try {
-    return await sendRequestApi(request);
+    return await sendRequestApi(request, signal);
   } catch (error) {
     console.error('Failed to send request:', error);
     throw error;
@@ -180,9 +192,10 @@ export async function sendRequest(request: ProxyRequest): Promise<ProxyResponse>
 export async function sendStreamingRequest(
   request: ProxyRequest,
   onUpdate: (response: StreamingResponse) => void,
+  signal?: AbortSignal,
 ): Promise<StreamingResponse> {
   try {
-    return await sendStreamingRequestApi(request, onUpdate);
+    return await sendStreamingRequestApi(request, onUpdate, signal);
   } catch (error) {
     console.error('Failed to send streaming request:', error);
     throw error;

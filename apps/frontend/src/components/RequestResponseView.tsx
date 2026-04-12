@@ -139,6 +139,11 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
   const handleSend = useCallback(async () => {
     if (!activeTab) return;
 
+    // Abort any in-flight request
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const formData = getValues();
     const fullUrl = buildUrlWithParams(formData.url, formData.params);
     const headersObj: Record<string, string> = {};
@@ -197,7 +202,7 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
       if (isStreamingRequest(request)) {
         const streamResponse = await sendStreamingRequest(request, (partial: StreamingResponse) => {
           setTabResponse(activeTab.id, partial);
-        });
+        }, controller.signal);
         setTabResponse(activeTab.id, streamResponse);
         addConsoleLog({
           id: `res-${Date.now()}`,
@@ -211,7 +216,7 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
           responseData: streamResponse,
         });
       } else {
-        const response = await sendRequest(request);
+        const response = await sendRequest(request, controller.signal);
         setTabResponse(activeTab.id, response);
         addConsoleLog({
           id: `res-${Date.now()}`,
@@ -226,18 +231,31 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
         });
       }
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Request failed';
-      setTabError(activeTab.id, errorMsg);
-      addConsoleLog({
-        id: `err-${Date.now()}`,
-        requestId,
-        timestamp: Date.now(),
-        type: 'error',
-        method: request.method,
-        url: request.url,
-        message: errorMsg,
-      });
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        addConsoleLog({
+          id: `cancel-${Date.now()}`,
+          requestId,
+          timestamp: Date.now(),
+          type: 'error',
+          method: request.method,
+          url: request.url,
+          message: 'Request cancelled',
+        });
+      } else {
+        const errorMsg = err instanceof Error ? err.message : 'Request failed';
+        setTabError(activeTab.id, errorMsg);
+        addConsoleLog({
+          id: `err-${Date.now()}`,
+          requestId,
+          timestamp: Date.now(),
+          type: 'error',
+          method: request.method,
+          url: request.url,
+          message: errorMsg,
+        });
+      }
     } finally {
+      abortControllerRef.current = null;
       setTabLoading(activeTab.id, false);
     }
   }, [
@@ -253,6 +271,11 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
     addConsoleLog,
     showAlert,
   ]);
+
+  const handleCancel = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+  }, []);
 
   const handleSave = useCallback(async () => {
     if (!activeTab) return;
@@ -423,6 +446,7 @@ export const RequestResponseView = forwardRef<RequestResponseViewHandle>((_props
           <RequestForm
             control={control}
             onSend={handleSend}
+            onCancel={handleCancel}
             loading={activeTab.isLoading}
             urlValue={urlValue}
             headers={headers}

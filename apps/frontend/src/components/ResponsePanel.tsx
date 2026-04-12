@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Loader2, AlertTriangle, Send } from 'lucide-react';
 import { getStatusBadgeColor, formatBytes } from '../helpers/response';
 import { ResponseBody } from './response/ResponseBody';
 import { ResponseHeaders } from './response/ResponseHeaders';
@@ -34,8 +35,11 @@ export function ResponsePanel({ response, loading, error, isDarkMode }: Response
         </div>
         <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
           <div className="text-center">
-            <div className="text-4xl mb-2">⏳</div>
-            <p className="text-sm">Sending request...</p>
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+              <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+            </div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Sending Request</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Waiting for response...</p>
           </div>
         </div>
       </div>
@@ -49,8 +53,11 @@ export function ResponsePanel({ response, loading, error, isDarkMode }: Response
           <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">Response</h3>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <div className="text-4xl mb-2">❌</div>
+          <div className="text-center max-w-lg px-6">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+              <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Request Failed</p>
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
           </div>
         </div>
@@ -66,8 +73,11 @@ export function ResponsePanel({ response, loading, error, isDarkMode }: Response
         </div>
         <div className="flex-1 flex items-center justify-center text-gray-400 dark:text-gray-500">
           <div className="text-center">
-            <div className="text-4xl mb-2">📭</div>
-            <p className="text-sm">Send a request to see the response</p>
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+              <Send className="w-6 h-6 text-gray-400 dark:text-gray-500 rotate-45 -ml-1" />
+            </div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No Response Yet</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500">Send a request to see the response</p>
           </div>
         </div>
       </div>
