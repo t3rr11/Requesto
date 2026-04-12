@@ -19,6 +19,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+
+      - name: Create tag and release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
