@@ -15,10 +15,11 @@ type RequestState = {
   setResponse: (response: ProxyResponse | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  sendRequest: (request: ProxyRequest) => Promise<ProxyResponse>;
+  sendRequest: (request: ProxyRequest, signal?: AbortSignal) => Promise<ProxyResponse>;
   sendStreamingRequest: (
     request: ProxyRequest,
     onUpdate: (response: StreamingResponse) => void,
+    signal?: AbortSignal,
   ) => Promise<StreamingResponse>;
   isStreamingRequest: (request: ProxyRequest) => boolean;
   addConsoleLog: (log: ConsoleLog) => void;
@@ -35,8 +36,8 @@ export const useRequestStore = create<RequestState>((set) => ({
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
 
-  sendRequest: (request) => actions.sendRequest(request),
-  sendStreamingRequest: (request, onUpdate) => actions.sendStreamingRequest(request, onUpdate),
+  sendRequest: (request, signal) => actions.sendRequest(request, signal),
+  sendStreamingRequest: (request, onUpdate, signal) => actions.sendStreamingRequest(request, onUpdate, signal),
   isStreamingRequest: (request) => actions.isStreamingRequest(request),
 
   addConsoleLog: (log) =>

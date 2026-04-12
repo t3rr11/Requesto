@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 import type { SSEEvent } from '../../store/request/types';
 
 interface ResponseBodyStreamingProps {
@@ -74,7 +75,7 @@ export function ResponseBodyStreaming({ events, status, statusText }: ResponseBo
         {events.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-gray-400 dark:text-gray-500">
-              <div className="text-3xl mb-2">⏳</div>
+              <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
               <p className="text-sm">Waiting for events...</p>
             </div>
           </div>

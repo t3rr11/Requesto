@@ -20,6 +20,7 @@ type RequestTab = 'params' | 'auth' | 'headers' | 'body';
 interface RequestFormProps {
   control: Control<RequestFormData>;
   onSend: () => void;
+  onCancel: () => void;
   loading: boolean;
   urlValue: string;
   headers: RequestFormData['headers'];
@@ -38,6 +39,7 @@ interface RequestFormProps {
 export function RequestForm({
   control,
   onSend,
+  onCancel,
   loading,
   urlValue,
   headers,
@@ -185,8 +187,14 @@ export function RequestForm({
             />
           </div>
 
-          <Button onClick={onSend} disabled={loading || !urlValue.trim()} loading={loading} size="md">
-            Send
+          <Button
+            onClick={loading ? onCancel : onSend}
+            disabled={!loading && !urlValue.trim()}
+            loading={false}
+            size="md"
+            variant={loading ? 'danger' : 'primary'}
+          >
+            {loading ? 'Cancel' : 'Send'}
           </Button>
         </div>
       </div>
