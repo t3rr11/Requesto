@@ -24,12 +24,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git tag ${{ inputs.version }}
-          git push origin ${{ inputs.version }}
+          if ! git ls-remote --tags origin | grep -q "refs/tags/${{ inputs.version }}$"; then
+            git tag ${{ inputs.version }}
+            git push origin ${{ inputs.version }}
+          else
+            echo "Tag ${{ inputs.version }} already exists, skipping tag creation"
+          fi
           gh release create ${{ inputs.version }} \
             --title "${{ inputs.version }}" \
             --notes "${{ inputs.notes || 'No release notes provided.' }}" \
-            --draft
+            --draft || echo "Release already exists, continuing"
 
   build:
     needs: create-release
