@@ -33,11 +33,25 @@ export type AuthConfig = {
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
+export type BodyType = 'json' | 'form-data' | 'x-www-form-urlencoded';
+
+export type FormDataEntry = {
+  id: string;
+  key: string;
+  value: string;
+  type: 'text' | 'file';
+  fileName?: string;
+  fileContent?: string;
+  enabled: boolean;
+};
+
 export type ProxyRequest = {
   method: string;
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  bodyType?: BodyType;
+  formDataEntries?: FormDataEntry[];
   auth?: AuthConfig;
 };
 

@@ -6,7 +6,7 @@ import { KeyValueEditor } from '../components/KeyValueEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import type { AuthConfig } from '../store/request/types';
+import type { AuthConfig, FormDataEntry } from '../store/request/types';
 import { useThemeStore } from '../store/theme/store';
 import { extractParamsFromUrl } from '../helpers/url';
 import type { RequestFormData } from './schemas/requestFormSchema';
@@ -29,6 +29,10 @@ interface RequestFormProps {
   onUrlChange: (url: string) => void;
   auth: AuthConfig;
   onAuthChange: (auth: AuthConfig) => void;
+  bodyType: RequestFormData['bodyType'];
+  onBodyTypeChange: (bodyType: RequestFormData['bodyType']) => void;
+  formDataEntries: FormDataEntry[];
+  onFormDataEntriesChange: (entries: FormDataEntry[]) => void;
 }
 
 export function RequestForm({
@@ -43,6 +47,10 @@ export function RequestForm({
   onUrlChange,
   auth,
   onAuthChange,
+  bodyType,
+  onBodyTypeChange,
+  formDataEntries,
+  onFormDataEntriesChange,
 }: RequestFormProps) {
   const [activeTab, setActiveTab] = useState<RequestTab>('params');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -273,65 +281,99 @@ export function RequestForm({
         {activeTab === 'body' && (
           <div className="h-full min-h-50">
             <div className="mb-3 flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-900 dark:text-gray-100">
-                <input type="radio" name="bodyType" value="json" defaultChecked />
+              <label className={`flex items-center gap-2 text-sm ${bodyType === 'json' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                <input
+                  type="radio"
+                  name="bodyType"
+                  value="json"
+                  checked={bodyType === 'json'}
+                  onChange={() => onBodyTypeChange('json')}
+                  disabled={loading}
+                />
                 <span>JSON</span>
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
-                <input type="radio" name="bodyType" value="xml" disabled />
-                <span>XML</span>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
-                <input type="radio" name="bodyType" value="form" disabled />
+              <label className={`flex items-center gap-2 text-sm ${bodyType === 'form-data' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                <input
+                  type="radio"
+                  name="bodyType"
+                  value="form-data"
+                  checked={bodyType === 'form-data'}
+                  onChange={() => onBodyTypeChange('form-data')}
+                  disabled={loading}
+                />
                 <span>Form Data</span>
               </label>
+              <label className={`flex items-center gap-2 text-sm ${bodyType === 'x-www-form-urlencoded' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                <input
+                  type="radio"
+                  name="bodyType"
+                  value="x-www-form-urlencoded"
+                  checked={bodyType === 'x-www-form-urlencoded'}
+                  onChange={() => onBodyTypeChange('x-www-form-urlencoded')}
+                  disabled={loading}
+                />
+                <span>URL Encoded</span>
+              </label>
             </div>
-            <div
-              className="border border-gray-300 dark:border-gray-600 rounded overflow-hidden"
-              style={{ height: 'calc(100% - 40px)' }}
-            >
-              <Controller
-                name="body"
-                control={control}
-                render={({ field }) => (
-                  <Editor
-                    height="100%"
-                    defaultLanguage="json"
-                    value={field.value}
-                    onChange={(value: string | undefined) => field.onChange(value || '')}
-                    theme={isDarkMode ? 'custom-dark' : 'vs-light'}
-                    beforeMount={(monaco: Monaco) => {
-                      monaco.editor.defineTheme('custom-dark', {
-                        base: 'vs-dark',
-                        inherit: true,
-                        rules: [],
-                        colors: {
-                          'editor.background': '#1f2937',
-                          'editor.lineHighlightBackground': '#374151',
-                          'editorLineNumber.foreground': '#6b7280',
-                          'editorLineNumber.activeForeground': '#9ca3af',
-                        },
-                      });
-                    }}
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 13,
-                      lineNumbers: 'on',
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                      tabSize: 2,
-                      formatOnPaste: true,
-                      formatOnType: true,
-                      readOnly: loading,
-                    }}
-                  />
-                )}
+
+            {bodyType === 'json' && (
+              <div
+                className="border border-gray-300 dark:border-gray-600 rounded overflow-hidden"
+                style={{ height: 'calc(100% - 40px)' }}
+              >
+                <Controller
+                  name="body"
+                  control={control}
+                  render={({ field }) => (
+                    <Editor
+                      height="100%"
+                      defaultLanguage="json"
+                      value={field.value}
+                      onChange={(value: string | undefined) => field.onChange(value || '')}
+                      theme={isDarkMode ? 'custom-dark' : 'vs-light'}
+                      beforeMount={(monaco: Monaco) => {
+                        monaco.editor.defineTheme('custom-dark', {
+                          base: 'vs-dark',
+                          inherit: true,
+                          rules: [],
+                          colors: {
+                            'editor.background': '#1f2937',
+                            'editor.lineHighlightBackground': '#374151',
+                            'editorLineNumber.foreground': '#6b7280',
+                            'editorLineNumber.activeForeground': '#9ca3af',
+                          },
+                        });
+                      }}
+                      options={{
+                        minimap: { enabled: false },
+                        fontSize: 13,
+                        lineNumbers: 'on',
+                        scrollBeyondLastLine: false,
+                        automaticLayout: true,
+                        tabSize: 2,
+                        formatOnPaste: true,
+                        formatOnType: true,
+                        readOnly: loading,
+                      }}
+                    />
+                  )}
+                />
+              </div>
+            )}
+
+            {(bodyType === 'form-data' || bodyType === 'x-www-form-urlencoded') && (
+              <KeyValueEditor
+                items={formDataEntries}
+                onItemsChange={items => onFormDataEntriesChange(items.map(item => ({ ...item, type: 'text' as const })))}
+                delimiter="="
+                keyPlaceholder="Field"
+                valuePlaceholder="Value"
+                addLabel="+ Add Field"
+                disabled={loading}
               />
-            </div>
+            )}
           </div>
         )}
-
-
       </div>
     </div>
   );

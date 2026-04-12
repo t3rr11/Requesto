@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Collection, SavedRequest, Folder } from './types';
-import type { AuthConfig } from '../request/types';
+import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
 import * as actions from './actions';
 
 type CollectionsState = {
@@ -18,11 +18,13 @@ type CollectionsState = {
   createRequest: (collectionId: string, data: {
     name: string; method: string; url: string;
     headers?: Record<string, string>; body?: string;
+    bodyType?: BodyType; formDataEntries?: FormDataEntry[];
     auth?: AuthConfig; folderId?: string;
   }) => Promise<SavedRequest>;
   saveRequest: (collectionId: string, data: {
     name: string; method: string; url: string;
     headers?: Record<string, string>; body?: string;
+    bodyType?: BodyType; formDataEntries?: FormDataEntry[];
     auth?: AuthConfig; folderId?: string;
   }) => Promise<SavedRequest>;
   deleteCollection: (id: string) => Promise<void>;

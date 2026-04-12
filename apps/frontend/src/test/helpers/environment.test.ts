@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   substituteVariables,
+  substituteInRequest,
   extractVariableNames,
   hasVariables,
   getUndefinedVariables,
@@ -136,5 +137,70 @@ describe('createEmptyVariable', () => {
     expect(v.key).toBe('');
     expect(v.value).toBe('');
     expect(v.enabled).toBe(true);
+  });
+});
+
+describe('substituteInRequest', () => {
+  it('substitutes variables in formDataEntries keys and text values', () => {
+    const env = makeEnv([
+      { key: 'field', value: 'username', enabled: true },
+      { key: 'val', value: 'john', enabled: true },
+    ]);
+    const result = substituteInRequest(
+      {
+        method: 'POST',
+        url: 'https://example.com',
+        formDataEntries: [
+          { id: '1', key: '{{field}}', value: '{{val}}', type: 'text' as const, enabled: true },
+        ],
+      },
+      env,
+    );
+    expect(result.formDataEntries![0].key).toBe('username');
+    expect(result.formDataEntries![0].value).toBe('john');
+  });
+
+  it('does not substitute variables in file-type entry values', () => {
+    const env = makeEnv([{ key: 'name', value: 'replaced', enabled: true }]);
+    const result = substituteInRequest(
+      {
+        method: 'POST',
+        url: 'https://example.com',
+        formDataEntries: [
+          {
+            id: '1', key: 'avatar', value: '', type: 'file' as const,
+            fileName: '{{name}}.png', fileContent: 'data:image/png;base64,abc',
+            enabled: true,
+          },
+        ],
+      },
+      env,
+    );
+    // File value (data URL) should NOT be substituted
+    expect(result.formDataEntries![0].value).toBe('');
+  });
+
+  it('passes through bodyType unchanged', () => {
+    const result = substituteInRequest(
+      {
+        method: 'POST',
+        url: 'https://example.com',
+        bodyType: 'form-data',
+      },
+      makeEnv([]),
+    );
+    expect(result.bodyType).toBe('form-data');
+  });
+
+  it('returns request unchanged when environment is null', () => {
+    const entries = [
+      { id: '1', key: '{{field}}', value: '{{val}}', type: 'text' as const, enabled: true },
+    ];
+    const result = substituteInRequest(
+      { method: 'POST', url: 'https://example.com', formDataEntries: entries },
+      null,
+    );
+    expect(result.formDataEntries![0].key).toBe('{{field}}');
+    expect(result.formDataEntries![0].value).toBe('{{val}}');
   });
 });
