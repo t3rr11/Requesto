@@ -75,7 +75,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/t3rr11/Requesto/edit/main/website/src/:path',
+      pattern: 'https://github.com/t3rr11/Requesto/edit/main/apps/website/src/:path',
       text: 'Edit this page on GitHub',
     },
   },
