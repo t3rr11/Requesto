@@ -5,6 +5,7 @@ export default defineConfig({
   description: 'A lightweight, self-hosted API client',
   base: '/',
   srcDir: 'src',
+  ignoreDeadLinks: [/localhost/],
 
   head: [
     ['link', { rel: 'icon', href: '/logo.svg' }],
