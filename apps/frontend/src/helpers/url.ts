@@ -19,6 +19,20 @@ export function extractPathnameFromUrl(url: string): string {
 }
 
 /**
+ * Build a full URL by appending enabled query params to a base URL.
+ */
+export function buildUrlWithParams(
+  baseUrl: string,
+  params: Array<{ key: string; value: string; enabled: boolean }>,
+): string {
+  const enabledParams = params.filter(p => p.enabled && p.key.trim());
+  if (enabledParams.length === 0) return baseUrl;
+
+  const queryString = enabledParams.map(p => `${p.key}=${p.value}`).join('&');
+  return baseUrl.includes('?') ? `${baseUrl}&${queryString}` : `${baseUrl}?${queryString}`;
+}
+
+/**
  * Extract query parameters from a URL and return the base URL + params array.
  */
 export function extractParamsFromUrl(url: string): {

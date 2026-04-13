@@ -20,7 +20,7 @@ describe('ResponsePanel', () => {
 
   it('shows loading state', () => {
     render(<ResponsePanel response={null} loading={true} error={null} isDarkMode={false} />);
-    expect(screen.getByText('Sending request...')).toBeInTheDocument();
+    expect(screen.getByText('Sending Request')).toBeInTheDocument();
   });
 
   it('shows error state', () => {
