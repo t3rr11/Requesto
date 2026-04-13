@@ -11,6 +11,7 @@ import { NewRequestForm } from '../forms/NewRequestForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
+import { useResizablePanel } from '../hooks/useResizablePanel';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -34,7 +35,6 @@ interface NewRequestContext {
 
 export function CollectionsSidebar() {
   const { isSidebarOpen, sidebarWidth, setSidebarWidth, clearSelection } = useUIStore();
-  const [isResizing, setIsResizing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +42,14 @@ export function CollectionsSidebar() {
   const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder } =
     useCollectionsStore();
   const { showAlert } = useAlertStore();
+
+  const { handleResizeStart } = useResizablePanel({
+    containerRef: sidebarRef,
+    axis: 'horizontal',
+    onResize: setSidebarWidth,
+    min: 200,
+    max: 600,
+  });
 
   const filteredCollections = useMemo(() => {
     if (!searchQuery.trim()) return collections;
@@ -60,29 +68,6 @@ export function CollectionsSidebar() {
   const renameRequestDialog = useDialogWithData<RenameRequestData>();
   const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
   const renameFolderDialog = useDialogWithData<RenameFolderData>();
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing || !sidebarRef.current) return;
-      const clampedWidth = Math.max(200, Math.min(e.clientX, 600));
-      setSidebarWidth(clampedWidth);
-    };
-    const handleMouseUp = () => setIsResizing(false);
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-    }
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, setSidebarWidth]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -263,7 +248,7 @@ export function CollectionsSidebar() {
 
       <div
         className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"
-        onMouseDown={handleMouseDown}
+        onMouseDown={handleResizeStart}
         title="Drag to resize"
       />
     </div>

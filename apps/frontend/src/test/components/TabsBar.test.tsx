@@ -84,7 +84,7 @@ describe('TabsBar', () => {
 
   it('opens new tab on plus button click', () => {
     renderTabsBar();
-    const addBtn = screen.getByTitle('New tab (Ctrl+T)');
+    const addBtn = screen.getByTitle('New tab');
     fireEvent.click(addBtn);
     expect(mockOpenNewTab).toHaveBeenCalledOnce();
   });
@@ -92,6 +92,6 @@ describe('TabsBar', () => {
   it('renders without crashing', () => {
     renderTabsBar();
     // Should render the plus button at minimum
-    expect(screen.getByTitle('New tab (Ctrl+T)')).toBeInTheDocument();
+    expect(screen.getByTitle('New tab')).toBeInTheDocument();
   });
 });

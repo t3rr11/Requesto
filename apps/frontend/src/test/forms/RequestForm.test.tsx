@@ -1,12 +1,8 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useForm, FormProvider } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { RequestForm, requestFormSchema } from '../../forms/RequestForm';
+import { RequestForm } from '../../forms/RequestForm';
 import type { RequestFormData } from '../../forms/RequestForm';
-import type { AuthConfig, FormDataEntry } from '../../store/request/types';
-import type { PropsWithChildren } from 'react';
 // Mock Monaco editor
 vi.mock('@monaco-editor/react', () => ({
   default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
@@ -54,44 +50,26 @@ vi.mock('../../store/theme/store', () => ({
   useThemeStore: vi.fn(() => ({ isDarkMode: false })),
 }));
 
-const defaultValues: RequestFormData = {
-  method: 'GET',
-  url: '',
-  headers: [],
-  params: [],
-  body: '',
-  bodyType: 'json',
-  formDataEntries: [],
-  auth: { type: 'none' },
-};
+vi.mock('../../store/tabs/store', () => ({
+  useTabsStore: Object.assign(
+    () => ({
+      getActiveTab: () => ({
+        id: 'tab-1',
+        request: { method: 'GET', url: '', headers: {}, body: '', bodyType: 'json', auth: { type: 'none' }, formDataEntries: [] },
+      }),
+      updateTabRequest: vi.fn(),
+    }),
+    { getState: () => ({}) },
+  ),
+}));
 
-function Wrapper({ children, onSend, loading = false }: PropsWithChildren<{ onSend?: () => void; loading?: boolean }>) {
-  const methods = useForm<RequestFormData>({
-    resolver: zodResolver(requestFormSchema),
-    defaultValues,
-  });
-
-  return (
-    <FormProvider {...methods}>
-      <RequestForm
-        control={methods.control}
-        onSend={onSend ?? vi.fn()}
-        loading={loading}
-        urlValue={methods.watch('url')}
-        headers={methods.watch('headers')}
-        onHeadersChange={(val: RequestFormData['headers']) => methods.setValue('headers', val)}
-        params={methods.watch('params')}
-        onParamsChange={(val: RequestFormData['params']) => methods.setValue('params', val)}
-        onUrlChange={(val: string) => methods.setValue('url', val)}
-        auth={methods.watch('auth') as AuthConfig}
-        onAuthChange={(val: AuthConfig) => methods.setValue('auth', val)}
-        bodyType={methods.watch('bodyType')}
-        onBodyTypeChange={(val: RequestFormData['bodyType']) => methods.setValue('bodyType', val)}
-        formDataEntries={methods.watch('formDataEntries')}
-        onFormDataEntriesChange={(val: FormDataEntry[]) => methods.setValue('formDataEntries', val)}
-      />
-      {children}
-    </FormProvider>
+function renderForm({ onSend, onCancel, loading = false }: { onSend?: (data: RequestFormData) => void; onCancel?: () => void; loading?: boolean } = {}) {
+  return render(
+    <RequestForm
+      onSend={onSend ?? vi.fn()}
+      onCancel={onCancel ?? vi.fn()}
+      loading={loading}
+    />,
   );
 }
 
@@ -101,7 +79,7 @@ describe('RequestForm', () => {
   });
 
   it('renders method selector and URL input', () => {
-    render(<Wrapper />);
+    renderForm();
 
     // Method dropdown
     const methodSelect = screen.getByDisplayValue('GET');
@@ -112,20 +90,21 @@ describe('RequestForm', () => {
   });
 
   it('renders Send button', () => {
-    render(<Wrapper />);
+    renderForm();
 
     expect(screen.getByText('Send')).toBeInTheDocument();
   });
 
   it('shows loading state on Send button', () => {
-    render(<Wrapper loading={true} />);
+    renderForm({ loading: true });
 
-    const sendButton = screen.getByText('Send');
-    expect(sendButton).toBeDisabled();
+    // When loading, the button text changes to 'Cancel'
+    const cancelButton = screen.getByText('Cancel');
+    expect(cancelButton).toBeInTheDocument();
   });
 
   it('renders tab bar with all tabs', () => {
-    render(<Wrapper />);
+    renderForm();
 
     expect(screen.getByText(/params/i)).toBeInTheDocument();
     expect(screen.getByText(/auth/i)).toBeInTheDocument();
@@ -135,7 +114,7 @@ describe('RequestForm', () => {
 
   it('switches to headers tab', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     await user.click(screen.getByText(/headers/i));
     // Should show the KeyValueEditor for headers
@@ -144,7 +123,7 @@ describe('RequestForm', () => {
 
   it('switches to body tab and shows editor', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     await user.click(screen.getByText(/body/i));
     expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
@@ -152,7 +131,7 @@ describe('RequestForm', () => {
 
   it('switches to auth tab', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     await user.click(screen.getByText(/auth/i));
     // Auth tab shows the AuthEditor with auth type selector
@@ -162,7 +141,7 @@ describe('RequestForm', () => {
   it('calls onSend when Send button is clicked', async () => {
     const mockSend = vi.fn();
     const user = userEvent.setup();
-    render(<Wrapper onSend={mockSend} />);
+    renderForm({ onSend: mockSend });
 
     // Need to set URL first because Send is disabled when URL is empty
     const urlInput = screen.getByTestId('variable-aware-input');
@@ -174,7 +153,7 @@ describe('RequestForm', () => {
 
   it('allows changing HTTP method', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     const methodSelect = screen.getByDisplayValue('GET');
     await user.selectOptions(methodSelect, 'POST');
@@ -182,7 +161,7 @@ describe('RequestForm', () => {
   });
 
   it('renders params tab by default with KeyValueEditor', () => {
-    render(<Wrapper />);
+    renderForm();
 
     // Params tab is default, should show KeyValueEditor
     expect(screen.getByTestId('key-value-editor')).toBeInTheDocument();
@@ -190,7 +169,7 @@ describe('RequestForm', () => {
 
   it('shows body type radio buttons in body tab', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     await user.click(screen.getByText(/body/i));
     expect(screen.getByLabelText('JSON')).toBeInTheDocument();
@@ -200,7 +179,7 @@ describe('RequestForm', () => {
 
   it('shows monaco editor when JSON body type is selected', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     await user.click(screen.getByText(/body/i));
     expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
@@ -208,7 +187,7 @@ describe('RequestForm', () => {
 
   it('switches to KeyValueEditor when Form Data is selected', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     await user.click(screen.getByText(/body/i));
     await user.click(screen.getByLabelText('Form Data'));
@@ -219,7 +198,7 @@ describe('RequestForm', () => {
 
   it('switches to KeyValueEditor when URL Encoded is selected', async () => {
     const user = userEvent.setup();
-    render(<Wrapper />);
+    renderForm();
 
     await user.click(screen.getByText(/body/i));
     await user.click(screen.getByLabelText('URL Encoded'));

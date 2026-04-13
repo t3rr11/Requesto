@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Control, Controller } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import { Button } from '../components/Button';
 import { KeyValueEditor } from '../components/KeyValueEditor';
@@ -8,8 +9,10 @@ import { AuthEditor } from '../components/AuthEditor';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { AuthConfig, FormDataEntry } from '../store/request/types';
 import { useThemeStore } from '../store/theme/store';
+import { useTabsStore } from '../store/tabs/store';
 import { extractParamsFromUrl } from '../helpers/url';
-import type { RequestFormData } from './schemas/requestFormSchema';
+import { buildTabRequestFromFormData } from '../helpers/request';
+import { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
 
 export { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
 
@@ -18,47 +21,91 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'
 type RequestTab = 'params' | 'auth' | 'headers' | 'body';
 
 interface RequestFormProps {
-  control: Control<RequestFormData>;
-  onSend: () => void;
+  onSend: (formData: RequestFormData) => void;
   onCancel: () => void;
+  onChange?: (formData: RequestFormData) => void;
   loading: boolean;
-  urlValue: string;
-  headers: RequestFormData['headers'];
-  onHeadersChange: (headers: RequestFormData['headers']) => void;
-  params: RequestFormData['params'];
-  onParamsChange: (params: RequestFormData['params']) => void;
-  onUrlChange: (url: string) => void;
-  auth: AuthConfig;
-  onAuthChange: (auth: AuthConfig) => void;
-  bodyType: RequestFormData['bodyType'];
-  onBodyTypeChange: (bodyType: RequestFormData['bodyType']) => void;
-  formDataEntries: FormDataEntry[];
-  onFormDataEntriesChange: (entries: FormDataEntry[]) => void;
 }
 
-export function RequestForm({
-  control,
-  onSend,
-  onCancel,
-  loading,
-  urlValue,
-  headers,
-  onHeadersChange,
-  params,
-  onParamsChange,
-  onUrlChange,
-  auth,
-  onAuthChange,
-  bodyType,
-  onBodyTypeChange,
-  formDataEntries,
-  onFormDataEntriesChange,
-}: RequestFormProps) {
+export function RequestForm({ onSend, onCancel, onChange, loading }: RequestFormProps) {
   const [activeTab, setActiveTab] = useState<RequestTab>('params');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
   const { isDarkMode } = useThemeStore();
+  const { getActiveTab, updateTabRequest } = useTabsStore();
+  const currentTab = getActiveTab();
+
+  const { control, watch, setValue, reset, getValues } = useForm<RequestFormData>({
+    resolver: zodResolver(requestFormSchema),
+    defaultValues: {
+      method: 'GET',
+      url: '',
+      headers: [{ id: '1', key: '', value: '', enabled: true }],
+      params: [{ id: '1', key: '', value: '', enabled: true }],
+      body: '',
+      bodyType: 'json' as const,
+      formDataEntries: [{ id: '1', key: '', value: '', type: 'text' as const, enabled: true }],
+      auth: { type: 'none' },
+    },
+  });
+
+  const urlValue = watch('url');
+  const headers = watch('headers');
+  const params = watch('params');
+  const auth = watch('auth') as AuthConfig;
+  const bodyType = watch('bodyType');
+  const formDataEntries = watch('formDataEntries') as FormDataEntry[];
+
+  // Reset form when the active tab changes
+  useEffect(() => {
+    if (!currentTab) return;
+    const tabReq = currentTab.request;
+    const { baseUrl, params: urlParams } = extractParamsFromUrl(tabReq.url || '');
+
+    reset({
+      method: tabReq.method || 'GET',
+      url: baseUrl,
+      headers:
+        tabReq.headers && Object.keys(tabReq.headers).length > 0
+          ? Object.entries(tabReq.headers).map(([key, value]) => ({
+              id: `${key}-${Date.now()}`,
+              key,
+              value,
+              enabled: true,
+            }))
+          : [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
+      params:
+        urlParams.length > 0
+          ? urlParams.map(p => ({
+              id: `${p.key}-${Date.now()}`,
+              key: p.key,
+              value: p.value,
+              enabled: true,
+            }))
+          : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }],
+      body: tabReq.body || '',
+      bodyType: tabReq.bodyType || 'json',
+      formDataEntries:
+        tabReq.formDataEntries && tabReq.formDataEntries.length > 0
+          ? tabReq.formDataEntries
+          : [{ id: Date.now().toString(), key: '', value: '', type: 'text' as const, enabled: true }],
+      auth: tabReq.auth || { type: 'none' },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTab?.id]);
+
+  // Write back to tab store whenever the form changes
+  useEffect(() => {
+    if (!currentTab) return;
+    const subscription = watch(data => {
+      const formData = data as RequestFormData;
+      updateTabRequest(currentTab.id, buildTabRequestFromFormData(formData));
+      onChange?.(formData);
+    });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTab?.id, updateTabRequest]);
 
   const handleUrlChange = (newUrl: string) => {
     const { baseUrl, params: extractedParams } = extractParamsFromUrl(newUrl);
@@ -78,12 +125,23 @@ export function RequestForm({
         }
       });
 
-      onParamsChange(newParams);
-      onUrlChange(baseUrl);
+      setValue('params', newParams, { shouldDirty: true });
+      setValue('url', baseUrl, { shouldDirty: true });
     } else {
-      onUrlChange(newUrl);
+      setValue('url', newUrl, { shouldDirty: true });
     }
   };
+
+  const handleHeadersChange = (newHeaders: RequestFormData['headers']) =>
+    setValue('headers', newHeaders, { shouldDirty: true });
+  const handleParamsChange = (newParams: RequestFormData['params']) =>
+    setValue('params', newParams, { shouldDirty: true });
+  const handleAuthChange = (newAuth: AuthConfig) =>
+    setValue('auth', newAuth as RequestFormData['auth'], { shouldDirty: true });
+  const handleBodyTypeChange = (newBodyType: RequestFormData['bodyType']) =>
+    setValue('bodyType', newBodyType, { shouldDirty: true });
+  const handleFormDataEntriesChange = (newEntries: FormDataEntry[]) =>
+    setValue('formDataEntries', newEntries, { shouldDirty: true });
 
   const paramsCount = params.filter(p => p.enabled && p.key.trim()).length;
   const headersCount = headers.filter(h => h.enabled && h.key.trim()).length;
@@ -188,7 +246,7 @@ export function RequestForm({
           </div>
 
           <Button
-            onClick={loading ? onCancel : onSend}
+            onClick={loading ? onCancel : () => onSend(getValues())}
             disabled={!loading && !urlValue.trim()}
             loading={false}
             size="md"
@@ -263,7 +321,7 @@ export function RequestForm({
         {activeTab === 'params' && (
           <KeyValueEditor
             items={params}
-            onItemsChange={onParamsChange}
+            onItemsChange={handleParamsChange}
             delimiter="="
             keyPlaceholder="Parameter"
             valuePlaceholder="Value"
@@ -272,13 +330,13 @@ export function RequestForm({
         )}
 
         {activeTab === 'auth' && (
-          <AuthEditor auth={auth} onAuthChange={onAuthChange} disabled={loading} />
+          <AuthEditor auth={auth} onAuthChange={handleAuthChange} disabled={loading} />
         )}
 
         {activeTab === 'headers' && (
           <KeyValueEditor
             items={headers}
-            onItemsChange={onHeadersChange}
+            onItemsChange={handleHeadersChange}
             delimiter=":"
             keyPlaceholder="Header"
             valuePlaceholder="Value"
@@ -295,7 +353,7 @@ export function RequestForm({
                   name="bodyType"
                   value="json"
                   checked={bodyType === 'json'}
-                  onChange={() => onBodyTypeChange('json')}
+                  onChange={() => handleBodyTypeChange('json')}
                   disabled={loading}
                 />
                 <span>JSON</span>
@@ -306,7 +364,7 @@ export function RequestForm({
                   name="bodyType"
                   value="form-data"
                   checked={bodyType === 'form-data'}
-                  onChange={() => onBodyTypeChange('form-data')}
+                  onChange={() => handleBodyTypeChange('form-data')}
                   disabled={loading}
                 />
                 <span>Form Data</span>
@@ -317,7 +375,7 @@ export function RequestForm({
                   name="bodyType"
                   value="x-www-form-urlencoded"
                   checked={bodyType === 'x-www-form-urlencoded'}
-                  onChange={() => onBodyTypeChange('x-www-form-urlencoded')}
+                  onChange={() => handleBodyTypeChange('x-www-form-urlencoded')}
                   disabled={loading}
                 />
                 <span>URL Encoded</span>
@@ -372,7 +430,7 @@ export function RequestForm({
             {(bodyType === 'form-data' || bodyType === 'x-www-form-urlencoded') && (
               <KeyValueEditor
                 items={formDataEntries}
-                onItemsChange={items => onFormDataEntriesChange(items.map(item => ({ ...item, type: 'text' as const })))}
+                onItemsChange={items => handleFormDataEntriesChange(items.map(item => ({ ...item, type: 'text' as const })))}
                 delimiter="="
                 keyPlaceholder="Field"
                 valuePlaceholder="Value"
@@ -386,3 +444,4 @@ export function RequestForm({
     </div>
   );
 }
+

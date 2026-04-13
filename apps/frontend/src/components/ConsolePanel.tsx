@@ -14,6 +14,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Button } from './Button';
+import { useResizablePanel } from '../hooks/useResizablePanel';
 import type { ConsoleLog } from '../store/request/types';
 
 interface ConsolePanelProps {
@@ -129,11 +130,19 @@ export function ConsolePanel({
   onClear,
   onHeightChange,
 }: ConsolePanelProps) {
-  const [isResizing, setIsResizing] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
   const [, setTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const { handleResizeStart } = useResizablePanel({
+    containerRef,
+    axis: 'vertical',
+    onResize: onHeightChange,
+    min: 150,
+    max: window.innerHeight - 200,
+    origin: 'end',
+  });
 
   const groups = useMemo(() => groupConsoleLogs(consoleLogs), [consoleLogs]);
 
@@ -162,33 +171,6 @@ export function ConsolePanel({
       // Clipboard access may be denied
     }
   };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  };
-
-  useEffect(() => {
-    if (!isResizing) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!containerRef.current) return;
-      const container = containerRef.current.parentElement;
-      if (!container) return;
-      const containerRect = container.getBoundingClientRect();
-      const newHeight = containerRect.bottom - e.clientY;
-      onHeightChange(Math.max(150, Math.min(newHeight, containerRect.height - 200)));
-    };
-
-    const handleMouseUp = () => setIsResizing(false);
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, onHeightChange]);
 
   const renderCopyButton = (text: string, key: string) => (
     <Button
@@ -485,7 +467,7 @@ export function ConsolePanel({
     >
       <div
         className="h-1 bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-row-resize shrink-0"
-        onMouseDown={handleMouseDown}
+        onMouseDown={handleResizeStart}
       />
 
       <div className="flex items-center justify-between px-4 py-2 bg-gray-800 dark:bg-gray-900 border-b border-gray-700 dark:border-gray-800 shrink-0 cursor-pointer hover:bg-gray-750 dark:hover:bg-gray-800" onClick={onToggle}>

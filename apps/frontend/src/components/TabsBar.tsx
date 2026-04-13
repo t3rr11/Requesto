@@ -139,36 +139,6 @@ export function TabsBar() {
     return () => el.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'w') {
-          e.preventDefault();
-          if (activeTabId) handleCloseTab(activeTabId);
-        } else if (e.key === 't') {
-          e.preventDefault();
-          openNewTab();
-        } else if (e.key === 'Tab') {
-          e.preventDefault();
-          if (tabOrder.length < 2) return;
-          const idx = activeTabId ? tabOrder.indexOf(activeTabId) : -1;
-          const next = e.shiftKey
-            ? (idx - 1 + tabOrder.length) % tabOrder.length
-            : (idx + 1) % tabOrder.length;
-          activateTab(tabOrder[next]);
-        } else if (e.key >= '1' && e.key <= '9') {
-          e.preventDefault();
-          const num = parseInt(e.key, 10);
-          const targetIdx = num === 9 ? tabOrder.length - 1 : num - 1;
-          if (targetIdx < tabOrder.length) activateTab(tabOrder[targetIdx]);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTabId, tabOrder, activateTab, openNewTab]);
-
   const handleCloseTab = useCallback(
     (tabId: string) => {
       const tab = tabs[tabId];
@@ -266,7 +236,7 @@ export function TabsBar() {
             onClick={openNewTab}
             className="shrink-0 px-3 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 h-full border-l border-gray-300 dark:border-gray-600"
             aria-label="New tab"
-            title="New tab (Ctrl+T)"
+            title="New tab"
           >
             <Plus size={18} />
           </button>
