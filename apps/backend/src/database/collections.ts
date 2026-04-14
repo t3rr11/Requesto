@@ -1,10 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { AuthConfig, FormDataEntry } from '../types';
-import { initializeFile, atomicWrite } from './storage';
+import { atomicWrite, getActiveDataDir } from './storage';
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
-const COLLECTIONS_FILE = path.join(DATA_DIR, 'collections.json');
 
 export interface SavedRequest {
   id: string;
@@ -42,11 +40,24 @@ export interface Collection {
   updatedAt: number;
 }
 
-initializeFile(COLLECTIONS_FILE, []);
+function getCollectionsFile(): string {
+  return path.join(getActiveDataDir(), 'collections.json');
+}
+
+/** Check if an object has meaningful changes by comparing everything except timestamps. */
+function hasChanged(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const strip = (obj: Record<string, unknown>) => {
+    const { createdAt, updatedAt, ...rest } = obj;
+    return JSON.stringify(rest);
+  };
+  return strip(a) !== strip(b);
+}
 
 function readCollections(): Collection[] {
   try {
-    const data = fs.readFileSync(COLLECTIONS_FILE, 'utf-8');
+    const collectionsFile = getCollectionsFile();
+    if (!fs.existsSync(collectionsFile)) return [];
+    const data = fs.readFileSync(collectionsFile, 'utf-8');
     return JSON.parse(data) as Collection[];
   } catch (error) {
     console.error('Error reading collections:', error);
@@ -55,7 +66,7 @@ function readCollections(): Collection[] {
 }
 
 function writeCollections(collections: Collection[]): void {
-  atomicWrite(COLLECTIONS_FILE, collections);
+  atomicWrite(getCollectionsFile(), collections);
 }
 
 export const collectionsDb = {
@@ -80,7 +91,12 @@ export const collectionsDb = {
     const index = collections.findIndex((c: Collection) => c.id === id);
     if (index === -1) return null;
 
-    collections[index] = { ...collections[index], ...updates, updatedAt: Date.now() };
+    const current = collections[index];
+    const merged = { ...current, ...updates };
+    if (!hasChanged(current as unknown as Record<string, unknown>, merged as unknown as Record<string, unknown>)) {
+      return current;
+    }
+    collections[index] = { ...merged, updatedAt: Date.now() };
     writeCollections(collections);
     return collections[index];
   },
@@ -117,9 +133,14 @@ export const collectionsDb = {
     const requestIndex = collection.requests.findIndex((r: SavedRequest) => r.id === requestId);
     if (requestIndex === -1) return null;
 
+    const current = collection.requests[requestIndex];
+    const merged = { ...current, ...updates };
+    if (!hasChanged(current as unknown as Record<string, unknown>, merged as unknown as Record<string, unknown>)) {
+      return current;
+    }
+
     collection.requests[requestIndex] = {
-      ...collection.requests[requestIndex],
-      ...updates,
+      ...merged,
       updatedAt: Date.now(),
     };
     collection.updatedAt = Date.now();
@@ -167,9 +188,14 @@ export const collectionsDb = {
     const folderIndex = collection.folders.findIndex((f: Folder) => f.id === folderId);
     if (folderIndex === -1) return null;
 
+    const current = collection.folders[folderIndex];
+    const merged = { ...current, ...updates };
+    if (!hasChanged(current as unknown as Record<string, unknown>, merged as unknown as Record<string, unknown>)) {
+      return current;
+    }
+
     collection.folders[folderIndex] = {
-      ...collection.folders[folderIndex],
-      ...updates,
+      ...merged,
       updatedAt: Date.now(),
     };
     collection.updatedAt = Date.now();

@@ -6,6 +6,7 @@ import {
   downloadJSON,
   readJSONFile,
 } from '../../helpers/postman';
+import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
 
 // ── Internal API helpers (not exported) ──────────────────────────────────────
 
@@ -48,6 +49,7 @@ export async function loadEnvironments(set: SetState): Promise<void> {
   try {
     const data = await getEnvironmentsApi();
     set({ environmentsData: data });
+    notifyDataMutated();
   } catch (error) {
     console.error('Failed to load environments:', error);
     throw error;

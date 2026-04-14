@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { atomicWrite, initializeFile, ensureDir } from '../helpers/fileUtils';
+import { getWorkspaceDataDir, getWorkspaceLocalDir } from './workspaces';
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
-const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 
 interface RequestRecord {
   id: string;
@@ -17,40 +18,35 @@ interface RequestRecord {
   timestamp: number;
 }
 
+/** Root data directory for the workspace registry */
+export function getRootDataDir(): string {
+  return DATA_DIR;
+}
+
+/** Active workspace's data directory (collections, environments, oauth configs) */
+export function getActiveDataDir(): string {
+  return getWorkspaceDataDir();
+}
+
+/** Active workspace's local-only directory (.requesto/ — history, secrets) */
+export function getActiveLocalDir(): string {
+  return getWorkspaceLocalDir();
+}
+
+function getHistoryFile(): string {
+  return path.join(getActiveLocalDir(), 'history.json');
+}
+
 export function ensureDataDir(): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+  ensureDir(DATA_DIR);
 }
 
-export function atomicWrite(filePath: string, data: unknown): void {
-  const tempFile = `${filePath}.tmp`;
-  try {
-    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-    fs.renameSync(tempFile, filePath);
-  } catch (error) {
-    if (fs.existsSync(tempFile)) {
-      try {
-        fs.unlinkSync(tempFile);
-      } catch (cleanupError) {
-        console.error('Error cleaning up temp file:', cleanupError);
-      }
-    }
-    throw error;
-  }
-}
-
-export function initializeFile(filePath: string, defaultData: unknown): void {
-  ensureDataDir();
-  if (!fs.existsSync(filePath)) {
-    atomicWrite(filePath, defaultData);
-  }
-}
-
-initializeFile(HISTORY_FILE, []);
+// Re-export atomicWrite and initializeFile for backward compatibility
+export { atomicWrite, initializeFile };
 
 export function saveRequest(record: Omit<RequestRecord, 'id' | 'timestamp'>): RequestRecord {
   try {
+    const historyFile = getHistoryFile();
     const history = getHistory(100);
     const newRecord: RequestRecord = {
       id: Date.now().toString(),
@@ -64,7 +60,7 @@ export function saveRequest(record: Omit<RequestRecord, 'id' | 'timestamp'>): Re
       history.length = 100;
     }
     
-    atomicWrite(HISTORY_FILE, history);
+    atomicWrite(historyFile, history);
     return newRecord;
   } catch (error) {
     console.error('Error saving request:', error);
@@ -74,7 +70,9 @@ export function saveRequest(record: Omit<RequestRecord, 'id' | 'timestamp'>): Re
 
 export function getHistory(limit = 50): RequestRecord[] {
   try {
-    const data = fs.readFileSync(HISTORY_FILE, 'utf-8');
+    const historyFile = getHistoryFile();
+    if (!fs.existsSync(historyFile)) return [];
+    const data = fs.readFileSync(historyFile, 'utf-8');
     const history = JSON.parse(data) as RequestRecord[];
     return history.slice(0, limit);
   } catch (error) {
@@ -85,7 +83,7 @@ export function getHistory(limit = 50): RequestRecord[] {
 
 export function clearHistory(): void {
   try {
-    atomicWrite(HISTORY_FILE, []);
+    atomicWrite(getHistoryFile(), []);
   } catch (error) {
     console.error('Error clearing history:', error);
     throw error;

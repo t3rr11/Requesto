@@ -1,10 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { initializeFile, atomicWrite } from './storage';
+import { atomicWrite, getActiveDataDir } from './storage';
 import { FormDataEntry } from '../types';
 
-const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
-const ENVIRONMENTS_FILE = path.join(DATA_DIR, 'environments.json');
 
 export interface EnvironmentVariable {
   key: string;
@@ -24,20 +22,17 @@ interface EnvironmentsData {
   environments: Environment[];
 }
 
-initializeFile(ENVIRONMENTS_FILE, {
-  activeEnvironmentId: 'default',
-  environments: [
-    {
-      id: 'default',
-      name: 'Default',
-      variables: [],
-    },
-  ],
-} as EnvironmentsData);
+function getEnvironmentsFile(): string {
+  return path.join(getActiveDataDir(), 'environments.json');
+}
 
 export function getEnvironments(): EnvironmentsData {
   try {
-    const data = fs.readFileSync(ENVIRONMENTS_FILE, 'utf-8');
+    const envFile = getEnvironmentsFile();
+    if (!fs.existsSync(envFile)) {
+      return { activeEnvironmentId: null, environments: [] };
+    }
+    const data = fs.readFileSync(envFile, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     console.error('Failed to read environments:', error);
@@ -58,7 +53,7 @@ export function saveEnvironment(environment: Environment): void {
     data.environments.push(environment);
   }
 
-  atomicWrite(ENVIRONMENTS_FILE, data);
+  atomicWrite(getEnvironmentsFile(), data);
 }
 
 export function deleteEnvironment(id: string): boolean {
@@ -74,7 +69,7 @@ export function deleteEnvironment(id: string): boolean {
     data.activeEnvironmentId = data.environments[0]?.id || null;
   }
 
-  atomicWrite(ENVIRONMENTS_FILE, data);
+  atomicWrite(getEnvironmentsFile(), data);
   return true;
 }
 
@@ -85,7 +80,7 @@ export function setActiveEnvironment(id: string): boolean {
   if (!exists) return false;
 
   data.activeEnvironmentId = id;
-  atomicWrite(ENVIRONMENTS_FILE, data);
+  atomicWrite(getEnvironmentsFile(), data);
   return true;
 }
 

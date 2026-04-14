@@ -10,6 +10,8 @@ import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { NewRequestForm } from '../forms/NewRequestForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
+import { GitStatusBar } from './GitStatusBar';
+import { GitAccordion } from './GitAccordion';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
 import { useResizablePanel } from '../hooks/useResizablePanel';
 
@@ -34,7 +36,7 @@ interface NewRequestContext {
 }
 
 export function CollectionsSidebar() {
-  const { isSidebarOpen, sidebarWidth, setSidebarWidth, clearSelection } = useUIStore();
+  const { isSidebarOpen, sidebarWidth, setSidebarWidth, isGitPanelOpen, gitPanelHeight, toggleGitPanel, setGitPanelHeight, clearSelection } = useUIStore();
   const [searchQuery, setSearchQuery] = useState('');
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +70,15 @@ export function CollectionsSidebar() {
   const renameRequestDialog = useDialogWithData<RenameRequestData>();
   const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
   const renameFolderDialog = useDialogWithData<RenameFolderData>();
+
+  const { handleResizeStart: handleGitPanelResizeStart } = useResizablePanel({
+    containerRef: sidebarRef,
+    axis: 'vertical',
+    onResize: setGitPanelHeight,
+    min: 120,
+    max: (containerHeight) => containerHeight * 0.7,
+    origin: 'end',
+  });
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -245,6 +256,24 @@ export function CollectionsSidebar() {
         label="Folder Name"
         placeholder="Enter folder name..."
       />
+
+      {isGitPanelOpen && (
+        <div
+          className="flex flex-col flex-none min-h-0 overflow-hidden"
+          style={{ height: `${gitPanelHeight}px` }}
+        >
+          <div
+            className="h-1 bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ns-resize transition-colors shrink-0"
+            onMouseDown={handleGitPanelResizeStart}
+            title="Drag to resize"
+          />
+          <GitStatusBar onTogglePanel={toggleGitPanel} />
+          <GitAccordion isOpen />
+        </div>
+      )}
+      {!isGitPanelOpen && (
+        <GitStatusBar onTogglePanel={toggleGitPanel} />
+      )}
 
       <div
         className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"

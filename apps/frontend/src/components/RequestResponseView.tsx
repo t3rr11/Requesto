@@ -16,7 +16,7 @@ import { Dialog } from './Dialog';
 import { Button } from './Button';
 import { useDialog } from '../hooks/useDialog';
 import { useResizablePanel } from '../hooks/useResizablePanel';
-import { buildRequestFromFormData } from '../helpers/request';
+import { buildRequestFromFormData, buildSavePayloadFromFormData } from '../helpers/request';
 import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
 import type { StreamingResponse } from '../store/request/types';
 
@@ -176,7 +176,7 @@ export function RequestResponseView() {
         await updateRequest(
           activeTab.collectionId,
           activeTab.savedRequestId,
-          buildRequestFromFormData(formDataRef.current),
+          buildSavePayloadFromFormData(formDataRef.current),
         );
         markTabAsSaved(activeTab.id, activeTab.savedRequestId, activeTab.collectionId);
       } catch {

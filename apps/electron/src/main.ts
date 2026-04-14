@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, shell, dialog } from 'electron';
+import { app, BrowserWindow, Menu, shell, dialog, ipcMain } from 'electron';
 import * as path from 'path';
 import { fork, ChildProcess } from 'child_process';
 import * as fs from 'fs';
@@ -309,6 +309,17 @@ async function waitForBackend(maxAttempts = 30): Promise<boolean> {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Register IPC handlers
+  ipcMain.handle('select-directory', async () => {
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Select Workspace Directory',
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
   if (!isDev) {
     createSplashScreen();
   }

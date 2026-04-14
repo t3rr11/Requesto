@@ -4,12 +4,15 @@ import { useDialog } from '../hooks/useDialog';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { HelpContent } from './HelpContent';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { WorkspaceManagerDialog } from './WorkspaceManagerDialog';
 import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose } from 'lucide-react';
 
 export function Header() {
   const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, panelLayout, togglePanelLayout } = useUIStore();
   const { isDarkMode, toggleTheme } = useThemeStore();
   const helpDialog = useDialog();
+  const workspaceManagerDialog = useDialog();
 
   return (
     <header className="bg-linear-to-r from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-800 text-white shadow-lg border-b border-gray-300 dark:border-gray-700">
@@ -29,6 +32,8 @@ export function Header() {
             <img src="./logo.png" alt="Requesto Logo" className="w-8 h-8" />
             <h1 className="text-xl font-bold">Requesto</h1>
           </div>
+
+          <WorkspaceSwitcher onManageWorkspaces={workspaceManagerDialog.open} variant="header" />
         </div>
 
         <div className="flex items-center gap-3">
@@ -74,6 +79,7 @@ export function Header() {
       <Dialog isOpen={helpDialog.isOpen} onClose={helpDialog.close} title="Help">
         <HelpContent onClose={helpDialog.close} />
       </Dialog>
+      <WorkspaceManagerDialog isOpen={workspaceManagerDialog.isOpen} onClose={workspaceManagerDialog.close} />
     </header>
   );
 }

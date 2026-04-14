@@ -14,16 +14,70 @@ const FIXTURE_FILES = [
   'oauth-configs.json',
 ];
 
-/** Copy fresh fixture data into test-data directory */
+/** Workspace data files that live in the workspace root */
+const WORKSPACE_FILES = [
+  'collections.json',
+  'environments.json',
+  'oauth-configs.json',
+];
+
+/** Local-only files that live in .requesto/ */
+const LOCAL_FILES = [
+  'history.json',
+];
+
+/** Copy fresh fixture data into test-data directory (workspace-aware layout) */
 function resetTestData() {
+  // Create workspace directory (test-data IS the workspace directory)
   if (!fs.existsSync(TEST_DATA_DIR)) {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
   }
-  for (const file of FIXTURE_FILES) {
+
+  // Create .requesto/ local data directory
+  const localDir = path.join(TEST_DATA_DIR, '.requesto');
+  if (!fs.existsSync(localDir)) {
+    fs.mkdirSync(localDir, { recursive: true });
+  }
+
+  // Copy workspace-scoped files to workspace root
+  for (const file of WORKSPACE_FILES) {
     const src = path.join(FIXTURES_DIR, file);
     const dest = path.join(TEST_DATA_DIR, file);
-    fs.copyFileSync(src, dest);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, dest);
+    }
   }
+
+  // Copy local-only files to .requesto/
+  for (const file of LOCAL_FILES) {
+    const src = path.join(FIXTURES_DIR, file);
+    const dest = path.join(localDir, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, dest);
+    }
+  }
+
+  // Initialize oauth-secrets.json in .requesto/
+  const secretsFile = path.join(localDir, 'oauth-secrets.json');
+  if (!fs.existsSync(secretsFile)) {
+    fs.writeFileSync(secretsFile, JSON.stringify({ secrets: {} }, null, 2), 'utf-8');
+  }
+
+  // Create workspaces.json registry pointing to test-data as Default workspace
+  const workspacesFile = path.join(TEST_DATA_DIR, 'workspaces.json');
+  const workspacesData = {
+    activeWorkspaceId: 'ws-test-default',
+    workspaces: [
+      {
+        id: 'ws-test-default',
+        name: 'Default',
+        path: TEST_DATA_DIR,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    ],
+  };
+  fs.writeFileSync(workspacesFile, JSON.stringify(workspacesData, null, 2), 'utf-8');
 }
 
 /** Ensure screenshots directory exists */
