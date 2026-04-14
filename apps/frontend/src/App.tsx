@@ -2,8 +2,11 @@ import { useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router';
 import { useCollectionsStore } from './store/collections/store';
 import { useEnvironmentStore } from './store/environments/store';
+import { useWorkspaceStore } from './store/workspace/store';
+import { useGitStore } from './store/git/store';
 import { useThemeStore } from './store/theme/store';
 import { useAlertStore } from './store/alert/store';
+import { useGitAutoRefresh } from './hooks/useGitAutoRefresh';
 import { Header } from './components/Header';
 import { AlertDialog } from './components/AlertDialog';
 import { RequestsPage } from './pages/RequestsPage';
@@ -12,17 +15,34 @@ import { OAuthCallback } from './components/OAuthCallback';
 function App() {
   const { loadCollections } = useCollectionsStore();
   const { loadEnvironments } = useEnvironmentStore();
+  const { loadWorkspaces } = useWorkspaceStore();
+  const { checkGit } = useGitStore();
   const { isDarkMode } = useThemeStore();
   const { isOpen: alertOpen, title: alertTitle, message: alertMessage, variant: alertVariant, closeAlert } = useAlertStore();
 
   useEffect(() => {
-    loadCollections();
-    loadEnvironments();
+    loadWorkspaces().then(() => {
+      loadCollections();
+      loadEnvironments();
+      checkGit();
+    });
+  }, [loadWorkspaces, loadCollections, loadEnvironments, checkGit]);
+
+  // Reload data stores when git operations change files on disk (e.g. after pull)
+  useEffect(() => {
+    const onFilesChanged = () => {
+      loadCollections();
+      loadEnvironments();
+    };
+    window.addEventListener('requesto:files-changed', onFilesChanged);
+    return () => window.removeEventListener('requesto:files-changed', onFilesChanged);
   }, [loadCollections, loadEnvironments]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
+
+  useGitAutoRefresh();
 
   return (
     <HashRouter>

@@ -53,3 +53,50 @@ export function buildRequestFromFormData(formData: RequestFormData): ProxyReques
     auth: formData.auth as AuthConfig,
   };
 }
+
+/**
+ * Build a save payload for persisting a request to a collection.
+ * Unlike buildRequestFromFormData, this avoids proxy-oriented transformations
+ * that cause false "changed" diffs (e.g. body "" → undefined, auth expanded with empty defaults).
+ */
+export function buildSavePayloadFromFormData(formData: RequestFormData): Partial<ProxyRequest> {
+  // Only include the active auth type's data to avoid empty defaults expanding the object
+  const auth: AuthConfig = { type: formData.auth.type };
+  if (formData.auth.type !== 'none') {
+    const typeToKey: Record<string, keyof typeof formData.auth> = {
+      basic: 'basic',
+      bearer: 'bearer',
+      'api-key': 'apiKey',
+      digest: 'digest',
+      oauth: 'oauth',
+    };
+    const key = typeToKey[formData.auth.type];
+    if (key) {
+      const sub = formData.auth[key];
+      if (sub) {
+        (auth as Record<string, unknown>)[key] = sub;
+      }
+    }
+  }
+
+  const payload: Partial<ProxyRequest> = {
+    method: formData.method,
+    url: buildUrlWithParams(formData.url, formData.params),
+    headers: buildHeadersFromFormData(formData.headers),
+    bodyType: formData.bodyType,
+    auth,
+  };
+
+  // Only include body/formDataEntries for the active body type to avoid
+  // sending empty values that differ from undefined in the stored data
+  if (formData.bodyType === 'json') {
+    payload.body = formData.body ?? '';
+  } else {
+    const entries = formData.formDataEntries.filter(e => e.enabled && e.key.trim()) as FormDataEntry[];
+    if (entries.length > 0) {
+      payload.formDataEntries = entries;
+    }
+  }
+
+  return payload;
+}

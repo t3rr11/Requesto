@@ -6,6 +6,9 @@ import environmentRoutes from './routes/environments';
 import collectionsRoutes from './routes/collections';
 import { sseTestRoutes } from './routes/sse-test';
 import { oauthRoutes } from './routes/oauth';
+import workspaceRoutes from './routes/workspaces';
+import { gitRoutes } from './routes/git';
+import { bootstrapWorkspaces } from './database/workspaces';
 
 const server = Fastify({
   logger: {
@@ -43,6 +46,11 @@ async function start() {
     await server.register(collectionsRoutes, { prefix: '/api' });
     await server.register(sseTestRoutes, { prefix: '/api' });
     await server.register(oauthRoutes, { prefix: '/api' });
+    await server.register(workspaceRoutes, { prefix: '/api' });
+    await server.register(gitRoutes, { prefix: '/api' });
+
+    // Bootstrap workspace system before accepting requests
+    bootstrapWorkspaces();
 
     server.get('/health', async () => {
       return { status: 'ok' };

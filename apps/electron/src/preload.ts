@@ -21,6 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('new-request', callback);
     return () => ipcRenderer.removeListener('new-request', callback);
   },
+
+  // Directory picker for workspace creation
+  selectDirectory: () => ipcRenderer.invoke('select-directory'),
   
   // Environment check
   isDevelopment: process.env.NODE_ENV === 'development',

@@ -7,6 +7,7 @@ import {
   downloadJSON,
   readJSONFile,
 } from '../../helpers/postman';
+import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
 
 type SetState = (partial: Record<string, unknown>) => void;
 
@@ -137,6 +138,7 @@ export async function loadCollections(set: SetState): Promise<void> {
   try {
     const data = await getAllCollections();
     set({ collections: data });
+    notifyDataMutated();
   } catch (error) {
     console.error('Failed to load collections:', error);
   } finally {

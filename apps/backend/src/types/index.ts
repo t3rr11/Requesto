@@ -127,3 +127,18 @@ export interface Folder {
   createdAt: number;
   updatedAt: number;
 }
+
+// Workspace Types
+
+export type Workspace = {
+  id: string;
+  name: string;
+  path: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type WorkspacesRegistry = {
+  activeWorkspaceId: string;
+  workspaces: Workspace[];
+};

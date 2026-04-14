@@ -10,6 +10,8 @@ import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { NewRequestForm } from '../forms/NewRequestForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
+import { GitStatusBar } from './GitStatusBar';
+import { GitPanel } from './GitPanel';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
 import { useResizablePanel } from '../hooks/useResizablePanel';
 
@@ -68,6 +70,7 @@ export function CollectionsSidebar() {
   const renameRequestDialog = useDialogWithData<RenameRequestData>();
   const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
   const renameFolderDialog = useDialogWithData<RenameFolderData>();
+  const gitPanelDialog = useDialog();
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -245,6 +248,9 @@ export function CollectionsSidebar() {
         label="Folder Name"
         placeholder="Enter folder name..."
       />
+
+      <GitPanel isOpen={gitPanelDialog.isOpen} onClose={gitPanelDialog.close} />
+      <GitStatusBar onOpenGitPanel={gitPanelDialog.open} />
 
       <div
         className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"
