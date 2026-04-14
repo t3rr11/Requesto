@@ -136,6 +136,7 @@ export type Workspace = {
   path: string;
   createdAt: number;
   updatedAt: number;
+  isGitRepo?: boolean;
 };
 
 export type WorkspacesRegistry = {

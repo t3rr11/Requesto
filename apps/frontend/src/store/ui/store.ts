@@ -11,6 +11,8 @@ type UIState = {
   panelLayout: LayoutMode;
   isConsoleOpen: boolean;
   consoleHeight: number;
+  isGitPanelOpen: boolean;
+  gitPanelHeight: number;
   expandedCollections: Set<string>;
   expandedFolders: Set<string>;
   selectedRequestIds: Set<string>;
@@ -26,6 +28,9 @@ type UIState = {
   toggleConsole: () => void;
   setConsoleOpen: (isOpen: boolean) => void;
   setConsoleHeight: (height: number) => void;
+  toggleGitPanel: () => void;
+  setGitPanelOpen: (isOpen: boolean) => void;
+  setGitPanelHeight: (height: number) => void;
   toggleCollection: (id: string) => void;
   toggleFolder: (id: string) => void;
   expandCollection: (id: string) => void;
@@ -44,6 +49,8 @@ export const useUIStore = create<UIState>()(
       panelLayout: 'horizontal' as LayoutMode,
       isConsoleOpen: false,
       consoleHeight: 250,
+      isGitPanelOpen: false,
+      gitPanelHeight: 350,
       expandedCollections: new Set<string>(),
       expandedFolders: new Set<string>(),
       selectedRequestIds: new Set<string>(),
@@ -59,6 +66,9 @@ export const useUIStore = create<UIState>()(
       toggleConsole: () => actions.toggleConsole(set),
       setConsoleOpen: (isOpen) => actions.setConsoleOpen(set, isOpen),
       setConsoleHeight: (height) => actions.setConsoleHeight(set, height),
+      toggleGitPanel: () => actions.toggleGitPanel(set),
+      setGitPanelOpen: (isOpen) => actions.setGitPanelOpen(set, isOpen),
+      setGitPanelHeight: (height) => actions.setGitPanelHeight(set, height),
       toggleCollection: (id) => actions.toggleCollection(set, id),
       toggleFolder: (id) => actions.toggleFolder(set, id),
       expandCollection: (id) => actions.expandCollection(set, id),
@@ -97,6 +107,8 @@ export const useUIStore = create<UIState>()(
                 panelLayout: state.panelLayout,
                 isConsoleOpen: state.isConsoleOpen,
                 consoleHeight: state.consoleHeight,
+                isGitPanelOpen: state.isGitPanelOpen,
+                gitPanelHeight: state.gitPanelHeight,
                 expandedCollections: Array.from(state.expandedCollections),
                 expandedFolders: Array.from(state.expandedFolders),
               },

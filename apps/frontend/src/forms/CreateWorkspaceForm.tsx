@@ -9,9 +9,10 @@ import { createWorkspaceSchema, type CreateWorkspaceFormData } from './schemas/w
 interface CreateWorkspaceFormProps {
   onSuccess: () => void;
   onCancel: () => void;
+  initialCloneMode?: boolean;
 }
 
-export function CreateWorkspaceForm({ onSuccess, onCancel }: CreateWorkspaceFormProps) {
+export function CreateWorkspaceForm({ onSuccess, onCancel, initialCloneMode = false }: CreateWorkspaceFormProps) {
   const { createWorkspace, cloneWorkspace } = useWorkspaceStore();
   const { showAlert } = useAlertStore();
   const {
@@ -24,7 +25,7 @@ export function CreateWorkspaceForm({ onSuccess, onCancel }: CreateWorkspaceForm
     resolver: zodResolver(createWorkspaceSchema),
     defaultValues: {
       name: '',
-      cloneFromRepo: false,
+      cloneFromRepo: initialCloneMode,
       repoUrl: '',
     },
   });

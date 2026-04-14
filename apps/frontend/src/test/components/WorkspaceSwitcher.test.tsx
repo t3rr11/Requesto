@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { WorkspaceSwitcher } from '../../components/WorkspaceSwitcher';
 
 const mockSwitchWorkspace = vi.fn().mockResolvedValue({});
+const mockUpdateWorkspace = vi.fn().mockResolvedValue({});
 
 const defaultState = {
   registry: {
@@ -14,10 +15,15 @@ const defaultState = {
     ],
   },
   switchWorkspace: mockSwitchWorkspace,
+  updateWorkspace: mockUpdateWorkspace,
 };
 
 vi.mock('../../store/workspace/store', () => ({
   useWorkspaceStore: vi.fn(() => defaultState),
+}));
+
+vi.mock('../../store/alert/store', () => ({
+  useAlertStore: vi.fn(() => ({ showAlert: vi.fn() })),
 }));
 
 import { useWorkspaceStore } from '../../store/workspace/store';
@@ -63,9 +69,8 @@ describe('WorkspaceSwitcher', () => {
     await user.click(screen.getByText('Default'));
     expect(screen.getByText('Workspaces')).toBeInTheDocument();
 
-    // Click the overlay
-    const overlay = document.querySelector('.fixed.inset-0');
-    if (overlay) await user.click(overlay);
+    // Click outside the dropdown (on the document body)
+    await user.click(document.body);
 
     expect(screen.queryByText('Workspaces')).not.toBeInTheDocument();
   });

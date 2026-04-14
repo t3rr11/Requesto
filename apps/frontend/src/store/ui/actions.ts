@@ -50,6 +50,20 @@ export function setConsoleHeight(set: UISetState, height: number): void {
   set({ consoleHeight: height });
 }
 
+// ── Git panel ────────────────────────────────────────────────────────────────
+
+export function toggleGitPanel(set: UISetState): void {
+  set((state) => ({ isGitPanelOpen: !state.isGitPanelOpen }));
+}
+
+export function setGitPanelOpen(set: UISetState, isOpen: boolean): void {
+  set({ isGitPanelOpen: isOpen });
+}
+
+export function setGitPanelHeight(set: UISetState, height: number): void {
+  set({ gitPanelHeight: height });
+}
+
 // ── Collection / folder expand ───────────────────────────────────────────────
 
 export function toggleCollection(set: UISetState, id: string): void {

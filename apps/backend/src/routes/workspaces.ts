@@ -16,7 +16,13 @@ import * as git from '../helpers/gitHelpers';
 export default async function workspaceRoutes(fastify: FastifyInstance) {
   fastify.get('/workspaces', async () => {
     const registry = getRegistry();
-    return registry;
+    const enriched = await Promise.all(
+      registry.workspaces.map(async (workspace) => ({
+        ...workspace,
+        isGitRepo: await git.isGitRepoRoot(workspace.path).catch(() => false),
+      })),
+    );
+    return { ...registry, workspaces: enriched };
   });
 
   fastify.get('/workspaces/active', async (_request, reply) => {

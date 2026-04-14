@@ -1,11 +1,11 @@
 import { useState, useRef } from 'react';
-import { Download, Pencil, Trash2, Upload } from 'lucide-react';
+import { Download, GitBranch, Pencil, Trash2, Upload } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspace/store';
 import { useAlertStore } from '../store/alert/store';
 import { Dialog, DialogFooter } from './Dialog';
 import { Button } from './Button';
 import { CreateWorkspaceForm } from '../forms/CreateWorkspaceForm';
-import { useDialog, useConfirmDialog } from '../hooks/useDialog';
+import { useConfirmDialog } from '../hooks/useDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import type { Workspace } from '../store/workspace/types';
 
@@ -17,8 +17,8 @@ interface WorkspaceManagerDialogProps {
 export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDialogProps) {
   const { registry, deleteWorkspace, updateWorkspace, switchWorkspace, exportWorkspace, importWorkspace } = useWorkspaceStore();
   const { showAlert } = useAlertStore();
-  const createDialog = useDialog();
   const confirmDialog = useConfirmDialog();
+  const [createMode, setCreateMode] = useState<'empty' | 'clone' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -102,13 +102,17 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
   };
 
   const handleCreateSuccess = () => {
-    createDialog.close();
+    setCreateMode(null);
   };
 
-  if (createDialog.isOpen) {
+  if (createMode !== null) {
     return (
-      <Dialog isOpen={isOpen} onClose={onClose} title="New Workspace" size="md">
-        <CreateWorkspaceForm onSuccess={handleCreateSuccess} onCancel={createDialog.close} />
+      <Dialog isOpen={isOpen} onClose={onClose} title={createMode === 'clone' ? 'Clone from Git' : 'New Workspace'} size="md">
+        <CreateWorkspaceForm
+          onSuccess={handleCreateSuccess}
+          onCancel={() => setCreateMode(null)}
+          initialCloneMode={createMode === 'clone'}
+        />
       </Dialog>
     );
   }
@@ -134,7 +138,11 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
               <Upload className="w-4 h-4" />
               Import
             </Button>
-            <Button variant="primary" size="md" onClick={createDialog.open}>
+            <Button variant="secondary" size="md" onClick={() => setCreateMode('clone')}>
+              <GitBranch className="w-4 h-4" />
+              Clone from Git
+            </Button>
+            <Button variant="primary" size="md" onClick={() => setCreateMode('empty')}>
               New Workspace
             </Button>
           </div>
@@ -182,6 +190,11 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                         {workspace.name}
                       </span>
+                      {workspace.isGitRepo && (
+                        <span title="Git repository">
+                          <GitBranch className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                        </span>
+                      )}
                       {workspace.id === registry.activeWorkspaceId && (
                         <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full shrink-0">
                           Active
