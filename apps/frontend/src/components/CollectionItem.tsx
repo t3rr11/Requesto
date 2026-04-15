@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ChevronRight,
   ChevronDown,
@@ -8,16 +8,21 @@ import {
   Trash2,
   Plus,
   Download,
+  RefreshCw,
+  Link2,
+  Unlink,
 } from 'lucide-react';
-import type { Collection, SavedRequest } from '../store/collections/types';
+import type { Collection, SavedRequest, SyncPreviewResult } from '../store/collections/types';
 import { useCollectionsStore } from '../store/collections/store';
 import { useUIStore } from '../store/ui/store';
 import { useAlertStore } from '../store/alert/store';
+
 import { FolderItem } from './FolderItem';
 import { getMethodColor } from '../helpers/collections';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
+import { SyncPreviewDialog } from './SyncPreviewDialog';
 import { useItemContextMenu } from '../hooks/useItemContextMenu';
 import { useItemDragDrop } from '../hooks/useItemDragDrop';
 import { useItemActions } from '../hooks/useItemActions';
@@ -39,10 +44,14 @@ export function CollectionItem({
   onRenameCollection,
   onRenameFolder,
 }: CollectionItemProps) {
-  const { moveRequest, exportCollection, exportRequest } = useCollectionsStore();
+  const { moveRequest, exportCollection, exportRequest, syncPreview, syncApply, unlinkSpec } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { expandedCollections, toggleCollection, selectedRequestIds, toggleRequestSelection, clearSelection } =
     useUIStore();
+
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncPreviewData, setSyncPreviewData] = useState<SyncPreviewResult | null>(null);
 
   const {
     requestContextMenu,
@@ -211,6 +220,49 @@ export function CollectionItem({
     closeRequestContextMenu();
   };
 
+  const handleSyncFromSpec = async () => {
+    closeCollectionContextMenu();
+    setSyncDialogOpen(true);
+    setSyncLoading(true);
+    setSyncPreviewData(null);
+    try {
+      const result = await syncPreview(collection.id);
+      if ('noChanges' in result && result.noChanges) {
+        showAlert('Spec is up to date — no changes detected', 'success');
+        setSyncDialogOpen(false);
+        return;
+      }
+      setSyncPreviewData(result as SyncPreviewResult);
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : 'Failed to check for spec changes', 'error');
+      setSyncDialogOpen(false);
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  const handleSyncApply = async (body: Parameters<typeof syncApply>[1]) => {
+    try {
+      await syncApply(collection.id, body);
+      showAlert('Sync applied successfully', 'success');
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : 'Failed to apply sync', 'error');
+    }
+  };
+
+
+  const handleUnlinkSpec = async () => {
+    closeCollectionContextMenu();
+    try {
+      await unlinkSpec(collection.id);
+      showAlert('Spec unlinked', 'success');
+    } catch {
+      showAlert('Failed to unlink spec', 'error');
+    }
+  };
+
+  const isLinked = !!collection.openApiSpec;
+
   const rootFolders = filteredRootFolders;
   const rootRequests = filteredRootRequests;
   const totalItems = collection.requests.length;
@@ -236,6 +288,7 @@ export function CollectionItem({
           )}
           <FolderIcon className="w-4 h-4 text-orange-500 dark:text-orange-400 shrink-0" />
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{collection.name}</span>
+          {isLinked && <span title={`Linked to ${collection.openApiSpec!.source}`}><Link2 className="w-3 h-3 text-blue-500 shrink-0" /></span>}
           <span className="text-xs text-gray-400 dark:text-gray-500">({totalItems})</span>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
@@ -363,11 +416,23 @@ export function CollectionItem({
           items={[
             { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportCollection },
+            ...(isLinked ? [
+              { label: 'Sync from Spec', icon: <RefreshCw className="w-4 h-4" />, onClick: handleSyncFromSpec },
+              { label: 'Unlink Spec', icon: <Unlink className="w-4 h-4" />, onClick: handleUnlinkSpec },
+            ] : []),
             { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollectionFromContext, danger: true },
           ]}
           onClose={closeCollectionContextMenu}
         />
       )}
+
+      <SyncPreviewDialog
+        isOpen={syncDialogOpen}
+        onClose={() => setSyncDialogOpen(false)}
+        preview={syncPreviewData}
+        loading={syncLoading}
+        onApply={handleSyncApply}
+      />
 
       <ConfirmDialog {...confirmDialog.props} />
     </div>

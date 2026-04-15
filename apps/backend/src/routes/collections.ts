@@ -1,6 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 import { collectionsDb } from '../database/collections';
 import { AuthConfig } from '../types';
+import { importOpenApiSpec } from '../helpers/openApi/parser';
+import {
+  buildSyncPreview,
+  applySyncToCollection,
+  type SyncApplyBody,
+} from '../helpers/openApi/reconcile';
 
 const collectionsRoutes: FastifyPluginAsync = async (server) => {
   server.get('/collections', async (_request, reply) => {
@@ -450,6 +456,35 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
     }
   });
 
+  // Import from OpenAPI spec (file path or URL)
+  server.post<{
+    Body: {
+      source: string;
+      name?: string;
+      linkSpec?: boolean;
+    };
+  }>('/collections/import-openapi', async (request, reply) => {
+    try {
+      const { source, name, linkSpec } = request.body;
+
+      if (!source || source.trim() === '') {
+        return reply.code(400).send({ error: 'OpenAPI spec source (file path or URL) is required' });
+      }
+
+      const result = await importOpenApiSpec(source.trim(), { name: name?.trim(), linkSpec });
+
+      const savedCollection = await collectionsDb.create(result.collection);
+      return reply.code(201).send({
+        collection: savedCollection,
+        environments: result.environments,
+      });
+    } catch (error) {
+      server.log.error(error);
+      const message = error instanceof Error ? error.message : 'Failed to parse OpenAPI spec';
+      return reply.code(400).send({ error: message });
+    }
+  });
+
   // Export collection in Postman format
   server.get<{
     Params: { id: string };
@@ -468,6 +503,94 @@ const collectionsRoutes: FastifyPluginAsync = async (server) => {
       return reply.code(500).send({ error: 'Failed to export collection' });
     }
   });
+
+  // Sync preview: parse linked spec and return diff without writing
+  server.post<{ Params: { id: string } }>(
+    '/collections/:id/sync-openapi/preview',
+    async (request, reply) => {
+      try {
+        const collection = await collectionsDb.getById(request.params.id);
+        if (!collection) {
+          return reply.code(404).send({ error: 'Collection not found' });
+        }
+        if (!collection.openApiSpec) {
+          return reply.code(400).send({ error: 'Collection is not linked to an OpenAPI spec' });
+        }
+
+        const result = await importOpenApiSpec(collection.openApiSpec.source, {
+          name: collection.name,
+          linkSpec: true,
+        });
+
+        const preview = buildSyncPreview(collection, result.collection, result.specHash);
+
+        if (preview.added.length === 0 && preview.updated.length === 0 && preview.orphaned.length === 0) {
+          return { noChanges: true, specHash: result.specHash };
+        }
+
+        return preview;
+      } catch (error) {
+        server.log.error(error);
+        const message = error instanceof Error ? error.message : 'Failed to sync OpenAPI spec';
+        return reply.code(400).send({ error: message });
+      }
+    },
+  );
+
+  // Sync apply: re-parse spec, reconcile, and apply selected changes
+  server.post<{
+    Params: { id: string };
+    Body: SyncApplyBody;
+  }>('/collections/:id/sync-openapi/apply', async (request, reply) => {
+    try {
+      const collection = await collectionsDb.getById(request.params.id);
+      if (!collection) {
+        return reply.code(404).send({ error: 'Collection not found' });
+      }
+      if (!collection.openApiSpec) {
+        return reply.code(400).send({ error: 'Collection is not linked to an OpenAPI spec' });
+      }
+
+      const result = await importOpenApiSpec(collection.openApiSpec.source, {
+        name: collection.name,
+        linkSpec: true,
+      });
+
+      const preview = buildSyncPreview(collection, result.collection, result.specHash);
+      const updated = applySyncToCollection(collection, preview, request.body);
+      const saved = await collectionsDb.update(collection.id, updated);
+
+      return saved;
+    } catch (error) {
+      server.log.error(error);
+      const message = error instanceof Error ? error.message : 'Failed to apply sync';
+      return reply.code(400).send({ error: message });
+    }
+  });
+
+  // Unlink an OpenAPI spec from a collection
+  server.delete<{ Params: { id: string } }>(
+    '/collections/:id/openapi-link',
+    async (request, reply) => {
+      try {
+        const collection = await collectionsDb.getById(request.params.id);
+        if (!collection) {
+          return reply.code(404).send({ error: 'Collection not found' });
+        }
+
+        const { openApiSpec: _, ...rest } = collection;
+        const updated = await collectionsDb.update(collection.id, {
+          ...rest,
+          openApiSpec: undefined,
+        });
+
+        return updated;
+      } catch (error) {
+        server.log.error(error);
+        return reply.code(500).send({ error: 'Failed to unlink spec' });
+      }
+    },
+  );
 };
 
 export default collectionsRoutes;

@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "@fastify/cors": "^11.2.0",
     "@fastify/static": "^9.1.0",
     "axios": "^1.15.0",
@@ -21,6 +24,7 @@
     "@types/node": "^25.6.0",
     "@types/node-fetch": "^2.6.13",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.4"
   }
 }

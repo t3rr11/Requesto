@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Collection, SavedRequest, Folder } from './types';
+import type { Collection, SavedRequest, Folder, SyncPreviewResult, SyncApplyBody } from './types';
 import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
 import * as actions from './actions';
 
@@ -36,9 +36,13 @@ type CollectionsState = {
   moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
   moveFolder: (sourceCollectionId: string, folderId: string, targetCollectionId: string, targetParentId?: string) => Promise<void>;
   importCollection: (file: File) => Promise<Collection>;
+  importOpenApiCollection: (data: { source: string; name?: string; linkSpec?: boolean }) => Promise<Collection>;
   exportCollection: (collectionId: string) => Promise<void>;
   exportRequest: (collectionId: string, requestId: string) => Promise<void>;
   exportFolder: (collectionId: string, folderId: string) => Promise<void>;
+  syncPreview: (collectionId: string) => Promise<SyncPreviewResult & { noChanges?: boolean }>;
+  syncApply: (collectionId: string, body: SyncApplyBody) => Promise<void>;
+  unlinkSpec: (collectionId: string) => Promise<void>;
 };
 
 export const useCollectionsStore = create<CollectionsState>((set) => ({
@@ -69,7 +73,11 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
   moveFolder: (sourceCollectionId, folderId, targetCollectionId, targetParentId) =>
     actions.moveFolder(set, sourceCollectionId, folderId, targetCollectionId, targetParentId),
   importCollection: (file) => actions.importCollection(set, file),
+  importOpenApiCollection: (data) => actions.importOpenApiCollection(set, data),
   exportCollection: (collectionId) => actions.exportCollection(collectionId),
   exportRequest: (collectionId, requestId) => actions.exportRequest(collectionId, requestId),
   exportFolder: (collectionId, folderId) => actions.exportFolder(collectionId, folderId),
+  syncPreview: (collectionId) => actions.syncPreview(collectionId),
+  syncApply: (collectionId, body) => actions.syncApply(set, collectionId, body),
+  unlinkSpec: (collectionId) => actions.unlinkSpec(set, collectionId),
 }));
