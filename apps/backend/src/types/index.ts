@@ -128,6 +128,55 @@ export interface Folder {
   updatedAt: number;
 }
 
+export interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  folders: Folder[];
+  requests: SavedRequest[];
+  openApiSpec?: OpenApiSpecLink;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SavedRequest {
+  id: string;
+  name: string;
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  bodyType?: BodyType;
+  formDataEntries?: FormDataEntry[];
+  auth?: AuthConfig;
+  collectionId: string;
+  folderId?: string;
+  order?: number;
+  operationId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// OpenAPI Import Types
+
+export interface ParsedSpecResult {
+  collection: Collection;
+  environments: OpenApiEnvironmentVariable[];
+  specHash: string;
+}
+
+export interface OpenApiEnvironmentVariable {
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
+export interface OpenApiSpecLink {
+  source: string;
+  lastSyncedAt: number;
+  specHash?: string;
+}
+
 // Workspace Types
 
 export type Workspace = {

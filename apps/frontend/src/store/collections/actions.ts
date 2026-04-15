@@ -1,4 +1,4 @@
-import type { Collection, SavedRequest, Folder } from './types';
+import type { Collection, SavedRequest, Folder, SyncPreviewResult, SyncApplyBody } from './types';
 import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
 import { API_BASE } from '../../helpers/api/config';
 import {
@@ -296,6 +296,32 @@ export async function moveFolder(
 
 // ── Import / export ──────────────────────────────────────────────────────────
 
+export async function importOpenApiCollection(
+  set: SetState,
+  data: { source: string; name?: string; linkSpec?: boolean },
+): Promise<Collection> {
+  try {
+    const res = await fetch(`${API_BASE}/collections/import-openapi`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to import OpenAPI spec' }));
+      throw new Error(err.error || 'Failed to import OpenAPI spec');
+    }
+
+    const result: { collection: Collection; environments: { key: string; value: string; enabled: boolean }[] } =
+      await res.json();
+
+    await loadCollections(set);
+    return result.collection;
+  } catch (error) {
+    console.error('Failed to import OpenAPI collection:', error);
+    throw error;
+  }
+}
+
 export async function importCollection(set: SetState, file: File): Promise<Collection> {
   try {
     const postmanData = await readJSONFile(file);
@@ -395,4 +421,47 @@ export async function exportFolder(collectionId: string, folderId: string): Prom
     console.error('Failed to export folder:', error);
     throw error;
   }
+}
+
+// Sync
+
+export async function syncPreview(
+  collectionId: string,
+): Promise<SyncPreviewResult & { noChanges?: boolean }> {
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/sync-openapi/preview`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to preview sync' }));
+    throw new Error(err.error || 'Failed to preview sync');
+  }
+  return res.json();
+}
+
+export async function syncApply(
+  set: SetState,
+  collectionId: string,
+  body: SyncApplyBody,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/sync-openapi/apply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to apply sync' }));
+    throw new Error(err.error || 'Failed to apply sync');
+  }
+  await loadCollections(set);
+}
+
+export async function unlinkSpec(set: SetState, collectionId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/openapi-link`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to unlink spec' }));
+    throw new Error(err.error || 'Failed to unlink spec');
+  }
+  await loadCollections(set);
 }

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Folder as FolderIcon, FolderPlus, Upload, Search, X } from 'lucide-react';
+import { Folder as FolderIcon, FolderPlus, Import, Search, X, FileText, Braces } from 'lucide-react';
 import { useUIStore } from '../store/ui/store';
 import { useCollectionsStore } from '../store/collections/store';
 import { useAlertStore } from '../store/alert/store';
@@ -8,8 +8,10 @@ import { Dialog } from './Dialog';
 import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { NewRequestForm } from '../forms/NewRequestForm';
+import { ImportOpenApiForm } from '../forms/ImportOpenApiForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
+import { ContextMenu } from './ContextMenu';
 import { GitStatusBar } from './GitStatusBar';
 import { GitAccordion } from './GitAccordion';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
@@ -66,10 +68,13 @@ export function CollectionsSidebar() {
   }, [collections, searchQuery]);
 
   const newCollectionDialog = useDialog();
+  const importOpenApiDialog = useDialog();
   const newRequestDialog = useDialogWithData<NewRequestContext>();
   const renameRequestDialog = useDialogWithData<RenameRequestData>();
   const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
   const renameFolderDialog = useDialogWithData<RenameFolderData>();
+  const [importMenuPos, setImportMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const importButtonRef = useRef<HTMLButtonElement>(null);
 
   const { handleResizeStart: handleGitPanelResizeStart } = useResizablePanel({
     containerRef: sidebarRef,
@@ -118,6 +123,13 @@ export function CollectionsSidebar() {
 
   const handleImportClick = () => fileInputRef.current?.click();
 
+  const handleImportMenuOpen = () => {
+    if (importButtonRef.current) {
+      const rect = importButtonRef.current.getBoundingClientRect();
+      setImportMenuPos({ x: rect.left, y: rect.bottom + 4 });
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -142,8 +154,8 @@ export function CollectionsSidebar() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
           <div className="flex gap-2">
-            <Button onClick={handleImportClick} variant="icon" size="md" title="Import Collection">
-              <Upload className="w-5 h-5" />
+            <Button ref={importButtonRef} onClick={handleImportMenuOpen} variant="icon" size="md" title="Import">
+              <Import className="w-5 h-5" />
             </Button>
             <Button onClick={newCollectionDialog.open} variant="icon" size="md" title="New Collection">
               <FolderPlus className="w-5 h-5" />
@@ -217,6 +229,10 @@ export function CollectionsSidebar() {
         <NewCollectionForm onSuccess={newCollectionDialog.close} onCancel={newCollectionDialog.close} />
       </Dialog>
 
+      <Dialog isOpen={importOpenApiDialog.isOpen} onClose={importOpenApiDialog.close} title="Import from OpenAPI">
+        <ImportOpenApiForm onSuccess={importOpenApiDialog.close} onCancel={importOpenApiDialog.close} />
+      </Dialog>
+
       <Dialog isOpen={newRequestDialog.isOpen} onClose={newRequestDialog.close} title="New Request">
         {newRequestDialog.data && (
           <NewRequestForm
@@ -256,6 +272,25 @@ export function CollectionsSidebar() {
         label="Folder Name"
         placeholder="Enter folder name..."
       />
+
+      {importMenuPos && (
+        <ContextMenu
+          position={importMenuPos}
+          onClose={() => setImportMenuPos(null)}
+          items={[
+            {
+              label: 'Postman Collection',
+              icon: <FileText className="w-4 h-4" />,
+              onClick: handleImportClick,
+            },
+            {
+              label: 'OpenAPI Spec',
+              icon: <Braces className="w-4 h-4" />,
+              onClick: () => importOpenApiDialog.open(),
+            },
+          ]}
+        />
+      )}
 
       {isGitPanelOpen && (
         <div

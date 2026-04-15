@@ -20,7 +20,7 @@ export function RequestsPage() {
     <div className="flex-1 overflow-hidden flex flex-col relative min-h-0 bg-white dark:bg-gray-900">
       <div
         className="flex flex-1 min-h-0 overflow-hidden"
-        style={{ paddingBottom: isConsoleOpen ? `${consoleHeight}px` : '40px' }}
+        style={{ paddingBottom: isConsoleOpen ? `${consoleHeight}px` : '37px' }}
       >
         <CollectionsSidebar />
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">

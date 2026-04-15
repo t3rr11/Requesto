@@ -1,44 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { AuthConfig, FormDataEntry } from '../types';
+import { Collection, SavedRequest, Folder } from '../types';
 import { atomicWrite, getActiveDataDir } from './storage';
-
-
-export interface SavedRequest {
-  id: string;
-  name: string;
-  method: string;
-  url: string;
-  headers?: Record<string, string>;
-  body?: string;
-  bodyType?: string;
-  formDataEntries?: FormDataEntry[];
-  auth?: AuthConfig;
-  collectionId: string;
-  folderId?: string;
-  order?: number;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface Folder {
-  id: string;
-  name: string;
-  parentId?: string;
-  collectionId: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface Collection {
-  id: string;
-  name: string;
-  description?: string;
-  folders: Folder[];
-  requests: SavedRequest[];
-  createdAt: number;
-  updatedAt: number;
-}
 
 function getCollectionsFile(): string {
   return path.join(getActiveDataDir(), 'collections.json');
