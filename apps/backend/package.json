@@ -18,7 +18,8 @@
     "fastify": "^5.8.4",
     "form-data": "^4.0.5",
     "node-fetch": "^3.3.2",
-    "simple-git": "^3.36.0"
+    "simple-git": "^3.36.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
