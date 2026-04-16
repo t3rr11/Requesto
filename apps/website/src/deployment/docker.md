@@ -48,23 +48,28 @@ docker-compose up -d
 
 ## Data Persistence
 
-Mount a volume or bind-mount at `/app/data`. This directory holds all your data:
+Mount a volume or bind-mount at `/app/data`. This directory holds all your data, organized by workspace:
 
 ```
 data/
-├── collections.json      # Collections, folders, and saved requests
-├── environments.json     # Environments and variables
-├── history.json          # Request/response history (last 100)
-└── oauth-configs.json    # OAuth configs (includes client secrets)
+├── workspaces.json           # Workspace registry and active workspace
+├── Default/                  # Default workspace
+│   ├── collections.json      # Collections, folders, and saved requests
+│   ├── environments.json     # Environments and variables
+│   ├── oauth-configs.json    # OAuth configurations (no client secrets)
+│   └── .requesto/            # Local-only data
+│       ├── history.json      # Request/response history (last 100)
+│       └── oauth-secrets.json
+└── workspaces/               # Additional workspaces (including git clones)
 ```
 
-These are plain JSON files. You can back them up by copying them:
+These are plain JSON files. You can back them up by copying the entire data directory:
 
 ```bash
 docker cp requesto:/app/data ./backup
 ```
 
-To restore, copy them back and restart:
+To restore, copy the directory back and restart:
 
 ```bash
 docker cp ./backup/. requesto:/app/data

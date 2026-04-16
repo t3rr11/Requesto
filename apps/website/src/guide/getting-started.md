@@ -69,7 +69,7 @@ My API
 
 **Header**: Navigation between Requests, Environments, and OAuth pages. Also has theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, and help.
 
-**Sidebar** (left): Your collections, folders, and saved requests. Search box at the top filters by name and URL.
+**Sidebar** (left): Workspace switcher at the top to switch between projects. Below that, your collections, folders, and saved requests. Search box filters by name and URL.
 
 **Tabs bar**: Open request tabs. An orange dot means unsaved changes. The environment selector dropdown is here too.
 
@@ -81,7 +81,10 @@ My API
 
 ## Next Steps
 
+- [Workspaces](/features/workspaces)
 - [Collections & Folders](/features/collections)
 - [Environments](/features/environments)
+- [Git Integration](/features/git)
+- [OpenAPI Import & Sync](/features/openapi)
 - [OAuth 2.0](/features/oauth)
 - [Docker Deployment](/deployment/docker)

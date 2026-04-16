@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import { version } from '../../../package.json';
 
 export default defineConfig({
   title: 'Requesto',
@@ -26,7 +27,7 @@ export default defineConfig({
       { text: 'Documentation', link: '/guide/introduction' },
       { text: 'Download', link: '/guide/download' },
       {
-        text: 'v1.0.0',
+        text: `v${version}`,
         items: [{ text: 'Changelog', link: 'https://github.com/t3rr11/Requesto/releases' }],
       },
     ],
@@ -51,8 +52,11 @@ export default defineConfig({
       {
         text: 'Features',
         items: [
+          { text: 'Workspaces', link: '/features/workspaces' },
           { text: 'Collections & Folders', link: '/features/collections' },
           { text: 'Environments', link: '/features/environments' },
+          { text: 'Git Integration', link: '/features/git' },
+          { text: 'OpenAPI Import & Sync', link: '/features/openapi' },
           { text: 'OAuth 2.0', link: '/features/oauth' },
           { text: 'Console & Logging', link: '/features/console' },
         ],

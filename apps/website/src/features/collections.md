@@ -50,6 +50,20 @@ Right-click any collection, folder, or request in the sidebar. The menu has thre
 
 **Export**: Right-click a collection, folder, or request and choose **Export**. The exported JSON includes all nested folders and requests.
 
+### Postman Import & Export
+
+Requesto supports Postman v2.1.0 format for both collections and environments.
+
+**Import from Postman**: Use the same upload button in the sidebar header. Requesto detects the Postman format automatically and converts it.
+
+**Export to Postman**: Right-click a collection and choose **Export as Postman**. The exported file can be imported directly into Postman.
+
+Environment import and export works the same way from the [Environments](/features/environments) page.
+
+### OpenAPI Import
+
+You can also generate a collection from an OpenAPI spec. See [OpenAPI Import & Sync](/features/openapi) for details.
+
 ## Saved Requests
 
 A saved request stores:

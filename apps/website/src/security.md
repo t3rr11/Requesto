@@ -11,14 +11,19 @@ How Requesto handles your data and what to be aware of when deploying it.
 
 ## Data Storage
 
-All data lives in plain JSON files on disk:
+All data lives in plain JSON files on disk, organized by workspace:
 
 ```
 data/
-├── collections.json      # Collections, folders, and saved requests
-├── environments.json     # Environments and variable values
-├── history.json          # Last 100 request/response records
-└── oauth-configs.json    # OAuth configurations (includes client secrets)
+├── workspaces.json           # Workspace registry and active workspace
+├── Default/                  # Default workspace
+│   ├── collections.json      # Collections, folders, and saved requests
+│   ├── environments.json     # Environments and variable values
+│   ├── oauth-configs.json    # OAuth configurations (no client secrets)
+│   └── .requesto/            # Local-only data (excluded from git)
+│       ├── history.json      # Last 100 request/response records
+│       └── oauth-secrets.json # OAuth client secrets
+└── workspaces/               # Additional workspaces (including git clones)
 ```
 
 **Data locations:**
@@ -30,7 +35,7 @@ data/
 ### What's stored in plaintext
 
 - Environment variable values (API keys, tokens, etc.)
-- OAuth client secrets (server-side in `oauth-configs.json`)
+- OAuth client secrets (server-side in `.requesto/oauth-secrets.json`, excluded from git)
 - Request/response history including headers and bodies
 - Saved request authentication configs
 
@@ -38,8 +43,9 @@ There is no built-in encryption at rest. If your data directory contains sensiti
 
 ### What's kept separate
 
-- OAuth **client secrets** are stored server-side only and are never sent to the frontend
+- OAuth **client secrets** are stored in the `.requesto/` directory, which is excluded from git via auto-generated `.gitignore`. They are never sent to the frontend.
 - OAuth **access tokens** are stored client-side (in sessionStorage or localStorage, depending on your config) and are never persisted server-side
+- Request **history** is stored in `.requesto/` so it stays local and is not committed to version control
 
 ## Electron Security
 

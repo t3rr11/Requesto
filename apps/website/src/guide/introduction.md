@@ -12,23 +12,40 @@ You can run it as a desktop app (Electron), in Docker, or straight from source.
 - Organize requests into collections and folders with drag-and-drop
 - Define environment variables and swap between them (dev, staging, prod)
 - Authenticate with Basic, Bearer, API Key, Digest, or OAuth 2.0
+- Import OpenAPI v2/v3 specs and keep collections in sync as the spec changes
+- Import and export Postman collections and environments
+- Manage multiple workspaces to isolate different projects
+- Version control workspace data with built-in git integration
 - Stream Server-Sent Events (SSE)
 - View request/response logs in a built-in console panel
 
-All requests go through a local backend proxy (Fastify), which handles CORS and substitutes environment variables before sending the request to the target API.
+The backend handles CORS, substitutes environment variables, and manages all data storage so the frontend never has to deal with cross-origin restrictions or file I/O.
 
 ## How it's built
 
 ```
-Frontend (React/Vite) ←→ Backend Proxy (Fastify) ←→ External APIs
+Frontend (React/Vite) ←→ Backend (Fastify) ←→ External APIs
         ↓
 Electron Wrapper (Desktop)
 ```
 
 - **Frontend**: React, TypeScript, TailwindCSS, Zustand for state management
-- **Backend**: Node.js with Fastify - proxies requests, stores data, handles OAuth token exchange
+- **Backend**: Node.js with Fastify - manages collections, environments, workspaces, git operations, OpenAPI importing, request execution, and OAuth token exchange
 - **Desktop**: Electron wrapper that bundles the backend as a child process
-- **Storage**: JSON files on disk (`collections.json`, `environments.json`, `history.json`, `oauth-configs.json`). No database.
+- **Storage**: JSON files on disk organized by workspace. No database.
+
+```
+data/
+├── workspaces.json         # Workspace registry and active workspace
+├── Default/                # Default workspace
+│   ├── collections.json    # Collections, folders, and saved requests
+│   ├── environments.json   # Environments and variables
+│   ├── oauth-configs.json  # OAuth configurations (no client secrets)
+│   └── .requesto/          # Local-only data (excluded from git)
+│       ├── history.json
+│       └── oauth-secrets.json
+└── workspaces/             # Additional workspaces (including git clones)
+```
 
 Data writes use a temp-file + rename pattern to avoid corruption.
 
@@ -36,7 +53,7 @@ Data writes use a temp-file + rename pattern to avoid corruption.
 
 The goal is to be easy to self-host. Whether you run it as a desktop app or deploy it in Docker, there's no database to set up or maintain - just JSON files in a data directory. Back up by copying a folder, restore by putting it back.
 
-The backend proxy only exists so the frontend doesn't have to deal with CORS or expose secrets like OAuth client credentials to the browser and that's it's whole purpose.
+Each workspace is its own directory, so different projects stay isolated. Workspaces that are git repositories can be committed, pushed, and pulled directly from the UI, making it straightforward to share API collections across a team without any external sync service.
 
 ## Next Steps
 

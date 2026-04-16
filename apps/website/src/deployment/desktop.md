@@ -52,17 +52,22 @@ When you launch the desktop app:
 
 1. The Electron process starts the Fastify backend on port 4000 as a child process
 2. The frontend loads from bundled static files
-3. All API requests are proxied through the local backend, same as the web version
+3. All API requests go through the local backend, same as the web version
 4. Data is stored in JSON files in the platform-specific app data directory
 
 ## Data Files
 
 ```
 data/
-├── collections.json      # Collections, folders, and saved requests
-├── environments.json     # Environments and variables
-├── history.json          # Request/response history
-└── oauth-configs.json    # OAuth configurations (includes client secrets)
+├── workspaces.json           # Workspace registry and active workspace
+├── Default/                  # Default workspace
+│   ├── collections.json      # Collections, folders, and saved requests
+│   ├── environments.json     # Environments and variables
+│   ├── oauth-configs.json    # OAuth configurations (no client secrets)
+│   └── .requesto/            # Local-only data
+│       ├── history.json
+│       └── oauth-secrets.json
+└── workspaces/               # Additional workspaces (including git clones)
 ```
 
 To back up, copy the `data` folder. To restore, copy it back and restart the app.
