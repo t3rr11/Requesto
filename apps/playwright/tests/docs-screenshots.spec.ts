@@ -67,7 +67,7 @@ test.describe('Home & Introduction', () => {
     resetData();
   });
 
-  test('app overview with request open', async ({ appPage, takeDocScreenshot }) => {
+  test('app overview with request open', async ({ appPage, takeDocScreenshot, takeReadmeScreenshot }) => {
     // Expand Sample API to show folder structure
     await appPage.getByText('Sample API').click();
     await appPage.getByText('Users').click();
@@ -86,6 +86,9 @@ test.describe('Home & Introduction', () => {
 
     await takeDocScreenshot('introduction', 'app-overview');
     await takeDocScreenshot('home', 'hero-screenshot');
+
+    // Also generate README hero images (images/example-light.png & images/example-dark.png)
+    await takeReadmeScreenshot('example');
   });
 });
 

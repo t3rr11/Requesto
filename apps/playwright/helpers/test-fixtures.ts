@@ -6,6 +6,7 @@ const FIXTURES_DIR = path.resolve(__dirname, '..', 'fixtures');
 const TEST_DATA_DIR = path.resolve(__dirname, '..', 'test-data');
 const SCREENSHOTS_DIR = path.resolve(__dirname, '..', 'screenshots');
 const DOC_SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'website', 'src', 'public', 'screenshots');
+const README_IMAGES_DIR = path.resolve(__dirname, '..', '..', '..', 'images');
 
 const FIXTURE_FILES = [
   'collections.json',
@@ -93,6 +94,8 @@ export type TestFixtures = {
   takeScreenshot: (category: string, name: string) => Promise<void>;
   /** Take a screenshot destined for the website docs (apps/website/src/public/screenshots/) */
   takeDocScreenshot: (category: string, name: string) => Promise<void>;
+  /** Take a screenshot for the repo README (images/) */
+  takeReadmeScreenshot: (name: string) => Promise<void>;
   /** The test page, navigated to the app root */
   appPage: Page;
 };
@@ -142,6 +145,54 @@ export const test = base.extend<TestFixtures>({
       filePath = path.join(DOC_SCREENSHOTS_DIR, otherTheme, category, `${name}.png`);
       buffer = await page.screenshot({ path: filePath, fullPage: false });
       await testInfo.attach(`docs/${otherTheme}/${category}/${name}`, {
+        body: buffer,
+        contentType: 'image/png',
+      });
+
+      // Restore original theme
+      const restoreTitle = isDark ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+      await page.evaluate((title) => {
+        const btn = document.querySelector(`button[title="${title}"]`) as HTMLElement;
+        if (btn) btn.click();
+      }, restoreTitle);
+      await page.waitForTimeout(300);
+    };
+    await use(fn);
+  },
+
+  takeReadmeScreenshot: async ({ page }, use, testInfo) => {
+    const fn = async (name: string) => {
+      if (!fs.existsSync(README_IMAGES_DIR)) {
+        fs.mkdirSync(README_IMAGES_DIR, { recursive: true });
+      }
+
+      // Determine current theme
+      const isDark = await page.evaluate(() =>
+        document.documentElement.classList.contains('dark'),
+      );
+
+      // Take screenshot in current theme
+      const currentLabel = isDark ? 'dark' : 'light';
+      let filePath = path.join(README_IMAGES_DIR, `${name}-${currentLabel}.png`);
+      let buffer = await page.screenshot({ path: filePath, fullPage: false });
+      await testInfo.attach(`readme/${name}-${currentLabel}`, {
+        body: buffer,
+        contentType: 'image/png',
+      });
+
+      // Toggle to other theme
+      const otherLabel = isDark ? 'light' : 'dark';
+      const toggleTitle = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+      await page.evaluate((title) => {
+        const btn = document.querySelector(`button[title="${title}"]`) as HTMLElement;
+        if (btn) btn.click();
+      }, toggleTitle);
+      await page.waitForTimeout(500);
+
+      // Take screenshot in other theme
+      filePath = path.join(README_IMAGES_DIR, `${name}-${otherLabel}.png`);
+      buffer = await page.screenshot({ path: filePath, fullPage: false });
+      await testInfo.attach(`readme/${name}-${otherLabel}`, {
         body: buffer,
         contentType: 'image/png',
       });
