@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - npm
 - Git
 
@@ -21,10 +21,11 @@ This installs dependencies for all three apps (backend, frontend, electron) via 
 ```
 Requesto/
 ├── apps/
-│   ├── backend/      # Fastify proxy server (port 4000)
+│   ├── backend/      # Fastify backend server (port 4000)
 │   ├── frontend/     # React/Vite UI (port 5173 in dev)
-│   └── electron/     # Electron desktop wrapper
-├── website/          # VitePress docs
+│   ├── electron/     # Electron desktop wrapper
+│   ├── website/      # VitePress documentation site
+│   └── playwright/   # End-to-end tests
 └── package.json      # Root workspace config
 ```
 
@@ -72,7 +73,7 @@ docker-compose up --build
 
 ## Troubleshooting
 
-**Node version** - Make sure you're on Node.js 18+: `node --version`
+**Node version** - Make sure you're on Node.js 20+: `node --version`
 
 **Clean reinstall** - If builds break: `rm -rf node_modules apps/*/node_modules && npm install`
 

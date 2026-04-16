@@ -31,14 +31,15 @@ We take security seriously. If you discover a security vulnerability, please rep
 
 ### Data Storage
 
-- All data is stored locally in JSON files
+- All data is stored locally in JSON files, organized by workspace
 - Sensitive data is not encrypted at rest (use OS-level encryption)
-- OAuth tokens are stored in plain text (secure your filesystem)
+- OAuth client secrets are stored separately from workspace data in a local-only directory
+- OAuth access tokens are stored client-side and never persisted server-side
 
 ### Network
 
 - Local first approach
-- Backend proxy makes requests on your behalf
+- Backend executes API requests on your behalf
 - Requests history can be found in the session console
 - No data is sent to external servers
 

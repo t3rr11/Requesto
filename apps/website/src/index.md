@@ -24,8 +24,17 @@ features:
   - title: Self-Hosted
     details: All data is stored locally in JSON files - on your machine or your server. No accounts, no cloud sync, no telemetry.
 
+  - title: Workspaces
+    details: Isolate projects into separate workspaces, each with their own collections, environments, and OAuth configs. Switch between them instantly.
+
+  - title: Git Integration
+    details: Built-in git support for workspaces. Commit, push, pull, and resolve conflicts without leaving the app. Clone repositories as new workspaces.
+
   - title: Collections & Folders
-    details: Organize requests into collections and folders with drag-and-drop. Import and export as JSON.
+    details: Organize requests into collections and folders with drag-and-drop. Import and export as JSON, or import from Postman.
+
+  - title: OpenAPI Import & Sync
+    details: Import OpenAPI v2/v3 specs to auto-generate collections. Link a spec and sync changes as the API evolves.
 
   - title: Environment Variables
     details: Define variables per environment and reference them in URLs, headers, and bodies. Switch environments instantly.

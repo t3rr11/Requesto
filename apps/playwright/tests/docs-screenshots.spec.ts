@@ -1,5 +1,7 @@
 import { test as baseTest, expect, resetData } from '../helpers/test-fixtures';
 import { type Page } from '@playwright/test';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Documentation screenshots for the VitePress website.
@@ -504,5 +506,169 @@ test.describe('UI Variants', () => {
       await horizontalToggle.click();
       await appPage.waitForTimeout(300);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Workspaces
+// ---------------------------------------------------------------------------
+test.describe('Workspaces', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('workspace switcher dropdown', async ({ appPage, takeDocScreenshot }) => {
+    // Open the workspace switcher dropdown (title is the active workspace name)
+    const switcher = appPage.locator('button[title="Default"]');
+    await switcher.click();
+
+    // Wait for dropdown to appear
+    await expect(appPage.getByText('Workspaces', { exact: true })).toBeVisible();
+    await expect(appPage.getByText('Manage Workspaces...')).toBeVisible();
+
+    await takeDocScreenshot('workspaces', 'workspace-switcher');
+
+    // Close dropdown
+    await appPage.keyboard.press('Escape');
+  });
+
+  test('workspace manager dialog', async ({ appPage, takeDocScreenshot }) => {
+    // Open the workspace switcher, then click Manage
+    const switcher = appPage.locator('button[title="Default"]');
+    await switcher.click();
+    await appPage.getByText('Manage Workspaces...').click();
+
+    const dialogHeading = appPage.locator('h2', { hasText: 'Manage Workspaces' });
+    await expect(dialogHeading).toBeVisible();
+
+    await takeDocScreenshot('workspaces', 'workspace-manager-dialog');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
+  });
+
+  test('create workspace form', async ({ appPage, takeDocScreenshot }) => {
+    // Open workspace manager
+    const switcher = appPage.locator('button[title="Default"]');
+    await switcher.click();
+    await appPage.getByText('Manage Workspaces...').click();
+
+    await expect(appPage.locator('h2', { hasText: 'Manage Workspaces' })).toBeVisible();
+
+    // Click New Workspace
+    await appPage.getByRole('button', { name: 'New Workspace' }).click();
+
+    await expect(appPage.locator('h2', { hasText: 'New Workspace' })).toBeVisible();
+
+    // Fill in the name field
+    await appPage.locator('#workspace-name').fill('My Project');
+
+    await takeDocScreenshot('workspaces', 'create-workspace-form');
+  });
+
+  test('clone from git form', async ({ appPage, takeDocScreenshot }) => {
+    // The create form should still be open from the previous test, but reset to be safe
+    const heading = appPage.locator('h2', { hasText: 'New Workspace' });
+    if (!await heading.isVisible().catch(() => false)) {
+      const switcher = appPage.locator('button[title="Default"]');
+      await switcher.click();
+      await appPage.getByText('Manage Workspaces...').click();
+      await appPage.getByRole('button', { name: 'New Workspace' }).click();
+      await expect(heading).toBeVisible();
+    }
+
+    // Toggle clone from git
+    await appPage.locator('#clone-toggle').check();
+
+    // Fill in the fields
+    await appPage.locator('#workspace-name').fill('Shared API Collection');
+    await appPage.locator('#repo-url').fill('https://github.com/team/api-collection.git');
+
+    await takeDocScreenshot('git', 'clone-workspace-form');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OpenAPI Import & Sync (doc screenshots)
+// ---------------------------------------------------------------------------
+test.describe('OpenAPI Docs', () => {
+  const FIXTURES_DIR = path.resolve(__dirname, '..', 'fixtures');
+  const SPEC_PATH = path.join(FIXTURES_DIR, 'openapi-spec.json');
+  let originalSpecContent: Buffer;
+
+  test.beforeAll(() => {
+    resetData();
+    // Save original spec content before any test modifies it
+    originalSpecContent = fs.readFileSync(SPEC_PATH);
+  });
+
+  test('openapi import dialog', async ({ appPage, takeDocScreenshot }) => {
+    const specPath = path.join(FIXTURES_DIR, 'openapi-spec.json').replace(/\\/g, '/');
+
+    // Open the import dropdown, then click "OpenAPI Spec"
+    await appPage.getByTitle('Import').click();
+    await appPage.getByText('OpenAPI Spec').click();
+
+    const dialogHeading = appPage.locator('h2', { hasText: 'Import from OpenAPI' });
+    await expect(dialogHeading).toBeVisible();
+    const dialog = dialogHeading.locator('xpath=ancestor::div[contains(@class, "rounded-xl")]');
+
+    // Fill in the spec source
+    await dialog.locator('#openapi-source').fill(specPath);
+
+    // Enable linking so Sync from Spec is available later
+    await dialog.locator('#link-spec-toggle').check();
+
+    await takeDocScreenshot('openapi', 'import-dialog');
+
+    // Submit the form
+    await dialog.getByRole('button', { name: 'Import' }).click();
+
+    // Wait for collection to appear
+    await expect(appPage.getByText('Playwright Test API', { exact: true })).toBeVisible({ timeout: 15_000 });
+  });
+
+  test('imported collection structure', async ({ appPage, takeDocScreenshot }) => {
+    // Expand the imported collection
+    await appPage.getByText('Playwright Test API', { exact: true }).click();
+    await expect(appPage.getByText('pets')).toBeVisible();
+    await appPage.getByText('pets').click();
+    await expect(appPage.getByText('List all pets')).toBeVisible();
+
+    await takeDocScreenshot('openapi', 'imported-collection');
+  });
+
+  test('sync preview dialog', async ({ appPage, takeDocScreenshot }) => {
+    // Replace the spec with the v2 that has a new operation
+    const updatedSpec = path.join(FIXTURES_DIR, 'openapi-spec-v2.json');
+    fs.copyFileSync(updatedSpec, SPEC_PATH);
+
+    // Collapse the collection first so the right-click targets the collection header
+    const collectionHeader = appPage.getByText('Playwright Test API', { exact: true });
+    // Click to collapse if expanded
+    await collectionHeader.click();
+    await appPage.waitForTimeout(300);
+
+    // Right-click the collection header
+    await collectionHeader.click({ button: 'right' });
+    await expect(appPage.getByText('Sync from Spec')).toBeVisible();
+    await appPage.getByText('Sync from Spec').click();
+
+    // Wait for sync preview dialog content
+    const syncDialog = appPage.locator('h2', { hasText: 'Sync from OpenAPI Spec' });
+    await expect(syncDialog).toBeVisible({ timeout: 15_000 });
+
+    await takeDocScreenshot('openapi', 'sync-preview');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
+  });
+
+  test.afterAll(() => {
+    // Restore the original spec file exactly as it was
+    fs.writeFileSync(SPEC_PATH, originalSpecContent);
   });
 });
