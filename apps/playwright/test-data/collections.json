@@ -25,11 +25,15 @@
         "name": "List Users",
         "method": "GET",
         "url": "{{baseUrl}}/users",
-        "headers": { "Accept": "application/json" },
+        "headers": {
+          "Accept": "application/json"
+        },
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-users",
         "order": 0,
-        "auth": { "type": "none" },
+        "auth": {
+          "type": "none"
+        },
         "createdAt": 1700000000000,
         "updatedAt": 1700000000000
       },
@@ -38,12 +42,17 @@
         "name": "Create User",
         "method": "POST",
         "url": "{{baseUrl}}/users",
-        "headers": { "Content-Type": "application/json", "Accept": "application/json" },
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         "body": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\"\n}",
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-users",
         "order": 1,
-        "auth": { "type": "none" },
+        "auth": {
+          "type": "none"
+        },
         "createdAt": 1700000000000,
         "updatedAt": 1700000000000
       },
@@ -52,11 +61,15 @@
         "name": "List Posts",
         "method": "GET",
         "url": "{{baseUrl}}/posts",
-        "headers": { "Accept": "application/json" },
+        "headers": {
+          "Accept": "application/json"
+        },
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-posts",
         "order": 0,
-        "auth": { "type": "none" },
+        "auth": {
+          "type": "none"
+        },
         "createdAt": 1700000000000,
         "updatedAt": 1700000000000
       }
@@ -75,15 +88,101 @@
         "name": "Get User",
         "method": "GET",
         "url": "https://api.github.com/users/octocat",
-        "headers": { "Accept": "application/vnd.github.v3+json" },
+        "headers": {
+          "Accept": "application/vnd.github.v3+json"
+        },
         "collectionId": "col-test-github",
         "order": 0,
-        "auth": { "type": "none" },
+        "auth": {
+          "type": "none"
+        },
         "createdAt": 1700000000000,
         "updatedAt": 1700000000000
       }
     ],
     "createdAt": 1700000000000,
     "updatedAt": 1700000000000
+  },
+  {
+    "id": "col-1776331620434-yuzwlg",
+    "name": "Playwright Test API",
+    "folders": [
+      {
+        "id": "folder-1776331620434-1m8k9q",
+        "name": "pets",
+        "collectionId": "col-1776331620434-lbxqcu",
+        "createdAt": 1776331620434,
+        "updatedAt": 1776331620434
+      },
+      {
+        "id": "folder-1776331620434-iljmdr",
+        "name": "users",
+        "collectionId": "col-1776331620434-lbxqcu",
+        "createdAt": 1776331620434,
+        "updatedAt": 1776331620434
+      }
+    ],
+    "requests": [
+      {
+        "id": "req-1776331620434-z4xhme",
+        "name": "List all pets",
+        "method": "GET",
+        "url": "{{baseUrl}}/pets?limit=0",
+        "collectionId": "col-1776331620434-lbxqcu",
+        "folderId": "folder-1776331620434-1m8k9q",
+        "operationId": "listPets",
+        "order": 0,
+        "createdAt": 1776331620434,
+        "updatedAt": 1776331620434
+      },
+      {
+        "id": "req-1776331620434-76g9le",
+        "name": "Create a pet",
+        "method": "POST",
+        "url": "{{baseUrl}}/pets",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": "{\n  \"name\": \"string\",\n  \"species\": \"string\"\n}",
+        "bodyType": "json",
+        "collectionId": "col-1776331620434-lbxqcu",
+        "folderId": "folder-1776331620434-1m8k9q",
+        "operationId": "createPet",
+        "order": 1,
+        "createdAt": 1776331620434,
+        "updatedAt": 1776331620434
+      },
+      {
+        "id": "req-1776331620434-5enldu",
+        "name": "Get a pet by ID",
+        "method": "GET",
+        "url": "{{baseUrl}}/pets/{{petId}}",
+        "collectionId": "col-1776331620434-lbxqcu",
+        "folderId": "folder-1776331620434-1m8k9q",
+        "operationId": "getPet",
+        "order": 2,
+        "createdAt": 1776331620434,
+        "updatedAt": 1776331620434
+      },
+      {
+        "id": "req-1776331620434-aupgto",
+        "name": "List users",
+        "method": "GET",
+        "url": "{{baseUrl}}/users",
+        "collectionId": "col-1776331620434-lbxqcu",
+        "folderId": "folder-1776331620434-iljmdr",
+        "operationId": "listUsers",
+        "order": 3,
+        "createdAt": 1776331620434,
+        "updatedAt": 1776331620434
+      }
+    ],
+    "createdAt": 1776331620434,
+    "updatedAt": 1776331620434,
+    "openApiSpec": {
+      "source": "D:/Projects/Web Apps/Requesto/apps/playwright/fixtures/openapi-spec.json",
+      "lastSyncedAt": 1776331620434,
+      "specHash": "c460a076b6b35fc3fe7c9f11ec772adc18e06e31bd671f7e5b3472802f626513"
+    }
   }
 ]
