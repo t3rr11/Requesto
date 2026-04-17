@@ -1,17 +1,35 @@
 <script setup lang="ts">
-import { useData, withBase } from 'vitepress'
+import { withBase } from 'vitepress'
 
 const props = defineProps<{
   src: string
   alt: string
 }>()
-
-const { isDark } = useData()
 </script>
 
 <template>
   <img
-    :src="withBase(isDark ? `/screenshots/dark${props.src}` : `/screenshots/light${props.src}`)"
+    class="theme-image light-only"
+    :src="withBase(`/screenshots/light${props.src}`)"
+    :alt="props.alt"
+  />
+  <img
+    class="theme-image dark-only"
+    :src="withBase(`/screenshots/dark${props.src}`)"
     :alt="props.alt"
   />
 </template>
+
+<style scoped>
+.dark-only {
+  display: none;
+}
+
+html.dark .dark-only {
+  display: block;
+}
+
+html.dark .light-only {
+  display: none;
+}
+</style>

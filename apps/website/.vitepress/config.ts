@@ -8,6 +8,10 @@ export default defineConfig({
   srcDir: 'src',
   ignoreDeadLinks: [/localhost/],
 
+  sitemap: {
+    hostname: 'https://requesto.com.au',
+  },
+
   head: [
     ['link', { rel: 'icon', href: '/logo.svg' }],
     ['meta', { name: 'theme-color', content: '#3b82f6' }],
