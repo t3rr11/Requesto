@@ -49,6 +49,10 @@ features:
     details: Dark-mode-first UI with a light mode toggle. Built with React and TailwindCSS.
 ---
 
+<div class="hero-image">
+  <ThemeImage src="/home/hero-screenshot.png" alt="Hero image" />
+</div>
+
 ## Quick Start
 
 ### Desktop App
