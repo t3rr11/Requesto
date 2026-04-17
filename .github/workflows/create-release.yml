@@ -72,6 +72,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Set version from release tag
+        shell: bash
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          npm pkg set version="$VERSION" -w requesto-electron
+
       - name: Build backend & frontend
         run: |
           npm run build:backend
