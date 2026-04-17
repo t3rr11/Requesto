@@ -76,8 +76,17 @@
  * -------------------------------------------------------------------------- */
 
 .vp-doc img {
-  max-width: 700px;
+  max-width: min(700px, 100%);
   border-radius: 8px;
   border: 1px solid var(--vp-c-divider);
   margin: 16px 0;
+  cursor: zoom-in;
+}
+
+.medium-zoom-overlay {
+  z-index: 30;
+}
+
+.medium-zoom-image--opened {
+  z-index: 31;
 }
