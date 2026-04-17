@@ -13,7 +13,9 @@ export default defineConfig({
   },
 
   head: [
-    ['link', { rel: 'icon', href: '/logo.svg' }],
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo-blue.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '48x48', href: '/favicon-48x48.png' }],
+    ['link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' }],
     ['meta', { name: 'theme-color', content: '#3b82f6' }],
     ['meta', { property: 'og:title', content: 'Requesto' }],
     ['meta', { property: 'og:description', content: 'A lightweight, self-hosted API client' }],
