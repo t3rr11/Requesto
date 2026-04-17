@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://requesto.com.au/sitemap.xml

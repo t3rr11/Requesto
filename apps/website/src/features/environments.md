@@ -1,4 +1,9 @@
-﻿# Environments
+﻿---
+title: Environments
+description: Manage API environments in Requesto. Define variable sets for dev, staging, and production, then swap them without editing individual requests. Supports secret masking and variable substitution.
+---
+
+# Environments
 
 Switch between sets of variables (dev, staging, production) without editing individual requests.
 

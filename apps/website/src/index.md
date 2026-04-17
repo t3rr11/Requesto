@@ -1,5 +1,6 @@
 ﻿---
 layout: home
+description: Requesto is a self-hostable, open-source API client. No accounts, no cloud, no telemetry. Run it as a desktop app or self-host with Docker.
 
 hero:
   name: Requesto

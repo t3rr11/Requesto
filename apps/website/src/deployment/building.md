@@ -1,4 +1,9 @@
-﻿# Building from Source
+﻿---
+title: Building from Source
+description: Build Requesto from source on any platform. Clone the repo, install Node.js 20+ dependencies, and package the desktop app or run the dev server yourself.
+---
+
+# Building from Source
 
 ## Prerequisites
 

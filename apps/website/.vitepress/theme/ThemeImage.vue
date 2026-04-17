@@ -12,11 +12,13 @@ const props = defineProps<{
     class="theme-image light-only"
     :src="withBase(`/screenshots/light${props.src}`)"
     :alt="props.alt"
+    loading="lazy"
   />
   <img
     class="theme-image dark-only"
     :src="withBase(`/screenshots/dark${props.src}`)"
     :alt="props.alt"
+    loading="lazy"
   />
 </template>
 

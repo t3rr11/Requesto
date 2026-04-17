@@ -1,4 +1,9 @@
-﻿# OAuth 2.0
+﻿---
+title: OAuth 2.0
+description: Built-in OAuth 2.0 support in Requesto. Configure Authorization Code, PKCE, Client Credentials, and more. Tokens refresh automatically. Supports GitHub, Google, Spotify, and any provider.
+---
+
+# OAuth 2.0
 
 Requesto has built-in OAuth 2.0 support with automatic token management.
 

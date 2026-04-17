@@ -1,4 +1,9 @@
-﻿# Desktop App
+﻿---
+title: Desktop App
+description: Download the Requesto desktop app for Windows, macOS, or Linux. An Electron wrapper that bundles the backend locally - no browser or separate server required.
+---
+
+# Desktop App
 
 The desktop app is an Electron wrapper around the same web UI. It bundles the backend as a Node.js child process so everything runs locally - no browser or separate server needed.
 

@@ -1,4 +1,9 @@
-﻿# What is Requesto?
+﻿---
+title: What is Requesto?
+description: Requesto is an open-source API client that runs locally or on your own server. No cloud, no accounts, no telemetry. Supports Docker, Electron, and source builds.
+---
+
+# What is Requesto?
 
 Requesto is an open-source API client that runs locally on your machine or on your own server. It stores everything in plain JSON files - no cloud, no accounts, no telemetry.
 
