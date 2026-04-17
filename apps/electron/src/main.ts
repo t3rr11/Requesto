@@ -106,7 +106,7 @@ function createWindow() {
 
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
-  
+
   // Hide menu bar but keep shortcuts (Windows/Linux only)
   mainWindow.setMenuBarVisibility(false);
 
@@ -154,14 +154,13 @@ function startBackend() {
   const backendPath = path.join(process.resourcesPath, 'backend', 'dist', 'server.js');
   console.log('Backend path:', backendPath);
   console.log('Backend exists:', fs.existsSync(backendPath));
-  
+
   if (!fs.existsSync(backendPath)) {
-    console.error('Backend server.js not found at:', backendPath);    dialog.showErrorBox(
-      'Backend Error',
-      'Backend server files not found. Please reinstall the application.'
-    );    return;
+    console.error('Backend server.js not found at:', backendPath);
+    dialog.showErrorBox('Backend Error', 'Backend server files not found. Please reinstall the application.');
+    return;
   }
-  
+
   // Ensure data directory exists
   const dataDir = path.join(app.getPath('userData'), 'data');
   if (!fs.existsSync(dataDir)) {
@@ -180,12 +179,9 @@ function startBackend() {
     stdio: 'inherit',
   });
 
-  backendProcess.on('error', (error) => {
+  backendProcess.on('error', error => {
     console.error('Backend process error:', error);
-    dialog.showErrorBox(
-      'Backend Error',
-      `Backend process failed to start: ${error.message}`
-    );
+    dialog.showErrorBox('Backend Error', `Backend process failed to start: ${error.message}`);
   });
 
   backendProcess.on('exit', (code, signal) => {
@@ -220,7 +216,8 @@ function createSplashScreen() {
     },
   });
 
-  splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(`
+  splashWindow.loadURL(
+    `data:text/html;charset=utf-8,${encodeURIComponent(`
     <!DOCTYPE html>
     <html>
       <head>
@@ -271,7 +268,8 @@ function createSplashScreen() {
         </div>
       </body>
     </html>
-  `)}`);
+  `)}`
+  );
 
   splashWindow.on('closed', () => {
     splashWindow = null;
@@ -302,13 +300,35 @@ async function waitForBackend(maxAttempts = 30): Promise<boolean> {
     }
     await new Promise(resolve => setTimeout(resolve, 500));
   }
-  
+
   console.error('Backend failed to start within timeout');
   return false;
 }
 
+// Clear Chromium cache when the app version changes
+async function clearCacheOnVersionChange() {
+  const versionFile = path.join(app.getPath('userData'), '.last-version');
+  const currentVersion = app.getVersion();
+  let lastVersion: string | null = null;
+
+  try {
+    lastVersion = fs.readFileSync(versionFile, 'utf-8').trim();
+  } catch {
+    // No version file yet — first run or pre-upgrade install
+  }
+
+  if (lastVersion !== currentVersion) {
+    console.log(`Version changed from ${lastVersion} to ${currentVersion}, clearing cache...`);
+    const session = require('electron').session;
+    await session.defaultSession.clearCache();
+    fs.writeFileSync(versionFile, currentVersion, 'utf-8');
+  }
+}
+
 // App lifecycle
 app.whenReady().then(async () => {
+  await clearCacheOnVersionChange();
+
   // Register IPC handlers
   ipcMain.handle('select-directory', async () => {
     if (!mainWindow) return null;
@@ -323,16 +343,16 @@ app.whenReady().then(async () => {
   if (!isDev) {
     createSplashScreen();
   }
-  
+
   startBackend();
-  
+
   // Wait for backend to be ready in production
   if (!isDev) {
     await waitForBackend();
   }
-  
+
   createWindow();
-  
+
   // Close splash screen after a short delay to ensure smooth transition
   if (!isDev) {
     setTimeout(() => {
@@ -361,6 +381,6 @@ app.on('before-quit', () => {
 });
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   console.error('Uncaught exception:', error);
 });
