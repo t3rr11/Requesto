@@ -1,3 +1,8 @@
+---
+title: Git Integration
+description: Version-control your Requesto workspace with built-in Git support. Init repos, clone from remote, commit, push, pull, and sync collections with your team - all from inside the app.
+---
+
 # Git Integration
 
 Requesto has built-in git support so you can version control your workspace data and share it with a team. Git operations run through the backend using the git installation on your machine.

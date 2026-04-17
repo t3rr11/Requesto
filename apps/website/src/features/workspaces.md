@@ -1,3 +1,8 @@
+---
+title: Workspaces
+description: Isolate projects with Requesto workspaces. Each workspace has its own collections, environments, and OAuth configs in a separate directory. Switch, create, clone, import, and export workspaces.
+---
+
 # Workspaces
 
 Workspaces let you isolate different projects. Each workspace has its own collections, environments, and OAuth configurations stored in a separate directory.

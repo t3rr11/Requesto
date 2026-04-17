@@ -1,4 +1,9 @@
-﻿# Security
+﻿---
+title: Security
+description: How Requesto handles your data - local-only storage, no telemetry, no outbound requests, Electron security hardening, and vulnerability reporting.
+---
+
+# Security
 
 How Requesto handles your data and what to be aware of when deploying it.
 

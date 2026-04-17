@@ -1,4 +1,9 @@
-﻿# Console & Logging
+﻿---
+title: Console & Logging
+description: The Requesto console logs every request and response so you can inspect exactly what was sent and received. View headers, bodies, timing, and script output in one panel.
+---
+
+# Console & Logging
 
 The console panel logs every request and response so you can inspect what was actually sent and received.
 

@@ -1,4 +1,9 @@
-﻿# Collections & Folders
+﻿---
+title: Collections & Folders
+description: Organize API requests into collections and folders in Requesto. Supports drag-and-drop reordering, nested folders, search filtering, and bulk operations.
+---
+
+# Collections & Folders
 
 Organize API requests into collections and folders.
 

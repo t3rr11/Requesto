@@ -1,3 +1,8 @@
+---
+title: OpenAPI Import & Sync
+description: Import OpenAPI v2 (Swagger) and v3 specs into Requesto to auto-generate collections. Link specs to collections and sync changes as your API evolves.
+---
+
 # OpenAPI Import & Sync
 
 Import OpenAPI v2 (Swagger) or v3 specs to generate collections automatically. Optionally link a spec to a collection so you can sync changes as the API evolves.

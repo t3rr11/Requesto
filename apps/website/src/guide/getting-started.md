@@ -1,4 +1,9 @@
-﻿# Getting Started
+﻿---
+title: Getting Started
+description: Send your first API request, save it to a collection, set up environment variables, and explore the Requesto interface - everything you need to get productive fast.
+---
+
+# Getting Started
 
 ::: tip Not Installed Yet?
 Head to the [Download & Install](/guide/download) page first.

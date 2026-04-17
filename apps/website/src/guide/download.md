@@ -1,3 +1,8 @@
+---
+title: Download & Install
+description: Install Requesto via Docker, download the desktop app for Windows, macOS, or Linux, or build it yourself from source. All install methods covered here.
+---
+
 # Download & Install
 
 ## Docker
