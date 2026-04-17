@@ -83,6 +83,11 @@
   cursor: zoom-in;
 }
 
+.vp-doc .hero-image img {
+  max-width: 100%;
+  border-radius: 12px;
+}
+
 .medium-zoom-overlay {
   z-index: 30;
 }
