@@ -29,7 +29,7 @@ export function Header() {
           </Button>
 
           <div className="flex items-center gap-3">
-            <img src="./logo.png" alt="Requesto Logo" className="w-8 h-8" />
+            <img src="./logo-white.png" alt="Requesto Logo" className="w-8 h-8" />
             <h1 className="text-xl font-bold">Requesto</h1>
           </div>
 
