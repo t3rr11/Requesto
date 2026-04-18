@@ -1,6 +1,6 @@
 {
   "name": "requesto-electron",
-  "version": "1.3.1",
+  "version": "1.3.4",
   "description": "Requesto - API Client",
   "homepage": "https://requesto.com.au",
   "main": "dist/main.js",
