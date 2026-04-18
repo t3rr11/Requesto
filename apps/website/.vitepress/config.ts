@@ -1,4 +1,5 @@
 import { defineConfig, type PageData } from 'vitepress';
+import llmstxt from 'vitepress-plugin-llms';
 import { version } from '../../../package.json';
 
 const SITE_URL = 'https://requesto.com.au';
@@ -12,6 +13,11 @@ export default defineConfig({
 
   sitemap: {
     hostname: SITE_URL,
+  },
+
+  vite: {
+    // @ts-expect-error - monorepo Vite version mismatch: plugin resolves root Vite 8 types, VitePress bundles Vite 5
+    plugins: [llmstxt()],
   },
 
   head: [
