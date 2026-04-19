@@ -51,11 +51,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            build-cmd: npm run build:electron ; npx --prefix apps/electron electron-builder --win --x64 --publish always
+            build-cmd: npm run build:electron ; cd apps/electron ; npx electron-builder --win --x64 --publish always
           - os: macos-latest
-            build-cmd: npm run build:electron ; npx --prefix apps/electron electron-builder --mac --publish always
+            build-cmd: npm run build:electron ; cd apps/electron ; npx electron-builder --mac --publish always
           - os: ubuntu-latest
-            build-cmd: npm run build:electron ; npx --prefix apps/electron electron-builder --linux --publish always
+            build-cmd: npm run build:electron ; cd apps/electron ; npx electron-builder --linux --publish always
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
