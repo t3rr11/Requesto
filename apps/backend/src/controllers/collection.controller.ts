@@ -71,6 +71,14 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     },
   );
 
+  server.post<{ Params: { id: string; requestId: string } }>(
+    '/collections/:id/requests/:requestId/duplicate',
+    async (request, reply) => {
+      const saved = await collectionService.duplicateRequest(request.params.id, request.params.requestId);
+      return reply.code(201).send(saved);
+    },
+  );
+
   server.post<{ Params: { id: string }; Body: { name: string; parentId?: string } }>(
     '/collections/:id/folders',
     async (request, reply) => {
