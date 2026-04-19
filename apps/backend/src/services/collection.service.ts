@@ -113,6 +113,29 @@ export class CollectionService {
     }
   }
 
+  async duplicateRequest(collectionId: string, requestId: string): Promise<SavedRequest> {
+    const collection = await this.repo.getById(collectionId);
+    if (!collection) {
+      throw AppError.notFound('Collection not found');
+    }
+    const original = collection.requests.find((r) => r.id === requestId);
+    if (!original) {
+      throw AppError.notFound('Request not found');
+    }
+    const duplicate: SavedRequest = {
+      ...original,
+      id: `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      name: `${original.name} Copy`,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const saved = await this.repo.addRequest(collectionId, duplicate);
+    if (!saved) {
+      throw AppError.notFound('Collection not found');
+    }
+    return saved;
+  }
+
   async addFolder(collectionId: string, data: { name: string; parentId?: string }): Promise<Folder> {
     const newFolder: Folder = {
       id: `folder-${Date.now()}-${Math.random().toString(36).substring(7)}`,

@@ -30,6 +30,7 @@ type CollectionsState = {
   deleteCollection: (id: string) => Promise<void>;
   deleteFolder: (collectionId: string, folderId: string) => Promise<void>;
   deleteRequest: (collectionId: string, requestId: string) => Promise<void>;
+  duplicateRequest: (collectionId: string, requestId: string) => Promise<void>;
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
   updateRequest: (collectionId: string, requestId: string, updates: Partial<SavedRequest>) => Promise<void>;
   updateFolder: (collectionId: string, folderId: string, updates: Partial<Folder>) => Promise<void>;
@@ -63,6 +64,7 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
   deleteCollection: (id) => actions.deleteCollection(set, id),
   deleteFolder: (collectionId, folderId) => actions.deleteFolder(set, collectionId, folderId),
   deleteRequest: (collectionId, requestId) => actions.deleteRequest(set, collectionId, requestId),
+  duplicateRequest: (collectionId, requestId) => actions.duplicateRequest(set, collectionId, requestId),
   updateCollection: (id, updates) => actions.updateCollection(set, id, updates),
   updateRequest: (collectionId, requestId, updates) =>
     actions.updateRequest(set, collectionId, requestId, updates),

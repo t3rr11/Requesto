@@ -32,9 +32,6 @@ app.whenReady().then(async () => {
     }
   }
 
-  // TODO: Remove extra delay — temporary for splash screen preview
-  await new Promise(resolve => setTimeout(resolve, 3000));
-
   createWindow();
 
   // Close splash screen after a short delay to ensure smooth transition

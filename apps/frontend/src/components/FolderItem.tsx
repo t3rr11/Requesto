@@ -8,6 +8,7 @@ import {
   Trash2,
   Plus,
   Download,
+  Copy,
 } from 'lucide-react';
 import type { Folder, Collection, SavedRequest } from '../store/collections/types';
 import { useCollectionsStore } from '../store/collections/store';
@@ -156,6 +157,18 @@ export function FolderItem({
       showAlert('Request exported successfully', 'success');
     } catch {
       showAlert('Failed to export request', 'error');
+    }
+    closeRequestContextMenu();
+  };
+
+  const handleDuplicateRequest = async () => {
+    if (!requestContextMenu) return;
+    const { duplicateRequest } = useCollectionsStore.getState();
+    try {
+      await duplicateRequest(requestContextMenu.request.collectionId, requestContextMenu.request.id);
+      showAlert('Request duplicated successfully', 'success');
+    } catch {
+      showAlert('Failed to duplicate request', 'error');
     }
     closeRequestContextMenu();
   };
@@ -332,6 +345,7 @@ export function FolderItem({
           position={{ x: requestContextMenu.x, y: requestContextMenu.y }}
           items={[
             { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameRequestFromContext },
+            { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: handleDuplicateRequest },
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportRequest },
             { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteRequestFromContext, danger: true },
           ]}

@@ -80,6 +80,12 @@ async function deleteRequestApi(collectionId: string, requestId: string): Promis
   if (!res.ok) throw new Error('Failed to delete request');
 }
 
+async function duplicateRequestApi(collectionId: string, requestId: string): Promise<SavedRequest> {
+  const res = await fetch(`${API_BASE}/collections/${collectionId}/requests/${requestId}/duplicate`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to duplicate request');
+  return res.json();
+}
+
 async function addFolderApi(collectionId: string, data: { name: string; parentId?: string }): Promise<Folder> {
   const res = await fetch(`${API_BASE}/collections/${collectionId}/folders`, {
     method: 'POST',
@@ -236,6 +242,16 @@ export async function deleteRequest(set: SetState, collectionId: string, request
     await loadCollections(set);
   } catch (error) {
     console.error('Failed to delete request:', error);
+  }
+}
+
+export async function duplicateRequest(set: SetState, collectionId: string, requestId: string): Promise<void> {
+  try {
+    await duplicateRequestApi(collectionId, requestId);
+    await loadCollections(set);
+    notifyDataMutated();
+  } catch (error) {
+    console.error('Failed to duplicate request:', error);
   }
 }
 
