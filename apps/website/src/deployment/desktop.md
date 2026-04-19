@@ -51,6 +51,17 @@ chmod +x Requesto-*.AppImage
 
 **Data location**: `~/.config/requesto-electron/data`
 
+## Updates
+
+Requesto checks for a new version automatically when it launches. If one is available, a download icon with a green dot appears in the top-right of the header.
+
+Click the icon to open the update dialog, which shows the new version number and any release notes. From there:
+
+1. Click **Download Update** — the installer downloads in the background and a progress bar is shown.
+2. Once complete, click **Restart & Install** — the app closes, installs silently, and relaunches.
+
+On Windows the installer runs in-place using NSIS, so your taskbar and Start Menu shortcuts are preserved across updates. You can also dismiss the dialog and install later — the badge stays visible until you restart.
+
 ## How It Works
 
 When you launch the desktop app:

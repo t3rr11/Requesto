@@ -51,14 +51,11 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            build-cmd: npm run package:win -w requesto-electron
-            artifact-pattern: 'dist/*.exe'
+            build-cmd: npm run build:electron ; npx --prefix apps/electron electron-builder --win --x64 --publish always
           - os: macos-latest
-            build-cmd: npm run package:mac -w requesto-electron
-            artifact-pattern: 'dist/*.{dmg,zip}'
+            build-cmd: npm run build:electron ; npx --prefix apps/electron electron-builder --mac --publish always
           - os: ubuntu-latest
-            build-cmd: npm run package:linux -w requesto-electron
-            artifact-pattern: 'dist/*.{AppImage,deb}'
+            build-cmd: npm run build:electron ; npx --prefix apps/electron electron-builder --linux --publish always
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -85,20 +82,10 @@ jobs:
           npm run build:frontend
 
       - name: Build Electron (${{ matrix.os }})
-        run: |
-          npm run build:electron
-          ${{ matrix.build-cmd }}
-
-      - name: Upload artifacts to release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: |
-          for file in dist/*.exe dist/*.dmg dist/*.zip dist/*.AppImage dist/*.deb; do
-            if [ -f "$file" ]; then
-              gh release upload ${{ inputs.version }} "$file" --clobber
-            fi
-          done
+        run: ${{ matrix.build-cmd }}
 
   docker:
     needs: create-release

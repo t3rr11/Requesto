@@ -6,9 +6,11 @@ import { useWorkspaceStore } from './store/workspace/store';
 import { useGitStore } from './store/git/store';
 import { useThemeStore } from './store/theme/store';
 import { useAlertStore } from './store/alert/store';
+import { useUpdateStore } from './store/update/store';
 import { useGitAutoRefresh } from './hooks/useGitAutoRefresh';
 import { Header } from './components/Header';
 import { AlertDialog } from './components/AlertDialog';
+import { UpdateDialog } from './components/UpdateDialog';
 import { RequestsPage } from './pages/RequestsPage';
 import { OAuthCallback } from './components/OAuthCallback';
 
@@ -19,6 +21,7 @@ function App() {
   const { checkGit } = useGitStore();
   const { isDarkMode } = useThemeStore();
   const { isOpen: alertOpen, title: alertTitle, message: alertMessage, variant: alertVariant, closeAlert } = useAlertStore();
+  const { dialogOpen: updateDialogOpen, setAvailable, setDownloading, setProgress, setDownloaded, setError, setDialogOpen } = useUpdateStore();
 
   useEffect(() => {
     loadWorkspaces().then(() => {
@@ -44,6 +47,21 @@ function App() {
 
   useGitAutoRefresh();
 
+  useEffect(() => {
+    const api = window.electronAPI?.update;
+    if (!api) return;
+    const unsubAvailable = api.onAvailable((info) => { setAvailable(info); setDialogOpen(true); });
+    const unsubProgress = api.onProgress((p) => { setDownloading(); setProgress(p); });
+    const unsubDownloaded = api.onDownloaded(() => setDownloaded());
+    const unsubError = api.onError((msg) => setError(msg));
+    return () => {
+      unsubAvailable();
+      unsubProgress();
+      unsubDownloaded();
+      unsubError();
+    };
+  }, [setAvailable, setDownloading, setProgress, setDownloaded, setError, setDialogOpen]);
+
   return (
     <HashRouter>
       <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
@@ -61,6 +79,7 @@ function App() {
           message={alertMessage}
           variant={alertVariant}
         />
+        <UpdateDialog isOpen={updateDialogOpen} onClose={() => setDialogOpen(false)} />
       </div>
     </HashRouter>
   );

@@ -1,8 +1,11 @@
 import { app, session } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { isDev } from './constants';
 
 export async function clearCacheOnVersionChange(): Promise<void> {
+  if (isDev) return;
+
   const versionFile = path.join(app.getPath('userData'), '.last-version');
   const currentVersion = app.getVersion();
   let lastVersion: string | null = null;
