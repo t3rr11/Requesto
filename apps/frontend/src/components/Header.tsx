@@ -1,18 +1,22 @@
 import { useUIStore } from '../store/ui/store';
 import { useThemeStore } from '../store/theme/store';
+import { useUpdateStore } from '../store/update/store';
 import { useDialog } from '../hooks/useDialog';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { HelpContent } from './HelpContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { WorkspaceManagerDialog } from './WorkspaceManagerDialog';
-import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose } from 'lucide-react';
+import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose, ArrowDownToLine } from 'lucide-react';
 
 export function Header() {
   const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, panelLayout, togglePanelLayout } = useUIStore();
   const { isDarkMode, toggleTheme } = useThemeStore();
+  const { status: updateStatus, setDialogOpen: setUpdateDialogOpen } = useUpdateStore();
   const helpDialog = useDialog();
   const workspaceManagerDialog = useDialog();
+
+  const showUpdateBadge = updateStatus === 'available' || updateStatus === 'downloading' || updateStatus === 'downloaded';
 
   return (
     <header className="bg-linear-to-r from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-800 text-white shadow-lg border-b border-gray-300 dark:border-gray-700">
@@ -46,6 +50,18 @@ export function Header() {
           >
             <HelpCircle className="w-5 h-5" />
           </Button>
+          {showUpdateBadge && (
+            <Button
+              onClick={() => setUpdateDialogOpen(true)}
+              variant="icon"
+              size="sm"
+              title="Update available"
+              className="relative text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white!"
+            >
+              <ArrowDownToLine className="w-5 h-5" />
+              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            </Button>
+          )}
           <Button
             onClick={toggleTheme}
             variant="icon"
