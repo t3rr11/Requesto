@@ -51,11 +51,14 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            build-cmd: npm run build:electron ; cd apps/electron ; npx electron-builder --win --x64 --publish always
+            build-cmd: npm run package:win -w requesto-electron
+            artifact-pattern: 'dist/*.exe dist/*.yml'
           - os: macos-latest
-            build-cmd: npm run build:electron ; cd apps/electron ; npx electron-builder --mac --publish always
+            build-cmd: npm run package:mac -w requesto-electron
+            artifact-pattern: 'dist/*.dmg dist/*.zip dist/*.yml'
           - os: ubuntu-latest
-            build-cmd: npm run build:electron ; cd apps/electron ; npx electron-builder --linux --publish always
+            build-cmd: npm run package:linux -w requesto-electron
+            artifact-pattern: 'dist/*.AppImage dist/*.deb dist/*.yml'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -82,10 +85,21 @@ jobs:
           npm run build:frontend
 
       - name: Build Electron (${{ matrix.os }})
+        shell: bash
+        run: |
+          npm run build:electron
+          ${{ matrix.build-cmd }}
+
+      - name: Upload artifacts to release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: ${{ matrix.build-cmd }}
+        run: |
+          for file in ${{ matrix.artifact-pattern }}; do
+            if [ -f "$file" ]; then
+              gh release upload ${{ inputs.version }} "$file" --clobber
+            fi
+          done
 
   docker:
     needs: create-release
