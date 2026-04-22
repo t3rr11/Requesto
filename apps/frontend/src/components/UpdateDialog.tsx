@@ -15,6 +15,13 @@ function formatBytes(bytes: number): string {
 export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
   const { status, version, releaseNotes, progress, errorMessage, setDownloading, setError } = useUpdateStore();
 
+  function handleClose() {
+    if (status === 'available' && version) {
+      localStorage.setItem('update-dismissed-version', version);
+    }
+    onClose();
+  }
+
   async function handleDownload() {
     setDownloading();
     try {
@@ -30,7 +37,7 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
   }
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="Update Available" size="sm">
+    <Dialog isOpen={isOpen} onClose={handleClose} title="Update Available" size="sm">
       {status === 'available' && (
         <>
           <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -47,7 +54,7 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
             </div>
           )}
           <div className="flex justify-end gap-2 mt-5">
-            <Button onClick={onClose} variant="secondary" size="md">
+            <Button onClick={handleClose} variant="secondary" size="md">
               Later
             </Button>
             <Button onClick={handleDownload} variant="primary" size="md">

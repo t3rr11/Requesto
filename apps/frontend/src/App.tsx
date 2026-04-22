@@ -20,8 +20,22 @@ function App() {
   const { loadWorkspaces } = useWorkspaceStore();
   const { checkGit } = useGitStore();
   const { isDarkMode } = useThemeStore();
-  const { isOpen: alertOpen, title: alertTitle, message: alertMessage, variant: alertVariant, closeAlert } = useAlertStore();
-  const { dialogOpen: updateDialogOpen, setAvailable, setDownloading, setProgress, setDownloaded, setError, setDialogOpen } = useUpdateStore();
+  const {
+    isOpen: alertOpen,
+    title: alertTitle,
+    message: alertMessage,
+    variant: alertVariant,
+    closeAlert,
+  } = useAlertStore();
+  const {
+    dialogOpen: updateDialogOpen,
+    setAvailable,
+    setDownloading,
+    setProgress,
+    setDownloaded,
+    setError,
+    setDialogOpen,
+  } = useUpdateStore();
 
   useEffect(() => {
     loadWorkspaces().then(() => {
@@ -50,10 +64,19 @@ function App() {
   useEffect(() => {
     const api = window.electronAPI?.update;
     if (!api) return;
-    const unsubAvailable = api.onAvailable((info) => { setAvailable(info); setDialogOpen(true); });
-    const unsubProgress = api.onProgress((p) => { setDownloading(); setProgress(p); });
+    const unsubAvailable = api.onAvailable(info => {
+      setAvailable(info);
+      const dismissed = localStorage.getItem('update-dismissed-version');
+      if (dismissed !== info.version) {
+        setDialogOpen(true);
+      }
+    });
+    const unsubProgress = api.onProgress(p => {
+      setDownloading();
+      setProgress(p);
+    });
     const unsubDownloaded = api.onDownloaded(() => setDownloaded());
-    const unsubError = api.onError((msg) => setError(msg));
+    const unsubError = api.onError(msg => setError(msg));
     return () => {
       unsubAvailable();
       unsubProgress();
