@@ -7,6 +7,49 @@ interface Options {
   oauthService: OAuthService;
 }
 
+/**
+ * Detects well-known provider errors that have non-obvious root causes and
+ * augments them with an actionable hint so users aren't left guessing.
+ */
+function decorateProviderError(details: unknown): unknown {
+  if (!details || typeof details !== 'object') return details;
+  const d = details as Record<string, unknown>;
+  const desc = typeof d.error_description === 'string' ? d.error_description : '';
+
+  // Microsoft EntraID: PKCE flow rejected because the redirect URI is
+  // registered under the "Web" platform (which always requires client_secret)
+  // instead of "Mobile and desktop applications" or "Single-page application".
+  if (desc.includes('AADSTS7000218')) {
+    return {
+      ...d,
+      hint:
+        "Your Azure AD app registration has the redirect URI registered under the 'Web' platform, which requires a client_secret even when using PKCE. " +
+        "To fix: open your app registration in the Azure portal → Authentication, remove the redirect URI from the 'Web' section, " +
+        "and add it under 'Mobile and desktop applications' (recommended for desktop apps like Requesto). " +
+        "Then enable 'Allow public client flows' under Advanced settings. " +
+        "Alternatively, add a client_secret to your OAuth configuration in Requesto.",
+    };
+  }
+
+  // Microsoft EntraID: redirect URI is registered under the "Single-page
+  // application" platform, which Azure restricts to browser-originated CORS
+  // requests only. Server-side token exchange (which Requesto uses) is
+  // refused for SPA clients regardless of PKCE.
+  if (desc.includes('AADSTS9002327')) {
+    return {
+      ...d,
+      hint:
+        "Your Azure AD app registration has the redirect URI registered under the 'Single-page application' platform, " +
+        "which only accepts token requests directly from the browser via CORS. Requesto exchanges tokens through its backend, " +
+        "so Azure rejects the request. To fix: open your app registration in the Azure portal → Authentication, " +
+        "remove the redirect URI from the 'Single-page application' section, and add it under 'Mobile and desktop applications' instead. " +
+        "Then enable 'Allow public client flows' under Advanced settings.",
+    };
+  }
+
+  return details;
+}
+
 const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
   const { oauthService } = opts;
 
@@ -60,7 +103,7 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
         if (axios.isAxiosError(error)) {
           return reply.code(error.response?.status || 500).send({
             error: 'Token exchange failed',
-            details: error.response?.data || error.message,
+            details: decorateProviderError(error.response?.data || error.message),
           });
         }
         throw error;

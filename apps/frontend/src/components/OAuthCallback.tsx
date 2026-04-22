@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { retrieveOAuthState } from '../helpers/oauth/stateHelper';
 import { useOAuthStore } from '../store/oauth/store';
 import { API_BASE } from '../helpers/api/config';
+import { formatTokenExchangeError } from '../helpers/oauth/oauthFlowHandler';
 import { Button } from './Button';
 
 export function OAuthCallback() {
@@ -73,8 +74,8 @@ export function OAuthCallback() {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          handleError(`Token exchange failed: ${errorData.error || 'Unknown error'}`);
+          const errorData = await response.json().catch(() => ({}));
+          handleError(formatTokenExchangeError(errorData));
           return;
         }
         tokens = await response.json();
@@ -109,16 +110,18 @@ export function OAuthCallback() {
       setTokens(configId, normalizedTokens, config.tokenStorage);
 
       if (window.opener && !window.opener.closed) {
+        // Use '*' as targetOrigin because in some environments (e.g. Electron dev
+        // mode) the opener's origin may differ from the popup's origin.
         window.opener.postMessage(
           { type: 'oauth-callback', success: true, tokens: normalizedTokens },
-          window.location.origin,
+          '*',
         );
         setStatus('success');
         setMessage('Authentication successful! You can close this window.');
         setTimeout(() => window.close(), 2000);
       } else {
         setStatus('success');
-        setMessage('Authentication successful! Redirecting...');
+        setMessage('Authentication successful!');
         setTimeout(() => navigate('/'), 1500);
       }
     } catch (err) {
@@ -134,7 +137,7 @@ export function OAuthCallback() {
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage(
         { type: 'oauth-callback', success: false, error: errorMessage, errorDescription: errorMessage },
-        window.location.origin,
+        '*',
       );
     } else {
       setTimeout(() => navigate('/'), 5000);
@@ -166,10 +169,16 @@ export function OAuthCallback() {
             {status === 'success' && 'Authentication Successful'}
             {status === 'error' && 'Authentication Failed'}
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">{message}</p>
+          <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap wrap-break-word text-left">{message}</p>
         </div>
 
         {status === 'error' && !(window.opener && !window.opener.closed) && (
+          <Button onClick={() => navigate('/')} variant="primary" className="mt-4">
+            Return to App
+          </Button>
+        )}
+
+        {status === 'success' && !(window.opener && !window.opener.closed) && (
           <Button onClick={() => navigate('/')} variant="primary" className="mt-4">
             Return to App
           </Button>

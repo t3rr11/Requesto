@@ -302,7 +302,7 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium">Authentication Error</p>
-                <p className="text-xs mt-1">{error}</p>
+                <p className="text-xs mt-1 whitespace-pre-wrap wrap-break-word">{error}</p>
               </div>
             </div>
           )}

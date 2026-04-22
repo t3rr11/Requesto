@@ -1,8 +1,13 @@
 import type { OAuthConfig, OAuthTokens } from '../../store/oauth/types';
 import { generateCodeVerifier, generateCodeChallenge } from './pkceHelper';
-import { saveState, generateState } from './stateHelper';
+import { saveState, generateState, retrieveOAuthState } from './stateHelper';
 import { getRedirectUri } from './redirectHelper';
 import { API_BASE } from '../api/config';
+
+// Detect Electron: present in both production (file://) and dev (http://localhost:5173)
+const isElectron =
+  typeof window !== 'undefined' &&
+  !!(window as unknown as Record<string, unknown>).electronAPI;
 
 export type OAuthFlowResult = {
   success: boolean;
@@ -10,6 +15,30 @@ export type OAuthFlowResult = {
   error?: string;
   errorDescription?: string;
 };
+
+/**
+ * Format a token-exchange error response from the Requesto backend into a
+ * user-readable description. The backend returns:
+ *   { error: 'Token exchange failed', details: { error, error_description, hint? } }
+ * where `details` is the upstream provider's payload (potentially augmented
+ * with a `hint` for known issues).
+ */
+export function formatTokenExchangeError(err: unknown): string {
+  if (!err || typeof err !== 'object') return 'Token exchange failed';
+  const e = err as Record<string, unknown>;
+  const details = (typeof e.details === 'object' && e.details !== null
+    ? (e.details as Record<string, unknown>)
+    : {}) as Record<string, unknown>;
+
+  const parts: string[] = [];
+  if (typeof details.error_description === 'string') parts.push(details.error_description);
+  else if (typeof details.error === 'string') parts.push(details.error);
+  else if (typeof e.error === 'string') parts.push(e.error);
+
+  if (typeof details.hint === 'string') parts.push(`\n\nHint: ${details.hint}`);
+
+  return parts.length > 0 ? parts.join('') : 'Token exchange failed';
+}
 
 /**
  * Build the authorization URL including PKCE params when enabled.
@@ -107,6 +136,12 @@ export async function startOAuthFlow(config: OAuthConfig): Promise<OAuthFlowResu
   if (config.flowType === 'client-credentials') return startClientCredentialsFlow(config);
   if (config.flowType === 'password') return startPasswordFlow(config);
 
+  // In Electron, use a native child BrowserWindow instead of window.open() or
+  // full-page redirect, both of which are broken in the file:// context.
+  if (isElectron) {
+    return startOAuthElectronFlow(config);
+  }
+
   const { url } = await buildAuthorizationUrl(config);
 
   if (config.usePopup) {
@@ -123,6 +158,105 @@ export async function startOAuthFlow(config: OAuthConfig): Promise<OAuthFlowResu
 
   redirectToOAuth(url);
   return { success: false, error: 'redirect_in_progress', errorDescription: 'Redirecting to OAuth provider...' };
+}
+
+/**
+ * Electron-specific OAuth flow: opens a child BrowserWindow, intercepts the
+ * redirect to the callback URL, and exchanges the code for tokens inline —
+ * without ever navigating the main window away.
+ */
+async function startOAuthElectronFlow(config: OAuthConfig): Promise<OAuthFlowResult> {
+  const { url: authUrl, redirectUri } = await buildAuthorizationUrl(config);
+
+  type ElectronAPI = { oauth: { openWindow: (authUrl: string, callbackUrlPrefix: string) => Promise<string | null> } };
+  const { oauth } = (window as unknown as { electronAPI: ElectronAPI }).electronAPI;
+
+  const callbackUrl = await oauth.openWindow(authUrl, redirectUri);
+
+  if (!callbackUrl) {
+    return { success: false, error: 'user_cancelled', errorDescription: 'Authentication was cancelled by the user' };
+  }
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(callbackUrl);
+  } catch {
+    return { success: false, error: 'invalid_callback', errorDescription: 'Received an invalid callback URL' };
+  }
+
+  const params = parsedUrl.searchParams;
+
+  const oauthError = params.get('error');
+  if (oauthError) {
+    return {
+      success: false,
+      error: oauthError,
+      errorDescription: params.get('error_description') || oauthError,
+    };
+  }
+
+  const code = params.get('code');
+  const stateParam = params.get('state');
+
+  if (!stateParam) {
+    return { success: false, error: 'missing_state', errorDescription: 'Missing state parameter in callback' };
+  }
+
+  const oauthState = retrieveOAuthState(stateParam);
+  if (!oauthState) {
+    return { success: false, error: 'invalid_state', errorDescription: 'Invalid or expired state parameter' };
+  }
+
+  if (code) {
+    const res = await fetch(`${API_BASE}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        configId: oauthState.configId,
+        code,
+        codeVerifier: oauthState.codeVerifier,
+        redirectUri: oauthState.redirectUri,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        error: 'token_exchange_failed',
+        errorDescription: formatTokenExchangeError(err),
+      };
+    }
+    const raw = await res.json();
+    const tokens: OAuthTokens = {
+      accessToken: raw.access_token,
+      tokenType: raw.token_type,
+      expiresIn: raw.expires_in,
+      expiresAt: raw.expires_in ? Date.now() + raw.expires_in * 1000 : undefined,
+      refreshToken: raw.refresh_token,
+      scope: raw.scope,
+      idToken: raw.id_token,
+    };
+    return { success: true, tokens };
+  }
+
+  // Implicit flow — access token in URL fragment
+  const fragment = new URLSearchParams(parsedUrl.hash.slice(1));
+  const accessToken = fragment.get('access_token');
+  if (accessToken) {
+    const expiresInStr = fragment.get('expires_in');
+    const expiresIn = expiresInStr ? parseInt(expiresInStr, 10) : undefined;
+    const tokens: OAuthTokens = {
+      accessToken,
+      tokenType: fragment.get('token_type') || 'Bearer',
+      expiresIn,
+      expiresAt: expiresIn ? Date.now() + expiresIn * 1000 : undefined,
+      scope: fragment.get('scope') || undefined,
+      idToken: fragment.get('id_token') || undefined,
+    };
+    return { success: true, tokens };
+  }
+
+  return { success: false, error: 'no_code', errorDescription: 'No authorization code or access token received' };
 }
 
 export async function exchangeCodeForTokens(configId: string, code: string, codeVerifier?: string): Promise<OAuthTokens> {
