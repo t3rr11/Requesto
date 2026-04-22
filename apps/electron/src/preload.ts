@@ -28,6 +28,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Environment check
   isDevelopment: process.env.NODE_ENV === 'development',
 
+  // OAuth child-window flow (used instead of window.open() in Electron)
+  oauth: {
+    openWindow: (authUrl: string, callbackUrlPrefix: string): Promise<string | null> =>
+      ipcRenderer.invoke('oauth:open-window', authUrl, callbackUrlPrefix),
+  },
+
   // Auto-update
   update: {
     onAvailable: (callback: (info: { version: string; releaseNotes: string | null }) => void) => {

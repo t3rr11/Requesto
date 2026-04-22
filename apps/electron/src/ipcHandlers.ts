@@ -1,4 +1,4 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, BrowserWindow } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { SIMULATE_UPDATE_AVAILABLE } from './constants';
 import { state } from './state';
@@ -43,5 +43,44 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('update:install', () => {
     if (SIMULATE_UPDATE_AVAILABLE) return;
     autoUpdater.quitAndInstall();
+  });
+
+  // OAuth: open a child BrowserWindow for the OAuth flow, intercept the redirect
+  // back to our callback URL, and return the full callback URL to the renderer.
+  ipcMain.handle('oauth:open-window', (_event, authUrl: string, callbackUrlPrefix: string): Promise<string | null> => {
+    return new Promise<string | null>((resolve) => {
+      const oauthWindow = new BrowserWindow({
+        width: 520,
+        height: 720,
+        parent: state.mainWindow ?? undefined,
+        modal: false,
+        title: 'Sign In',
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+
+      let resolved = false;
+      const resolveOnce = (url: string | null) => {
+        if (!resolved) {
+          resolved = true;
+          resolve(url);
+        }
+      };
+
+      const handleNavigation = (_e: Electron.Event, url: string) => {
+        if (url.startsWith(callbackUrlPrefix)) {
+          oauthWindow.close();
+          resolveOnce(url);
+        }
+      };
+
+      oauthWindow.webContents.on('will-redirect', handleNavigation);
+      oauthWindow.webContents.on('will-navigate', handleNavigation);
+      oauthWindow.on('closed', () => resolveOnce(null));
+
+      oauthWindow.loadURL(authUrl);
+    });
   });
 }

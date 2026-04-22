@@ -4,8 +4,21 @@ export type RedirectUriOptions = {
   forcePort?: number;
 };
 
+// In production Electron the frontend is served from file:// but the backend
+// always runs at http://localhost:4747, so we must use that as the redirect URI.
+const ELECTRON_BACKEND_ORIGIN = 'http://localhost:4747';
+
+function isElectronFileProtocol(): boolean {
+  return typeof window !== 'undefined' && window.location.protocol === 'file:';
+}
+
 export function getRedirectUri(options: RedirectUriOptions = {}): string {
   const { customPath = '/oauth/callback', forceProtocol, forcePort } = options;
+
+  if (isElectronFileProtocol()) {
+    return `${ELECTRON_BACKEND_ORIGIN}${customPath}`;
+  }
+
   const protocol = forceProtocol || window.location.protocol.replace(':', '');
   const hostname = window.location.hostname;
   const port = forcePort?.toString() || window.location.port;
@@ -19,6 +32,11 @@ export function getRedirectUri(options: RedirectUriOptions = {}): string {
 
 export function getRedirectUriForEntraId(options: RedirectUriOptions = {}): string {
   const { customPath = '/oauth/callback' } = options;
+
+  if (isElectronFileProtocol()) {
+    return `${ELECTRON_BACKEND_ORIGIN}${customPath}`;
+  }
+
   const hostname = window.location.hostname;
   const port = window.location.port;
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
