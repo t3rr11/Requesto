@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron';
+import { ipcMain, dialog, shell, BrowserWindow } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { SIMULATE_UPDATE_AVAILABLE } from './constants';
 import { state } from './state';
@@ -40,15 +40,43 @@ export function registerIpcHandlers(): void {
     return autoUpdater.downloadUpdate();
   });
 
-  ipcMain.handle('update:install', () => {
-    if (SIMULATE_UPDATE_AVAILABLE) return;
+  ipcMain.handle('update:install', async () => {
+    if (process.platform === 'darwin') {
+      // macOS requires code signing for silent in-place updates. Since this app
+      // is unsigned, quitAndInstall() will silently fail. Instead, show the user
+      // where the downloaded file is and direct them to install it manually.
+      const downloadedFile = state.downloadedUpdatePath;
+      const buttons = downloadedFile
+        ? ['Show in Finder', 'Open Releases Page', 'Cancel']
+        : ['Open Releases Page', 'Cancel'];
+
+      const { response } = await dialog.showMessageBox({
+        type: 'info',
+        title: 'Manual Installation Required',
+        message: 'Automatic updates require the app to be signed.',
+        detail: downloadedFile
+          ? 'The update has been downloaded. Open it in Finder, drag the new Requesto.app into your Applications folder, and relaunch.'
+          : 'Please download the latest version from the releases page and drag it into your Applications folder.',
+        buttons,
+        defaultId: 0,
+        cancelId: buttons.length - 1,
+      });
+
+      if (downloadedFile && response === 0) {
+        shell.showItemInFolder(downloadedFile);
+      } else if (response === (downloadedFile ? 1 : 0)) {
+        shell.openExternal('https://github.com/t3rr11/Requesto/releases/latest');
+      }
+      return;
+    }
+
     autoUpdater.quitAndInstall();
   });
 
   // OAuth: open a child BrowserWindow for the OAuth flow, intercept the redirect
   // back to our callback URL, and return the full callback URL to the renderer.
   ipcMain.handle('oauth:open-window', (_event, authUrl: string, callbackUrlPrefix: string): Promise<string | null> => {
-    return new Promise<string | null>((resolve) => {
+    return new Promise<string | null>(resolve => {
       const oauthWindow = new BrowserWindow({
         width: 520,
         height: 720,

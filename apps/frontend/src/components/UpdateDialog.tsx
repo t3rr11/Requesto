@@ -15,6 +15,13 @@ function formatBytes(bytes: number): string {
 export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
   const { status, version, releaseNotes, progress, errorMessage, setDownloading, setError } = useUpdateStore();
 
+  function handleClose() {
+    if (status === 'available' && version) {
+      localStorage.setItem('update-dismissed-version', version);
+    }
+    onClose();
+  }
+
   async function handleDownload() {
     setDownloading();
     try {
@@ -30,7 +37,7 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
   }
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="Update Available" size="sm">
+    <Dialog isOpen={isOpen} onClose={handleClose} title="Update Available" size="sm">
       {status === 'available' && (
         <>
           <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -38,13 +45,21 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
           </p>
           {releaseNotes && (
             <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg max-h-40 overflow-y-auto">
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide mb-1">Release Notes</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{releaseNotes}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide mb-1">
+                Release Notes
+              </p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {releaseNotes.replace(/<[^>]+>/g, '').trim()}
+              </p>
             </div>
           )}
           <div className="flex justify-end gap-2 mt-5">
-            <Button onClick={onClose} variant="secondary" size="md">Later</Button>
-            <Button onClick={handleDownload} variant="primary" size="md">Download Update</Button>
+            <Button onClick={handleClose} variant="secondary" size="md">
+              Later
+            </Button>
+            <Button onClick={handleDownload} variant="primary" size="md">
+              Download Update
+            </Button>
           </div>
         </>
       )}
@@ -60,11 +75,14 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
           </div>
           {progress && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              {formatBytes(progress.transferred)} / {formatBytes(progress.total)} &mdash; {formatBytes(progress.bytesPerSecond)}/s
+              {formatBytes(progress.transferred)} / {formatBytes(progress.total)} &mdash;{' '}
+              {formatBytes(progress.bytesPerSecond)}/s
             </p>
           )}
           <div className="flex justify-end mt-5">
-            <Button disabled variant="primary" size="md">Downloading…</Button>
+            <Button disabled variant="primary" size="md">
+              Downloading…
+            </Button>
           </div>
         </>
       )}
@@ -72,11 +90,16 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
       {status === 'downloaded' && (
         <>
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Version <span className="font-semibold text-gray-900 dark:text-gray-100">{version}</span> is ready to install. The app will restart automatically.
+            Version <span className="font-semibold text-gray-900 dark:text-gray-100">{version}</span> is ready to
+            install. The app will restart automatically.
           </p>
           <div className="flex justify-end gap-2 mt-5">
-            <Button onClick={onClose} variant="secondary" size="md">Later</Button>
-            <Button onClick={handleInstall} variant="primary" size="md">Restart &amp; Install</Button>
+            <Button onClick={onClose} variant="secondary" size="md">
+              Later
+            </Button>
+            <Button onClick={handleInstall} variant="primary" size="md">
+              Restart &amp; Install
+            </Button>
           </div>
         </>
       )}
@@ -85,11 +108,17 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
         <>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">The update could not be downloaded.</p>
           {errorMessage && (
-            <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">{errorMessage}</p>
+            <p className="text-xs text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">
+              {errorMessage}
+            </p>
           )}
           <div className="flex justify-end gap-2 mt-5">
-            <Button onClick={onClose} variant="secondary" size="md">Close</Button>
-            <Button onClick={handleDownload} variant="primary" size="md">Retry</Button>
+            <Button onClick={onClose} variant="secondary" size="md">
+              Close
+            </Button>
+            <Button onClick={handleDownload} variant="primary" size="md">
+              Retry
+            </Button>
           </div>
         </>
       )}
