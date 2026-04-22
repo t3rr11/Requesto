@@ -10,12 +10,12 @@ description: Deploy Requesto with Docker using a single docker run command or Do
 ```bash
 docker run -d \
   --name requesto \
-  -p 4000:4000 \
+  -p 4747:4747 \
   -v requesto-data:/app/data \
   terrii/requesto:latest
 ```
 
-Open [http://localhost:4000](http://localhost:4000).
+Open [http://localhost:4747](http://localhost:4747).
 
 ## Docker Compose
 
@@ -26,12 +26,12 @@ services:
     container_name: requesto
     restart: unless-stopped
     ports:
-      - "4000:4000"
+      - "4747:4747"
     volumes:
       - requesto-data:/app/data
     environment:
       - NODE_ENV=production
-      - PORT=4000
+      - PORT=4747
       - HOST=0.0.0.0
 
 volumes:
@@ -47,7 +47,7 @@ docker-compose up -d
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NODE_ENV` | `production` | Set to `production` to serve the frontend as static files |
-| `PORT` | `4000` | Port the server listens on |
+| `PORT` | `4747` | Port the server listens on |
 | `HOST` | `0.0.0.0` | Address to bind to |
 | `DATA_DIR` | `/app/data` | Directory for JSON data files |
 
@@ -87,7 +87,7 @@ docker restart requesto
 git clone https://github.com/t3rr11/Requesto.git
 cd Requesto
 docker build -t requesto:custom .
-docker run -d -p 4000:4000 -v requesto-data:/app/data requesto:custom
+docker run -d -p 4747:4747 -v requesto-data:/app/data requesto:custom
 ```
 
 The Dockerfile uses a multi-stage build: backend and frontend are built in separate stages, then combined into a Node.js Alpine production image.
@@ -95,7 +95,7 @@ The Dockerfile uses a multi-stage build: backend and frontend are built in separ
 ## Health Check
 
 ```bash
-curl http://localhost:4000/api/health
+curl http://localhost:4747/api/health
 ```
 
 ```json
@@ -112,7 +112,7 @@ server {
     server_name requesto.example.com;
 
     location / {
-        proxy_pass http://localhost:4000;
+        proxy_pass http://localhost:4747;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -139,13 +139,13 @@ Or without Compose:
 ```bash
 docker pull terrii/requesto:latest
 docker stop requesto && docker rm requesto
-docker run -d --name requesto -p 4000:4000 -v requesto-data:/app/data terrii/requesto:latest
+docker run -d --name requesto -p 4747:4747 -v requesto-data:/app/data terrii/requesto:latest
 ```
 
 ## Troubleshooting
 
 **Container won't start** - Check logs with `docker logs requesto`.
 
-**Port conflict** - Change the host-side port: `-p 8080:4000`.
+**Port conflict** - Change the host-side port: `-p 8080:4747`.
 
 **Permission issues on data directory** - Make sure the mount path is writable.

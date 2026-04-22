@@ -37,12 +37,12 @@ Download for Windows, macOS, or Linux from the [releases page](https://github.co
 
 ```bash
 docker run -d \
-  -p 4000:4000 \
+  -p 4747:4747 \
   -v requesto-data:/app/data \
   terrii/requesto:latest
 ```
 
-Open [http://localhost:4000](http://localhost:4000).
+Open [http://localhost:4747](http://localhost:4747).
 
 Or with Docker Compose:
 
@@ -59,7 +59,7 @@ npm install
 npm run dev
 ```
 
-Backend runs on port 4000, frontend dev server on port 5173.
+Backend runs on port 4747, frontend dev server on port 5173.
 
 ## Development
 
@@ -74,7 +74,7 @@ Backend runs on port 4000, frontend dev server on port 5173.
 ```
 Requesto/
 ├── apps/
-│   ├── backend/      # Fastify backend server (port 4000)
+│   ├── backend/      # Fastify backend server (port 4747)
 │   ├── frontend/     # React/Vite UI (port 5173 in dev)
 │   ├── electron/     # Electron desktop wrapper
 │   ├── website/      # VitePress documentation site

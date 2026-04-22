@@ -42,26 +42,26 @@ describe('urlMatchesTemplate', () => {
   });
 
   it('matches when user replaces baseUrl with full URL', () => {
-    expect(urlMatchesTemplate('http://localhost:4000/pets', '{{baseUrl}}/pets')).toBe(true);
+    expect(urlMatchesTemplate('http://localhost:4747/pets', '{{baseUrl}}/pets')).toBe(true);
   });
 
   it('matches when user replaces both baseUrl and path param', () => {
     expect(urlMatchesTemplate(
-      'http://localhost:4000/pets/123',
+      'http://localhost:4747/pets/123',
       '{{baseUrl}}/pets/{{petId}}',
     )).toBe(true);
   });
 
   it('matches with multiple path params', () => {
     expect(urlMatchesTemplate(
-      'http://localhost:4000/owners/42/pets/7',
+      'http://localhost:4747/owners/42/pets/7',
       '{{baseUrl}}/owners/{{ownerId}}/pets/{{petId}}',
     )).toBe(true);
   });
 
   it('matches with query string and placeholders', () => {
     expect(urlMatchesTemplate(
-      'http://localhost:4000/pets?limit=10&offset=20',
+      'http://localhost:4747/pets?limit=10&offset=20',
       '{{baseUrl}}/pets?limit=0&offset=0',
     )).toBe(false); // query params are literal — different values are a diff
   });
@@ -168,7 +168,7 @@ describe('buildSyncPreview', () => {
 
   it('preserves user URL when only placeholders were substituted', () => {
     const existing = makeCollection([
-      makeRequest({ id: 'r1', operationId: 'getPet', url: 'http://localhost:4000/pets/123' }),
+      makeRequest({ id: 'r1', operationId: 'getPet', url: 'http://localhost:4747/pets/123' }),
     ]);
     const incoming = makeCollection([
       makeRequest({ id: 'r1-new', operationId: 'getPet', url: '{{baseUrl}}/pets/{{petId}}' }),

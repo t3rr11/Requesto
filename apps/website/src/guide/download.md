@@ -10,12 +10,12 @@ description: Install Requesto via Docker, download the desktop app for Windows, 
 ```bash
 docker run -d \
   --name requesto \
-  -p 4000:4000 \
+  -p 4747:4747 \
   -v requesto-data:/app/data \
   terrii/requesto:latest
 ```
 
-Open [http://localhost:4000](http://localhost:4000). See the [Docker Deployment](/deployment/docker) page for compose files and configuration.
+Open [http://localhost:4747](http://localhost:4747). See the [Docker Deployment](/deployment/docker) page for compose files and configuration.
 
 ## Desktop App
 
@@ -53,7 +53,7 @@ npm install
 npm run dev
 ```
 
-This starts the backend on port 4000 and the frontend dev server on port 5173. See [Building from Source](/deployment/building) for more details.
+This starts the backend on port 4747 and the frontend dev server on port 5173. See [Building from Source](/deployment/building) for more details.
 
 ## Next Steps
 

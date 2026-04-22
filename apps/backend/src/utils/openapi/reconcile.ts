@@ -94,7 +94,7 @@ export function buildSyncPreview(
 /**
  * Check whether the user's URL is structurally equivalent to the spec URL,
  * meaning the user only substituted placeholder values (like replacing
- * `{{baseUrl}}` with `http://localhost:4000` or `{{petId}}` with `123`).
+ * `{{baseUrl}}` with `http://localhost:4747` or `{{petId}}` with `123`).
  *
  * Converts the spec URL into a regex where each `{{placeholder}}` becomes
  * a pattern, and tests whether the user URL matches. Placeholders between

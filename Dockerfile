@@ -47,12 +47,15 @@ RUN addgroup -g 1001 requesto && adduser -D -u 1001 -G requesto requesto && \
     mkdir -p /app/data && chown -R requesto:requesto /app
 
 # Expose port
-EXPOSE 4000
+EXPOSE 4747
 
 # Environment variables
 ENV NODE_ENV=production
-ENV PORT=4000
+ENV PORT=4747
 ENV HOST=0.0.0.0
+
+# Declare volume after chown so Docker initialises it with requesto ownership
+VOLUME ["/app/data"]
 
 # Run as non-root user
 USER requesto
