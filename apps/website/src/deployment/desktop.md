@@ -66,7 +66,7 @@ On Windows the installer runs in-place using NSIS, so your taskbar and Start Men
 
 When you launch the desktop app:
 
-1. The Electron process starts the Fastify backend on port 4000 as a child process
+1. The Electron process starts the Fastify backend on port 4747 as a child process
 2. The frontend loads from bundled static files
 3. All API requests go through the local backend, same as the web version
 4. Data is stored in JSON files in the platform-specific app data directory
@@ -102,7 +102,7 @@ Output goes to `apps/electron/dist/`.
 
 ## Troubleshooting
 
-**Port 4000 conflict** - The backend uses port 4000 internally. If something else is using it, close that process and restart Requesto.
+**Port 4747 conflict** - The backend uses port 4747 internally. If something else is using it, close that process and restart Requesto.
 
 **macOS Gatekeeper** - Right-click the app → "Open" to bypass on first launch.
 

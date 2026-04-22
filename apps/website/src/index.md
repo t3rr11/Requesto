@@ -66,7 +66,7 @@ Download for Windows, macOS, or Linux from the [releases page](https://github.co
 
 ```bash
 docker run -d \
-  -p 4000:4000 \
+  -p 4747:4747 \
   -v requesto-data:/app/data \
   terrii/requesto:latest
 ```

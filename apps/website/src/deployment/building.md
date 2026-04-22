@@ -26,7 +26,7 @@ This installs dependencies for all three apps (backend, frontend, electron) via 
 ```
 Requesto/
 ├── apps/
-│   ├── backend/      # Fastify backend server (port 4000)
+│   ├── backend/      # Fastify backend server (port 4747)
 │   ├── frontend/     # React/Vite UI (port 5173 in dev)
 │   ├── electron/     # Electron desktop wrapper
 │   ├── website/      # VitePress documentation site
@@ -37,7 +37,7 @@ Requesto/
 ## Development
 
 ```bash
-npm run dev              # Backend + frontend (ports 4000 & 5173)
+npm run dev              # Backend + frontend (ports 4747 & 5173)
 npm run dev:electron     # All three with Electron window
 npm run dev:backend      # Backend only
 npm run dev:frontend     # Frontend only
@@ -67,7 +67,7 @@ Output goes to `apps/electron/dist/`.
 
 ```bash
 docker build -t requesto:custom .
-docker run -d -p 4000:4000 -v requesto-data:/app/data requesto:custom
+docker run -d -p 4747:4747 -v requesto-data:/app/data requesto:custom
 ```
 
 Or with Compose:
@@ -82,7 +82,7 @@ docker-compose up --build
 
 **Clean reinstall** - If builds break: `rm -rf node_modules apps/*/node_modules && npm install`
 
-**Port conflict** - Backend uses port 4000, frontend dev server uses 5173. Change in `apps/backend/src/server.ts` or `apps/frontend/vite.config.ts`.
+**Port conflict** - Backend uses port 4747, frontend dev server uses 5173. Change in `apps/backend/src/config/index.ts` or `apps/frontend/vite.config.ts`.
 
 ## Scripts Reference
 

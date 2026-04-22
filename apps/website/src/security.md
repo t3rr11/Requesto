@@ -65,7 +65,7 @@ The desktop app uses Electron with these settings:
 ## Network
 
 - The desktop app makes no inbound connections
-- Docker deployments expose only the configured port (default 4000)
+- Docker deployments expose only the configured port (default 4747)
 - The only outbound connections are to the API endpoints you send requests to and OAuth provider URLs during token exchange
 
 ## Authentication
@@ -83,7 +83,7 @@ server {
     auth_basic_user_file /etc/nginx/.htpasswd;
 
     location / {
-        proxy_pass http://localhost:4000;
+        proxy_pass http://localhost:4747;
     }
 }
 ```

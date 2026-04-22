@@ -30,7 +30,7 @@ Common fields:
 | Client Secret | From your OAuth provider (stored server-side only) |
 | Authorization URL | Provider's authorize endpoint |
 | Token URL | Provider's token endpoint |
-| Redirect URI | Auto-detected from your browser URL - typically `http://localhost:5173/oauth/callback` in dev or `http://localhost:4000/oauth/callback` in Docker |
+| Redirect URI | Auto-detected from your browser URL - typically `http://localhost:5173/oauth/callback` in dev or `http://localhost:4747/oauth/callback` in Docker |
 | Scopes | Space-separated list of permissions |
 
 ## Authorizing
