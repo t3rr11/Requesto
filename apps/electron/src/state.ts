@@ -6,9 +6,11 @@ export const state: {
   splashWindow: BrowserWindow | null;
   backendProcess: ChildProcess | null;
   isQuitting: boolean;
+  downloadedUpdatePath: string | null;
 } = {
   mainWindow: null,
   splashWindow: null,
   backendProcess: null,
   isQuitting: false,
+  downloadedUpdatePath: null,
 };

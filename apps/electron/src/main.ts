@@ -13,14 +13,14 @@ function setupAutoUpdater(): void {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
 
-  autoUpdater.on('update-available', (info) => {
+  autoUpdater.on('update-available', info => {
     state.mainWindow?.webContents.send('update:available', {
       version: info.version,
       releaseNotes: info.releaseNotes ?? null,
     });
   });
 
-  autoUpdater.on('download-progress', (progress) => {
+  autoUpdater.on('download-progress', progress => {
     state.mainWindow?.webContents.send('update:progress', {
       percent: progress.percent,
       bytesPerSecond: progress.bytesPerSecond,
@@ -29,11 +29,12 @@ function setupAutoUpdater(): void {
     });
   });
 
-  autoUpdater.on('update-downloaded', () => {
+  autoUpdater.on('update-downloaded', info => {
+    state.downloadedUpdatePath = info.downloadedFile ?? null;
     state.mainWindow?.webContents.send('update:downloaded');
   });
 
-  autoUpdater.on('error', (err) => {
+  autoUpdater.on('error', err => {
     state.mainWindow?.webContents.send('update:error', err.message);
   });
 }
@@ -84,7 +85,7 @@ app.whenReady().then(async () => {
         });
       }, 2000);
     } else {
-      autoUpdater.checkForUpdates().catch((err) => {
+      autoUpdater.checkForUpdates().catch(err => {
         console.error('Update check failed:', err);
       });
     }
