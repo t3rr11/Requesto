@@ -52,13 +52,13 @@ jobs:
         include:
           - os: windows-latest
             build-cmd: npm run package:win -w requesto-electron
-            artifact-pattern: 'dist/*.exe dist/*.yml'
+            artifact-pattern: 'dist/*.exe dist/latest*.yml'
           - os: macos-latest
             build-cmd: npm run package:mac -w requesto-electron
-            artifact-pattern: 'dist/*.dmg dist/*.zip dist/*.yml'
+            artifact-pattern: 'dist/*.dmg dist/*.zip dist/latest*.yml'
           - os: ubuntu-latest
             build-cmd: npm run package:linux -w requesto-electron
-            artifact-pattern: 'dist/*.AppImage dist/*.deb dist/*.yml'
+            artifact-pattern: 'dist/*.AppImage dist/*.deb dist/latest*.yml'
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
