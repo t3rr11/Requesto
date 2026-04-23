@@ -5,15 +5,17 @@ import { useDialog } from '../hooks/useDialog';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { HelpContent } from './HelpContent';
+import { SettingsDialog } from './SettingsDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { WorkspaceManagerDialog } from './WorkspaceManagerDialog';
-import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose, ArrowDownToLine } from 'lucide-react';
+import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose, ArrowDownToLine, Settings as SettingsIcon } from 'lucide-react';
 
 export function Header() {
   const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, panelLayout, togglePanelLayout } = useUIStore();
   const { isDarkMode, toggleTheme } = useThemeStore();
   const { status: updateStatus, setDialogOpen: setUpdateDialogOpen } = useUpdateStore();
   const helpDialog = useDialog();
+  const settingsDialog = useDialog();
   const workspaceManagerDialog = useDialog();
 
   const showUpdateBadge = updateStatus === 'available' || updateStatus === 'downloading' || updateStatus === 'downloaded';
@@ -89,12 +91,22 @@ export function Header() {
           >
             <Terminal className="w-5 h-5" />
           </Button>
+          <Button
+            onClick={settingsDialog.open}
+            variant="icon"
+            size="sm"
+            title="Settings"
+            className="text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white!"
+          >
+            <SettingsIcon className="w-5 h-5" />
+          </Button>
         </div>
       </div>
 
       <Dialog isOpen={helpDialog.isOpen} onClose={helpDialog.close} title="Help">
         <HelpContent onClose={helpDialog.close} />
       </Dialog>
+      <SettingsDialog isOpen={settingsDialog.isOpen} onClose={settingsDialog.close} />
       <WorkspaceManagerDialog isOpen={workspaceManagerDialog.isOpen} onClose={workspaceManagerDialog.close} />
     </header>
   );

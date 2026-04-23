@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { CollectionService } from '../services/collection.service';
 import { OpenApiService } from '../services/openapi.service';
-import type { AuthConfig } from '../models/proxy';
+import type { AuthConfig, BodyType, FormDataEntry } from '../models/proxy';
 import type { SyncApplyBody } from '../models/openapi-sync';
 
 interface Options {
@@ -45,13 +45,13 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
 
   server.post<{
     Params: { id: string };
-    Body: { name: string; method: string; url: string; headers?: Record<string, string>; body?: string; auth?: AuthConfig; folderId?: string };
+    Body: { name: string; method: string; url: string; headers?: Record<string, string>; body?: string; bodyType?: BodyType; formDataEntries?: FormDataEntry[]; auth?: AuthConfig; folderId?: string };
   }>('/collections/:id/requests', async (request, reply) => {
-    const { name, method, url, headers, body, auth, folderId } = request.body;
+    const { name, method, url, headers, body, bodyType, formDataEntries, auth, folderId } = request.body;
     if (!name || !method || !url) {
       return reply.code(400).send({ error: 'Name, method, and URL are required' });
     }
-    const saved = await collectionService.addRequest(request.params.id, { name, method, url, headers, body, auth, folderId });
+    const saved = await collectionService.addRequest(request.params.id, { name, method, url, headers, body, bodyType, formDataEntries, auth, folderId });
     return reply.code(201).send(saved);
   });
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { retrieveOAuthState } from '../helpers/oauth/stateHelper';
 import { useOAuthStore } from '../store/oauth/store';
+import { useSettingsStore } from '../store/settings/store';
 import { API_BASE } from '../helpers/api/config';
 import { formatTokenExchangeError } from '../helpers/oauth/oauthFlowHandler';
 import { Button } from './Button';
@@ -70,7 +71,7 @@ export function OAuthCallback() {
         const response = await fetch(`${API_BASE}/oauth/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ configId, code, codeVerifier, redirectUri }),
+          body: JSON.stringify({ configId, code, codeVerifier, redirectUri, insecureTls: useSettingsStore.getState().insecureTls }),
         });
 
         if (!response.ok) {

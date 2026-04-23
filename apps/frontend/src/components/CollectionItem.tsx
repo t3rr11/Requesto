@@ -304,17 +304,19 @@ export function CollectionItem({
           {isLinked && <span title={`Linked to ${collection.openApiSpec!.source}`}><Link2 className="w-3 h-3 text-blue-500 shrink-0" /></span>}
           <span className="text-xs text-gray-400 dark:text-gray-500">({totalItems})</span>
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-          <Button onClick={e => { e.stopPropagation(); onOpenNewRequest(collection.id); }} variant="icon" size="sm" title="Add Request" className="hover:bg-gray-200">
-            <Plus className="w-3.5 h-3.5" />
-          </Button>
-          <Button onClick={e => { e.stopPropagation(); startCreateFolder(collection.id); }} variant="icon" size="sm" title="New Folder" className="hover:bg-gray-200">
-            <FolderPlus className="w-3.5 h-3.5" />
-          </Button>
-          <Button onClick={e => handleDeleteCollection(collection.id, e)} variant="icon" size="sm" title="Delete Collection" className="hover:bg-gray-200">
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
+        {!collection.isSystem && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+            <Button onClick={e => { e.stopPropagation(); onOpenNewRequest(collection.id); }} variant="icon" size="sm" title="Add Request" className="hover:bg-gray-200">
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+            <Button onClick={e => { e.stopPropagation(); startCreateFolder(collection.id); }} variant="icon" size="sm" title="New Folder" className="hover:bg-gray-200">
+              <FolderPlus className="w-3.5 h-3.5" />
+            </Button>
+            <Button onClick={e => handleDeleteCollection(collection.id, e)} variant="icon" size="sm" title="Delete Collection" className="hover:bg-gray-200">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {showExpanded && (
@@ -428,13 +430,17 @@ export function CollectionItem({
         <ContextMenu
           position={{ x: collectionContextMenu.x, y: collectionContextMenu.y }}
           items={[
-            { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
+            ...(collection.isSystem ? [] : [
+              { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
+            ]),
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportCollection },
             ...(isLinked ? [
               { label: 'Sync from Spec', icon: <RefreshCw className="w-4 h-4" />, onClick: handleSyncFromSpec },
               { label: 'Unlink Spec', icon: <Unlink className="w-4 h-4" />, onClick: handleUnlinkSpec },
             ] : []),
-            { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollectionFromContext, danger: true },
+            ...(collection.isSystem ? [] : [
+              { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteCollectionFromContext, danger: true },
+            ]),
           ]}
           onClose={closeCollectionContextMenu}
         />

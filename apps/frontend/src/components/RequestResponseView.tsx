@@ -18,6 +18,7 @@ import { useDialog } from '../hooks/useDialog';
 import { useResizablePanel } from '../hooks/useResizablePanel';
 import { buildRequestFromFormData, buildSavePayloadFromFormData } from '../helpers/request';
 import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
+import { applyAuthForDisplay } from '../helpers/api/authPreview';
 import type { StreamingResponse } from '../store/request/types';
 
 export function RequestResponseView() {
@@ -74,15 +75,16 @@ export function RequestResponseView() {
     }
 
     const requestId = crypto.randomUUID();
+    const displayRequest = applyAuthForDisplay(request);
 
     addConsoleLog({
       id: `req-${Date.now()}`,
       requestId,
       timestamp: Date.now(),
       type: 'request',
-      method: request.method,
-      url: request.url,
-      requestData: request,
+      method: displayRequest.method,
+      url: displayRequest.url,
+      requestData: displayRequest,
     });
 
     setTabLoading(tab.id, true);

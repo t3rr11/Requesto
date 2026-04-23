@@ -53,6 +53,11 @@ export interface ProxyRequest {
   bodyType?: BodyType;
   formDataEntries?: FormDataEntry[];
   auth?: AuthConfig;
+  /**
+   * When true, ignore TLS certificate errors (e.g. self-signed certs in
+   * chain). Driven by a global user setting on the frontend.
+   */
+  insecureTls?: boolean;
 }
 
 export interface ProxyResponse {

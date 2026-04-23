@@ -1,7 +1,8 @@
 import { CollectionRepository } from '../repositories/collection.repository';
 import { AppError } from '../errors/app-error';
 import type { Collection, SavedRequest, Folder } from '../models/collection';
-import type { AuthConfig } from '../models/proxy';
+import { UNCATEGORIZED_COLLECTION_ID } from '../models/collection';
+import type { AuthConfig, BodyType, FormDataEntry } from '../models/proxy';
 
 export interface MoveRequestParams {
   sourceCollectionId: string;
@@ -20,6 +21,28 @@ export interface MoveFolderParams {
 
 export class CollectionService {
   constructor(private readonly repo: CollectionRepository) {}
+
+  /**
+   * Idempotently ensure the system-managed "Uncategorized" collection exists.
+   * Used as a catch-all when users save a request without picking a collection.
+   */
+  async ensureUncategorizedCollection(): Promise<Collection> {
+    const existing = await this.repo.getById(UNCATEGORIZED_COLLECTION_ID);
+    if (existing) return existing;
+
+    const now = Date.now();
+    const collection: Collection = {
+      id: UNCATEGORIZED_COLLECTION_ID,
+      name: 'Uncategorized',
+      description: 'Saved requests that do not belong to a specific collection.',
+      isSystem: true,
+      folders: [],
+      requests: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    return this.repo.create(collection);
+  }
 
   async getAll(): Promise<Collection[]> {
     return this.repo.getAll();
@@ -47,6 +70,9 @@ export class CollectionService {
   }
 
   async update(id: string, updates: Partial<Pick<Collection, 'name' | 'description'>>): Promise<Collection> {
+    if (id === UNCATEGORIZED_COLLECTION_ID) {
+      throw AppError.badRequest('The Uncategorized collection cannot be renamed.');
+    }
     const collection = await this.repo.update(id, updates);
     if (!collection) {
       throw AppError.notFound('Collection not found');
@@ -55,6 +81,9 @@ export class CollectionService {
   }
 
   async delete(id: string): Promise<void> {
+    if (id === UNCATEGORIZED_COLLECTION_ID) {
+      throw AppError.badRequest('The Uncategorized collection cannot be deleted.');
+    }
     const deleted = await this.repo.delete(id);
     if (!deleted) {
       throw AppError.notFound('Collection not found');
@@ -69,10 +98,16 @@ export class CollectionService {
       url: string;
       headers?: Record<string, string>;
       body?: string;
+      bodyType?: BodyType;
+      formDataEntries?: FormDataEntry[];
       auth?: AuthConfig;
       folderId?: string;
     },
   ): Promise<SavedRequest> {
+    if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
+      await this.ensureUncategorizedCollection();
+    }
+
     const newRequest: SavedRequest = {
       id: `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       name: data.name.trim(),
@@ -80,6 +115,8 @@ export class CollectionService {
       url: data.url.trim(),
       headers: data.headers,
       body: data.body,
+      bodyType: data.bodyType,
+      formDataEntries: data.formDataEntries,
       auth: data.auth,
       folderId: data.folderId,
       collectionId,

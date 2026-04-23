@@ -114,4 +114,30 @@ describe('EnvironmentService', () => {
       expect(result.url).toBe('{{BASE_URL}}/users');
     });
   });
+
+  describe('substituteInAuth', () => {
+    it('substitutes credentials using the active environment', () => {
+      const env = makeEnv({
+        variables: [{ key: 'TOKEN', value: 'sekret', enabled: true }],
+      });
+      const repo = mockRepo({ getActive: vi.fn().mockReturnValue(env) });
+      const service = new EnvironmentService(repo);
+      const result = service.substituteInAuth({ type: 'bearer', bearer: { token: '{{TOKEN}}' } });
+      expect(result?.bearer?.token).toBe('sekret');
+      expect(repo.getActive).toHaveBeenCalledOnce();
+    });
+
+    it('returns auth unchanged when there is no active environment', () => {
+      const repo = mockRepo({ getActive: vi.fn().mockReturnValue(null) });
+      const service = new EnvironmentService(repo);
+      const auth = { type: 'bearer' as const, bearer: { token: '{{TOKEN}}' } };
+      expect(service.substituteInAuth(auth)).toEqual(auth);
+    });
+
+    it('returns undefined when auth is undefined', () => {
+      const repo = mockRepo({ getActive: vi.fn().mockReturnValue(makeEnv()) });
+      const service = new EnvironmentService(repo);
+      expect(service.substituteInAuth(undefined)).toBeUndefined();
+    });
+  });
 });

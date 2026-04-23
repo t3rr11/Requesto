@@ -21,17 +21,32 @@ export const tokenExchangeSchema = z.object({
   code: z.string().min(1, 'Authorization code is required'),
   codeVerifier: z.string().optional(),
   redirectUri: z.string().min(1, 'Redirect URI is required'),
+  insecureTls: z.boolean().optional(),
 });
 
 export const tokenRefreshSchema = z.object({
   configId: z.string().min(1, 'Config ID is required'),
   refreshToken: z.string().min(1, 'Refresh token is required'),
+  insecureTls: z.boolean().optional(),
 });
 
 export const tokenRevokeSchema = z.object({
   configId: z.string().min(1, 'Config ID is required'),
   token: z.string().min(1, 'Token is required'),
   tokenTypeHint: z.string().optional(),
+  insecureTls: z.boolean().optional(),
+});
+
+export const clientCredentialsSchema = z.object({
+  configId: z.string().min(1, 'Config ID is required'),
+  insecureTls: z.boolean().optional(),
+});
+
+export const passwordFlowSchema = z.object({
+  configId: z.string().min(1, 'Config ID is required'),
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
+  insecureTls: z.boolean().optional(),
 });
 
 export type CreateOAuthConfigDto = z.infer<typeof createOAuthConfigSchema>;
@@ -39,3 +54,5 @@ export type UpdateOAuthConfigDto = z.infer<typeof updateOAuthConfigSchema>;
 export type TokenExchangeDto = z.infer<typeof tokenExchangeSchema>;
 export type TokenRefreshDto = z.infer<typeof tokenRefreshSchema>;
 export type TokenRevokeDto = z.infer<typeof tokenRevokeSchema>;
+export type ClientCredentialsDto = z.infer<typeof clientCredentialsSchema>;
+export type PasswordFlowDto = z.infer<typeof passwordFlowSchema>;

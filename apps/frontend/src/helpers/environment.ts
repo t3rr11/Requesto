@@ -1,5 +1,5 @@
 import type { Environment, EnvironmentVariable } from '../store/environments/types';
-import type { ProxyRequest } from '../store/request/types';
+import type { AuthConfig, ProxyRequest } from '../store/request/types';
 
 function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -22,7 +22,41 @@ export function substituteVariables(text: string, environment: Environment | nul
 }
 
 /**
- * Substitute variables in all request fields (URL, headers, body).
+ * Substitute environment variables inside auth credential fields so that
+ * users can write `{{API_TOKEN}}` etc. in bearer/basic/api-key/digest fields.
+ *
+ * `oauth.configId` is left untouched — it's a stable identifier resolved
+ * server-side, not a user-entered credential.
+ */
+export function substituteInAuth(auth: AuthConfig | undefined, environment: Environment | null): AuthConfig | undefined {
+  if (!auth) return auth;
+
+  const sub = (v: string) => substituteVariables(v, environment);
+
+  switch (auth.type) {
+    case 'basic':
+      return auth.basic
+        ? { ...auth, basic: { username: sub(auth.basic.username), password: sub(auth.basic.password) } }
+        : auth;
+    case 'bearer':
+      return auth.bearer ? { ...auth, bearer: { token: sub(auth.bearer.token) } } : auth;
+    case 'api-key':
+      return auth.apiKey
+        ? { ...auth, apiKey: { ...auth.apiKey, key: sub(auth.apiKey.key), value: sub(auth.apiKey.value) } }
+        : auth;
+    case 'digest':
+      return auth.digest
+        ? { ...auth, digest: { username: sub(auth.digest.username), password: sub(auth.digest.password) } }
+        : auth;
+    case 'oauth':
+    case 'none':
+    default:
+      return auth;
+  }
+}
+
+/**
+ * Substitute variables in all request fields (URL, headers, body, auth).
  */
 export function substituteInRequest(request: ProxyRequest, environment: Environment | null): typeof request {
   if (!environment) return request;
@@ -42,7 +76,7 @@ export function substituteInRequest(request: ProxyRequest, environment: Environm
           value: entry.type === 'text' ? substituteVariables(entry.value, environment) : entry.value,
         }))
       : undefined,
-    auth: request.auth,
+    auth: substituteInAuth(request.auth, environment),
   };
 }
 

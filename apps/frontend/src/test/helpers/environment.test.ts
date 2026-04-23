@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   substituteVariables,
+  substituteInAuth,
   substituteInRequest,
   extractVariableNames,
   hasVariables,
@@ -202,5 +203,76 @@ describe('substituteInRequest', () => {
     );
     expect(result.formDataEntries![0].key).toBe('{{field}}');
     expect(result.formDataEntries![0].value).toBe('{{val}}');
+  });
+
+  it('substitutes variables inside auth credentials', () => {
+    const env = makeEnv([{ key: 'TOKEN', value: 'sekret', enabled: true }]);
+    const result = substituteInRequest(
+      {
+        method: 'GET',
+        url: 'https://example.com',
+        auth: { type: 'bearer', bearer: { token: '{{TOKEN}}' } },
+      },
+      env,
+    );
+    expect(result.auth?.bearer?.token).toBe('sekret');
+  });
+});
+
+describe('substituteInAuth', () => {
+  const env = makeEnv([
+    { key: 'USER', value: 'alice', enabled: true },
+    { key: 'PASS', value: 'p4ss', enabled: true },
+    { key: 'TOKEN', value: 'sekret', enabled: true },
+    { key: 'KEY_NAME', value: 'X-Api-Key', enabled: true },
+    { key: 'KEY_VAL', value: 'abc123', enabled: true },
+  ]);
+
+  it('substitutes basic auth username and password', () => {
+    const result = substituteInAuth(
+      { type: 'basic', basic: { username: '{{USER}}', password: '{{PASS}}' } },
+      env,
+    );
+    expect(result?.basic).toEqual({ username: 'alice', password: 'p4ss' });
+  });
+
+  it('substitutes bearer token', () => {
+    const result = substituteInAuth({ type: 'bearer', bearer: { token: '{{TOKEN}}' } }, env);
+    expect(result?.bearer?.token).toBe('sekret');
+  });
+
+  it('substitutes api-key key and value', () => {
+    const result = substituteInAuth(
+      { type: 'api-key', apiKey: { key: '{{KEY_NAME}}', value: '{{KEY_VAL}}', addTo: 'header' } },
+      env,
+    );
+    expect(result?.apiKey).toEqual({ key: 'X-Api-Key', value: 'abc123', addTo: 'header' });
+  });
+
+  it('substitutes digest username and password', () => {
+    const result = substituteInAuth(
+      { type: 'digest', digest: { username: '{{USER}}', password: '{{PASS}}' } },
+      env,
+    );
+    expect(result?.digest).toEqual({ username: 'alice', password: 'p4ss' });
+  });
+
+  it('leaves oauth.configId untouched', () => {
+    const auth = { type: 'oauth' as const, oauth: { configId: '{{TOKEN}}' } };
+    const result = substituteInAuth(auth, env);
+    expect(result?.oauth?.configId).toBe('{{TOKEN}}');
+  });
+
+  it('returns auth unchanged when environment is null', () => {
+    const auth = { type: 'bearer' as const, bearer: { token: '{{TOKEN}}' } };
+    expect(substituteInAuth(auth, null)).toEqual(auth);
+  });
+
+  it('returns undefined when auth is undefined', () => {
+    expect(substituteInAuth(undefined, env)).toBeUndefined();
+  });
+
+  it('returns auth unchanged for type: none', () => {
+    expect(substituteInAuth({ type: 'none' }, env)).toEqual({ type: 'none' });
   });
 });

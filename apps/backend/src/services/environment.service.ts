@@ -1,8 +1,8 @@
 import { EnvironmentRepository } from '../repositories/environment.repository';
-import { substituteInRequest } from '../utils/variable-substitution';
+import { substituteInAuth, substituteInRequest } from '../utils/variable-substitution';
 import { AppError } from '../errors/app-error';
 import type { Environment, EnvironmentsData } from '../models/environment';
-import type { ProxyRequest } from '../models/proxy';
+import type { AuthConfig, ProxyRequest } from '../models/proxy';
 
 export class EnvironmentService {
   constructor(private readonly repo: EnvironmentRepository) {}
@@ -45,5 +45,10 @@ export class EnvironmentService {
   substituteInRequest(partialRequest: Pick<ProxyRequest, 'url' | 'headers' | 'body' | 'formDataEntries'>): Pick<ProxyRequest, 'url' | 'headers' | 'body' | 'formDataEntries'> {
     const active = this.repo.getActive();
     return substituteInRequest(partialRequest, active);
+  }
+
+  substituteInAuth(auth: AuthConfig | undefined): AuthConfig | undefined {
+    const active = this.repo.getActive();
+    return substituteInAuth(auth, active);
   }
 }

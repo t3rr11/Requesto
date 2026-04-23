@@ -9,6 +9,7 @@ export const proxyRequestSchema = z.object({
   bodyType: z.enum(['json', 'form-data', 'x-www-form-urlencoded']).optional(),
   formDataEntries: z.array(formDataEntrySchema).optional(),
   auth: authConfigSchema.optional(),
+  insecureTls: z.boolean().optional(),
 });
 
 /** Stream request has the same shape as a regular proxy request */

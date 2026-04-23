@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '../components/Button';
 import { useCollectionsStore } from '../store/collections/store';
+import { UNCATEGORIZED_COLLECTION_ID, UNCATEGORIZED_COLLECTION_NAME } from '../store/collections/constants';
 import { useTabsStore } from '../store/tabs/store';
 import { useAlertStore } from '../store/alert/store';
 import type { AuthConfig, BodyType, FormDataEntry } from '../store/request/types';
@@ -38,7 +39,7 @@ export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveReq
     resolver: zodResolver(saveRequestSchema),
     defaultValues: {
       name: '',
-      collectionId: collections.length > 0 ? collections[0].id : '',
+      collectionId: collections.length > 0 ? collections[0].id : UNCATEGORIZED_COLLECTION_ID,
     },
   });
 
@@ -50,9 +51,7 @@ export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveReq
   }, [currentRequest, setValue]);
 
   useEffect(() => {
-    if (collections.length > 0) {
-      setValue('collectionId', collections[0].id);
-    }
+    setValue('collectionId', collections.length > 0 ? collections[0].id : UNCATEGORIZED_COLLECTION_ID);
   }, [collections, setValue]);
 
   const onSubmit = async (data: SaveRequestFormData) => {
@@ -100,68 +99,64 @@ export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveReq
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {collections.length === 0 ? (
-        <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-400 px-3 py-2 rounded text-sm">
-          No collections available. Please create a collection first.
-        </div>
-      ) : (
-        <>
-          <div>
-            <label htmlFor="request-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Request Name <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <input
-              id="request-name"
-              type="text"
-              {...register('name')}
-              placeholder="Get User by ID"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-              autoFocus
-            />
-            {errors.name && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>
-            )}
-          </div>
+      <div>
+        <label htmlFor="request-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Request Name <span className="text-red-500 dark:text-red-400">*</span>
+        </label>
+        <input
+          id="request-name"
+          type="text"
+          {...register('name')}
+          placeholder="Get User by ID"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+          autoFocus
+        />
+        {errors.name && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>
+        )}
+      </div>
 
-          <div>
-            <label htmlFor="collection-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Collection <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <select
-              id="collection-select"
-              {...register('collectionId')}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            >
-              <option value="">Select a collection</option>
-              {collections.map(col => (
-                <option key={col.id} value={col.id}>{col.name}</option>
-              ))}
-            </select>
-            {errors.collectionId && (
-              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.collectionId.message}</p>
-            )}
-          </div>
-
-          {currentRequest && (
-            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md text-sm">
-              <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Request Preview:</div>
-              <div className="space-y-1 text-gray-600 dark:text-gray-400">
-                <div>
-                  <span className="font-semibold">{currentRequest.method}</span>{' '}
-                  {currentRequest.url || <span className="text-red-500 dark:text-red-400">No URL specified</span>}
-                </div>
-                {currentRequest.headers && Object.keys(currentRequest.headers).length > 0 && (
-                  <div className="text-xs">
-                    {Object.keys(currentRequest.headers).length} header(s)
-                  </div>
-                )}
-                {currentRequest.body && (
-                  <div className="text-xs">Body: {currentRequest.body.substring(0, 50)}...</div>
-                )}
-              </div>
-            </div>
+      <div>
+        <label htmlFor="collection-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Collection <span className="text-red-500 dark:text-red-400">*</span>
+        </label>
+        <select
+          id="collection-select"
+          {...register('collectionId')}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+        >
+          {collections.map(col => (
+            <option key={col.id} value={col.id}>{col.name}</option>
+          ))}
+          {/* Fallback option for the system Uncategorized collection — only render it when the */}
+          {/* backend hasn't materialised it yet, otherwise it would appear twice in the dropdown. */}
+          {!collections.some(col => col.id === UNCATEGORIZED_COLLECTION_ID) && (
+            <option value={UNCATEGORIZED_COLLECTION_ID}>{UNCATEGORIZED_COLLECTION_NAME}</option>
           )}
-        </>
+        </select>
+        {errors.collectionId && (
+          <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.collectionId.message}</p>
+        )}
+      </div>
+
+      {currentRequest && (
+        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-md text-sm">
+          <div className="font-medium text-gray-700 dark:text-gray-300 mb-2">Request Preview:</div>
+          <div className="space-y-1 text-gray-600 dark:text-gray-400">
+            <div>
+              <span className="font-semibold">{currentRequest.method}</span>{' '}
+              {currentRequest.url || <span className="text-red-500 dark:text-red-400">No URL specified</span>}
+            </div>
+            {currentRequest.headers && Object.keys(currentRequest.headers).length > 0 && (
+              <div className="text-xs">
+                {Object.keys(currentRequest.headers).length} header(s)
+              </div>
+            )}
+            {currentRequest.body && (
+              <div className="text-xs">Body: {currentRequest.body.substring(0, 50)}...</div>
+            )}
+          </div>
+        </div>
       )}
 
       <div className="flex justify-end gap-2 pt-2">
@@ -173,7 +168,7 @@ export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveReq
           variant="primary"
           size="md"
           loading={isSubmitting}
-          disabled={isSubmitting || collections.length === 0 || !currentRequest?.url?.trim()}
+          disabled={isSubmitting || !currentRequest?.url?.trim()}
         >
           Save Request
         </Button>

@@ -8,7 +8,8 @@ import { EnvironmentList } from '../components/EnvironmentList';
 import { EnvironmentHeader } from '../components/EnvironmentHeader';
 import { VariableEditor } from '../components/VariableEditor';
 import { EmptyState } from '../components/EmptyState';
-import { createNewEnvironment } from '../helpers/environment';
+import { NewEnvironmentForm } from './NewEnvironmentForm';
+import { useDialog } from '../hooks/useDialog';
 import type { Environment, EnvironmentVariable } from '../store/environments/types';
 
 interface EnvironmentFormData {
@@ -21,11 +22,13 @@ interface EnvironmentManagerDialogProps {
 }
 
 export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManagerDialogProps) {
-  const { environmentsData, loadEnvironments, saveEnvironment, updateEnvironment: storeUpdateEnvironment, addEnvironment } = useEnvironmentStore();
+  const { environmentsData, loadEnvironments, saveEnvironment, updateEnvironment: storeUpdateEnvironment } =
+    useEnvironmentStore();
   const { showAlert } = useAlertStore();
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const lastSavedRef = useRef<string>('');
+  const newEnvDialog = useDialog();
 
   // Load environments when dialog opens
   useEffect(() => {
@@ -72,16 +75,13 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
     return () => subscription.unsubscribe();
   }, [watch]);
 
-  const handleAdd = async () => {
-    const newEnv = createNewEnvironment();
-    try {
-      addEnvironment(newEnv);
-      await saveEnvironment(newEnv);
-      setSelectedEnvId(newEnv.id);
-      showAlert('Environment created', 'success');
-    } catch {
-      showAlert('Failed to create environment', 'error');
-    }
+  const handleAdd = () => {
+    newEnvDialog.open();
+  };
+
+  const handleNewEnvCreated = (id: string) => {
+    setSelectedEnvId(id);
+    newEnvDialog.close();
   };
 
   const handleSave = useCallback(async () => {
@@ -177,6 +177,10 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
           )}
         </div>
       </div>
+
+      <Dialog isOpen={newEnvDialog.isOpen} onClose={newEnvDialog.close} title="New Environment">
+        <NewEnvironmentForm onSuccess={handleNewEnvCreated} onCancel={newEnvDialog.close} />
+      </Dialog>
     </Dialog>
   );
 }

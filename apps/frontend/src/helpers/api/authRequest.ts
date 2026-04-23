@@ -30,7 +30,9 @@ function prepareOAuthRequest(request: ProxyRequest, oauthAuth: OAuthAuth): Proxy
     return addOAuthHeader(request, storedTokens.accessToken);
   }
 
-  console.warn(`[OAuth] No access token available for config ${configId}`);
+  // No token available — return the request unmodified. We deliberately don't
+  // warn here because this function is also called from `applyAuthForDisplay`
+  // for every console-log entry, which would spam the console.
   return request;
 }
 

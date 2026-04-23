@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from './Button';
 
 type ContextMenuItem = {
@@ -27,15 +28,15 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
       if (event.key === 'Escape') onClose();
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside, true);
     document.addEventListener('keydown', handleEscape);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside, true);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
       className="fixed flex flex-col z-50 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-45"
@@ -60,6 +61,7 @@ export function ContextMenu({ items, position, onClose }: ContextMenuProps) {
           <span>{item.label}</span>
         </Button>
       ))}
-    </div>
+    </div>,
+    document.body
   );
 }

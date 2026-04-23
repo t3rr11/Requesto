@@ -25,7 +25,10 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
   };
 
   const inputClass =
-    'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm dark:bg-gray-800 dark:text-gray-200';
+    'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-transparent text-black dark:text-gray-200';
+
+  const selectClass =
+    'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200';
 
   const labelClass = 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1';
   const descClass = 'text-sm text-gray-600 dark:text-gray-400 mb-4';
@@ -48,7 +51,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
         <select
           value={auth.type}
           onChange={e => handleTypeChange(e.target.value as AuthType)}
-          className={inputClass}
+          className={selectClass}
           disabled={disabled}
         >
           <option value="none">No Auth</option>
@@ -96,20 +99,18 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
         <div className="space-y-4 pt-2">
           <div className={descClass}>
             Bearer token authentication sends the token in the Authorization header with the Bearer prefix.
+            Supports environment variables (e.g. <code className="px-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">{`{{API_TOKEN}}`}</code>).
           </div>
           <div>
             <label className={labelClass}>Token</label>
-            <div className="relative">
-              <VariableAwareInput
-                value={auth.bearer.token}
-                onChange={value => onAuthChange({ ...auth, bearer: { token: value } })}
-                placeholder="Enter bearer token"
-                disabled={disabled}
-                type={showPassword ? 'text' : 'password'}
-                className={`${inputClass} pr-10 font-mono`}
-              />
-              <ToggleButton />
-            </div>
+            <VariableAwareInput
+              value={auth.bearer.token}
+              onChange={value => onAuthChange({ ...auth, bearer: { token: value } })}
+              placeholder="Enter bearer token"
+              disabled={disabled}
+              type="text"
+              className={inputClass}
+            />
           </div>
         </div>
       )}
@@ -137,10 +138,9 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
                 onChange={value => onAuthChange({ ...auth, apiKey: { ...auth.apiKey!, value: value } })}
                 placeholder="Enter API key value"
                 disabled={disabled}
-                type={showPassword ? 'text' : 'password'}
-                className={`${inputClass} pr-10 font-mono`}
+                type="text"
+                className={inputClass}
               />
-              <ToggleButton />
             </div>
           </div>
           <div>
@@ -148,7 +148,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
             <select
               value={auth.apiKey.addTo}
               onChange={e => onAuthChange({ ...auth, apiKey: { ...auth.apiKey!, addTo: e.target.value as 'header' | 'query' } })}
-              className={inputClass}
+              className={selectClass}
               disabled={disabled}
             >
               <option value="header">Header</option>

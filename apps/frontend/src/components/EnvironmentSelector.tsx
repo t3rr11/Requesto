@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Check, ChevronDown, Plus, Search, Settings } from 'lucide-react';
 import { useEnvironmentStore } from '../store/environments/store';
 import { EnvironmentManagerDialog } from '../forms/EnvironmentManagerDialog';
+import { NewEnvironmentForm } from '../forms/NewEnvironmentForm';
+import { Dialog } from './Dialog';
+import { useDialog } from '../hooks/useDialog';
 
 /**
  * Simple select-based environment selector (full-width).
@@ -29,10 +32,11 @@ export function EnvironmentSelector() {
  * Compact dropdown environment selector used in TabsBar.
  */
 export function EnvironmentSelectorCompact() {
-  const { environmentsData, setActiveEnvironment, saveEnvironment } = useEnvironmentStore();
+  const { environmentsData, setActiveEnvironment } = useEnvironmentStore();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [showManager, setShowManager] = useState(false);
+  const newEnvDialog = useDialog();
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -53,15 +57,19 @@ export function EnvironmentSelectorCompact() {
     [setActiveEnvironment],
   );
 
-  const handleCreateNew = useCallback(async () => {
-    const id = crypto.randomUUID();
-    const newEnv = { id, name: 'New Environment', variables: [] };
-    await saveEnvironment(newEnv);
-    await setActiveEnvironment(id);
+  const handleCreateNew = useCallback(() => {
     setIsOpen(false);
     setSearch('');
-    setShowManager(true);
-  }, [saveEnvironment, setActiveEnvironment]);
+    newEnvDialog.open();
+  }, [newEnvDialog]);
+
+  const handleNewEnvCreated = useCallback(
+    async (id: string) => {
+      await setActiveEnvironment(id);
+      newEnvDialog.close();
+    },
+    [setActiveEnvironment, newEnvDialog],
+  );
 
   // Close on outside click
   useEffect(() => {
@@ -158,6 +166,10 @@ export function EnvironmentSelectorCompact() {
       )}
 
       <EnvironmentManagerDialog isOpen={showManager} onClose={() => setShowManager(false)} />
+
+      <Dialog isOpen={newEnvDialog.isOpen} onClose={newEnvDialog.close} title="New Environment">
+        <NewEnvironmentForm onSuccess={handleNewEnvCreated} onCancel={newEnvDialog.close} />
+      </Dialog>
     </div>
   );
 }
