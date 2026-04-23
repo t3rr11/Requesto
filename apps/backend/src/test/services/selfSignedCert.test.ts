@@ -29,7 +29,7 @@ async function startSelfSignedServer(handler: (req: import('http').IncomingMessa
   const pems = await selfsigned.generate(
     [{ name: 'commonName', value: 'localhost' }],
     {
-      days: 1,
+      notAfterDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
       keySize: 2048,
       algorithm: 'sha256',
     },
