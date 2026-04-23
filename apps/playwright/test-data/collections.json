@@ -104,39 +104,39 @@
     "updatedAt": 1700000000000
   },
   {
-    "id": "col-1776331620434-yuzwlg",
+    "id": "col-1776940394932-kbq30q",
     "name": "Playwright Test API",
     "folders": [
       {
-        "id": "folder-1776331620434-1m8k9q",
+        "id": "folder-1776940394932-cpgk",
         "name": "pets",
-        "collectionId": "col-1776331620434-lbxqcu",
-        "createdAt": 1776331620434,
-        "updatedAt": 1776331620434
+        "collectionId": "col-1776940394932-qy54ro",
+        "createdAt": 1776940394932,
+        "updatedAt": 1776940394932
       },
       {
-        "id": "folder-1776331620434-iljmdr",
+        "id": "folder-1776940394932-0qhgn5",
         "name": "users",
-        "collectionId": "col-1776331620434-lbxqcu",
-        "createdAt": 1776331620434,
-        "updatedAt": 1776331620434
+        "collectionId": "col-1776940394932-qy54ro",
+        "createdAt": 1776940394932,
+        "updatedAt": 1776940394932
       }
     ],
     "requests": [
       {
-        "id": "req-1776331620434-z4xhme",
+        "id": "req-1776940394932-d2juc",
         "name": "List all pets",
         "method": "GET",
         "url": "{{baseUrl}}/pets?limit=0",
-        "collectionId": "col-1776331620434-lbxqcu",
-        "folderId": "folder-1776331620434-1m8k9q",
+        "collectionId": "col-1776940394932-qy54ro",
+        "folderId": "folder-1776940394932-cpgk",
         "operationId": "listPets",
         "order": 0,
-        "createdAt": 1776331620434,
-        "updatedAt": 1776331620434
+        "createdAt": 1776940394932,
+        "updatedAt": 1776940394932
       },
       {
-        "id": "req-1776331620434-76g9le",
+        "id": "req-1776940394932-9cgr7a",
         "name": "Create a pet",
         "method": "POST",
         "url": "{{baseUrl}}/pets",
@@ -145,43 +145,43 @@
         },
         "body": "{\n  \"name\": \"string\",\n  \"species\": \"string\"\n}",
         "bodyType": "json",
-        "collectionId": "col-1776331620434-lbxqcu",
-        "folderId": "folder-1776331620434-1m8k9q",
+        "collectionId": "col-1776940394932-qy54ro",
+        "folderId": "folder-1776940394932-cpgk",
         "operationId": "createPet",
         "order": 1,
-        "createdAt": 1776331620434,
-        "updatedAt": 1776331620434
+        "createdAt": 1776940394932,
+        "updatedAt": 1776940394932
       },
       {
-        "id": "req-1776331620434-5enldu",
+        "id": "req-1776940394932-qlkoxq",
         "name": "Get a pet by ID",
         "method": "GET",
         "url": "{{baseUrl}}/pets/{{petId}}",
-        "collectionId": "col-1776331620434-lbxqcu",
-        "folderId": "folder-1776331620434-1m8k9q",
+        "collectionId": "col-1776940394932-qy54ro",
+        "folderId": "folder-1776940394932-cpgk",
         "operationId": "getPet",
         "order": 2,
-        "createdAt": 1776331620434,
-        "updatedAt": 1776331620434
+        "createdAt": 1776940394932,
+        "updatedAt": 1776940394932
       },
       {
-        "id": "req-1776331620434-aupgto",
+        "id": "req-1776940394932-sume0f",
         "name": "List users",
         "method": "GET",
         "url": "{{baseUrl}}/users",
-        "collectionId": "col-1776331620434-lbxqcu",
-        "folderId": "folder-1776331620434-iljmdr",
+        "collectionId": "col-1776940394932-qy54ro",
+        "folderId": "folder-1776940394932-0qhgn5",
         "operationId": "listUsers",
         "order": 3,
-        "createdAt": 1776331620434,
-        "updatedAt": 1776331620434
+        "createdAt": 1776940394932,
+        "updatedAt": 1776940394932
       }
     ],
-    "createdAt": 1776331620434,
-    "updatedAt": 1776331620434,
+    "createdAt": 1776940394932,
+    "updatedAt": 1776940394932,
     "openApiSpec": {
       "source": "D:/Projects/Web Apps/Requesto/apps/playwright/fixtures/openapi-spec.json",
-      "lastSyncedAt": 1776331620434,
+      "lastSyncedAt": 1776940394932,
       "specHash": "c460a076b6b35fc3fe7c9f11ec772adc18e06e31bd671f7e5b3472802f626513"
     }
   }

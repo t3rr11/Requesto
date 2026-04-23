@@ -38,7 +38,7 @@ Open the **Manage Environments** dialog from the Environments page (or the envir
 - **Duplicate** - copy an environment with all its variables
 - **Export** - download the environment as a JSON file
 - **Delete** - remove the environment (with confirmation)
-- **Rename** - double-click the environment name to edit it
+- **Rename** - right-click an environment in the sidebar list (or use the **⋯** menu in the environment header) and choose **Rename** to edit its name in a dialog
 
 ## Variables
 

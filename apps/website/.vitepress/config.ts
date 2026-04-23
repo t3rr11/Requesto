@@ -128,6 +128,7 @@ export default defineConfig({
           { text: 'OpenAPI Import & Sync', link: '/features/openapi' },
           { text: 'OAuth 2.0', link: '/features/oauth' },
           { text: 'Console & Logging', link: '/features/console' },
+          { text: 'Settings', link: '/features/settings' },
         ],
       },
       {
