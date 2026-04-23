@@ -19,12 +19,16 @@ export interface Collection {
   id: string;
   name: string;
   description?: string;
+  isSystem?: boolean;
   folders: Folder[];
   requests: SavedRequest[];
   openApiSpec?: OpenApiSpecLink;
   createdAt: number;
   updatedAt: number;
 }
+
+/** Stable id of the system-managed catch-all collection. */
+export const UNCATEGORIZED_COLLECTION_ID = 'uncategorized';
 
 export interface SavedRequest {
   id: string;

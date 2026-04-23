@@ -107,7 +107,7 @@ describe('SaveRequestForm', () => {
     expect(mockOnCancel).toHaveBeenCalledOnce();
   });
 
-  it('shows warning when no collections', () => {
+  it('always offers Uncategorized when no user collections exist', () => {
     vi.mocked(useCollectionsStore).mockReturnValue({
       collections: [],
       saveRequest: mockSaveRequest,
@@ -117,7 +117,8 @@ describe('SaveRequestForm', () => {
     render(
       <SaveRequestForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} currentRequest={currentRequest} />,
     );
-    expect(screen.getByText(/no collections available/i)).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Uncategorized' })).toBeInTheDocument();
+    expect(screen.getByText('Save Request')).not.toBeDisabled();
   });
 
   it('disables submit when currentRequest is null', () => {

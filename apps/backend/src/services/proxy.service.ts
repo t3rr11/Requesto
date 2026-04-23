@@ -1,9 +1,11 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import fetch from 'node-fetch';
+import https from 'node:https';
 import FormData from 'form-data';
 import { EnvironmentService } from './environment.service';
 import { HistoryService } from './history.service';
 import { applyAuthentication, getAxiosAuthConfig } from '../utils/auth';
+import { getHttpsAgent } from '../utils/httpsAgent';
 import type { ProxyRequest, ProxyResponse, FormDataEntry } from '../models/proxy';
 
 function isValidUrl(urlString: string): boolean {
@@ -50,16 +52,19 @@ export class ProxyService {
   ) {}
 
   async executeRequest(req: ProxyRequest): Promise<ProxyResponse> {
-    const { method, url, headers, body, bodyType, formDataEntries, auth } = req;
+    const { method, url, headers, body, bodyType, formDataEntries, auth, insecureTls } = req;
 
     if (!isValidUrl(url)) {
       throw new Error('Invalid URL format');
     }
 
     const substituted = this.environmentService.substituteInRequest({ url, headers, body, formDataEntries });
-    const authenticated = applyAuthentication(auth, substituted.headers, substituted.url);
+    const substitutedAuth = this.environmentService.substituteInAuth(auth);
+    const authenticated = applyAuthentication(substitutedAuth, substituted.headers, substituted.url);
 
     const startTime = Date.now();
+
+    const httpsAgent = getHttpsAgent(insecureTls);
 
     const config: AxiosRequestConfig = {
       method: method.toLowerCase(),
@@ -67,9 +72,10 @@ export class ProxyService {
       headers: authenticated.headers || {},
       validateStatus: () => true,
       timeout: 30000,
+      ...(httpsAgent && { httpsAgent }),
     };
 
-    const axiosAuth = getAxiosAuthConfig(auth);
+    const axiosAuth = getAxiosAuthConfig(substitutedAuth);
     if (axiosAuth) {
       config.auth = axiosAuth;
     }
@@ -113,14 +119,15 @@ export class ProxyService {
   }
 
   async streamRequest(req: ProxyRequest): Promise<{ response: import('node-fetch').Response; url: string }> {
-    const { method, url, headers, body, bodyType, formDataEntries, auth } = req;
+    const { method, url, headers, body, bodyType, formDataEntries, auth, insecureTls } = req;
 
     if (!isValidUrl(url)) {
       throw new Error('Invalid URL format');
     }
 
     const substituted = this.environmentService.substituteInRequest({ url, headers, body, formDataEntries });
-    const authenticated = applyAuthentication(auth, substituted.headers, substituted.url);
+    const substitutedAuth = this.environmentService.substituteInAuth(auth);
+    const authenticated = applyAuthentication(substitutedAuth, substituted.headers, substituted.url);
 
     const fetchHeaders: Record<string, string> = { ...(authenticated.headers || {}) };
     let fetchBody: string | Buffer | undefined;
@@ -142,6 +149,12 @@ export class ProxyService {
       method: method.toUpperCase(),
       headers: fetchHeaders,
       ...(fetchBody !== undefined && { body: fetchBody }),
+      ...(insecureTls && {
+        agent: (parsedUrl: URL) =>
+          parsedUrl.protocol === 'https:'
+            ? new https.Agent({ rejectUnauthorized: false })
+            : undefined,
+      }),
     };
 
     const response = await fetch(authenticated.url, fetchOptions as Parameters<typeof fetch>[1]);

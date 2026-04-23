@@ -65,6 +65,11 @@ app.whenReady().then(async () => {
       });
       return;
     }
+    state.backendReady = true;
+  } else {
+    // Dev mode trusts the externally-managed backend (started outside Electron via `npm run dev`),
+    // so we mark it ready without probing.
+    state.backendReady = true;
   }
 
   createWindow();

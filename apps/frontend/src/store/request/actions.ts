@@ -1,6 +1,7 @@
 import type { ProxyRequest, ProxyResponse, StreamingResponse, SSEEvent } from './types';
 import { prepareAuthenticatedRequest } from '../../helpers/api/authRequest';
 import { API_BASE } from '../../helpers/api/config';
+import { useSettingsStore } from '../settings/store';
 
 // ── Internal API helpers ─────────────────────────────────────────────────────
 
@@ -15,10 +16,11 @@ async function sendRequestApi(request: ProxyRequest, signal?: AbortSignal): Prom
   }
 
   const authenticated = prepareAuthenticatedRequest(request);
+  const insecureTls = useSettingsStore.getState().insecureTls;
   const res = await fetch(`${API_BASE}/proxy/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(authenticated),
+    body: JSON.stringify({ ...authenticated, insecureTls }),
     signal,
   });
   if (!res.ok) {
@@ -45,11 +47,12 @@ async function sendStreamingRequestApi(
   const startTime = Date.now();
   const events: SSEEvent[] = [];
   const authenticated = prepareAuthenticatedRequest(request);
+  const insecureTls = useSettingsStore.getState().insecureTls;
 
   const res = await fetch(`${API_BASE}/proxy/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(authenticated),
+    body: JSON.stringify({ ...authenticated, insecureTls }),
     signal,
   });
   if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);

@@ -4,14 +4,16 @@ import {
   Check,
   Copy,
   Download,
+  Pencil,
   Trash2,
   Zap,
 } from 'lucide-react';
 import type { Environment } from '../store/environments/types';
 import { useEnvironmentStore } from '../store/environments/store';
 import { useAlertStore } from '../store/alert/store';
-import { useConfirmDialog } from '../hooks/useDialog';
+import { useConfirmDialog, useDialog } from '../hooks/useDialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { RenameForm } from '../forms/RenameForm';
 import { duplicateEnvironment } from '../helpers/environment';
 
 interface EnvironmentHeaderProps {
@@ -31,25 +33,12 @@ export function EnvironmentHeader({
     useEnvironmentStore();
   const { showAlert } = useAlertStore();
   const confirmDialog = useConfirmDialog();
+  const renameDialog = useDialog();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editName, setEditName] = useState(environment.name);
   const menuRef = useRef<HTMLDivElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const isActive = environmentsData.activeEnvironmentId === environment.id;
-
-  useEffect(() => {
-    setEditName(environment.name);
-  }, [environment.name]);
-
-  useEffect(() => {
-    if (isEditingName) {
-      nameInputRef.current?.focus();
-      nameInputRef.current?.select();
-    }
-  }, [isEditingName]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -63,13 +52,16 @@ export function EnvironmentHeader({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen]);
 
-  const handleNameSubmit = () => {
-    setIsEditingName(false);
-    if (editName.trim() && editName !== environment.name) {
-      onNameChange(editName.trim());
-    } else {
-      setEditName(environment.name);
+  const handleNameSubmit = async (newName: string) => {
+    const trimmed = newName.trim();
+    if (trimmed && trimmed !== environment.name) {
+      onNameChange(trimmed);
     }
+  };
+
+  const handleRename = () => {
+    setIsMenuOpen(false);
+    renameDialog.open();
   };
 
   const handleSetActive = () => {
@@ -121,31 +113,9 @@ export function EnvironmentHeader({
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        {isEditingName ? (
-          <input
-            ref={nameInputRef}
-            type="text"
-            value={editName}
-            onChange={e => setEditName(e.target.value)}
-            onBlur={handleNameSubmit}
-            onKeyDown={e => {
-              if (e.key === 'Enter') handleNameSubmit();
-              if (e.key === 'Escape') {
-                setEditName(environment.name);
-                setIsEditingName(false);
-              }
-            }}
-            className="text-xl font-semibold bg-transparent border-b-2 border-blue-500 focus:outline-none text-gray-900 dark:text-gray-100"
-          />
-        ) : (
-          <h2
-            className="text-xl font-semibold text-gray-900 dark:text-gray-100 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400"
-            onDoubleClick={() => setIsEditingName(true)}
-            title="Double-click to rename"
-          >
-            {environment.name}
-          </h2>
-        )}
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 truncate" title={environment.name}>
+          {environment.name}
+        </h2>
 
         {isActive && (
           <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/30 rounded-full">
@@ -171,6 +141,8 @@ export function EnvironmentHeader({
 
         <div ref={menuRef} className="relative">
           <button
+            type="button"
+            aria-label="Environment menu"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
           >
@@ -185,6 +157,13 @@ export function EnvironmentHeader({
               >
                 <Check className={`w-4 h-4 ${isActive ? 'text-green-500' : 'text-transparent'}`} />
                 {isActive ? 'Deactivate' : 'Set Active'}
+              </button>
+              <button
+                onClick={handleRename}
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Pencil className="w-4 h-4" />
+                Rename
               </button>
               <button
                 onClick={handleDuplicate}
@@ -213,6 +192,14 @@ export function EnvironmentHeader({
       </div>
 
       <ConfirmDialog {...confirmDialog.props} />
+      <RenameForm
+        isOpen={renameDialog.isOpen}
+        onClose={renameDialog.close}
+        onSave={handleNameSubmit}
+        currentName={environment.name}
+        title="Rename Environment"
+        label="Environment Name"
+      />
     </div>
   );
 }

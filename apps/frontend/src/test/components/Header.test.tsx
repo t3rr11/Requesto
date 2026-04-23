@@ -76,4 +76,11 @@ describe('Header', () => {
     fireEvent.click(helpBtn);
     expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
   });
+
+  it('opens settings dialog', () => {
+    renderHeader();
+    const settingsBtn = screen.getByTitle('Settings');
+    fireEvent.click(settingsBtn);
+    expect(screen.getByRole('checkbox', { name: /ignore ssl certificate errors/i })).toBeInTheDocument();
+  });
 });

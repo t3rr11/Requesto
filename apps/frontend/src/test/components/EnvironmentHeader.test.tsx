@@ -91,7 +91,7 @@ describe('EnvironmentHeader', () => {
     expect(mockOnSave).toHaveBeenCalledOnce();
   });
 
-  it('enters edit mode on double-click', () => {
+  it('opens rename dialog from the menu', () => {
     render(
       <EnvironmentHeader
         environment={environment}
@@ -100,10 +100,10 @@ describe('EnvironmentHeader', () => {
         onNameChange={mockOnNameChange}
       />,
     );
-    const nameEl = screen.getByText('Production');
-    fireEvent.doubleClick(nameEl);
-    const input = screen.getByDisplayValue('Production');
-    expect(input).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /environment menu/i }));
+    fireEvent.click(screen.getByText('Rename'));
+    // RenameForm dialog opens with current name pre-filled
+    expect(screen.getByDisplayValue('Production')).toBeInTheDocument();
   });
 
   it('opens dropdown menu', () => {
@@ -115,10 +115,7 @@ describe('EnvironmentHeader', () => {
         onNameChange={mockOnNameChange}
       />,
     );
-    const buttons = screen.getAllByRole('button');
-    // Find a button that triggers the menu (the last icon button)
-    const menuButton = buttons[buttons.length - 1];
-    fireEvent.click(menuButton);
+    fireEvent.click(screen.getByRole('button', { name: /environment menu/i }));
     // Menu should show options
     expect(screen.getByText('Duplicate')).toBeInTheDocument();
   });

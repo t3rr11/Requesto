@@ -5,6 +5,16 @@ import * as fs from 'fs';
 import { isDev, BACKEND_PORT } from './constants';
 import { state } from './state';
 import { showErrorWindow } from './errorWindow';
+import { shouldShowBackendCrashDialog } from './backendExitDecision';
+
+async function probeBackendHealth(): Promise<boolean> {
+  try {
+    const response = await fetch(`http://localhost:${BACKEND_PORT}/health`);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 
 export function startBackend(): void {
   if (isDev) {
@@ -56,7 +66,43 @@ export function startBackend(): void {
 
   state.backendProcess.on('exit', (code, signal) => {
     console.log('Backend process exited with code:', code, 'signal:', signal);
-    if (code !== 0 && code !== null && !state.isQuitting) {
+    // Clear the process handle immediately so any duplicate exit events don't double-fire,
+    // but leave `state.backendReady` intact — the async health probe below depends on knowing
+    // whether the server ever came up before this exit signal arrived.
+    state.backendProcess = null;
+
+    // Decide synchronously when possible; otherwise re-probe health and decide.
+    if (state.backendReady) {
+      void probeBackendHealth().then(healthCheckOk => {
+        if (
+          shouldShowBackendCrashDialog({
+            exitCode: code,
+            isQuitting: state.isQuitting,
+            backendReady: true,
+            healthCheckOk,
+          })
+        ) {
+          state.backendReady = false;
+          showErrorWindow({
+            title: 'Backend Crashed',
+            message: 'The backend process exited unexpectedly. Please restart the application.',
+            detail: `Exit code: ${code}${signal ? `  |  Signal: ${signal}` : ''}`,
+            severity: 'fatal',
+          });
+        } else {
+          console.log('Backend exit ignored: a healthy server is still responding.');
+        }
+      });
+      return;
+    }
+
+    if (
+      shouldShowBackendCrashDialog({
+        exitCode: code,
+        isQuitting: state.isQuitting,
+        backendReady: false,
+      })
+    ) {
       showErrorWindow({
         title: 'Backend Crashed',
         message: 'The backend process exited unexpectedly. Please restart the application.',
@@ -64,7 +110,6 @@ export function startBackend(): void {
         severity: 'fatal',
       });
     }
-    state.backendProcess = null;
   });
 }
 
@@ -73,20 +118,12 @@ export function stopBackend(): void {
     state.backendProcess.kill();
     state.backendProcess = null;
   }
+  state.backendReady = false;
 }
 
 export async function waitForBackend(maxAttempts = 30): Promise<boolean> {
-  const checkBackend = async () => {
-    try {
-      const response = await fetch(`http://localhost:${BACKEND_PORT}/health`);
-      return response.ok;
-    } catch {
-      return false;
-    }
-  };
-
   for (let i = 0; i < maxAttempts; i++) {
-    if (await checkBackend()) {
+    if (await probeBackendHealth()) {
       console.log('Backend is ready!');
       return true;
     }

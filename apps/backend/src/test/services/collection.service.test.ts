@@ -124,6 +124,97 @@ describe('CollectionService', () => {
       expect(result.method).toBe('POST');
       expect(result.name).toBe('my req');
     });
+
+    it('persists auth, bodyType, and formDataEntries through to the repo (Bug A regression)', async () => {
+      const captured: SavedRequest[] = [];
+      const repo = mockRepo({
+        addRequest: vi.fn().mockImplementation(async (_id: string, req: SavedRequest) => {
+          captured.push(req);
+          return req;
+        }),
+      });
+      const service = new CollectionService(repo);
+
+      await service.addRequest('col-1', {
+        name: 'auth-req',
+        method: 'POST',
+        url: 'http://a.com',
+        bodyType: 'form-data',
+        formDataEntries: [
+          { id: '1', key: 'file', value: '', type: 'file', enabled: true, fileName: 'x.png', fileContent: 'data:image/png;base64,abc' },
+        ],
+        auth: { type: 'bearer', bearer: { token: 'sekret' } },
+      });
+
+      expect(captured).toHaveLength(1);
+      expect(captured[0].auth).toEqual({ type: 'bearer', bearer: { token: 'sekret' } });
+      expect(captured[0].bodyType).toBe('form-data');
+      expect(captured[0].formDataEntries).toHaveLength(1);
+    });
+  });
+
+  describe('ensureUncategorizedCollection', () => {
+    it('creates the system collection on first call', async () => {
+      const created: Collection[] = [];
+      const repo = mockRepo({
+        getById: vi.fn().mockResolvedValue(undefined),
+        create: vi.fn().mockImplementation(async (c: Collection) => { created.push(c); return c; }),
+      });
+      const service = new CollectionService(repo);
+
+      const result = await service.ensureUncategorizedCollection();
+
+      expect(result.id).toBe('uncategorized');
+      expect(result.isSystem).toBe(true);
+      expect(result.name).toBe('Uncategorized');
+      expect(created).toHaveLength(1);
+    });
+
+    it('is idempotent — does not recreate when it already exists', async () => {
+      const existing = makeCollection({ id: 'uncategorized', name: 'Uncategorized', isSystem: true });
+      const createSpy = vi.fn();
+      const repo = mockRepo({
+        getById: vi.fn().mockResolvedValue(existing),
+        create: createSpy,
+      });
+      const service = new CollectionService(repo);
+
+      const result = await service.ensureUncategorizedCollection();
+
+      expect(result).toBe(existing);
+      expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it('addRequest auto-creates Uncategorized when collectionId is "uncategorized"', async () => {
+      const created: Collection[] = [];
+      let store: Collection | null = null;
+      const repo = mockRepo({
+        getById: vi.fn().mockImplementation(async () => store ?? undefined),
+        create: vi.fn().mockImplementation(async (c: Collection) => { created.push(c); store = c; return c; }),
+        addRequest: vi.fn().mockImplementation(async (_id: string, req: SavedRequest) => req),
+      });
+      const service = new CollectionService(repo);
+
+      const result = await service.addRequest('uncategorized', { name: 'r', method: 'GET', url: 'http://x.com' });
+
+      expect(result.id).toMatch(/^req-/);
+      expect(created).toHaveLength(1);
+      expect(created[0].id).toBe('uncategorized');
+    });
+  });
+
+  describe('system collection guards', () => {
+    it('refuses to rename the Uncategorized collection', async () => {
+      const repo = mockRepo();
+      const service = new CollectionService(repo);
+      await expect(service.update('uncategorized', { name: 'foo' })).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('refuses to delete the Uncategorized collection', async () => {
+      const repo = mockRepo();
+      const service = new CollectionService(repo);
+      await expect(service.delete('uncategorized')).rejects.toMatchObject({ statusCode: 400 });
+    });
   });
 
   describe('moveRequest', () => {

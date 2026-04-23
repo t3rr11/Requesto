@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import path from 'path';
 
-const TEST_BACKEND_PORT = 4001;
+const TEST_BACKEND_PORT = 5747;
 const TEST_FRONTEND_PORT = 5174;
 const testDataDir = path.resolve(__dirname, 'test-data');
 

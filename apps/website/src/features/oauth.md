@@ -112,3 +112,5 @@ Scope: user-read-private user-read-email
 **Token not refreshing** - Make sure Auto Refresh is enabled in the config, and that your provider actually issued a refresh token (not all do).
 
 **Authorization window not opening** - Check that your browser isn't blocking the popup. Verify the authorization URL is correct.
+
+**Self-signed certificate on the token endpoint** - If your OAuth provider's token URL uses a self-signed or otherwise untrusted TLS certificate, enable **Ignore SSL certificate errors** in [Settings](./settings#ignore-ssl-certificate-errors). This applies to both OAuth token exchange and outgoing API requests.

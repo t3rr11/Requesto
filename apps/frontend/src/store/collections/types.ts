@@ -37,6 +37,8 @@ export type Collection = {
   id: string;
   name: string;
   description?: string;
+  /** Set on system-managed collections (e.g. "Uncategorized"). Prevents rename/delete in the UI. */
+  isSystem?: boolean;
   folders: Folder[];
   requests: SavedRequest[];
   openApiSpec?: OpenApiSpecLink;

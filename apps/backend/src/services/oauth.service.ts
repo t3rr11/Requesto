@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { OAuthRepository } from '../repositories/oauth.repository';
 import { AppError } from '../errors/app-error';
+import { getHttpsAgent } from '../utils/httpsAgent';
 import type { OAuthConfigServer, OAuthConfigPublic, TokenExchangeResponse } from '../models/oauth';
 
 function buildProviderHeaders(provider: string): Record<string, string> {
@@ -12,6 +13,14 @@ function buildProviderHeaders(provider: string): Record<string, string> {
     headers['User-Agent'] = 'Requesto-OAuth-Client';
   }
   return headers;
+}
+
+function buildAxiosConfig(provider: string, insecureTls?: boolean) {
+  const httpsAgent = getHttpsAgent(insecureTls);
+  return {
+    headers: buildProviderHeaders(provider),
+    ...(httpsAgent && { httpsAgent }),
+  };
 }
 
 export class OAuthService {
@@ -53,8 +62,9 @@ export class OAuthService {
     code: string;
     codeVerifier?: string;
     redirectUri: string;
+    insecureTls?: boolean;
   }): Promise<TokenExchangeResponse> {
-    const { configId, code, codeVerifier, redirectUri } = params;
+    const { configId, code, codeVerifier, redirectUri, insecureTls } = params;
 
     const config = this.repo.findById(configId, true) as OAuthConfigServer | null;
     if (!config) {
@@ -83,14 +93,18 @@ export class OAuthService {
     const response = await axios.post<TokenExchangeResponse>(
       config.tokenUrl,
       new URLSearchParams(body).toString(),
-      { headers: buildProviderHeaders(config.provider) },
+      buildAxiosConfig(config.provider, insecureTls),
     );
 
     return response.data;
   }
 
-  async refreshToken(params: { configId: string; refreshToken: string }): Promise<TokenExchangeResponse> {
-    const { configId, refreshToken } = params;
+  async refreshToken(params: {
+    configId: string;
+    refreshToken: string;
+    insecureTls?: boolean;
+  }): Promise<TokenExchangeResponse> {
+    const { configId, refreshToken, insecureTls } = params;
 
     const config = this.repo.findById(configId, true) as OAuthConfigServer | null;
     if (!config) {
@@ -111,14 +125,19 @@ export class OAuthService {
     const response = await axios.post<TokenExchangeResponse>(
       config.tokenUrl,
       new URLSearchParams(body).toString(),
-      { headers: buildProviderHeaders(config.provider) },
+      buildAxiosConfig(config.provider, insecureTls),
     );
 
     return response.data;
   }
 
-  async revokeToken(params: { configId: string; token: string; tokenTypeHint?: string }): Promise<{ success: boolean; note?: string }> {
-    const { configId, token, tokenTypeHint } = params;
+  async revokeToken(params: {
+    configId: string;
+    token: string;
+    tokenTypeHint?: string;
+    insecureTls?: boolean;
+  }): Promise<{ success: boolean; note?: string }> {
+    const { configId, token, tokenTypeHint, insecureTls } = params;
 
     const config = this.repo.findById(configId, true) as OAuthConfigServer | null;
     if (!config) {
@@ -139,7 +158,7 @@ export class OAuthService {
       await axios.post(
         config.revocationUrl,
         new URLSearchParams(body).toString(),
-        { headers: buildProviderHeaders(config.provider) },
+        buildAxiosConfig(config.provider, insecureTls),
       );
       return { success: true };
     } catch (revokeError) {
@@ -153,7 +172,8 @@ export class OAuthService {
     }
   }
 
-  async clientCredentials(configId: string): Promise<TokenExchangeResponse> {
+  async clientCredentials(params: { configId: string; insecureTls?: boolean }): Promise<TokenExchangeResponse> {
+    const { configId, insecureTls } = params;
     const config = this.repo.findById(configId, true) as OAuthConfigServer | null;
     if (!config) {
       throw AppError.notFound('OAuth configuration not found');
@@ -178,14 +198,19 @@ export class OAuthService {
     const response = await axios.post<TokenExchangeResponse>(
       config.tokenUrl,
       new URLSearchParams(body).toString(),
-      { headers: buildProviderHeaders(config.provider) },
+      buildAxiosConfig(config.provider, insecureTls),
     );
 
     return response.data;
   }
 
-  async passwordFlow(params: { configId: string; username: string; password: string }): Promise<TokenExchangeResponse> {
-    const { configId, username, password } = params;
+  async passwordFlow(params: {
+    configId: string;
+    username: string;
+    password: string;
+    insecureTls?: boolean;
+  }): Promise<TokenExchangeResponse> {
+    const { configId, username, password, insecureTls } = params;
 
     const config = this.repo.findById(configId, true) as OAuthConfigServer | null;
     if (!config) {
@@ -211,7 +236,7 @@ export class OAuthService {
     const response = await axios.post<TokenExchangeResponse>(
       config.tokenUrl,
       new URLSearchParams(body).toString(),
-      { headers: buildProviderHeaders(config.provider) },
+      buildAxiosConfig(config.provider, insecureTls),
     );
 
     return response.data;

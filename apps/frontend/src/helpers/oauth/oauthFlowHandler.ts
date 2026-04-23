@@ -3,6 +3,11 @@ import { generateCodeVerifier, generateCodeChallenge } from './pkceHelper';
 import { saveState, generateState, retrieveOAuthState } from './stateHelper';
 import { getRedirectUri } from './redirectHelper';
 import { API_BASE } from '../api/config';
+import { useSettingsStore } from '../../store/settings/store';
+
+function getInsecureTls(): boolean {
+  return useSettingsStore.getState().insecureTls;
+}
 
 // Detect Electron: present in both production (file://) and dev (http://localhost:5173)
 const isElectron =
@@ -216,6 +221,7 @@ async function startOAuthElectronFlow(config: OAuthConfig): Promise<OAuthFlowRes
         code,
         codeVerifier: oauthState.codeVerifier,
         redirectUri: oauthState.redirectUri,
+        insecureTls: getInsecureTls(),
       }),
     });
     if (!res.ok) {
@@ -263,7 +269,7 @@ export async function exchangeCodeForTokens(configId: string, code: string, code
   const res = await fetch(`${API_BASE}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ configId, code, codeVerifier }),
+    body: JSON.stringify({ configId, code, codeVerifier, insecureTls: getInsecureTls() }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -278,7 +284,7 @@ export async function refreshOAuthToken(configId: string, refreshToken: string):
   const res = await fetch(`${API_BASE}/oauth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ configId, refreshToken }),
+    body: JSON.stringify({ configId, refreshToken, insecureTls: getInsecureTls() }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -293,7 +299,7 @@ export async function revokeOAuthToken(configId: string, token: string, tokenTyp
   const res = await fetch(`${API_BASE}/oauth/revoke`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ configId, token, tokenTypeHint }),
+    body: JSON.stringify({ configId, token, tokenTypeHint, insecureTls: getInsecureTls() }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -306,7 +312,7 @@ async function startClientCredentialsFlow(config: OAuthConfig): Promise<OAuthFlo
     const res = await fetch(`${API_BASE}/oauth/client-credentials`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ configId: config.id }),
+      body: JSON.stringify({ configId: config.id, insecureTls: getInsecureTls() }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -330,7 +336,7 @@ async function startPasswordFlow(config: OAuthConfig): Promise<OAuthFlowResult> 
     const res = await fetch(`${API_BASE}/oauth/password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ configId: config.id, username, password }),
+      body: JSON.stringify({ configId: config.id, username, password, insecureTls: getInsecureTls() }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

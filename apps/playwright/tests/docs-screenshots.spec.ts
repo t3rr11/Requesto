@@ -381,6 +381,47 @@ test.describe('OAuth', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Settings — application-wide settings dialog
+// ---------------------------------------------------------------------------
+test.describe('Settings', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('settings dialog', async ({ appPage, takeDocScreenshot }) => {
+    // Open the Settings dialog from the gear icon in the header
+    await appPage.locator('button[title="Settings"]').click();
+
+    const dialogHeading = appPage.locator('h2', { hasText: 'Settings' });
+    await expect(dialogHeading).toBeVisible();
+
+    await takeDocScreenshot('settings', 'dialog');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
+  });
+
+  test('settings dialog with warning', async ({ appPage, takeDocScreenshot }) => {
+    await appPage.locator('button[title="Settings"]').click();
+
+    const dialogHeading = appPage.locator('h2', { hasText: 'Settings' });
+    await expect(dialogHeading).toBeVisible();
+    const dialog = dialogHeading.locator('xpath=ancestor::div[contains(@class, "rounded-xl")]');
+
+    // Toggle the insecureTls checkbox to reveal the amber security warning
+    await dialog.locator('input[type="checkbox"]').first().check();
+    await expect(dialog.getByText(/Disabling certificate verification/i)).toBeVisible();
+    await appPage.waitForTimeout(200);
+
+    await takeDocScreenshot('settings', 'dialog-warning');
+
+    // Toggle back off and close so subsequent tests start clean
+    await dialog.locator('input[type="checkbox"]').first().uncheck();
+    await appPage.keyboard.press('Escape');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Console & Logging
 // ---------------------------------------------------------------------------
 test.describe('Console', () => {

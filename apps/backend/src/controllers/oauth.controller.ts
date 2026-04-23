@@ -88,16 +88,16 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     return reply.code(204).send();
   });
 
-  server.post<{ Body: { configId: string; code: string; codeVerifier?: string; redirectUri: string } }>(
+  server.post<{ Body: { configId: string; code: string; codeVerifier?: string; redirectUri: string; insecureTls?: boolean } }>(
     '/oauth/token',
     async (request, reply) => {
-      const { configId, code, codeVerifier, redirectUri } = request.body;
+      const { configId, code, codeVerifier, redirectUri, insecureTls } = request.body;
       if (!configId || !code || !redirectUri) {
         return reply.code(400).send({ error: 'Missing required fields: configId, code, redirectUri' });
       }
 
       try {
-        const result = await oauthService.exchangeToken({ configId, code, codeVerifier, redirectUri });
+        const result = await oauthService.exchangeToken({ configId, code, codeVerifier, redirectUri, insecureTls });
         return reply.code(200).send(result);
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -111,16 +111,16 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     },
   );
 
-  server.post<{ Body: { configId: string; refreshToken: string } }>(
+  server.post<{ Body: { configId: string; refreshToken: string; insecureTls?: boolean } }>(
     '/oauth/refresh',
     async (request, reply) => {
-      const { configId, refreshToken } = request.body;
+      const { configId, refreshToken, insecureTls } = request.body;
       if (!configId || !refreshToken) {
         return reply.code(400).send({ error: 'Missing required fields: configId, refreshToken' });
       }
 
       try {
-        const result = await oauthService.refreshToken({ configId, refreshToken });
+        const result = await oauthService.refreshToken({ configId, refreshToken, insecureTls });
         return reply.code(200).send(result);
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -134,16 +134,16 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     },
   );
 
-  server.post<{ Body: { configId: string; token: string; tokenTypeHint?: string } }>(
+  server.post<{ Body: { configId: string; token: string; tokenTypeHint?: string; insecureTls?: boolean } }>(
     '/oauth/revoke',
     async (request, reply) => {
-      const { configId, token, tokenTypeHint } = request.body;
+      const { configId, token, tokenTypeHint, insecureTls } = request.body;
       if (!configId || !token) {
         return reply.code(400).send({ error: 'Missing required fields: configId, token' });
       }
 
       try {
-        const result = await oauthService.revokeToken({ configId, token, tokenTypeHint });
+        const result = await oauthService.revokeToken({ configId, token, tokenTypeHint, insecureTls });
         return reply.code(200).send(result);
       } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -157,14 +157,14 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     },
   );
 
-  server.post<{ Body: { configId: string } }>('/oauth/client-credentials', async (request, reply) => {
-    const { configId } = request.body;
+  server.post<{ Body: { configId: string; insecureTls?: boolean } }>('/oauth/client-credentials', async (request, reply) => {
+    const { configId, insecureTls } = request.body;
     if (!configId) {
       return reply.code(400).send({ error: 'Missing required field: configId' });
     }
 
     try {
-      const result = await oauthService.clientCredentials(configId);
+      const result = await oauthService.clientCredentials({ configId, insecureTls });
       return reply.code(200).send(result);
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -177,16 +177,16 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     }
   });
 
-  server.post<{ Body: { configId: string; username: string; password: string } }>(
+  server.post<{ Body: { configId: string; username: string; password: string; insecureTls?: boolean } }>(
     '/oauth/password',
     async (request, reply) => {
-      const { configId, username, password } = request.body;
+      const { configId, username, password, insecureTls } = request.body;
       if (!configId || !username || !password) {
         return reply.code(400).send({ error: 'Missing required fields: configId, username, password' });
       }
 
       try {
-        const result = await oauthService.passwordFlow({ configId, username, password });
+        const result = await oauthService.passwordFlow({ configId, username, password, insecureTls });
         return reply.code(200).send(result);
       } catch (error) {
         if (axios.isAxiosError(error)) {
