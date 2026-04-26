@@ -11,7 +11,7 @@
   "devDependencies": {
     "vitepress": "^1.6.4",
     "vitepress-plugin-llms": "^1.12.1",
-    "vue": "^3.5.32"
+    "vue": "^3.5.33"
   },
   "dependencies": {
     "medium-zoom": "^1.1.0"
