@@ -41,15 +41,19 @@ export function EnvironmentHeader({
   const isActive = environmentsData.activeEnvironmentId === environment.id;
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null;
+      if (target && menuRef.current && !menuRef.current.contains(target)) {
         setIsMenuOpen(false);
       }
     };
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('touchstart', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('touchstart', handleClickOutside, true);
+    };
   }, [isMenuOpen]);
 
   const handleNameSubmit = async (newName: string) => {
@@ -65,9 +69,7 @@ export function EnvironmentHeader({
   };
 
   const handleSetActive = () => {
-    if (!isActive) {
-      setActiveEnvironment(environment.id);
-    }
+    setActiveEnvironment(environment.id);
     setIsMenuOpen(false);
   };
 
@@ -151,13 +153,15 @@ export function EnvironmentHeader({
 
           {isMenuOpen && (
             <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
-              <button
-                onClick={handleSetActive}
-                className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-lg"
-              >
-                <Check className={`w-4 h-4 ${isActive ? 'text-green-500' : 'text-transparent'}`} />
-                {isActive ? 'Deactivate' : 'Set Active'}
-              </button>
+              {!isActive && (
+                <button
+                  onClick={handleSetActive}
+                  className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-lg"
+                >
+                  <Check className="w-4 h-4 text-green-500" />
+                  Set Active
+                </button>
+              )}
               <button
                 onClick={handleRename}
                 className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"

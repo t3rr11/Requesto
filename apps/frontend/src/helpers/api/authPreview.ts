@@ -1,5 +1,5 @@
 import type { ProxyRequest } from '../../store/request/types';
-import { prepareAuthenticatedRequest } from './authRequest';
+import { useOAuthStore } from '../../store/oauth/store';
 
 /**
  * Mirror of the backend's `applyAuthentication` for display purposes only.
@@ -7,24 +7,23 @@ import { prepareAuthenticatedRequest } from './authRequest';
  * The backend injects auth headers/query params just before sending the
  * upstream request, so they never appear on the original `ProxyRequest`
  * object the frontend keeps. That made the Authorization header invisible
- * in the Console panel for basic / bearer / api-key / digest auth.
+ * in the Console panel for basic / bearer / api-key / digest / oauth auth.
  *
  * This helper produces a copy of the request with the same headers / URL
  * the backend will end up sending, so we can show the user exactly what
  * was on the wire. It's never sent to the network — only used for logging.
  *
- * NOTE: pass the original `ProxyRequest` only — this function calls
- * `prepareAuthenticatedRequest` internally, so passing an already-
- * authenticated request would double-process OAuth headers.
+ * For OAuth we never have the real access token on the frontend (it's owned
+ * by the backend); we display the redacted preview from the cached token
+ * status so the console at least shows that an Authorization header will be
+ * attached.
  */
 export function applyAuthForDisplay(request: ProxyRequest): ProxyRequest {
-  // Start from the OAuth-injected request (frontend-side concern).
-  const base = prepareAuthenticatedRequest(request);
-  const auth = base.auth;
-  if (!auth || auth.type === 'none') return base;
+  const auth = request.auth;
+  if (!auth || auth.type === 'none') return request;
 
-  const headers = { ...(base.headers ?? {}) };
-  let url = base.url;
+  const headers = { ...(request.headers ?? {}) };
+  let url = request.url;
 
   switch (auth.type) {
     case 'basic':
@@ -65,9 +64,16 @@ export function applyAuthForDisplay(request: ProxyRequest): ProxyRequest {
       break;
 
     case 'oauth':
-      // Already handled by prepareAuthenticatedRequest above.
+      if (auth.oauth?.configId) {
+        const status = useOAuthStore.getState().tokenStatuses[auth.oauth.configId];
+        if (status?.hasToken && status.accessTokenPreview) {
+          const tokenType = status.tokenType ?? 'Bearer';
+          headers['Authorization'] = `${tokenType} ${status.accessTokenPreview}`;
+        }
+      }
       break;
   }
 
-  return { ...base, headers, url };
+  return { ...request, headers, url };
 }
+

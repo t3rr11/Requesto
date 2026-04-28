@@ -61,21 +61,6 @@ export const requestFormSchema = z.object({
     oauth: z
       .object({
         configId: z.string(),
-        tokens: z
-          .object({
-            accessToken: z.string(),
-            tokenType: z.string(),
-            expiresIn: z.number().optional(),
-            expiresAt: z.number().optional(),
-            refreshToken: z.string().optional(),
-            scope: z.string().optional(),
-            idToken: z.string().optional(),
-          })
-          .optional(),
-        isAuthenticated: z.boolean(),
-        isRefreshing: z.boolean(),
-        lastAuthenticatedAt: z.number().optional(),
-        error: z.string().optional(),
       })
       .optional(),
   }),

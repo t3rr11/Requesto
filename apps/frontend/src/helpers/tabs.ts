@@ -59,8 +59,23 @@ export function savedRequestToTabRequest(saved: {
     url: saved.url,
     headers: saved.headers,
     body: saved.body,
-    auth: saved.auth,
+    auth: normaliseSavedAuth(saved.auth),
   };
+}
+
+/**
+ * Coerce legacy persisted OAuth auth (which embedded full token state) into
+ * the current shape `{ configId }`. If the legacy entry has no usable
+ * configId we fall back to `{ type: 'none' }` and let the user re-attach it.
+ */
+function normaliseSavedAuth(auth: TabRequest['auth']): TabRequest['auth'] {
+  if (!auth || auth.type !== 'oauth') return auth;
+  const oauth = auth.oauth as { configId?: string } | undefined;
+  if (!oauth || typeof oauth.configId !== 'string' || oauth.configId.length === 0) {
+    return { type: 'none' };
+  }
+  // Drop any extraneous fields persisted by older versions.
+  return { type: 'oauth', oauth: { configId: oauth.configId } };
 }
 
 export function cloneTabRequest(request: TabRequest): TabRequest {

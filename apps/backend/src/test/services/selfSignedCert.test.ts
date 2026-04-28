@@ -58,6 +58,9 @@ function makeOAuthRepo(config: OAuthConfigServer, clientSecret: string | null = 
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    getTokens: vi.fn().mockReturnValue(null),
+    setTokens: vi.fn(),
+    deleteTokens: vi.fn(),
   } as unknown as OAuthRepository;
 }
 

@@ -19,27 +19,58 @@ export function useGitAutoRefresh() {
     debounceRef.current = setTimeout(loadStatus, DEBOUNCE_MS);
   }, [loadStatus]);
 
+  const startPolling = useCallback(() => {
+    if (intervalRef.current) return;
+    intervalRef.current = setInterval(loadStatus, POLL_INTERVAL);
+  }, [loadStatus]);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!isRepo) return;
 
     loadStatus();
+    startPolling();
 
-    intervalRef.current = setInterval(loadStatus, POLL_INTERVAL);
-
-    const onFocus = () => loadStatus();
-    window.addEventListener('focus', onFocus);
+    // In Electron, use IPC-based focus/blur from the main process (reliable).
+    // In the browser, fall back to the Page Visibility API.
+    let cleanupFocusBlur: (() => void) | null = null;
+    if (window.electronAPI?.onWindowFocus && window.electronAPI?.onWindowBlur) {
+      const removeFocus = window.electronAPI.onWindowFocus(() => {
+        loadStatus();
+        startPolling();
+      });
+      const removeBlur = window.electronAPI.onWindowBlur(() => stopPolling());
+      cleanupFocusBlur = () => { removeFocus(); removeBlur(); };
+    } else {
+      const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          loadStatus();
+          startPolling();
+        } else {
+          stopPolling();
+        }
+      };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      cleanupFocusBlur = () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    }
 
     // Listen for data mutations (collection/environment saves)
     const onMutated = () => debouncedLoad();
     window.addEventListener('requesto:data-mutated', onMutated);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopPolling();
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      window.removeEventListener('focus', onFocus);
+      cleanupFocusBlur?.();
       window.removeEventListener('requesto:data-mutated', onMutated);
     };
-  }, [isRepo, loadStatus, debouncedLoad]);
+  }, [isRepo, loadStatus, debouncedLoad, startPolling, stopPolling]);
 }
 
 /**

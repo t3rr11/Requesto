@@ -4,6 +4,8 @@ import {
   OAuthConfigPublic,
   OAuthData,
   OAuthSecretsData,
+  OAuthTokensData,
+  StoredOAuthToken,
 } from '../models/oauth';
 import { BaseRepository } from './base.repository';
 
@@ -23,6 +25,10 @@ export class OAuthRepository extends BaseRepository {
     return path.join(this.getLocalDir(), 'oauth-secrets.json');
   }
 
+  private getTokensFile(): string {
+    return path.join(this.getLocalDir(), 'oauth-tokens.json');
+  }
+
   private readData(): OAuthData {
     return this.readJson<OAuthData>(this.getConfigFile(), { configs: [] });
   }
@@ -37,6 +43,14 @@ export class OAuthRepository extends BaseRepository {
 
   private writeSecrets(data: OAuthSecretsData): void {
     this.writeJson(this.getSecretsFile(), data);
+  }
+
+  private readTokens(): OAuthTokensData {
+    return this.readJson<OAuthTokensData>(this.getTokensFile(), { tokens: {} });
+  }
+
+  private writeTokens(data: OAuthTokensData): void {
+    this.writeJson(this.getTokensFile(), data);
   }
 
   getAll(): OAuthConfigPublic[] {
@@ -125,6 +139,8 @@ export class OAuthRepository extends BaseRepository {
       this.writeSecrets(secrets);
     }
 
+    this.deleteTokens(id);
+
     return true;
   }
 
@@ -132,5 +148,26 @@ export class OAuthRepository extends BaseRepository {
   getClientSecret(configId: string): string | null {
     const secrets = this.readSecrets();
     return secrets.secrets[configId] ?? null;
+  }
+
+  // ── Token persistence ────────────────────────────────────────────────────
+
+  getTokens(configId: string): StoredOAuthToken | null {
+    const data = this.readTokens();
+    return data.tokens[configId] ?? null;
+  }
+
+  setTokens(configId: string, tokens: StoredOAuthToken): void {
+    const data = this.readTokens();
+    data.tokens[configId] = tokens;
+    this.writeTokens(data);
+  }
+
+  deleteTokens(configId: string): boolean {
+    const data = this.readTokens();
+    if (!data.tokens[configId]) return false;
+    delete data.tokens[configId];
+    this.writeTokens(data);
+    return true;
   }
 }

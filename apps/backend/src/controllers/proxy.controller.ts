@@ -2,6 +2,7 @@ import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import axios from 'axios';
 import { ProxyService } from '../services/proxy.service';
 import { HistoryService } from '../services/history.service';
+import { InteractiveAuthRequiredError } from '../services/oauth.service';
 import type { ProxyRequest } from '../models/proxy';
 
 interface Options {
@@ -25,6 +26,13 @@ const proxyController: FastifyPluginAsync<Options> = async (server, opts) => {
         const result = await proxyService.executeRequest(request.body);
         return reply.code(200).send(result);
       } catch (error) {
+        if (error instanceof InteractiveAuthRequiredError) {
+          return reply.code(401).send({
+            error: error.message,
+            code: 'OAUTH_INTERACTIVE_REQUIRED',
+            configId: error.configId,
+          });
+        }
         if (axios.isAxiosError(error)) {
           const duration = 0;
           return reply.code(200).send({
@@ -60,7 +68,20 @@ const proxyController: FastifyPluginAsync<Options> = async (server, opts) => {
         return reply.code(400).send({ error: 'Missing required fields: method and url' });
       }
 
-      const { response } = await proxyService.streamRequest(request.body);
+      let streamResult: Awaited<ReturnType<typeof proxyService.streamRequest>>;
+      try {
+        streamResult = await proxyService.streamRequest(request.body);
+      } catch (error) {
+        if (error instanceof InteractiveAuthRequiredError) {
+          return reply.code(401).send({
+            error: error.message,
+            code: 'OAUTH_INTERACTIVE_REQUIRED',
+            configId: error.configId,
+          });
+        }
+        throw error;
+      }
+      const { response } = streamResult;
 
       reply.hijack();
       reply.raw.statusCode = response.status;

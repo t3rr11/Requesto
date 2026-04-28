@@ -26,13 +26,13 @@ export const tokenExchangeSchema = z.object({
 
 export const tokenRefreshSchema = z.object({
   configId: z.string().min(1, 'Config ID is required'),
-  refreshToken: z.string().min(1, 'Refresh token is required'),
+  refreshToken: z.string().min(1).optional(),
   insecureTls: z.boolean().optional(),
 });
 
 export const tokenRevokeSchema = z.object({
   configId: z.string().min(1, 'Config ID is required'),
-  token: z.string().min(1, 'Token is required'),
+  token: z.string().min(1).optional(),
   tokenTypeHint: z.string().optional(),
   insecureTls: z.boolean().optional(),
 });

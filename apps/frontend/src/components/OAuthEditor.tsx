@@ -1,13 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Key, RefreshCw, LogOut, Settings, AlertCircle, CheckCircle, Clock, AlertTriangle, Trash2 } from 'lucide-react';
 import type { OAuthConfig, OAuthAuth } from '../store/oauth/types';
 import { useOAuthStore } from '../store/oauth/store';
 import { useOAuthFlow } from '../hooks/useOAuthFlow';
-import { useTokenRefresh } from '../hooks/useTokenRefresh';
 import { OAuthConfigForm } from '../forms/OAuthConfigForm';
 import { OAuthManagerDialog } from '../forms/OAuthManagerDialog';
 import { Button } from './Button';
-import { formatTimeUntilExpiry, getTimeUntilExpiry } from '../helpers/oauth/tokenManager';
+import { formatTimeUntilExpiry, getSecondsUntil } from '../helpers/oauth/expiry';
 import { revokeOAuthToken } from '../helpers/oauth/oauthFlowHandler';
 
 interface OAuthEditorProps {
@@ -20,55 +19,39 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
   const [showConfigForm, setShowConfigForm] = useState(false);
   const [showManagerDialog, setShowManagerDialog] = useState(false);
   const [editingConfig, setEditingConfig] = useState<OAuthConfig | undefined>(undefined);
-  const [selectedConfigId, setSelectedConfigId] = useState<string>(auth?.configId || '');
+  const selectedConfigId = auth?.configId ?? '';
 
-  const { configs, tokenState, loadConfigs, addConfig, updateConfig, deleteConfig, clearTokens, isLoadingConfigs } =
-    useOAuthStore();
+  const {
+    configs,
+    tokenStatuses,
+    isLoadingConfigs,
+    loadConfigs,
+    addConfig,
+    updateConfig,
+    deleteConfig,
+    clearTokens,
+    loadTokenStatus,
+  } = useOAuthStore();
 
   const { authenticate, refresh, isAuthenticating, error, clearError } = useOAuthFlow(selectedConfigId);
-
-  useTokenRefresh({ configId: selectedConfigId, enabled: !!selectedConfigId });
 
   useEffect(() => {
     loadConfigs();
   }, [loadConfigs]);
 
-  const previousAuthRef = useRef<string>('');
 
   useEffect(() => {
-    if (selectedConfigId && configs.length > 0) {
-      const config = configs.find(c => c.id === selectedConfigId);
-      if (config) {
-        const tokens = tokenState[selectedConfigId]?.tokens;
-        const isExpired = tokenState[selectedConfigId]?.isExpired ?? true;
+    if (selectedConfigId) loadTokenStatus(selectedConfigId);
+  }, [selectedConfigId, loadTokenStatus]);
 
-        const newAuth: OAuthAuth = {
-          configId: selectedConfigId,
-          config,
-          tokens: tokens || undefined,
-          isAuthenticated: !!tokens && !isExpired,
-          isRefreshing: false,
-          error: error || undefined,
-        };
-
-        const authString = JSON.stringify({
-          configId: newAuth.configId,
-          hasTokens: !!newAuth.tokens,
-          isAuthenticated: newAuth.isAuthenticated,
-          error: newAuth.error,
-        });
-
-        if (authString !== previousAuthRef.current) {
-          previousAuthRef.current = authString;
-          onAuthChange(newAuth);
-        }
-      }
-    }
-  }, [selectedConfigId, configs, tokenState, error]);
+  const emitConfigId = (configId: string) => {
+    if (configId === (auth?.configId ?? '')) return;
+    onAuthChange({ configId });
+  };
 
   const handleConfigSelect = (configId: string) => {
-    setSelectedConfigId(configId);
     clearError();
+    emitConfigId(configId);
   };
 
   const handleSaveConfig = async (configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'> & { clientSecret?: string }) => {
@@ -77,7 +60,7 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
       setEditingConfig(undefined);
     } else {
       const newConfig = await addConfig(configData);
-      setSelectedConfigId(newConfig.id);
+      emitConfigId(newConfig.id);
     }
   };
 
@@ -92,66 +75,58 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
     await refresh(selectedConfigId);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (!selectedConfigId) return;
-    clearTokens(selectedConfigId);
+    await clearTokens(selectedConfigId);
     clearError();
   };
 
   const handleRevoke = async () => {
-    if (!selectedConfigId || !tokens) return;
+    if (!selectedConfigId) return;
     const config = configs.find(c => c.id === selectedConfigId);
     if (!config?.revocationUrl) {
-      clearTokens(selectedConfigId);
+      await clearTokens(selectedConfigId);
       clearError();
       return;
     }
     try {
-      await revokeOAuthToken(selectedConfigId, tokens.accessToken, 'access_token');
-      if (tokens.refreshToken) {
-        await revokeOAuthToken(selectedConfigId, tokens.refreshToken, 'refresh_token');
+      await revokeOAuthToken(selectedConfigId, 'access_token');
+      if (status?.hasRefreshToken) {
+        await revokeOAuthToken(selectedConfigId, 'refresh_token');
       }
     } catch {
       // Still clear locally even if revocation fails
     }
-    clearTokens(selectedConfigId);
+    await clearTokens(selectedConfigId);
     clearError();
   };
 
   const handleDeleteConfig = async (configId: string) => {
     await deleteConfig(configId);
-    if (selectedConfigId === configId) setSelectedConfigId('');
+    if (selectedConfigId === configId) emitConfigId('');
   };
 
   const handleRemoveAuth = () => {
-    setSelectedConfigId('');
     clearError();
-    onAuthChange({
-      configId: '',
-      config: undefined,
-      tokens: undefined,
-      isAuthenticated: false,
-      isRefreshing: false,
-    });
+    emitConfigId('');
   };
 
   const selectedConfig = configs.find(c => c.id === selectedConfigId);
-  const tokens = selectedConfigId ? tokenState[selectedConfigId]?.tokens : null;
-  const isExpired = selectedConfigId ? tokenState[selectedConfigId]?.isExpired : true;
-  const expiresIn = selectedConfigId ? tokenState[selectedConfigId]?.expiresIn : null;
-  const isAuthenticated = !!tokens && !isExpired;
-  const hasRefreshToken = !!tokens?.refreshToken;
+  const status = selectedConfigId ? tokenStatuses[selectedConfigId] : undefined;
+  const isAuthenticated = !!status?.hasToken && !status.isExpired;
+  const hasRefreshToken = !!status?.hasRefreshToken;
+  const expiresAt = status?.expiresAt;
 
-  const getTokenStatus = (): 'good' | 'warning' | 'expired' | 'none' => {
-    if (!tokens) return 'none';
-    const seconds = getTimeUntilExpiry(tokens);
+  const getTokenStatusKind = (): 'good' | 'warning' | 'expired' | 'none' => {
+    if (!status?.hasToken) return 'none';
+    const seconds = getSecondsUntil(expiresAt);
     if (seconds === null) return 'good';
     if (seconds <= 0) return 'expired';
     if (seconds <= 300) return 'warning';
     return 'good';
   };
 
-  const tokenStatus = getTokenStatus();
+  const tokenStatusKind = getTokenStatusKind();
 
   return (
     <div className="space-y-4">
@@ -235,35 +210,35 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
             {isAuthenticated ? (
               <div className="space-y-2">
                 <div className={`flex items-center gap-2 text-sm ${
-                  tokenStatus === 'good' ? 'text-green-600 dark:text-green-400' :
-                  tokenStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                  tokenStatusKind === 'good' ? 'text-green-600 dark:text-green-400' :
+                  tokenStatusKind === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
                   'text-red-600 dark:text-red-400'
                 }`}>
-                  {tokenStatus === 'good' && <CheckCircle size={16} />}
-                  {tokenStatus === 'warning' && <AlertTriangle size={16} />}
-                  {tokenStatus === 'expired' && <AlertCircle size={16} />}
+                  {tokenStatusKind === 'good' && <CheckCircle size={16} />}
+                  {tokenStatusKind === 'warning' && <AlertTriangle size={16} />}
+                  {tokenStatusKind === 'expired' && <AlertCircle size={16} />}
                   <span className="font-medium">
-                    {tokenStatus === 'good' && 'Authenticated'}
-                    {tokenStatus === 'warning' && 'Token Expiring Soon'}
-                    {tokenStatus === 'expired' && 'Token Expired'}
+                    {tokenStatusKind === 'good' && 'Authenticated'}
+                    {tokenStatusKind === 'warning' && 'Token Expiring Soon'}
+                    {tokenStatusKind === 'expired' && 'Token Expired'}
                   </span>
                 </div>
 
-                {expiresIn !== null && (
+                {expiresAt !== undefined && (
                   <div className={`flex items-center gap-2 text-xs ${
-                    tokenStatus === 'good' ? 'text-gray-600 dark:text-gray-400' :
-                    tokenStatus === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                    tokenStatusKind === 'good' ? 'text-gray-600 dark:text-gray-400' :
+                    tokenStatusKind === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
                     'text-red-600 dark:text-red-400'
                   }`}>
                     <Clock size={14} />
-                    <span>{tokenStatus === 'expired' ? 'Expired' : `Expires in ${formatTimeUntilExpiry(tokens!)}`}</span>
+                    <span>{tokenStatusKind === 'expired' ? 'Expired' : `Expires ${formatTimeUntilExpiry(expiresAt)}`}</span>
                   </div>
                 )}
 
                 {selectedConfig.autoRefreshToken && hasRefreshToken && (
                   <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
                     <RefreshCw size={14} />
-                    <span>Auto-refresh enabled (threshold: {selectedConfig.tokenRefreshThreshold || 300}s)</span>
+                    <span>Auto-refresh enabled</span>
                   </div>
                 )}
 

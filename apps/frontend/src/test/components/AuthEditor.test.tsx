@@ -15,8 +15,9 @@ vi.mock('../../store/environments/store', () => ({
 vi.mock('../../store/oauth/store', () => ({
   useOAuthStore: () => ({
     configs: [],
-    tokenState: {},
+    tokenStatuses: {},
     loadConfigs: vi.fn(),
+    loadTokenStatus: vi.fn(),
   }),
 }));
 

@@ -125,7 +125,7 @@ describe('EnvironmentList', () => {
     expect(screen.getByText('Delete')).toBeInTheDocument();
   });
 
-  it('shows "Deactivate" when right-clicking the active environment', () => {
+  it('hides Set Active when right-clicking the already-active environment', () => {
     render(
       <EnvironmentList
         environments={environments}
@@ -136,7 +136,7 @@ describe('EnvironmentList', () => {
       />,
     );
     fireEvent.contextMenu(screen.getByText('Production'));
-    expect(screen.getByText('Deactivate')).toBeInTheDocument();
+    expect(screen.queryByText('Set Active')).not.toBeInTheDocument();
   });
 
   it('calls setActiveEnvironment when "Set Active" is chosen on an inactive env', async () => {

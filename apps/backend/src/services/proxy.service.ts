@@ -4,9 +4,10 @@ import https from 'node:https';
 import FormData from 'form-data';
 import { EnvironmentService } from './environment.service';
 import { HistoryService } from './history.service';
-import { applyAuthentication, getAxiosAuthConfig } from '../utils/auth';
+import { OAuthService } from './oauth.service';
+import { applyAuthentication, getAxiosAuthConfig, type OAuthTokenResolver } from '../utils/auth';
 import { getHttpsAgent } from '../utils/httpsAgent';
-import type { ProxyRequest, ProxyResponse, FormDataEntry } from '../models/proxy';
+import type { ProxyRequest, ProxyResponse, FormDataEntry, BodyType } from '../models/proxy';
 
 function isValidUrl(urlString: string): boolean {
   try {
@@ -45,11 +46,85 @@ function buildUrlEncodedBody(entries: FormDataEntry[]): string {
   return params.toString();
 }
 
+/** Case-insensitive header existence check. */
+function hasHeaderCI(headers: Record<string, string>, name: string): boolean {
+  const target = name.toLowerCase();
+  return Object.keys(headers).some((k) => k.toLowerCase() === target);
+}
+
+/**
+ * Build the request body and merged headers, auto-injecting `Content-Type`
+ * when the user hasn't supplied one. Used by both `executeRequest` (axios)
+ * and `streamRequest` (fetch).
+ *
+ * Rules:
+ *  - JSON (or unset bodyType + body present): default `application/json`.
+ *  - x-www-form-urlencoded: default `application/x-www-form-urlencoded`.
+ *  - form-data: always use the multipart `Content-Type` from form.getHeaders()
+ *    so the boundary matches the body. A user-supplied Content-Type would
+ *    break parsing, so it's discarded with a warning.
+ *  - User-supplied Content-Type (any casing) is preserved for JSON / urlencoded.
+ */
+function buildBodyAndHeaders(opts: {
+  method: string;
+  bodyType?: BodyType;
+  body?: string;
+  formDataEntries?: FormDataEntry[];
+  baseHeaders: Record<string, string>;
+}): { headers: Record<string, string>; data: unknown; bufferBody?: Buffer | string } {
+  const headers = { ...opts.baseHeaders };
+  if (!methodSupportsBody(opts.method)) {
+    return { headers, data: undefined };
+  }
+
+  const userHasContentType = hasHeaderCI(headers, 'content-type');
+
+  if (opts.bodyType === 'form-data' && opts.formDataEntries?.length) {
+    const form = buildFormDataBody(opts.formDataEntries);
+    if (userHasContentType) {
+      // Strip user-supplied CT so the multipart boundary is used.
+      for (const k of Object.keys(headers)) {
+        if (k.toLowerCase() === 'content-type') delete headers[k];
+      }
+      console.warn('[proxy] dropping user-supplied Content-Type for form-data request (boundary mismatch)');
+    }
+    Object.assign(headers, form.getHeaders());
+    return { headers, data: form, bufferBody: form.getBuffer() };
+  }
+
+  if (opts.bodyType === 'x-www-form-urlencoded' && opts.formDataEntries?.length) {
+    const data = buildUrlEncodedBody(opts.formDataEntries);
+    if (!userHasContentType) {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    }
+    return { headers, data, bufferBody: data };
+  }
+
+  if (opts.body) {
+    if (!userHasContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    return { headers, data: opts.body, bufferBody: opts.body };
+  }
+
+  return { headers, data: undefined };
+}
+
 export class ProxyService {
+  private readonly oauthResolver?: OAuthTokenResolver;
+
   constructor(
     private readonly environmentService: EnvironmentService,
     private readonly historyService: HistoryService,
-  ) {}
+    oauthService?: OAuthService,
+  ) {
+    if (oauthService) {
+      this.oauthResolver = async (configId) => {
+        const token = await oauthService.getValidAccessToken(configId);
+        return { accessToken: token.accessToken, tokenType: token.tokenType };
+      };
+    }
+  }
 
   async executeRequest(req: ProxyRequest): Promise<ProxyResponse> {
     const { method, url, headers, body, bodyType, formDataEntries, auth, insecureTls } = req;
@@ -60,16 +135,29 @@ export class ProxyService {
 
     const substituted = this.environmentService.substituteInRequest({ url, headers, body, formDataEntries });
     const substitutedAuth = this.environmentService.substituteInAuth(auth);
-    const authenticated = applyAuthentication(substitutedAuth, substituted.headers, substituted.url);
+    const authenticated = await applyAuthentication(
+      substitutedAuth,
+      substituted.headers,
+      substituted.url,
+      this.oauthResolver,
+    );
 
     const startTime = Date.now();
 
     const httpsAgent = getHttpsAgent(insecureTls);
 
+    const built = buildBodyAndHeaders({
+      method,
+      bodyType,
+      body: substituted.body,
+      formDataEntries: substituted.formDataEntries,
+      baseHeaders: authenticated.headers || {},
+    });
+
     const config: AxiosRequestConfig = {
       method: method.toLowerCase(),
       url: authenticated.url,
-      headers: authenticated.headers || {},
+      headers: built.headers,
       validateStatus: () => true,
       timeout: 30000,
       ...(httpsAgent && { httpsAgent }),
@@ -80,17 +168,8 @@ export class ProxyService {
       config.auth = axiosAuth;
     }
 
-    if (methodSupportsBody(method)) {
-      if (bodyType === 'form-data' && substituted.formDataEntries?.length) {
-        const form = buildFormDataBody(substituted.formDataEntries);
-        config.data = form;
-        config.headers = { ...config.headers, ...form.getHeaders() };
-      } else if (bodyType === 'x-www-form-urlencoded' && substituted.formDataEntries?.length) {
-        config.data = buildUrlEncodedBody(substituted.formDataEntries);
-        config.headers = { ...config.headers, 'Content-Type': 'application/x-www-form-urlencoded' };
-      } else if (substituted.body) {
-        config.data = substituted.body;
-      }
+    if (built.data !== undefined) {
+      config.data = built.data;
     }
 
     const response = await axios(config);
@@ -127,23 +206,23 @@ export class ProxyService {
 
     const substituted = this.environmentService.substituteInRequest({ url, headers, body, formDataEntries });
     const substitutedAuth = this.environmentService.substituteInAuth(auth);
-    const authenticated = applyAuthentication(substitutedAuth, substituted.headers, substituted.url);
+    const authenticated = await applyAuthentication(
+      substitutedAuth,
+      substituted.headers,
+      substituted.url,
+      this.oauthResolver,
+    );
 
-    const fetchHeaders: Record<string, string> = { ...(authenticated.headers || {}) };
-    let fetchBody: string | Buffer | undefined;
+    const built = buildBodyAndHeaders({
+      method,
+      bodyType,
+      body: substituted.body,
+      formDataEntries: substituted.formDataEntries,
+      baseHeaders: authenticated.headers || {},
+    });
 
-    if (methodSupportsBody(method)) {
-      if (bodyType === 'form-data' && substituted.formDataEntries?.length) {
-        const form = buildFormDataBody(substituted.formDataEntries);
-        fetchBody = form.getBuffer();
-        Object.assign(fetchHeaders, form.getHeaders());
-      } else if (bodyType === 'x-www-form-urlencoded' && substituted.formDataEntries?.length) {
-        fetchBody = buildUrlEncodedBody(substituted.formDataEntries);
-        fetchHeaders['Content-Type'] = 'application/x-www-form-urlencoded';
-      } else if (substituted.body) {
-        fetchBody = substituted.body;
-      }
-    }
+    const fetchHeaders = built.headers;
+    const fetchBody = built.bufferBody;
 
     const fetchOptions: Record<string, unknown> = {
       method: method.toUpperCase(),

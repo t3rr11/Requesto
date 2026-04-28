@@ -55,4 +55,12 @@ export function createWindow(): void {
   state.mainWindow.on('closed', () => {
     state.mainWindow = null;
   });
+
+  state.mainWindow.on('blur', () => {
+    state.mainWindow?.webContents.send('window:blur');
+  });
+
+  state.mainWindow.on('focus', () => {
+    state.mainWindow?.webContents.send('window:focus');
+  });
 }

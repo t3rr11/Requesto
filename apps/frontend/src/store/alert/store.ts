@@ -1,22 +1,19 @@
 import { create } from 'zustand';
-import { showAlert, closeAlert } from './actions';
-import type { AlertVariant } from './types';
+import { showAlert, dismissToast, clearToasts } from './actions';
+import type { AlertVariant, Toast } from './types';
 
 type AlertState = {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  variant: AlertVariant;
+  toasts: Toast[];
   showAlert: (titleOrMessage: string, messageOrVariant?: string, variant?: AlertVariant) => void;
-  closeAlert: () => void;
+  dismissToast: (id: string) => void;
+  clearToasts: () => void;
 };
 
 export const useAlertStore = create<AlertState>((set) => ({
-  isOpen: false,
-  title: '',
-  message: '',
-  variant: 'info',
+  toasts: [],
   showAlert: (titleOrMessage, messageOrVariant, variant) =>
     showAlert(set, titleOrMessage, messageOrVariant, variant),
-  closeAlert: () => closeAlert(set),
+  dismissToast: (id) => dismissToast(set, id),
+  clearToasts: () => clearToasts(set),
 }));
+

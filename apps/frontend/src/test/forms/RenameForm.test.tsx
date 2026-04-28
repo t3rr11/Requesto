@@ -120,4 +120,26 @@ describe('RenameForm', () => {
 
     expect(screen.getByPlaceholderText('Enter folder name...')).toBeInTheDocument();
   });
+
+  it('submits on Enter key (does not just close)', async () => {
+    const user = userEvent.setup();
+    render(
+      <RenameForm
+        isOpen={true}
+        onClose={mockOnClose}
+        onSave={mockOnSave}
+        currentName="Old Name"
+        title="Rename"
+        label="Name"
+      />,
+    );
+
+    const input = screen.getByDisplayValue('Old Name');
+    await user.clear(input);
+    await user.type(input, 'Renamed{Enter}');
+
+    await vi.waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalledWith('Renamed');
+    });
+  });
 });

@@ -73,9 +73,8 @@ export function EnvironmentList({
 
   const handleSetActive = async () => {
     if (!menu) return;
-    const isActive = activeEnvironmentId === menu.environment.id;
     try {
-      if (!isActive) await setActiveEnvironment(menu.environment.id);
+      await setActiveEnvironment(menu.environment.id);
     } catch {
       showAlert('Failed to set active environment', 'error');
     }
@@ -156,8 +155,6 @@ export function EnvironmentList({
     </div>
   );
 
-  const isActiveInMenu = menu ? activeEnvironmentId === menu.environment.id : false;
-
   return (
     <SidebarPanel title="Environments" headerActions={headerActions}>
       {environments.length === 0 ? (
@@ -194,11 +191,13 @@ export function EnvironmentList({
         <ContextMenu
           position={{ x: menu.x, y: menu.y }}
           items={[
-            {
-              label: isActiveInMenu ? 'Deactivate' : 'Set Active',
-              icon: <Check className={`w-4 h-4 ${isActiveInMenu ? 'text-green-500' : 'text-transparent'}`} />,
-              onClick: handleSetActive,
-            },
+            ...(activeEnvironmentId === menu.environment.id
+              ? []
+              : [{
+                  label: 'Set Active',
+                  icon: <Check className="w-4 h-4 text-green-500" />,
+                  onClick: handleSetActive,
+                }]),
             { label: 'Rename', icon: <Pencil className="w-4 h-4" />, onClick: handleRename },
             { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: handleDuplicate },
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExport },

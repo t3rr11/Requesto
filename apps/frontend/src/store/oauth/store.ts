@@ -1,16 +1,10 @@
 import { create } from 'zustand';
-import type { OAuthConfig, OAuthTokens } from './types';
+import type { OAuthConfig, OAuthTokenStatus } from './types';
 import * as actions from './actions';
-
-type TokenStateEntry = {
-  tokens: OAuthTokens | null;
-  isExpired: boolean;
-  expiresIn: number | null;
-};
 
 type OAuthStoreState = {
   configs: OAuthConfig[];
-  tokenState: Record<string, TokenStateEntry>;
+  tokenStatuses: Record<string, OAuthTokenStatus>;
   isLoadingConfigs: boolean;
   isAuthenticating: Record<string, boolean>;
   errors: Record<string, string>;
@@ -21,11 +15,8 @@ type OAuthStoreState = {
   deleteConfig: (id: string) => Promise<void>;
   getConfig: (id: string) => OAuthConfig | null;
 
-  loadTokenState: (configId: string) => void;
-  loadAllTokenStates: () => void;
-  setTokens: (configId: string, tokens: OAuthTokens, storageType: OAuthConfig['tokenStorage']) => void;
-  clearTokens: (configId: string) => void;
-  clearAllTokens: () => void;
+  loadTokenStatus: (configId: string) => Promise<void>;
+  clearTokens: (configId: string) => Promise<void>;
 
   setAuthenticating: (configId: string, isAuthenticating: boolean) => void;
   setError: (configId: string, error: string | null) => void;
@@ -34,7 +25,7 @@ type OAuthStoreState = {
 
 export const useOAuthStore = create<OAuthStoreState>((set, get) => ({
   configs: [],
-  tokenState: {},
+  tokenStatuses: {},
   isLoadingConfigs: false,
   isAuthenticating: {},
   errors: {},
@@ -45,11 +36,8 @@ export const useOAuthStore = create<OAuthStoreState>((set, get) => ({
   deleteConfig: (id) => actions.deleteConfig(set, get, id),
   getConfig: (id) => actions.getConfig(get, id),
 
-  loadTokenState: (configId) => actions.loadTokenState(set, configId),
-  loadAllTokenStates: () => actions.loadAllTokenStates(get),
-  setTokens: (configId, tokens, storageType) => actions.setTokens(get, configId, tokens, storageType),
+  loadTokenStatus: (configId) => actions.loadTokenStatus(set, configId),
   clearTokens: (configId) => actions.clearTokens(set, configId),
-  clearAllTokens: () => actions.clearAllTokens(set, get),
 
   setAuthenticating: (configId, isAuth) => actions.setAuthenticating(set, configId, isAuth),
   setError: (configId, error) => actions.setError(set, configId, error),
