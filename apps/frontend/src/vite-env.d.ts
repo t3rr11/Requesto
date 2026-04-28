@@ -26,6 +26,8 @@ interface ElectronAPI {
   selectDirectory: () => Promise<string | null>;
   isDevelopment: boolean;
   update: ElectronUpdateAPI;
+  onWindowFocus: (callback: () => void) => () => void;
+  onWindowBlur: (callback: () => void) => () => void;
 }
 
 interface Window {

@@ -58,4 +58,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     download: () => ipcRenderer.invoke('update:download'),
     install: () => ipcRenderer.invoke('update:install'),
   },
+
+  // Window focus/blur events (reliable in Electron; not available in browser)
+  onWindowFocus: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('window:focus', listener);
+    return () => ipcRenderer.removeListener('window:focus', listener);
+  },
+  onWindowBlur: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('window:blur', listener);
+    return () => ipcRenderer.removeListener('window:blur', listener);
+  },
 });

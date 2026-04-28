@@ -37,15 +37,28 @@ export function useGitAutoRefresh() {
     loadStatus();
     startPolling();
 
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+    // In Electron, use IPC-based focus/blur from the main process (reliable).
+    // In the browser, fall back to the Page Visibility API.
+    let cleanupFocusBlur: (() => void) | null = null;
+    if (window.electronAPI?.onWindowFocus && window.electronAPI?.onWindowBlur) {
+      const removeFocus = window.electronAPI.onWindowFocus(() => {
         loadStatus();
         startPolling();
-      } else {
-        stopPolling();
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
+      });
+      const removeBlur = window.electronAPI.onWindowBlur(() => stopPolling());
+      cleanupFocusBlur = () => { removeFocus(); removeBlur(); };
+    } else {
+      const onVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          loadStatus();
+          startPolling();
+        } else {
+          stopPolling();
+        }
+      };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      cleanupFocusBlur = () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    }
 
     // Listen for data mutations (collection/environment saves)
     const onMutated = () => debouncedLoad();
@@ -54,7 +67,7 @@ export function useGitAutoRefresh() {
     return () => {
       stopPolling();
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
+      cleanupFocusBlur?.();
       window.removeEventListener('requesto:data-mutated', onMutated);
     };
   }, [isRepo, loadStatus, debouncedLoad, startPolling, stopPolling]);
