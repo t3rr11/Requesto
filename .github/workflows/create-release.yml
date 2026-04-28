@@ -40,10 +40,14 @@ jobs:
           else
             echo "Tag ${{ inputs.version }} already exists, skipping tag creation"
           fi
-          gh release create ${{ inputs.version }} \
-            --title "${{ inputs.version }}" \
-            --notes "${{ inputs.notes || 'No release notes provided.' }}" \
-            --draft || echo "Release already exists, continuing"
+          if ! gh release view ${{ inputs.version }} &>/dev/null; then
+            gh release create ${{ inputs.version }} \
+              --title "${{ inputs.version }}" \
+              --notes "${{ inputs.notes || 'No release notes provided.' }}" \
+              --draft
+          else
+            echo "Release ${{ inputs.version }} already exists, continuing"
+          fi
 
   build:
     needs: create-release
