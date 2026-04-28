@@ -33,6 +33,7 @@ jobs:
       - name: Create tag and release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: ${{ inputs.notes || 'No release notes provided.' }}
         run: |
           if ! git ls-remote --tags origin | grep -q "refs/tags/${{ inputs.version }}$"; then
             git tag ${{ inputs.version }}
@@ -41,13 +42,15 @@ jobs:
             echo "Tag ${{ inputs.version }} already exists, skipping tag creation"
           fi
           if ! gh release view ${{ inputs.version }} &>/dev/null; then
+            printf '%s' "$RELEASE_NOTES" > /tmp/release-notes.txt
             gh release create ${{ inputs.version }} \
               --title "${{ inputs.version }}" \
-              --notes "${{ inputs.notes || 'No release notes provided.' }}" \
+              --notes-file /tmp/release-notes.txt \
               --draft
           else
             echo "Release ${{ inputs.version }} already exists, continuing"
           fi
+
 
   build:
     needs: create-release
