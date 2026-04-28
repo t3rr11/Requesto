@@ -52,7 +52,7 @@ const collectionService = new CollectionService(collectionRepo);
 const environmentService = new EnvironmentService(environmentRepo);
 const historyService = new HistoryService(historyRepo);
 const oauthService = new OAuthService(oauthRepo);
-const proxyService = new ProxyService(environmentService, historyService);
+const proxyService = new ProxyService(environmentService, historyService, oauthService);
 const gitService = new GitService(workspaceService);
 const openApiService = new OpenApiService(collectionService);
 

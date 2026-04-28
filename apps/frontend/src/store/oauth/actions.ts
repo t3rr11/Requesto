@@ -1,6 +1,5 @@
-import type { OAuthConfig, OAuthTokens } from './types';
+import type { OAuthConfig, OAuthTokenStatus } from './types';
 import { API_BASE } from '../../helpers/api/config';
-import { getTokens, storeTokens, removeTokens, isTokenExpired } from '../../helpers/oauth/tokenManager';
 
 type SetState = (partial: Record<string, unknown> | ((state: Record<string, unknown>) => Record<string, unknown>)) => void;
 type GetState = () => Record<string, unknown>;
@@ -40,6 +39,17 @@ async function deleteOAuthConfigApi(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete OAuth configuration');
 }
 
+async function getTokenStatusApi(id: string): Promise<OAuthTokenStatus> {
+  const res = await fetch(`${API_BASE}/oauth/configs/${id}/tokens`);
+  if (!res.ok) throw new Error('Failed to load OAuth token status');
+  return res.json();
+}
+
+async function clearTokensApi(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/oauth/configs/${id}/tokens`, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to clear OAuth tokens');
+}
+
 // ── Config actions ───────────────────────────────────────────────────────────
 
 export async function loadConfigs(set: SetState, get: GetState): Promise<void> {
@@ -47,13 +57,14 @@ export async function loadConfigs(set: SetState, get: GetState): Promise<void> {
   try {
     const configs = await getOAuthConfigsApi();
     set({ configs });
-    loadAllTokenStates(get);
+    await loadAllTokenStatuses(set, configs);
   } catch (error) {
     console.error('Failed to load OAuth configs:', error);
     throw error;
   } finally {
     set({ isLoadingConfigs: false });
   }
+  void get;
 }
 
 export async function addConfig(
@@ -89,10 +100,14 @@ export async function updateConfig(
 export async function deleteConfig(set: SetState, _get: GetState, id: string): Promise<void> {
   try {
     await deleteOAuthConfigApi(id);
-    set((state) => ({
-      configs: (state.configs as OAuthConfig[]).filter((c) => c.id !== id),
-    }));
-    clearTokens(set, id);
+    set((state) => {
+      const tokenStatuses = { ...(state.tokenStatuses as Record<string, OAuthTokenStatus>) };
+      delete tokenStatuses[id];
+      return {
+        configs: (state.configs as OAuthConfig[]).filter((c) => c.id !== id),
+        tokenStatuses,
+      };
+    });
   } catch (error) {
     console.error('Failed to delete OAuth config:', error);
     throw error;
@@ -103,52 +118,47 @@ export function getConfig(get: GetState, id: string): OAuthConfig | null {
   return (get().configs as OAuthConfig[]).find((c) => c.id === id) ?? null;
 }
 
-// ── Token state ──────────────────────────────────────────────────────────────
+// ── Token status (read-through cache from backend) ───────────────────────────
 
-export function loadTokenState(set: SetState, configId: string): void {
-  const tokens = getTokens(configId);
-  const expired = isTokenExpired(tokens);
-  const expiresIn = tokens?.expiresAt
-    ? Math.max(0, Math.floor((tokens.expiresAt - Date.now()) / 1000))
-    : null;
+const EMPTY_STATUS: OAuthTokenStatus = { hasToken: false, hasRefreshToken: false, isExpired: true };
 
-  set((state) => ({
-    tokenState: {
-      ...(state.tokenState as Record<string, unknown>),
-      [configId]: { tokens, isExpired: expired, expiresIn },
-    },
-  }));
+export async function loadTokenStatus(set: SetState, configId: string): Promise<void> {
+  if (!configId) return;
+  try {
+    const status = await getTokenStatusApi(configId);
+    set((state) => ({
+      tokenStatuses: {
+        ...(state.tokenStatuses as Record<string, OAuthTokenStatus>),
+        [configId]: status,
+      },
+    }));
+  } catch (error) {
+    console.error('Failed to load token status:', error);
+    set((state) => ({
+      tokenStatuses: {
+        ...(state.tokenStatuses as Record<string, OAuthTokenStatus>),
+        [configId]: EMPTY_STATUS,
+      },
+    }));
+  }
 }
 
-export function loadAllTokenStates(get: GetState): void {
-  const state = get();
-  const configs = state.configs as OAuthConfig[];
-  const loadFn = state.loadTokenState as (configId: string) => void;
-  configs.forEach((c) => loadFn(c.id));
+export async function loadAllTokenStatuses(set: SetState, configs: OAuthConfig[]): Promise<void> {
+  await Promise.all(configs.map((c) => loadTokenStatus(set, c.id)));
 }
 
-export function setTokens(
-  get: GetState, configId: string, tokens: OAuthTokens, storageType: OAuthConfig['tokenStorage'],
-): void {
-  storeTokens(configId, tokens, storageType);
-  const loadFn = get().loadTokenState as (configId: string) => void;
-  loadFn(configId);
-}
-
-export function clearTokens(set: SetState, configId: string): void {
-  removeTokens(configId);
-  set((state) => ({
-    tokenState: {
-      ...(state.tokenState as Record<string, unknown>),
-      [configId]: { tokens: null, isExpired: true, expiresIn: null },
-    },
-  }));
-}
-
-export function clearAllTokens(set: SetState, get: GetState): void {
-  const configs = get().configs as OAuthConfig[];
-  configs.forEach((c) => removeTokens(c.id));
-  set({ tokenState: {} });
+export async function clearTokens(set: SetState, configId: string): Promise<void> {
+  if (!configId) return;
+  try {
+    await clearTokensApi(configId);
+  } finally {
+    set((state) => ({
+      tokenStatuses: {
+        ...(state.tokenStatuses as Record<string, OAuthTokenStatus>),
+        [configId]: EMPTY_STATUS,
+      },
+    }));
+  }
 }
 
 // ── Auth state ───────────────────────────────────────────────────────────────

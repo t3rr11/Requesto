@@ -1,14 +1,28 @@
 import { AuthConfig } from '../models/proxy';
 
 /**
+ * Resolves a valid OAuth access token (auto-refreshing or auto-fetching as
+ * possible). Throws `InteractiveAuthRequiredError` when interactive flow is
+ * needed.
+ */
+export type OAuthTokenResolver = (
+  configId: string,
+) => Promise<{ accessToken: string; tokenType: string }>;
+
+/**
  * Apply authentication to a set of request headers and URL.
  * Mutates neither the original headers nor the URL — returns new values.
+ *
+ * For OAuth, the supplied `oauthResolver` is called to obtain a fresh token.
+ * If the user has manually set an `Authorization` header it takes precedence
+ * (we don't overwrite it).
  */
-export function applyAuthentication(
+export async function applyAuthentication(
   auth: AuthConfig | undefined,
   headers: Record<string, string> = {},
   url: string,
-): { headers: Record<string, string>; url: string } {
+  oauthResolver?: OAuthTokenResolver,
+): Promise<{ headers: Record<string, string>; url: string }> {
   const updatedHeaders = { ...headers };
   let updatedUrl = url;
 
@@ -16,9 +30,13 @@ export function applyAuthentication(
     return { headers: updatedHeaders, url: updatedUrl };
   }
 
+  const hasUserAuthHeader = Object.keys(updatedHeaders).some(
+    (k) => k.toLowerCase() === 'authorization',
+  );
+
   switch (auth.type) {
     case 'basic':
-      if (auth.basic) {
+      if (auth.basic && !hasUserAuthHeader) {
         const credentials = `${auth.basic.username}:${auth.basic.password}`;
         const encodedCredentials = Buffer.from(credentials).toString('base64');
         updatedHeaders['Authorization'] = `Basic ${encodedCredentials}`;
@@ -26,7 +44,7 @@ export function applyAuthentication(
       break;
 
     case 'bearer':
-      if (auth.bearer?.token) {
+      if (auth.bearer?.token && !hasUserAuthHeader) {
         updatedHeaders['Authorization'] = `Bearer ${auth.bearer.token}`;
       }
       break;
@@ -48,9 +66,9 @@ export function applyAuthentication(
       break;
 
     case 'oauth':
-      // OAuth tokens are NOT stored on backend; frontend passes access token as bearer
-      if (auth.oauth?.configId) {
-        console.warn('OAuth authentication detected but tokens should be managed client-side');
+      if (auth.oauth?.configId && !hasUserAuthHeader && oauthResolver) {
+        const token = await oauthResolver(auth.oauth.configId);
+        updatedHeaders['Authorization'] = `${token.tokenType || 'Bearer'} ${token.accessToken}`;
       }
       break;
   }

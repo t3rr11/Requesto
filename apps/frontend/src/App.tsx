@@ -5,11 +5,10 @@ import { useEnvironmentStore } from './store/environments/store';
 import { useWorkspaceStore } from './store/workspace/store';
 import { useGitStore } from './store/git/store';
 import { useThemeStore } from './store/theme/store';
-import { useAlertStore } from './store/alert/store';
 import { useUpdateStore } from './store/update/store';
 import { useGitAutoRefresh } from './hooks/useGitAutoRefresh';
 import { Header } from './components/Header';
-import { AlertDialog } from './components/AlertDialog';
+import { ToastContainer } from './components/ToastContainer';
 import { UpdateDialog } from './components/UpdateDialog';
 import { RequestsPage } from './pages/RequestsPage';
 import { OAuthCallback } from './components/OAuthCallback';
@@ -20,13 +19,6 @@ function App() {
   const { loadWorkspaces } = useWorkspaceStore();
   const { checkGit } = useGitStore();
   const { isDarkMode } = useThemeStore();
-  const {
-    isOpen: alertOpen,
-    title: alertTitle,
-    message: alertMessage,
-    variant: alertVariant,
-    closeAlert,
-  } = useAlertStore();
   const {
     dialogOpen: updateDialogOpen,
     setAvailable,
@@ -95,14 +87,8 @@ function App() {
             <Route path="/oauth/callback" element={<OAuthCallback />} />
           </Routes>
         </div>
-        <AlertDialog
-          isOpen={alertOpen}
-          onClose={closeAlert}
-          title={alertTitle}
-          message={alertMessage}
-          variant={alertVariant}
-        />
         <UpdateDialog isOpen={updateDialogOpen} onClose={() => setDialogOpen(false)} />
+        <ToastContainer />
       </div>
     </HashRouter>
   );

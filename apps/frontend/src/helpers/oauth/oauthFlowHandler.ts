@@ -1,4 +1,4 @@
-import type { OAuthConfig, OAuthTokens } from '../../store/oauth/types';
+import type { OAuthConfig } from '../../store/oauth/types';
 import { generateCodeVerifier, generateCodeChallenge } from './pkceHelper';
 import { saveState, generateState, retrieveOAuthState } from './stateHelper';
 import { getRedirectUri } from './redirectHelper';
@@ -14,19 +14,20 @@ const isElectron =
   typeof window !== 'undefined' &&
   !!(window as unknown as Record<string, unknown>).electronAPI;
 
+/**
+ * Result of an OAuth flow. Tokens are persisted by the backend; the frontend
+ * receives only success/failure plus the configId so it can refresh status.
+ */
 export type OAuthFlowResult = {
   success: boolean;
-  tokens?: OAuthTokens;
+  configId?: string;
   error?: string;
   errorDescription?: string;
 };
 
 /**
  * Format a token-exchange error response from the Requesto backend into a
- * user-readable description. The backend returns:
- *   { error: 'Token exchange failed', details: { error, error_description, hint? } }
- * where `details` is the upstream provider's payload (potentially augmented
- * with a `hint` for known issues).
+ * user-readable description.
  */
 export function formatTokenExchangeError(err: unknown): string {
   if (!err || typeof err !== 'object') return 'Token exchange failed';
@@ -116,7 +117,7 @@ export function openOAuthPopup(authUrl: string): Promise<OAuthFlowResult> {
       clearInterval(pollClosed);
 
       resolve(event.data.success
-        ? { success: true, tokens: event.data.tokens }
+        ? { success: true, configId: event.data.configId }
         : { success: false, error: event.data.error, errorDescription: event.data.errorDescription });
     };
 
@@ -141,8 +142,6 @@ export async function startOAuthFlow(config: OAuthConfig): Promise<OAuthFlowResu
   if (config.flowType === 'client-credentials') return startClientCredentialsFlow(config);
   if (config.flowType === 'password') return startPasswordFlow(config);
 
-  // In Electron, use a native child BrowserWindow instead of window.open() or
-  // full-page redirect, both of which are broken in the file:// context.
   if (isElectron) {
     return startOAuthElectronFlow(config);
   }
@@ -167,8 +166,8 @@ export async function startOAuthFlow(config: OAuthConfig): Promise<OAuthFlowResu
 
 /**
  * Electron-specific OAuth flow: opens a child BrowserWindow, intercepts the
- * redirect to the callback URL, and exchanges the code for tokens inline —
- * without ever navigating the main window away.
+ * redirect to the callback URL, and exchanges the code for tokens via the
+ * backend (which persists them).
  */
 async function startOAuthElectronFlow(config: OAuthConfig): Promise<OAuthFlowResult> {
   const { url: authUrl, redirectUri } = await buildAuthorizationUrl(config);
@@ -226,80 +225,40 @@ async function startOAuthElectronFlow(config: OAuthConfig): Promise<OAuthFlowRes
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
+      console.error('[oauth] token exchange failed', { status: res.status, err });
       return {
         success: false,
         error: 'token_exchange_failed',
         errorDescription: formatTokenExchangeError(err),
       };
     }
-    const raw = await res.json();
-    const tokens: OAuthTokens = {
-      accessToken: raw.access_token,
-      tokenType: raw.token_type,
-      expiresIn: raw.expires_in,
-      expiresAt: raw.expires_in ? Date.now() + raw.expires_in * 1000 : undefined,
-      refreshToken: raw.refresh_token,
-      scope: raw.scope,
-      idToken: raw.id_token,
-    };
-    return { success: true, tokens };
+    return { success: true, configId: oauthState.configId };
   }
 
-  // Implicit flow — access token in URL fragment
-  const fragment = new URLSearchParams(parsedUrl.hash.slice(1));
-  const accessToken = fragment.get('access_token');
-  if (accessToken) {
-    const expiresInStr = fragment.get('expires_in');
-    const expiresIn = expiresInStr ? parseInt(expiresInStr, 10) : undefined;
-    const tokens: OAuthTokens = {
-      accessToken,
-      tokenType: fragment.get('token_type') || 'Bearer',
-      expiresIn,
-      expiresAt: expiresIn ? Date.now() + expiresIn * 1000 : undefined,
-      scope: fragment.get('scope') || undefined,
-      idToken: fragment.get('id_token') || undefined,
-    };
-    return { success: true, tokens };
-  }
-
-  return { success: false, error: 'no_code', errorDescription: 'No authorization code or access token received' };
+  return { success: false, error: 'no_code', errorDescription: 'No authorization code received' };
 }
 
-export async function exchangeCodeForTokens(configId: string, code: string, codeVerifier?: string): Promise<OAuthTokens> {
-  const res = await fetch(`${API_BASE}/oauth/token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ configId, code, codeVerifier, insecureTls: getInsecureTls() }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to exchange authorization code for tokens');
-  }
-  const tokens: OAuthTokens = await res.json();
-  if (tokens.expiresIn && !tokens.expiresAt) tokens.expiresAt = Date.now() + tokens.expiresIn * 1000;
-  return tokens;
-}
-
-export async function refreshOAuthToken(configId: string, refreshToken: string): Promise<OAuthTokens> {
+/**
+ * Trigger a refresh of the stored tokens for `configId`. The backend reads
+ * the refresh token it persisted previously; the frontend never sees it.
+ */
+export async function refreshOAuthToken(configId: string): Promise<void> {
   const res = await fetch(`${API_BASE}/oauth/refresh`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ configId, refreshToken, insecureTls: getInsecureTls() }),
+    body: JSON.stringify({ configId, insecureTls: getInsecureTls() }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to refresh token');
   }
-  const tokens: OAuthTokens = await res.json();
-  if (tokens.expiresIn && !tokens.expiresAt) tokens.expiresAt = Date.now() + tokens.expiresIn * 1000;
-  return tokens;
 }
 
-export async function revokeOAuthToken(configId: string, token: string, tokenTypeHint?: 'access_token' | 'refresh_token'): Promise<void> {
+export async function revokeOAuthToken(configId: string, tokenTypeHint?: 'access_token' | 'refresh_token'): Promise<void> {
   const res = await fetch(`${API_BASE}/oauth/revoke`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ configId, token, tokenTypeHint, insecureTls: getInsecureTls() }),
+    body: JSON.stringify({ configId, tokenTypeHint, insecureTls: getInsecureTls() }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -318,9 +277,7 @@ async function startClientCredentialsFlow(config: OAuthConfig): Promise<OAuthFlo
       const err = await res.json().catch(() => ({}));
       return { success: false, error: err.error || 'Client credentials flow failed', errorDescription: err.details || err.error };
     }
-    const tokens: OAuthTokens = await res.json();
-    if (tokens.expiresIn && !tokens.expiresAt) tokens.expiresAt = Date.now() + tokens.expiresIn * 1000;
-    return { success: true, tokens };
+    return { success: true, configId: config.id };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Client credentials flow failed' };
   }
@@ -342,9 +299,7 @@ async function startPasswordFlow(config: OAuthConfig): Promise<OAuthFlowResult> 
       const err = await res.json().catch(() => ({}));
       return { success: false, error: err.error || 'Password flow failed', errorDescription: err.details || err.error };
     }
-    const tokens: OAuthTokens = await res.json();
-    if (tokens.expiresIn && !tokens.expiresAt) tokens.expiresAt = Date.now() + tokens.expiresIn * 1000;
-    return { success: true, tokens };
+    return { success: true, configId: config.id };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Password flow failed' };
   }

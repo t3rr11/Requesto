@@ -34,7 +34,7 @@ Open the **Manage Environments** dialog from the Environments page (or the envir
 - **Import** - load an environment from a JSON file
 
 **Per-environment actions** (buttons in the environment header):
-- **Set Active / Deactivate** - choose which environment supplies variable values
+- **Set Active** - choose which environment supplies variable values
 - **Duplicate** - copy an environment with all its variables
 - **Export** - download the environment as a JSON file
 - **Delete** - remove the environment (with confirmation)

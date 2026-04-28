@@ -12,7 +12,7 @@ export function OAuthCallback() {
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('Processing OAuth callback...');
   const navigate = useNavigate();
-  const { setTokens, getConfig, loadConfigs } = useOAuthStore();
+  const { loadTokenStatus, getConfig, loadConfigs } = useOAuthStore();
   const hasProcessed = useRef(false);
 
   useEffect(() => {
@@ -64,8 +64,6 @@ export function OAuthCallback() {
         }
       }
 
-      let tokens;
-
       if (code) {
         setMessage('Exchanging authorization code for tokens...');
         const response = await fetch(`${API_BASE}/oauth/token`, {
@@ -79,42 +77,39 @@ export function OAuthCallback() {
           handleError(formatTokenExchangeError(errorData));
           return;
         }
-        tokens = await response.json();
       } else if (accessToken) {
+        // Implicit flow: backend cannot see fragment-only tokens, so we hand
+        // them off via a dedicated endpoint that stores (but does not return)
+        // the secret material.
         const tokenType = fragmentAfterPath.get('token_type') || 'Bearer';
         const expiresIn = fragmentAfterPath.get('expires_in');
         const scope = fragmentAfterPath.get('scope');
         const idToken = fragmentAfterPath.get('id_token');
-        tokens = {
-          access_token: accessToken,
-          token_type: tokenType,
-          expires_in: expiresIn ? parseInt(expiresIn) : undefined,
-          scope: scope || undefined,
-          id_token: idToken || undefined,
-        };
+        await fetch(`${API_BASE}/oauth/implicit-tokens`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            configId,
+            accessToken,
+            tokenType,
+            expiresIn: expiresIn ? parseInt(expiresIn) : undefined,
+            scope: scope || undefined,
+            idToken: idToken || undefined,
+          }),
+        }).catch(() => undefined);
       } else {
         handleError('No authorization code or access token received');
         return;
       }
 
-      setMessage('Storing tokens...');
-      const normalizedTokens = {
-        accessToken: tokens.access_token,
-        tokenType: tokens.token_type,
-        expiresIn: tokens.expires_in,
-        expiresAt: tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined,
-        refreshToken: tokens.refresh_token,
-        scope: tokens.scope,
-        idToken: tokens.id_token,
-      };
-
-      setTokens(configId, normalizedTokens, config.tokenStorage);
+      setMessage('Finalizing...');
+      await loadTokenStatus(configId);
 
       if (window.opener && !window.opener.closed) {
         // Use '*' as targetOrigin because in some environments (e.g. Electron dev
         // mode) the opener's origin may differ from the popup's origin.
         window.opener.postMessage(
-          { type: 'oauth-callback', success: true, tokens: normalizedTokens },
+          { type: 'oauth-callback', success: true, configId },
           '*',
         );
         setStatus('success');

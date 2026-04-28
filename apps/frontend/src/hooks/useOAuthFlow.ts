@@ -16,9 +16,7 @@ export function useOAuthFlow(configId?: string): UseOAuthFlowResult {
   const [error, setError] = useState<string | null>(null);
 
   const {
-    getConfig,
-    setTokens,
-    tokenState,
+    loadTokenStatus,
     setAuthenticating: setStoreAuthenticating,
     setError: setStoreError,
   } = useOAuthStore();
@@ -32,65 +30,46 @@ export function useOAuthFlow(configId?: string): UseOAuthFlowResult {
     try {
       const result = await startOAuthFlow(config);
 
-      if (result.success && result.tokens) {
-        setTokens(config.id, result.tokens, config.tokenStorage);
-        setIsAuthenticating(false);
-        setStoreAuthenticating(config.id, false);
+      if (result.success) {
+        // Backend persisted the tokens; refresh non-secret status for display.
+        await loadTokenStatus(config.id);
       } else if (result.error === 'redirect_in_progress') {
-        // Full redirect initiated — will be resolved after redirect back
+        // Full redirect initiated — will be resolved after redirect back.
+        return;
       } else {
         const errorMsg = result.errorDescription || result.error || 'Authentication failed';
         setError(errorMsg);
         setStoreError(config.id, errorMsg);
-        setIsAuthenticating(false);
-        setStoreAuthenticating(config.id, false);
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Authentication failed';
       setError(errorMsg);
       setStoreError(config.id, errorMsg);
+    } finally {
       setIsAuthenticating(false);
       setStoreAuthenticating(config.id, false);
     }
-  }, [setTokens, setStoreAuthenticating, setStoreError]);
+  }, [loadTokenStatus, setStoreAuthenticating, setStoreError]);
 
   const refresh = useCallback(async (targetConfigId: string) => {
-    const config = getConfig(targetConfigId);
-    if (!config) {
-      setError('OAuth configuration not found');
-      return;
-    }
-
-    const tokens = tokenState[targetConfigId]?.tokens;
-    if (!tokens?.refreshToken) {
-      setError('No refresh token available');
-      return;
-    }
-
     setIsAuthenticating(true);
     setError(null);
     setStoreAuthenticating(targetConfigId, true);
     setStoreError(targetConfigId, null);
 
     try {
-      const newTokens = await refreshOAuthToken(targetConfigId, tokens.refreshToken);
-
-      if (!newTokens.refreshToken && tokens.refreshToken) {
-        newTokens.refreshToken = tokens.refreshToken;
-      }
-
-      setTokens(targetConfigId, newTokens, config.tokenStorage);
-      setIsAuthenticating(false);
-      setStoreAuthenticating(targetConfigId, false);
+      await refreshOAuthToken(targetConfigId);
+      await loadTokenStatus(targetConfigId);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Token refresh failed';
       setError(errorMsg);
       setStoreError(targetConfigId, errorMsg);
+      throw err;
+    } finally {
       setIsAuthenticating(false);
       setStoreAuthenticating(targetConfigId, false);
-      throw err;
     }
-  }, [getConfig, tokenState, setTokens, setStoreAuthenticating, setStoreError]);
+  }, [loadTokenStatus, setStoreAuthenticating, setStoreError]);
 
   const clearError = useCallback(() => {
     setError(null);

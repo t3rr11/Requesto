@@ -1,7 +1,8 @@
 import type { ProxyRequest, ProxyResponse, StreamingResponse, SSEEvent } from './types';
-import { prepareAuthenticatedRequest } from '../../helpers/api/authRequest';
 import { API_BASE } from '../../helpers/api/config';
 import { useSettingsStore } from '../settings/store';
+import { useOAuthStore } from '../oauth/store';
+import { startOAuthFlow } from '../../helpers/oauth/oauthFlowHandler';
 
 // ── Internal API helpers ─────────────────────────────────────────────────────
 
@@ -10,19 +11,106 @@ function isLikelyStreamingRequest(request: ProxyRequest): boolean {
   return accept.includes('text/event-stream') || request.url.includes('/sse/');
 }
 
+/**
+ * Result of an attempted re-authentication for a 401 response. The caller
+ * uses this to decide whether to retry the request or surface an error.
+ */
+type ReauthOutcome =
+  /** Not an interactive-auth 401, or no configId — don't retry, bubble original error. */
+  | { kind: 'not-applicable' }
+  /** Re-auth succeeded; caller should retry the request once. */
+  | { kind: 'retry' }
+  /** Popup ran but auth failed; surface this message to the user instead of the original 401. */
+  | { kind: 'failed'; message: string };
+
+/**
+ * If the backend rejects a request because no valid OAuth token is available
+ * for the configured `configId`, trigger the user-facing flow and report
+ * back what happened. Surfaces meaningful errors when the popup ran but the
+ * token exchange failed (e.g. PKCE mismatch, redirect_uri mismatch).
+ */
+async function tryReauthenticateForResponse(res: Response): Promise<ReauthOutcome> {
+  if (res.status !== 401) return { kind: 'not-applicable' };
+  const cloned = res.clone();
+  let payload: { code?: string; configId?: string; error?: string } | null = null;
+  try {
+    payload = await cloned.json();
+  } catch {
+    return { kind: 'not-applicable' };
+  }
+  if (!payload || payload.code !== 'OAUTH_INTERACTIVE_REQUIRED' || !payload.configId) {
+    return { kind: 'not-applicable' };
+  }
+
+  const oauthStore = useOAuthStore.getState();
+  let config = oauthStore.getConfig(payload.configId);
+  if (!config) {
+    await oauthStore.loadConfigs();
+    config = useOAuthStore.getState().getConfig(payload.configId);
+  }
+  if (!config) {
+    return {
+      kind: 'failed',
+      message: `OAuth configuration not found for id "${payload.configId}". Re-select an OAuth configuration on this request.`,
+    };
+  }
+
+  const result = await startOAuthFlow(config);
+  if (result.success) {
+    await useOAuthStore.getState().loadTokenStatus(payload.configId);
+    return { kind: 'retry' };
+  }
+
+  // Distinguish a user-cancelled popup from an actual exchange failure so the
+  // surfaced message is precise.
+  if (result.error === 'user_cancelled') {
+    return { kind: 'failed', message: 'OAuth authentication was cancelled.' };
+  }
+  if (result.error === 'redirect_in_progress') {
+    // Browser redirected away to the OAuth provider; nothing more to do here.
+    return { kind: 'failed', message: 'Redirecting to OAuth provider…' };
+  }
+  const detail = result.errorDescription || result.error || 'Unknown error';
+  // Log full details to the devtools console for diagnostics.
+  console.error('[oauth] auto re-auth failed', { configId: payload.configId, result });
+  return {
+    kind: 'failed',
+    message: `OAuth authentication failed: ${detail}`,
+  };
+}
+
+/**
+ * Drive the 401 → re-auth → retry loop. Returns the (possibly retried)
+ * Response, or throws an Error with a meaningful message when re-auth ran
+ * but did not succeed.
+ */
+async function withOAuthRetry(doFetch: () => Promise<Response>): Promise<Response> {
+  let res = await doFetch();
+  if (res.ok) return res;
+
+  const outcome = await tryReauthenticateForResponse(res);
+  if (outcome.kind === 'not-applicable') return res;
+  if (outcome.kind === 'failed') throw new Error(outcome.message);
+
+  // Successful re-auth → retry exactly once.
+  return doFetch();
+}
+
 async function sendRequestApi(request: ProxyRequest, signal?: AbortSignal): Promise<ProxyResponse> {
   if (isLikelyStreamingRequest(request)) {
     throw new Error('Streaming requests must use sendStreamingRequest');
   }
 
-  const authenticated = prepareAuthenticatedRequest(request);
   const insecureTls = useSettingsStore.getState().insecureTls;
-  const res = await fetch(`${API_BASE}/proxy/request`, {
+
+  const doFetch = () => fetch(`${API_BASE}/proxy/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...authenticated, insecureTls }),
+    body: JSON.stringify({ ...request, insecureTls }),
     signal,
   });
+
+  const res = await withOAuthRetry(doFetch);
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     let errorMessage = `HTTP error! status: ${res.status}`;
@@ -46,16 +134,29 @@ async function sendStreamingRequestApi(
 ): Promise<StreamingResponse> {
   const startTime = Date.now();
   const events: SSEEvent[] = [];
-  const authenticated = prepareAuthenticatedRequest(request);
   const insecureTls = useSettingsStore.getState().insecureTls;
 
-  const res = await fetch(`${API_BASE}/proxy/stream`, {
+  const doFetch = () => fetch(`${API_BASE}/proxy/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...authenticated, insecureTls }),
+    body: JSON.stringify({ ...request, insecureTls }),
     signal,
   });
-  if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+  const res = await withOAuthRetry(doFetch);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    let errorMessage = `HTTP error! status: ${res.status}`;
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        errorMessage = parsed.message || parsed.error || text;
+      } catch {
+        errorMessage = text;
+      }
+    }
+    throw new Error(errorMessage);
+  }
 
   const headers: Record<string, string> = {};
   res.headers.forEach((value, key) => {

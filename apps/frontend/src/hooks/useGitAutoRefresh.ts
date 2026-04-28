@@ -19,27 +19,45 @@ export function useGitAutoRefresh() {
     debounceRef.current = setTimeout(loadStatus, DEBOUNCE_MS);
   }, [loadStatus]);
 
+  const startPolling = useCallback(() => {
+    if (intervalRef.current) return;
+    intervalRef.current = setInterval(loadStatus, POLL_INTERVAL);
+  }, [loadStatus]);
+
+  const stopPolling = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!isRepo) return;
 
     loadStatus();
+    startPolling();
 
-    intervalRef.current = setInterval(loadStatus, POLL_INTERVAL);
-
-    const onFocus = () => loadStatus();
-    window.addEventListener('focus', onFocus);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadStatus();
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     // Listen for data mutations (collection/environment saves)
     const onMutated = () => debouncedLoad();
     window.addEventListener('requesto:data-mutated', onMutated);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      stopPolling();
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('requesto:data-mutated', onMutated);
     };
-  }, [isRepo, loadStatus, debouncedLoad]);
+  }, [isRepo, loadStatus, debouncedLoad, startPolling, stopPolling]);
 }
 
 /**

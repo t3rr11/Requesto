@@ -8,6 +8,7 @@ import {
   readJSONFile,
 } from '../../helpers/postman';
 import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
+import { useTabsStore } from '../tabs/store';
 
 type SetState = (partial: Record<string, unknown>) => void;
 
@@ -270,6 +271,12 @@ export async function updateRequest(
   try {
     await updateRequestApi(collectionId, requestId, updates);
     await loadCollections(set);
+    // Keep open tabs in sync with the renamed request so their titles update.
+    if (typeof updates.name === 'string') {
+      const tabsState = useTabsStore.getState();
+      const tab = tabsState.getTabBySavedRequestId(requestId);
+      if (tab) tabsState.updateTabLabel(tab.id, updates.name);
+    }
   } catch (error) {
     console.error('Failed to update request:', error);
   }

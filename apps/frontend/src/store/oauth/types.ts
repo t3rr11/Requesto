@@ -28,16 +28,6 @@ export type OAuthConfig = {
   updatedAt: number;
 };
 
-export type OAuthTokens = {
-  accessToken: string;
-  tokenType: string;
-  expiresIn?: number;
-  expiresAt?: number;
-  refreshToken?: string;
-  scope?: string;
-  idToken?: string;
-};
-
 export type OAuthState = {
   configId: string;
   state: string;
@@ -47,12 +37,26 @@ export type OAuthState = {
   timestamp: number;
 };
 
+/**
+ * Reference to an OAuth configuration on a request. Tokens are owned and
+ * resolved by the backend; the frontend only needs the configId.
+ */
 export type OAuthAuth = {
   configId: string;
-  config?: OAuthConfig;
-  tokens?: OAuthTokens;
-  isAuthenticated: boolean;
-  isRefreshing: boolean;
-  lastAuthenticatedAt?: number;
-  error?: string;
+};
+
+/**
+ * Non-secret token status fetched from the backend for display purposes
+ * (e.g. "Authenticated · expires in 5m" badges in the OAuth manager).
+ * Mirrors the backend `OAuthTokenStatus` model.
+ */
+export type OAuthTokenStatus = {
+  hasToken: boolean;
+  tokenType?: string;
+  expiresAt?: number;
+  scope?: string;
+  obtainedAt?: number;
+  hasRefreshToken: boolean;
+  accessTokenPreview?: string;
+  isExpired: boolean;
 };

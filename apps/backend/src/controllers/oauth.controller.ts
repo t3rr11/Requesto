@@ -88,6 +88,15 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     return reply.code(204).send();
   });
 
+  server.get<{ Params: { id: string } }>('/oauth/configs/:id/tokens', async (request) => {
+    return oauthService.getTokenStatus(request.params.id);
+  });
+
+  server.delete<{ Params: { id: string } }>('/oauth/configs/:id/tokens', async (request, reply) => {
+    oauthService.clearTokens(request.params.id);
+    return reply.code(204).send();
+  });
+
   server.post<{ Body: { configId: string; code: string; codeVerifier?: string; redirectUri: string; insecureTls?: boolean } }>(
     '/oauth/token',
     async (request, reply) => {
@@ -111,12 +120,12 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     },
   );
 
-  server.post<{ Body: { configId: string; refreshToken: string; insecureTls?: boolean } }>(
+  server.post<{ Body: { configId: string; refreshToken?: string; insecureTls?: boolean } }>(
     '/oauth/refresh',
     async (request, reply) => {
       const { configId, refreshToken, insecureTls } = request.body;
-      if (!configId || !refreshToken) {
-        return reply.code(400).send({ error: 'Missing required fields: configId, refreshToken' });
+      if (!configId) {
+        return reply.code(400).send({ error: 'Missing required field: configId' });
       }
 
       try {
@@ -134,12 +143,12 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     },
   );
 
-  server.post<{ Body: { configId: string; token: string; tokenTypeHint?: string; insecureTls?: boolean } }>(
+  server.post<{ Body: { configId: string; token?: string; tokenTypeHint?: string; insecureTls?: boolean } }>(
     '/oauth/revoke',
     async (request, reply) => {
       const { configId, token, tokenTypeHint, insecureTls } = request.body;
-      if (!configId || !token) {
-        return reply.code(400).send({ error: 'Missing required fields: configId, token' });
+      if (!configId) {
+        return reply.code(400).send({ error: 'Missing required field: configId' });
       }
 
       try {
@@ -199,6 +208,23 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
       }
     },
   );
+  server.post<{
+    Body: {
+      configId: string;
+      accessToken: string;
+      tokenType?: string;
+      expiresIn?: number;
+      scope?: string;
+      idToken?: string;
+    };
+  }>('/oauth/implicit-tokens', async (request, reply) => {
+    const { configId, accessToken } = request.body;
+    if (!configId || !accessToken) {
+      return reply.code(400).send({ error: 'Missing required fields: configId, accessToken' });
+    }
+    oauthService.storeImplicitTokens(request.body);
+    return reply.code(204).send();
+  });
 };
 
 export default oauthController;

@@ -28,8 +28,7 @@ import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useConfirmDialog, useDialog } from '../hooks/useDialog';
 import { useOAuthFlow } from '../hooks/useOAuthFlow';
-import { useTokenRefresh } from '../hooks/useTokenRefresh';
-import { formatTimeUntilExpiry, getTokens, isTokenExpired, isTokenExpiringSoon } from '../helpers/oauth/tokenManager';
+import { formatTimeUntilExpiry, getSecondsUntil } from '../helpers/oauth/expiry';
 import type { OAuthConfig, OAuthFlowType } from '../store/oauth/types';
 
 interface OAuthManagerDialogProps {
@@ -40,14 +39,14 @@ interface OAuthManagerDialogProps {
 export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps) {
   const {
     configs,
-    tokenState,
+    tokenStatuses,
     isLoadingConfigs,
     loadConfigs,
     addConfig,
     updateConfig,
     deleteConfig,
-    loadTokenState,
-    loadAllTokenStates,
+    loadTokenStatus,
+    clearTokens,
   } = useOAuthStore();
   const { showAlert } = useAlertStore();
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
@@ -59,21 +58,11 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
   const selectedConfig = configs.find(c => c.id === selectedConfigId);
   const { authenticate, refresh, isAuthenticating, error: authError } = useOAuthFlow(selectedConfigId || undefined);
 
-  useTokenRefresh({
-    configId: selectedConfigId ?? '',
-    enabled: !!selectedConfigId && (selectedConfig?.autoRefreshToken ?? false),
-    onRefresh: () => {
-      if (selectedConfigId) loadTokenState(selectedConfigId);
-    },
-    onRefreshError: (_configId, err) => showAlert(`Token refresh failed: ${err.message}`, 'error'),
-  });
-
   useEffect(() => {
     if (isOpen) {
       loadConfigs();
-      loadAllTokenStates();
     }
-  }, [isOpen, loadConfigs, loadAllTokenStates]);
+  }, [isOpen, loadConfigs]);
 
   // Pre-select the first config when configs load and nothing is selected
   useEffect(() => {
@@ -84,9 +73,9 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
 
   useEffect(() => {
     if (selectedConfigId) {
-      loadTokenState(selectedConfigId);
+      loadTokenStatus(selectedConfigId);
     }
-  }, [selectedConfigId, loadTokenState]);
+  }, [selectedConfigId, loadTokenStatus]);
 
   // Reset state when dialog closes
   useEffect(() => {
@@ -163,9 +152,8 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
     }
   };
 
-  const currentTokens = selectedConfigId ? getTokens(selectedConfigId) : undefined;
-  const currentTokenState = selectedConfigId ? tokenState[selectedConfigId] : undefined;
-  const isAuthenticated = currentTokenState ? !!currentTokenState.tokens : false;
+  const currentStatus = selectedConfigId ? tokenStatuses[selectedConfigId] : undefined;
+  const isAuthenticated = !!currentStatus?.hasToken;
 
   const flowTypeLabels: Record<OAuthFlowType, string> = {
     'authorization-code': 'Authorization Code',
@@ -186,8 +174,13 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
     showAlert(`${label} copied to clipboard`, 'success');
   };
 
-  const tokenExpired = currentTokens ? isTokenExpired(currentTokens) : false;
-  const tokenExpiringSoon = currentTokens ? isTokenExpiringSoon(currentTokens, selectedConfig?.tokenRefreshThreshold ?? 300) : false;
+  const tokenExpired = !!currentStatus?.isExpired;
+  const tokenExpiringSoon = (() => {
+    if (!currentStatus?.hasToken || tokenExpired) return false;
+    const seconds = getSecondsUntil(currentStatus.expiresAt);
+    if (seconds === null) return false;
+    return seconds <= (selectedConfig?.tokenRefreshThreshold ?? 300);
+  })();
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="OAuth 2.0 Configurations" size="full">
@@ -286,12 +279,12 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
                                 : 'Authenticated'
                             : 'Not Authenticated'}
                         </p>
-                        {isAuthenticated && currentTokens && (
+                        {isAuthenticated && currentStatus && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {tokenExpired ? 'Token has expired' : `Expires ${formatTimeUntilExpiry(currentTokens)}`}
-                            {currentTokens.tokenType && (
+                            {tokenExpired ? 'Token has expired' : `Expires ${formatTimeUntilExpiry(currentStatus.expiresAt)}`}
+                            {currentStatus.tokenType && (
                               <span className="ml-2">
-                                &middot; Type: <span className="font-medium">{currentTokens.tokenType}</span>
+                                &middot; Type: <span className="font-medium">{currentStatus.tokenType}</span>
                               </span>
                             )}
                           </p>
@@ -306,8 +299,8 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
                             Refresh
                           </Button>
                           <Button
-                            onClick={() => {
-                              useOAuthStore.getState().clearTokens(selectedConfigId!);
+                            onClick={async () => {
+                              await clearTokens(selectedConfigId!);
                               showAlert('Tokens cleared', 'success');
                             }}
                             variant="ghost"
@@ -331,53 +324,29 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
                     </div>
                   )}
 
-                  {/* Token details when authenticated */}
-                  {isAuthenticated && currentTokens && (
+                  {/* Token details when authenticated. The backend is the sole
+                      owner of token material; here we only show non-secret
+                      metadata plus a redacted preview of the access token. */}
+                  {isAuthenticated && currentStatus && (
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600/30 space-y-2">
-                      <div className="flex items-center gap-2 group">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Access Token</span>
-                        <code className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate flex-1 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                          {currentTokens.accessToken.slice(0, 40)}...
-                        </code>
-                        <button
-                          onClick={() => copyToClipboard(currentTokens.accessToken, 'Access token')}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                        >
-                          <Copy className="w-3.5 h-3.5 text-gray-400" />
-                        </button>
-                      </div>
-                      {currentTokens.refreshToken && (
-                        <div className="flex items-center gap-2 group">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Refresh Token</span>
+                      {currentStatus.accessTokenPreview && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Access Token</span>
                           <code className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate flex-1 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                            {currentTokens.refreshToken.slice(0, 40)}...
+                            {currentStatus.accessTokenPreview}
                           </code>
-                          <button
-                            onClick={() => copyToClipboard(currentTokens.refreshToken!, 'Refresh token')}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                          >
-                            <Copy className="w-3.5 h-3.5 text-gray-400" />
-                          </button>
                         </div>
                       )}
-                      {currentTokens.scope && (
+                      {currentStatus.hasRefreshToken && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Refresh Token</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 italic">Stored on backend</span>
+                        </div>
+                      )}
+                      {currentStatus.scope && (
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Token Scope</span>
-                          <span className="text-xs text-gray-700 dark:text-gray-300">{currentTokens.scope}</span>
-                        </div>
-                      )}
-                      {currentTokens.idToken && (
-                        <div className="flex items-center gap-2 group">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">ID Token</span>
-                          <code className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate flex-1 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                            {currentTokens.idToken.slice(0, 40)}...
-                          </code>
-                          <button
-                            onClick={() => copyToClipboard(currentTokens.idToken!, 'ID token')}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                          >
-                            <Copy className="w-3.5 h-3.5 text-gray-400" />
-                          </button>
+                          <span className="text-xs text-gray-700 dark:text-gray-300">{currentStatus.scope}</span>
                         </div>
                       )}
                     </div>

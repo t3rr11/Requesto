@@ -116,8 +116,9 @@ vi.mock('../../store/alert/store', () => ({
 vi.mock('../../store/oauth/store', () => ({
   useOAuthStore: () => ({
     configs: [],
-    tokenState: {},
+    tokenStatuses: {},
     loadConfigs: vi.fn(),
+    loadTokenStatus: vi.fn(),
   }),
 }));
 

@@ -30,6 +30,31 @@ export interface OAuthSecretsData {
   secrets: Record<string, string>;
 }
 
+export interface StoredOAuthToken {
+  accessToken: string;
+  tokenType: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  scope?: string;
+  idToken?: string;
+  obtainedAt: number;
+}
+
+export interface OAuthTokensData {
+  tokens: Record<string, StoredOAuthToken>;
+}
+
+export interface OAuthTokenStatus {
+  hasToken: boolean;
+  tokenType?: string;
+  expiresAt?: number;
+  scope?: string;
+  obtainedAt?: number;
+  hasRefreshToken: boolean;
+  accessTokenPreview?: string;
+  isExpired: boolean;
+}
+
 export interface TokenExchangeRequest {
   configId: string;
   code: string;
