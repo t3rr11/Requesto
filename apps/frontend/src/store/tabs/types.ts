@@ -17,6 +17,7 @@ export type Tab = {
   request: TabRequest;
   response: ProxyResponse | StreamingResponse | null;
   isDirty: boolean;
+  isTouched: boolean;
   isLoading: boolean;
   error: string | null;
   savedRequestId?: string;

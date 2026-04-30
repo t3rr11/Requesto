@@ -24,12 +24,14 @@ interface SortableTabProps {
   label: string;
   isActive: boolean;
   isDirty: boolean;
+  isTouched: boolean;
   onActivate: () => void;
+  onDoubleClick?: () => void;
   onClose: (e: React.MouseEvent) => void;
   onAuxClick: (e: React.MouseEvent) => void;
 }
 
-function SortableTab({ tabId, label, isActive, isDirty, onActivate, onClose, onAuxClick }: SortableTabProps) {
+function SortableTab({ tabId, label, isActive, isDirty, isTouched, onActivate, onDoubleClick, onClose, onAuxClick }: SortableTabProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tabId });
 
   const style = {
@@ -47,6 +49,7 @@ function SortableTab({ tabId, label, isActive, isDirty, onActivate, onClose, onA
       {...listeners}
       onClick={onActivate}
       onAuxClick={onAuxClick}
+      onDoubleClick={onDoubleClick}
       onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}
       className={`group flex items-center gap-2 px-4 border-r border-gray-300 dark:border-gray-600 cursor-grab active:cursor-grabbing transition-colors shrink-0 min-w-30 max-w-50 h-full text-sm whitespace-nowrap select-none ${
         isActive
@@ -60,7 +63,7 @@ function SortableTab({ tabId, label, isActive, isDirty, onActivate, onClose, onA
             ●
           </span>
         )}
-        <span className="truncate">{label}</span>
+        <span className={`truncate ${!isTouched ? 'italic' : 'not-italic'}`}>{label}</span>
       </span>
       <button
         onClick={onClose}
@@ -79,6 +82,7 @@ export function TabsBar() {
     tabOrder,
     activeTabId,
     activateTab,
+    touchTab,
     closeTab,
     openNewTab,
     reorderTabs,
@@ -160,12 +164,15 @@ export function TabsBar() {
       const newIndex = tabOrder.indexOf(over.id as string);
       if (oldIndex === -1 || newIndex === -1) return;
 
+      // Mark the tab as touched to prevent automatic closing of the tab when opening another request
+      touchTab(active.id as string);
+
       const newOrder = [...tabOrder];
       newOrder.splice(oldIndex, 1);
       newOrder.splice(newIndex, 0, active.id as string);
       reorderTabs(newOrder);
     },
-    [tabOrder, reorderTabs],
+    [tabOrder, reorderTabs, touchTab],
   );
 
   const scroll = (direction: 'left' | 'right') => {
@@ -206,7 +213,9 @@ export function TabsBar() {
                   label={tab.label}
                   isActive={tab.id === activeTabId}
                   isDirty={tab.isDirty}
+                  isTouched={tab.isTouched}
                   onActivate={() => activateTab(tab.id)}
+                  onDoubleClick={() => touchTab(tab.id)}
                   onClose={e => {
                     e.stopPropagation();
                     handleCloseTab(tab.id);
