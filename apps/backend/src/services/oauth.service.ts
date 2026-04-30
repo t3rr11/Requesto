@@ -108,11 +108,11 @@ export class OAuthService {
     return config as OAuthConfigPublic;
   }
 
-  create(data: Omit<OAuthConfigServer, 'id' | 'createdAt' | 'updatedAt'>): OAuthConfigPublic {
+  create(data: Omit<OAuthConfigServer, 'id'>): OAuthConfigPublic {
     return this.repo.create(data);
   }
 
-  update(id: string, updates: Partial<Omit<OAuthConfigServer, 'id' | 'createdAt'>>): OAuthConfigPublic {
+  update(id: string, updates: Partial<Omit<OAuthConfigServer, 'id'>>): OAuthConfigPublic {
     const updated = this.repo.update(id, updates);
     if (!updated) {
       throw AppError.notFound('OAuth configuration not found');

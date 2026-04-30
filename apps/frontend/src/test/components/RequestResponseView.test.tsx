@@ -143,7 +143,6 @@ function makeTab(overrides: Record<string, unknown> = {}) {
     savedRequestId: undefined,
     collectionId: undefined,
     originalRequest: undefined,
-    createdAt: Date.now(),
     lastAccessedAt: Date.now(),
     ...overrides,
   };

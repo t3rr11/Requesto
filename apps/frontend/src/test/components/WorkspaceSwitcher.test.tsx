@@ -10,8 +10,8 @@ const defaultState = {
   registry: {
     activeWorkspaceId: 'ws-1',
     workspaces: [
-      { id: 'ws-1', name: 'Default', path: '/data/ws-1', createdAt: 1700000000000, updatedAt: 1700000000000 },
-      { id: 'ws-2', name: 'Production', path: '/data/ws-2', createdAt: 1700000000000, updatedAt: 1700000000000 },
+      { id: 'ws-1', name: 'Default', path: '/data/ws-1' },
+      { id: 'ws-2', name: 'Production', path: '/data/ws-2' },
     ],
   },
   switchWorkspace: mockSwitchWorkspace,

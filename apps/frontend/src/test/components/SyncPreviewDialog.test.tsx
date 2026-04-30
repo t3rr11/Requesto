@@ -100,7 +100,7 @@ describe('SyncPreviewDialog', () => {
           operationId: 'deletePet',
           request: {
             id: 'r-new', name: 'Delete a pet', method: 'DELETE', url: '/pets/{{petId}}',
-            collectionId: 'col1', createdAt: 0, updatedAt: 0,
+            collectionId: 'col1'
           },
           folderName: 'pets',
         },
@@ -131,7 +131,7 @@ describe('SyncPreviewDialog', () => {
           changes: [{ field: 'method', from: 'GET', to: 'POST' }],
           mergedRequest: {
             id: 'r1', name: 'List Pets', method: 'POST', url: '/pets',
-            collectionId: 'col1', createdAt: 0, updatedAt: 0,
+            collectionId: 'col1',
           },
         },
       ],
@@ -177,7 +177,7 @@ describe('SyncPreviewDialog', () => {
           operationId: 'newOp',
           request: {
             id: 'r-new', name: 'New Op', method: 'GET', url: '/new',
-            collectionId: 'col1', createdAt: 0, updatedAt: 0,
+            collectionId: 'col1',
           },
         },
       ],
@@ -210,7 +210,7 @@ describe('SyncPreviewDialog', () => {
           operationId: 'newOp',
           request: {
             id: 'r-new', name: 'New Op', method: 'GET', url: '/new',
-            collectionId: 'col1', createdAt: 0, updatedAt: 0,
+            collectionId: 'col1',
           },
         },
       ],
@@ -240,7 +240,7 @@ describe('SyncPreviewDialog', () => {
           operationId: 'deletePet',
           request: {
             id: 'r-new', name: 'Delete a pet', method: 'DELETE', url: '/pets/{{petId}}',
-            collectionId: 'col1', createdAt: 0, updatedAt: 0,
+            collectionId: 'col1',
           },
           folderName: 'pets',
         },
@@ -274,7 +274,7 @@ describe('SyncPreviewDialog', () => {
           operationId: 'newOp',
           request: {
             id: 'r-new', name: 'New Op', method: 'GET', url: '/new',
-            collectionId: 'col1', createdAt: 0, updatedAt: 0,
+            collectionId: 'col1',
           },
         },
       ],

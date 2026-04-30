@@ -28,7 +28,7 @@ type FormMode = 'guided' | 'advanced';
 interface OAuthConfigFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (config: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'> & { clientSecret?: string }) => Promise<void>;
+  onSave: (config: Omit<OAuthConfig, 'id'> & { clientSecret?: string }) => Promise<void>;
   onDelete?: (configId: string) => Promise<void>;
   editConfig?: OAuthConfig;
 }
@@ -180,7 +180,7 @@ export function OAuthConfigForm({ isOpen, onClose, onSave, onDelete, editConfig 
     setStep(prev => Math.max(prev - 1, 0));
   };
 
-  const buildConfig = (data: OAuthConfigFormData): Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'> & { clientSecret?: string } => {
+  const buildConfig = (data: OAuthConfigFormData): Omit<OAuthConfig, 'id'> & { clientSecret?: string } => {
     let authUrl = data.authorizationUrl;
     let tokenUrl = data.tokenUrl;
     let revUrl = data.revocationUrl ?? '';

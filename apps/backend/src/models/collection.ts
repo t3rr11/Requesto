@@ -5,8 +5,6 @@ export interface Folder {
   name: string;
   parentId?: string;
   collectionId: string;
-  createdAt: number;
-  updatedAt: number;
 }
 
 export interface OpenApiSpecLink {
@@ -23,8 +21,6 @@ export interface Collection {
   folders: Folder[];
   requests: SavedRequest[];
   openApiSpec?: OpenApiSpecLink;
-  createdAt: number;
-  updatedAt: number;
 }
 
 /** Stable id of the system-managed catch-all collection. */
@@ -44,8 +40,6 @@ export interface SavedRequest {
   folderId?: string;
   order?: number;
   operationId?: string;
-  createdAt: number;
-  updatedAt: number;
 }
 
 export interface OpenApiEnvironmentVariable {

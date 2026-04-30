@@ -70,9 +70,7 @@ export class WorkspaceRepository extends BaseRepository {
     const workspace: Workspace = {
       id,
       name,
-      path: workspacePath,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      path: workspacePath
     };
 
     this.initializeWorkspaceFiles(workspacePath);
@@ -97,9 +95,7 @@ export class WorkspaceRepository extends BaseRepository {
     const workspace: Workspace = {
       id: generateId(),
       name,
-      path: resolvedPath,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      path: resolvedPath
     };
 
     this.initializeWorkspaceFiles(resolvedPath);
@@ -126,9 +122,7 @@ export class WorkspaceRepository extends BaseRepository {
     const workspace: Workspace = {
       id: generateId(),
       name,
-      path: resolvedPath,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      path: resolvedPath
     };
 
     this.ensureLocalDirs(resolvedPath);
@@ -148,8 +142,7 @@ export class WorkspaceRepository extends BaseRepository {
 
     registry.workspaces[index] = {
       ...registry.workspaces[index],
-      ...updates,
-      updatedAt: Date.now(),
+      ...updates
     };
     this.saveRegistry(registry);
     return registry.workspaces[index];
@@ -313,9 +306,7 @@ export class WorkspaceRepository extends BaseRepository {
     const workspace: Workspace = {
       id: generateId(),
       name: 'Local Workspace',
-      path: defaultPath,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      path: defaultPath
     };
 
     const registry: WorkspacesRegistry = {

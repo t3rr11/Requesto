@@ -103,9 +103,7 @@ describe('Self-signed certificate handling (insecureTls)', () => {
         clientId: 'client-id',
         flowType: 'authorization_code',
         usePKCE: false,
-        scopes: [],
-        createdAt: 0,
-        updatedAt: 0,
+        scopes: []
       } as OAuthConfigServer;
     }
 

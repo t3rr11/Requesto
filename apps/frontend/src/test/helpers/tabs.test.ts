@@ -21,7 +21,6 @@ const makeTab = (overrides: Partial<Tab> = {}): Tab => ({
   isDirty: false,
   isLoading: false,
   error: null,
-  createdAt: Date.now(),
   lastAccessedAt: Date.now(),
   ...overrides,
 });

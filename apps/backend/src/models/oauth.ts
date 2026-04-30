@@ -15,8 +15,6 @@ export interface OAuthConfigServer {
   usePKCE: boolean;
   scopes: string[];
   additionalParams?: Record<string, string>;
-  createdAt: number;
-  updatedAt: number;
 }
 
 /** Public-safe OAuth config — clientSecret stripped before sending to frontend */

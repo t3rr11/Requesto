@@ -12,8 +12,6 @@ function makeRequest(overrides: Partial<SavedRequest> & { id: string; operationI
     method: 'GET',
     url: '{{baseUrl}}/test',
     collectionId: 'col-1',
-    createdAt: 1000,
-    updatedAt: 1000,
     ...overrides,
   };
 }
@@ -24,8 +22,6 @@ function makeCollection(requests: SavedRequest[], folders: Folder[] = [], overri
     name: 'Test Collection',
     folders,
     requests,
-    createdAt: 1000,
-    updatedAt: 1000,
     ...overrides,
   };
 }
@@ -220,11 +216,11 @@ describe('buildSyncPreview', () => {
 
   it('detects new folders from incoming spec', () => {
     const existing = makeCollection([], [
-      { id: 'f1', name: 'pets', collectionId: 'col-1', createdAt: 1000, updatedAt: 1000 },
+      { id: 'f1', name: 'pets', collectionId: 'col-1' },
     ]);
     const incoming = makeCollection([], [
-      { id: 'f1-new', name: 'pets', collectionId: 'col-1', createdAt: 2000, updatedAt: 2000 },
-      { id: 'f2-new', name: 'users', collectionId: 'col-1', createdAt: 2000, updatedAt: 2000 },
+      { id: 'f1-new', name: 'pets', collectionId: 'col-1' },
+      { id: 'f2-new', name: 'users', collectionId: 'col-1' },
     ]);
 
     const preview = buildSyncPreview(existing, incoming, 'hash-2');
@@ -236,7 +232,7 @@ describe('buildSyncPreview', () => {
   it('ignores requests without operationId', () => {
     const existing = makeCollection([
       makeRequest({ id: 'r1', operationId: 'listPets', url: '{{baseUrl}}/pets' }),
-      { id: 'r-custom', name: 'Custom', method: 'GET', url: '/custom', collectionId: 'col-1', createdAt: 1000, updatedAt: 1000 } as SavedRequest,
+      { id: 'r-custom', name: 'Custom', method: 'GET', url: '/custom', collectionId: 'col-1' } as SavedRequest,
     ]);
     const incoming = makeCollection([
       makeRequest({ id: 'r1-new', operationId: 'listPets', url: '{{baseUrl}}/pets' }),
@@ -373,8 +369,8 @@ describe('applySyncToCollection', () => {
   });
 
   it('creates new folders for added requests that need them', () => {
-    const existingFolder: Folder = { id: 'f1', name: 'pets', collectionId: 'col-1', createdAt: 1000, updatedAt: 1000 };
-    const newFolder: Folder = { id: 'f2-new', name: 'users', collectionId: 'col-1', createdAt: 2000, updatedAt: 2000 };
+    const existingFolder: Folder = { id: 'f1', name: 'pets', collectionId: 'col-1' };
+    const newFolder: Folder = { id: 'f2-new', name: 'users', collectionId: 'col-1' };
     const collection = makeCollection(
       [makeRequest({ id: 'r1', operationId: 'listPets', url: '{{baseUrl}}/pets', folderId: 'f1' })],
       [existingFolder],

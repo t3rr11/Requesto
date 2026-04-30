@@ -96,7 +96,7 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
   };
 
   const handleSaveConfig = async (
-    configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'> & { clientSecret?: string }
+    configData: Omit<OAuthConfig, 'id'> & { clientSecret?: string }
   ) => {
     try {
       if (editingConfig) {
@@ -558,19 +558,6 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-
-                {/* Metadata Footer */}
-                <div className="flex items-center justify-center text-xs text-gray-400 dark:text-gray-500 pt-2">
-                  <div className="flex items-center gap-4">
-                    <span>
-                      Created {new Date(selectedConfig.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </span>
-                    <span>&middot;</span>
-                    <span>
-                      Updated {new Date(selectedConfig.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </span>
                   </div>
                 </div>
               </div>

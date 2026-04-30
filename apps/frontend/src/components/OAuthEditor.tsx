@@ -54,7 +54,7 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
     emitConfigId(configId);
   };
 
-  const handleSaveConfig = async (configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'> & { clientSecret?: string }) => {
+  const handleSaveConfig = async (configData: Omit<OAuthConfig, 'id'> & { clientSecret?: string }) => {
     if (editingConfig) {
       await updateConfig(editingConfig.id, configData);
       setEditingConfig(undefined);

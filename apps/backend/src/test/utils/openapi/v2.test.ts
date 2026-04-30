@@ -31,7 +31,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests).toHaveLength(1);
     expect(requests[0].method).toBe('GET');
@@ -54,7 +54,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].url).toBe('{{baseUrl}}/pets/{{petId}}');
   });
@@ -74,7 +74,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].url).toBe('{{baseUrl}}/pets?limit=&offset=');
   });
@@ -93,7 +93,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].headers).toHaveProperty('X-Request-Id');
   });
@@ -117,7 +117,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(folders).toHaveLength(2);
     expect(folders.map(f => f.name).sort()).toEqual(['pets', 'users']);
@@ -146,7 +146,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].bodyType).toBe('json');
     expect(requests[0].headers?.['Content-Type']).toBe('application/json');
@@ -170,7 +170,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].bodyType).toBe('form-data');
     expect(requests[0].formDataEntries).toHaveLength(2);
@@ -197,7 +197,7 @@ describe('convertV2Operations', () => {
     );
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].auth).toEqual({
       type: 'basic',
@@ -224,7 +224,7 @@ describe('convertV2Operations', () => {
     );
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].auth).toEqual({
       type: 'api-key',
@@ -242,7 +242,7 @@ describe('convertV2Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV2Operations(doc, 'col-1', folders, requests, 1000);
+    convertV2Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].operationId).toBe('get_/pets');
   });

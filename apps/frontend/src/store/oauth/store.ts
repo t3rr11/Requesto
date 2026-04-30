@@ -10,7 +10,7 @@ type OAuthStoreState = {
   errors: Record<string, string>;
 
   loadConfigs: () => Promise<void>;
-  addConfig: (config: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'>) => Promise<OAuthConfig>;
+  addConfig: (config: Omit<OAuthConfig, 'id'>) => Promise<OAuthConfig>;
   updateConfig: (id: string, updates: Partial<OAuthConfig>) => Promise<void>;
   deleteConfig: (id: string) => Promise<void>;
   getConfig: (id: string) => OAuthConfig | null;

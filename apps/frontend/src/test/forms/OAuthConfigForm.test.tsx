@@ -173,8 +173,6 @@ describe('OAuthConfigForm', () => {
       usePopup: true,
       autoRefreshToken: true,
       tokenRefreshThreshold: 300,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
     };
 
     render(

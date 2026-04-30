@@ -7,16 +7,12 @@
       {
         "id": "folder-test-users",
         "name": "Users",
-        "collectionId": "col-test-sample-api",
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "collectionId": "col-test-sample-api"
       },
       {
         "id": "folder-test-posts",
         "name": "Posts",
-        "collectionId": "col-test-sample-api",
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "collectionId": "col-test-sample-api"
       }
     ],
     "requests": [
@@ -33,9 +29,7 @@
         "order": 0,
         "auth": {
           "type": "none"
-        },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        }
       },
       {
         "id": "req-test-create-user",
@@ -52,9 +46,7 @@
         "order": 1,
         "auth": {
           "type": "none"
-        },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        }
       },
       {
         "id": "req-test-get-posts",
@@ -69,13 +61,9 @@
         "order": 0,
         "auth": {
           "type": "none"
-        },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        }
       }
-    ],
-    "createdAt": 1700000000000,
-    "updatedAt": 1700000000000
+    ]
   },
   {
     "id": "col-test-github",
@@ -95,13 +83,9 @@
         "order": 0,
         "auth": {
           "type": "none"
-        },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        }
       }
-    ],
-    "createdAt": 1700000000000,
-    "updatedAt": 1700000000000
+    ]
   },
   {
     "id": "col-1776940394932-kbq30q",
@@ -110,16 +94,12 @@
       {
         "id": "folder-1776940394932-cpgk",
         "name": "pets",
-        "collectionId": "col-1776940394932-qy54ro",
-        "createdAt": 1776940394932,
-        "updatedAt": 1776940394932
+        "collectionId": "col-1776940394932-qy54ro"
       },
       {
         "id": "folder-1776940394932-0qhgn5",
         "name": "users",
-        "collectionId": "col-1776940394932-qy54ro",
-        "createdAt": 1776940394932,
-        "updatedAt": 1776940394932
+        "collectionId": "col-1776940394932-qy54ro"
       }
     ],
     "requests": [
@@ -131,9 +111,7 @@
         "collectionId": "col-1776940394932-qy54ro",
         "folderId": "folder-1776940394932-cpgk",
         "operationId": "listPets",
-        "order": 0,
-        "createdAt": 1776940394932,
-        "updatedAt": 1776940394932
+        "order": 0
       },
       {
         "id": "req-1776940394932-9cgr7a",
@@ -148,9 +126,7 @@
         "collectionId": "col-1776940394932-qy54ro",
         "folderId": "folder-1776940394932-cpgk",
         "operationId": "createPet",
-        "order": 1,
-        "createdAt": 1776940394932,
-        "updatedAt": 1776940394932
+        "order": 1
       },
       {
         "id": "req-1776940394932-qlkoxq",
@@ -160,9 +136,7 @@
         "collectionId": "col-1776940394932-qy54ro",
         "folderId": "folder-1776940394932-cpgk",
         "operationId": "getPet",
-        "order": 2,
-        "createdAt": 1776940394932,
-        "updatedAt": 1776940394932
+        "order": 2
       },
       {
         "id": "req-1776940394932-sume0f",
@@ -172,13 +146,9 @@
         "collectionId": "col-1776940394932-qy54ro",
         "folderId": "folder-1776940394932-0qhgn5",
         "operationId": "listUsers",
-        "order": 3,
-        "createdAt": 1776940394932,
-        "updatedAt": 1776940394932
+        "order": 3
       }
     ],
-    "createdAt": 1776940394932,
-    "updatedAt": 1776940394932,
     "openApiSpec": {
       "source": "D:/Projects/Web Apps/Requesto/apps/playwright/fixtures/openapi-spec.json",
       "lastSyncedAt": 1776940394932,

@@ -68,7 +68,7 @@ export class OAuthRepository extends BaseRepository {
   }
 
   create(
-    configData: Omit<OAuthConfigServer, 'id' | 'createdAt' | 'updatedAt'>,
+    configData: Omit<OAuthConfigServer, 'id'>,
   ): OAuthConfigPublic {
     const data = this.readData();
     const id = `oauth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -76,9 +76,7 @@ export class OAuthRepository extends BaseRepository {
 
     const newConfig: OAuthConfigPublic = {
       ...publicConfig,
-      id,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      id
     };
 
     data.configs.push(newConfig);
@@ -95,7 +93,7 @@ export class OAuthRepository extends BaseRepository {
 
   update(
     id: string,
-    updates: Partial<Omit<OAuthConfigServer, 'id' | 'createdAt'>>,
+    updates: Partial<Omit<OAuthConfigServer, 'id'>>,
   ): OAuthConfigPublic | null {
     const data = this.readData();
     const index = data.configs.findIndex((c) => c.id === id);
@@ -107,7 +105,6 @@ export class OAuthRepository extends BaseRepository {
       ...data.configs[index],
       ...publicUpdates,
       id,
-      updatedAt: Date.now(),
     };
 
     this.writeData(data);

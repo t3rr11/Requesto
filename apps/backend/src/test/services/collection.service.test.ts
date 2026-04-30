@@ -9,8 +9,6 @@ function makeCollection(overrides: Partial<Collection> = {}): Collection {
     name: 'My Collection',
     folders: [],
     requests: [],
-    createdAt: 1000,
-    updatedAt: 1000,
     ...overrides,
   };
 }
@@ -21,8 +19,6 @@ function makeRequest(overrides: Partial<SavedRequest> & { id: string }): SavedRe
     method: 'GET',
     url: 'http://example.com',
     collectionId: 'col-1',
-    createdAt: 1000,
-    updatedAt: 1000,
     ...overrides,
   };
 }
@@ -326,7 +322,7 @@ describe('CollectionService', () => {
 
   describe('moveFolder', () => {
     it('throws badRequest when moving folder into itself', async () => {
-      const folder = { id: 'f-1', name: 'Folder 1', collectionId: 'col-1', createdAt: 1000, updatedAt: 1000 } as Folder;
+      const folder = { id: 'f-1', name: 'Folder 1', collectionId: 'col-1' } as Folder;
       const col = makeCollection({ folders: [folder], requests: [] });
       const repo = mockRepo({ getById: vi.fn().mockResolvedValue(col) });
       const service = new CollectionService(repo);

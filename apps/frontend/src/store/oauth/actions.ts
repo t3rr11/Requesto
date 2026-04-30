@@ -13,7 +13,7 @@ async function getOAuthConfigsApi(): Promise<OAuthConfig[]> {
 }
 
 async function createOAuthConfigApi(
-  configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'>,
+  configData: Omit<OAuthConfig, 'id'>,
 ): Promise<OAuthConfig> {
   const res = await fetch(`${API_BASE}/oauth/configs`, {
     method: 'POST',
@@ -69,7 +69,7 @@ export async function loadConfigs(set: SetState, get: GetState): Promise<void> {
 
 export async function addConfig(
   set: SetState,
-  configData: Omit<OAuthConfig, 'id' | 'createdAt' | 'updatedAt'>,
+  configData: Omit<OAuthConfig, 'id'>,
 ): Promise<OAuthConfig> {
   try {
     const newConfig = await createOAuthConfigApi(configData);

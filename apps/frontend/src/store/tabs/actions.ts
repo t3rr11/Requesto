@@ -19,7 +19,6 @@ function createNewTab(overrides?: Partial<Tab>): Tab {
     isDirty: false,
     isLoading: false,
     error: null,
-    createdAt: now,
     lastAccessedAt: now,
     ...overrides,
   };

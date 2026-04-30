@@ -72,9 +72,7 @@ function resetTestData() {
       {
         id: 'ws-test-default',
         name: 'Default',
-        path: TEST_DATA_DIR,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        path: TEST_DATA_DIR
       },
     ],
   };

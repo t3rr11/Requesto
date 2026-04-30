@@ -31,7 +31,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests).toHaveLength(1);
     expect(requests[0].method).toBe('GET');
@@ -55,7 +55,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].url).toBe('{{baseUrl}}/pets/{{petId}}');
   });
@@ -75,7 +75,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].url).toBe('{{baseUrl}}/pets?limit=0&offset=0');
   });
@@ -94,7 +94,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].headers).toHaveProperty('X-Request-Id');
   });
@@ -118,7 +118,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(folders).toHaveLength(2);
     expect(folders.map(f => f.name).sort()).toEqual(['pets', 'users']);
@@ -143,7 +143,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(folders).toHaveLength(1);
     expect(requests).toHaveLength(2);
@@ -161,7 +161,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(folders).toHaveLength(0);
     expect(requests[0].folderId).toBeUndefined();
@@ -177,7 +177,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].operationId).toBe('get_/pets');
   });
@@ -206,7 +206,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].bodyType).toBe('json');
     const body = JSON.parse(requests[0].body!);
@@ -238,7 +238,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].bodyType).toBe('form-data');
     expect(requests[0].formDataEntries).toHaveLength(2);
@@ -267,7 +267,7 @@ describe('convertV3Operations', () => {
     );
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].auth).toEqual({
       type: 'bearer',
@@ -294,7 +294,7 @@ describe('convertV3Operations', () => {
     );
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].auth).toEqual({
       type: 'api-key',
@@ -321,7 +321,7 @@ describe('convertV3Operations', () => {
     );
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests[0].auth).toEqual({
       type: 'basic',
@@ -343,7 +343,7 @@ describe('convertV3Operations', () => {
     const doc = makeDoc(paths);
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     expect(requests).toHaveLength(7);
     const requestMethods = requests.map(r => r.method);
@@ -375,7 +375,7 @@ describe('convertV3Operations', () => {
     });
     const folders: Folder[] = [];
     const requests: SavedRequest[] = [];
-    convertV3Operations(doc, 'col-1', folders, requests, 1000);
+    convertV3Operations(doc, 'col-1', folders, requests);
 
     const body = JSON.parse(requests[0].body!);
     expect(body).toEqual({ name: 'Buddy', age: 3 });
