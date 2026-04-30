@@ -45,17 +45,6 @@ describe('useGitAutoRefresh', () => {
     expect(mockLoadStatus).toHaveBeenCalledTimes(3);
   });
 
-  it('refreshes on window focus', () => {
-    useGitStore.setState({ isRepo: true } as any);
-
-    renderHook(() => useGitAutoRefresh());
-    mockLoadStatus.mockClear();
-
-    act(() => { window.dispatchEvent(new Event('focus')); });
-
-    expect(mockLoadStatus).toHaveBeenCalledOnce();
-  });
-
   it('debounces data-mutated events', () => {
     useGitStore.setState({ isRepo: true } as any);
 

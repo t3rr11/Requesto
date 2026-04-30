@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RequestResponseView } from '../../components/RequestResponseView';
+import { touchTab } from '../../store/tabs/actions';
 
 // ── Store mocks ──────────────────────────────────────────────────────
 
@@ -9,6 +10,7 @@ const mockGetActiveTab = vi.fn();
 const mockSetTabResponse = vi.fn();
 const mockSetTabLoading = vi.fn();
 const mockSetTabError = vi.fn();
+const mockSetTabTouched = vi.fn();
 const mockMarkTabAsSaved = vi.fn();
 
 vi.mock('../../store/tabs/store', () => ({
@@ -17,6 +19,7 @@ vi.mock('../../store/tabs/store', () => ({
     setTabResponse: mockSetTabResponse,
     setTabLoading: mockSetTabLoading,
     setTabError: mockSetTabError,
+    touchTab: mockSetTabTouched,
     markTabAsSaved: mockMarkTabAsSaved,
   }),
 }));
@@ -138,6 +141,7 @@ function makeTab(overrides: Record<string, unknown> = {}) {
     request: { method: 'GET', url: 'https://api.test.com', headers: {}, body: '', bodyType: 'json', auth: { type: 'none' }, formDataEntries: [] },
     response: null,
     isDirty: false,
+    isTouched: false,
     isLoading: false,
     error: null,
     savedRequestId: undefined,
