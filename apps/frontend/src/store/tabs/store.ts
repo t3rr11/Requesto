@@ -18,6 +18,7 @@ type TabsState = {
     label: string;
   }) => string;
   activateTab: (tabId: string) => void;
+  touchTab: (tabId: string) => void;
   closeTab: (tabId: string) => void;
   updateTabRequest: (tabId: string, request: Partial<TabRequest>) => void;
   setTabResponse: (tabId: string, response: ProxyResponse | StreamingResponse | null) => void;
@@ -39,6 +40,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   openNewTab: () => actions.openNewTab(set, get),
   openRequestTab: (params) => actions.openRequestTab(set, get, params),
   activateTab: (tabId) => actions.activateTab(set, get, tabId),
+  touchTab: (tabId) => actions.touchTab(set, get, tabId),
   closeTab: (tabId) => actions.closeTab(set, get, tabId),
   updateTabRequest: (tabId, request) => actions.updateTabRequest(set, get, tabId, request),
   setTabResponse: (tabId, response) => actions.setTabResponse(set, tabId, response),

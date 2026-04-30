@@ -22,7 +22,7 @@ import { applyAuthForDisplay } from '../helpers/api/authPreview';
 import type { StreamingResponse } from '../store/request/types';
 
 export function RequestResponseView() {
-  const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved } = useTabsStore();
+  const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab } = useTabsStore();
   const { updateRequest } = useCollectionsStore();
   const { environmentsData } = useEnvironmentStore();
   const { sendRequest, sendStreamingRequest, isStreamingRequest, addConsoleLog } = useRequestStore();
@@ -86,6 +86,9 @@ export function RequestResponseView() {
       url: displayRequest.url,
       requestData: displayRequest,
     });
+
+    // Mark the tab as touched to prevent automatic closing of the tab when opening another request
+    touchTab(tab.id);
 
     setTabLoading(tab.id, true);
     setTabError(tab.id, null);
@@ -158,6 +161,7 @@ export function RequestResponseView() {
     sendRequest,
     sendStreamingRequest,
     isStreamingRequest,
+    touchTab,
     setTabLoading,
     setTabError,
     setTabResponse,
@@ -173,6 +177,9 @@ export function RequestResponseView() {
   const handleSave = useCallback(async () => {
     if (!activeTab || !formDataRef.current) return;
 
+    // Mark the tab as touched to prevent automatic closing of the tab when opening another request
+    touchTab(activeTab.id);
+
     if (activeTab.savedRequestId && activeTab.collectionId) {
       try {
         await updateRequest(
@@ -187,7 +194,7 @@ export function RequestResponseView() {
     } else {
       saveDialog.open();
     }
-  }, [activeTab, updateRequest, markTabAsSaved, showAlert, saveDialog]);
+  }, [activeTab, updateRequest, markTabAsSaved, touchTab, showAlert, saveDialog]);
 
   const handleFormChange = useCallback((formData: RequestFormData) => {
     formDataRef.current = formData;

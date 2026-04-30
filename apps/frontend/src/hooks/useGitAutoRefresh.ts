@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useGitStore } from '../store/git/store';
 
-const POLL_INTERVAL = 15_000; // 15 seconds
+const POLL_INTERVAL = 60_000; // 60 seconds
 const DEBOUNCE_MS = 2_000; // debounce mutation-triggered refreshes
 
 /**

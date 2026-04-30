@@ -31,17 +31,17 @@ describe('useGitAutoRefresh', () => {
     expect(mockLoadStatus).toHaveBeenCalledOnce();
   });
 
-  it('polls status every 15 seconds', () => {
+  it('polls status every 60 seconds', () => {
     useGitStore.setState({ isRepo: true } as any);
 
     renderHook(() => useGitAutoRefresh());
 
     expect(mockLoadStatus).toHaveBeenCalledTimes(1); // initial call
 
-    act(() => { vi.advanceTimersByTime(15_000); });
+    act(() => { vi.advanceTimersByTime(60_000); });
     expect(mockLoadStatus).toHaveBeenCalledTimes(2);
 
-    act(() => { vi.advanceTimersByTime(15_000); });
+    act(() => { vi.advanceTimersByTime(60_000); });
     expect(mockLoadStatus).toHaveBeenCalledTimes(3);
   });
 

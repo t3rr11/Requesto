@@ -17,6 +17,7 @@ function createNewTab(overrides?: Partial<Tab>): Tab {
     request: { method: 'GET', url: '' },
     response: null,
     isDirty: false,
+    isTouched: false,
     isLoading: false,
     error: null,
     lastAccessedAt: now,
@@ -24,13 +25,22 @@ function createNewTab(overrides?: Partial<Tab>): Tab {
   };
 }
 
-export function openNewTab(set: SetState, _get: GetState): string {
-  const tab = createNewTab();
+export function openNewTab(set: SetState, get: GetState): string {
+  const tab = createNewTab({ isTouched: true });
+
+  // Check if there is a non-touched tab, if so close that request before opening the new one.
+  const tabs = get().tabs as Record<string, Tab>;
+  const nonTouchedTabId = Object.values(tabs).find((t) => !t.isTouched)?.id;
+  if (nonTouchedTabId) {
+    closeTab(set, get, nonTouchedTabId);
+  }
+
   set((state) => ({
     tabs: { ...(state.tabs as Record<string, Tab>), [tab.id]: tab },
     tabOrder: [...(state.tabOrder as string[]), tab.id],
     activeTabId: tab.id,
   }));
+
   return tab.id;
 }
 
@@ -39,6 +49,7 @@ export function openRequestTab(
   get: GetState,
   params: { savedRequestId: string; collectionId: string; request: TabRequest; label: string },
 ): string {
+  const tabs = get().tabs as Record<string, Tab>;
   const existing = getTabBySavedRequestId(get, params.savedRequestId);
   if (existing) {
     activateTab(set, get, existing.id);
@@ -50,6 +61,12 @@ export function openRequestTab(
     auth: params.request.auth || { type: 'none' as const },
   };
 
+  // Check if there is a non-touched tab, if so close that request before opening the new one.
+  const nonTouchedTabId = Object.values(tabs).find((t) => !t.isTouched)?.id;
+  if (nonTouchedTabId) {
+    closeTab(set, get, nonTouchedTabId);
+  }
+
   const tab = createNewTab({
     label: params.label,
     request: { ...normalizedRequest },
@@ -57,6 +74,7 @@ export function openRequestTab(
     collectionId: params.collectionId,
     originalRequest: { ...normalizedRequest },
     isDirty: false,
+    isTouched: false,
   });
 
   set((state) => ({
@@ -78,6 +96,19 @@ export function activateTab(set: SetState, get: GetState, tabId: string): void {
       [tabId]: { ...tab, lastAccessedAt: Date.now() },
     },
     activeTabId: tabId,
+  }));
+}
+
+export function touchTab(set: SetState, get: GetState, tabId: string): void {
+  const tabs = get().tabs as Record<string, Tab>;
+  const tab = tabs[tabId];
+  if (!tab) return;
+
+  set((state) => ({
+    tabs: {
+      ...(state.tabs as Record<string, Tab>),
+      [tabId]: { ...tab, isTouched: true },
+    },
   }));
 }
 
@@ -196,7 +227,7 @@ export function getActiveTab(get: GetState): Tab | null {
 }
 
 export function closeAllTabs(set: SetState): void {
-  const empty = createNewTab();
+  const empty = createNewTab({ isTouched: true });
   set({ tabs: { [empty.id]: empty }, tabOrder: [empty.id], activeTabId: empty.id });
 }
 
