@@ -30,16 +30,13 @@ export class CollectionService {
     const existing = await this.repo.getById(UNCATEGORIZED_COLLECTION_ID);
     if (existing) return existing;
 
-    const now = Date.now();
     const collection: Collection = {
       id: UNCATEGORIZED_COLLECTION_ID,
       name: 'Uncategorized',
       description: 'Saved requests that do not belong to a specific collection.',
       isSystem: true,
       folders: [],
-      requests: [],
-      createdAt: now,
-      updatedAt: now,
+      requests: []
     };
     return this.repo.create(collection);
   }
@@ -62,9 +59,7 @@ export class CollectionService {
       name: name.trim(),
       description,
       folders: [],
-      requests: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      requests: []
     };
     return this.repo.create(newCollection);
   }
@@ -119,9 +114,7 @@ export class CollectionService {
       formDataEntries: data.formDataEntries,
       auth: data.auth,
       folderId: data.folderId,
-      collectionId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      collectionId
     };
 
     const saved = await this.repo.addRequest(collectionId, newRequest);
@@ -134,7 +127,7 @@ export class CollectionService {
   async updateRequest(
     collectionId: string,
     requestId: string,
-    updates: Partial<Omit<SavedRequest, 'id' | 'collectionId' | 'createdAt'>>,
+    updates: Partial<Omit<SavedRequest, 'id' | 'collectionId'>>,
   ): Promise<SavedRequest> {
     const saved = await this.repo.updateRequest(collectionId, requestId, updates);
     if (!saved) {
@@ -163,8 +156,6 @@ export class CollectionService {
       ...original,
       id: `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       name: `${original.name} Copy`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
     };
     const saved = await this.repo.addRequest(collectionId, duplicate);
     if (!saved) {
@@ -178,9 +169,7 @@ export class CollectionService {
       id: `folder-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       name: data.name.trim(),
       parentId: data.parentId,
-      collectionId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      collectionId
     };
 
     const saved = await this.repo.addFolder(collectionId, newFolder);
@@ -246,8 +235,7 @@ export class CollectionService {
       ...requestToMove,
       collectionId: targetCollectionId,
       folderId: targetFolderId,
-      order,
-      updatedAt: Date.now(),
+      order
     };
 
     const saved = await this.repo.addRequest(targetCollectionId, movedRequest);
@@ -300,8 +288,7 @@ export class CollectionService {
     const movedFolder: Folder = {
       ...folderToMove,
       parentId: targetParentId,
-      collectionId: targetCollectionId,
-      updatedAt: Date.now(),
+      collectionId: targetCollectionId
     };
 
     const targetCollection = await this.repo.getById(targetCollectionId);
@@ -317,16 +304,14 @@ export class CollectionService {
       allFolders.push({
         ...folder,
         parentId: isRoot ? targetParentId : folder.parentId,
-        collectionId: targetCollectionId,
-        updatedAt: Date.now(),
+        collectionId: targetCollectionId
       });
     }
 
     for (const req of requestsToMove) {
       allRequests.push({
         ...req,
-        collectionId: targetCollectionId,
-        updatedAt: Date.now(),
+        collectionId: targetCollectionId
       });
     }
 

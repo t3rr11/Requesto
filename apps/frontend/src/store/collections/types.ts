@@ -20,8 +20,6 @@ export type SavedRequest = {
   folderId?: string;
   order?: number;
   operationId?: string;
-  createdAt: number;
-  updatedAt: number;
 };
 
 export type Folder = {
@@ -29,8 +27,6 @@ export type Folder = {
   name: string;
   parentId?: string;
   collectionId: string;
-  createdAt: number;
-  updatedAt: number;
 };
 
 export type Collection = {
@@ -42,8 +38,6 @@ export type Collection = {
   folders: Folder[];
   requests: SavedRequest[];
   openApiSpec?: OpenApiSpecLink;
-  createdAt: number;
-  updatedAt: number;
 };
 
 // Sync preview types

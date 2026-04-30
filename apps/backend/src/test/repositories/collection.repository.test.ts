@@ -11,8 +11,6 @@ function makeCollection(overrides: Partial<Collection> = {}): Collection {
     name: 'Test Collection',
     folders: [],
     requests: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
     ...overrides,
   };
 }
@@ -24,8 +22,6 @@ function makeRequest(collectionId: string, overrides: Partial<SavedRequest> = {}
     method: 'GET',
     url: 'http://example.com',
     collectionId,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
     ...overrides,
   };
 }

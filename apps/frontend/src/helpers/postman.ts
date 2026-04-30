@@ -66,7 +66,6 @@ type PostmanEnvironment = {
 
 export function importPostmanCollection(postmanData: PostmanCollection): Collection {
   const collectionId = crypto.randomUUID();
-  const now = Date.now();
   const folders: Folder[] = [];
   const requests: SavedRequest[] = [];
 
@@ -77,9 +76,7 @@ export function importPostmanCollection(postmanData: PostmanCollection): Collect
     name: postmanData.info.name,
     description: postmanData.info.description,
     folders,
-    requests,
-    createdAt: now,
-    updatedAt: now,
+    requests
   };
 }
 
@@ -90,10 +87,9 @@ function processItems(
   requests: SavedRequest[],
   parentFolderId?: string
 ): void {
-  const now = Date.now();
   items.forEach((item, index) => {
     if (item.request) {
-      const req = convertRequest(item, collectionId, parentFolderId, now);
+      const req = convertRequest(item, collectionId, parentFolderId);
       req.order = index;
       requests.push(req);
     } else if (item.item) {
@@ -102,9 +98,7 @@ function processItems(
         id: folderId,
         name: item.name,
         parentId: parentFolderId,
-        collectionId,
-        createdAt: now,
-        updatedAt: now,
+        collectionId
       });
       processItems(item.item, collectionId, folders, requests, folderId);
     }
@@ -114,8 +108,7 @@ function processItems(
 function convertRequest(
   item: PostmanItem,
   collectionId: string,
-  folderId: string | undefined,
-  ts: number
+  folderId: string | undefined
 ): SavedRequest {
   const req = item.request!;
   const url = typeof req.url === 'string' ? req.url : req.url.raw;
@@ -168,9 +161,7 @@ function convertRequest(
     formDataEntries,
     auth: convertAuth(req.auth),
     collectionId,
-    folderId,
-    createdAt: ts,
-    updatedAt: ts,
+    folderId
   };
 }
 

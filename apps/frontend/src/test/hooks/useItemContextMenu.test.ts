@@ -9,8 +9,6 @@ const mockRequest: SavedRequest = {
   method: 'GET',
   url: 'https://api.example.com/users',
   collectionId: 'col-1',
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
 };
 
 function createMouseEvent(x: number, y: number): React.MouseEvent {

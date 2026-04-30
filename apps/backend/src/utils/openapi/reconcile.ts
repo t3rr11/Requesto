@@ -164,11 +164,8 @@ function mergeRequest(existing: SavedRequest, incoming: SavedRequest): SavedRequ
 
   return {
     ...existing,
-    // Structural — take from spec
     method: incoming.method,
     url: mergedUrl,
-    // Keep user-owned fields: name, headers, body, bodyType, formDataEntries, auth
-    updatedAt: Date.now(),
   };
 }
 
@@ -198,7 +195,7 @@ export function applySyncToCollection(
   }
   for (const newFolder of preview.newFolders) {
     if (neededFolderNames.has(newFolder.name) && !folderNameToId.has(newFolder.name)) {
-      const folder: Folder = { ...newFolder, collectionId: collection.id, createdAt: now, updatedAt: now };
+      const folder: Folder = { ...newFolder, collectionId: collection.id };
       collection.folders.push(folder);
       folderNameToId.set(folder.name, folder.id);
     }
@@ -214,8 +211,6 @@ export function applySyncToCollection(
       collectionId: collection.id,
       folderId,
       order: collection.requests.length,
-      createdAt: now,
-      updatedAt: now,
     };
     collection.requests.push(newReq);
   }
@@ -242,7 +237,6 @@ export function applySyncToCollection(
     lastSyncedAt: now,
     specHash: preview.newSpecHash,
   };
-  collection.updatedAt = now;
 
   return collection;
 }

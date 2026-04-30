@@ -22,7 +22,6 @@ export type Tab = {
   savedRequestId?: string;
   collectionId?: string;
   originalRequest?: TabRequest;
-  createdAt: number;
   lastAccessedAt: number;
 };
 

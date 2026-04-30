@@ -7,8 +7,7 @@ export function convertV2Operations(
   doc: OpenAPIV2.Document,
   collectionId: string,
   folders: Folder[],
-  requests: SavedRequest[],
-  now: number,
+  requests: SavedRequest[]
 ): void {
   const tagFolderMap = new Map<string, string>();
   const methods = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head'] as const;
@@ -31,8 +30,6 @@ export function convertV2Operations(
             id,
             name: tag,
             collectionId,
-            createdAt: now,
-            updatedAt: now,
           });
         }
         folderId = tagFolderMap.get(tag);
@@ -90,8 +87,6 @@ export function convertV2Operations(
         folderId,
         operationId,
         order: requests.length,
-        createdAt: now,
-        updatedAt: now,
       };
 
       requests.push(request);

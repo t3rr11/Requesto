@@ -3,16 +3,8 @@ import { Collection, Folder, SavedRequest } from '../models/collection';
 import { BaseRepository } from './base.repository';
 
 /** Check if an object has meaningful changes (ignoring timestamps). */
-function hasChanged(
-  a: Record<string, unknown>,
-  b: Record<string, unknown>,
-): boolean {
-  const strip = (obj: Record<string, unknown>) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { createdAt, updatedAt, ...rest } = obj;
-    return JSON.stringify(rest);
-  };
-  return strip(a) !== strip(b);
+function hasChanged(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return a !== b;
 }
 
 export class CollectionRepository extends BaseRepository {
@@ -38,7 +30,7 @@ export class CollectionRepository extends BaseRepository {
 
   async getById(id: string): Promise<Collection | undefined> {
     const collections = this.readAll();
-    return collections.find((c) => c.id === id);
+    return collections.find(c => c.id === id);
   }
 
   async create(collection: Collection): Promise<Collection> {
@@ -50,28 +42,23 @@ export class CollectionRepository extends BaseRepository {
 
   async update(id: string, updates: Partial<Collection>): Promise<Collection | null> {
     const collections = this.readAll();
-    const index = collections.findIndex((c) => c.id === id);
+    const index = collections.findIndex(c => c.id === id);
     if (index === -1) return null;
 
     const current = collections[index];
     const merged = { ...current, ...updates };
-    if (
-      !hasChanged(
-        current as unknown as Record<string, unknown>,
-        merged as unknown as Record<string, unknown>,
-      )
-    ) {
+    if (!hasChanged(current as unknown as Record<string, unknown>, merged as unknown as Record<string, unknown>)) {
       return current;
     }
 
-    collections[index] = { ...merged, updatedAt: Date.now() };
+    collections[index] = { ...merged };
     this.writeAll(collections);
     return collections[index];
   }
 
   async delete(id: string): Promise<boolean> {
     const collections = this.readAll();
-    const filtered = collections.filter((c) => c.id !== id);
+    const filtered = collections.filter(c => c.id !== id);
     if (filtered.length === collections.length) return false;
     this.writeAll(filtered);
     return true;
@@ -81,11 +68,10 @@ export class CollectionRepository extends BaseRepository {
 
   async addRequest(collectionId: string, request: SavedRequest): Promise<SavedRequest | null> {
     const collections = this.readAll();
-    const collection = collections.find((c) => c.id === collectionId);
+    const collection = collections.find(c => c.id === collectionId);
     if (!collection) return null;
 
     collection.requests.push(request);
-    collection.updatedAt = Date.now();
     this.writeAll(collections);
     return request;
   }
@@ -93,42 +79,35 @@ export class CollectionRepository extends BaseRepository {
   async updateRequest(
     collectionId: string,
     requestId: string,
-    updates: Partial<SavedRequest>,
+    updates: Partial<SavedRequest>
   ): Promise<SavedRequest | null> {
     const collections = this.readAll();
-    const collection = collections.find((c) => c.id === collectionId);
+    const collection = collections.find(c => c.id === collectionId);
     if (!collection) return null;
 
-    const index = collection.requests.findIndex((r) => r.id === requestId);
+    const index = collection.requests.findIndex(r => r.id === requestId);
     if (index === -1) return null;
 
     const current = collection.requests[index];
     const merged = { ...current, ...updates };
-    if (
-      !hasChanged(
-        current as unknown as Record<string, unknown>,
-        merged as unknown as Record<string, unknown>,
-      )
-    ) {
+    if (!hasChanged(current as unknown as Record<string, unknown>, merged as unknown as Record<string, unknown>)) {
       return current;
     }
 
-    collection.requests[index] = { ...merged, updatedAt: Date.now() };
-    collection.updatedAt = Date.now();
+    collection.requests[index] = { ...merged };
     this.writeAll(collections);
     return collection.requests[index];
   }
 
   async deleteRequest(collectionId: string, requestId: string): Promise<boolean> {
     const collections = this.readAll();
-    const collection = collections.find((c) => c.id === collectionId);
+    const collection = collections.find(c => c.id === collectionId);
     if (!collection) return false;
 
     const initial = collection.requests.length;
-    collection.requests = collection.requests.filter((r) => r.id !== requestId);
+    collection.requests = collection.requests.filter(r => r.id !== requestId);
     if (collection.requests.length === initial) return false;
 
-    collection.updatedAt = Date.now();
     this.writeAll(collections);
     return true;
   }
@@ -137,68 +116,57 @@ export class CollectionRepository extends BaseRepository {
 
   async addFolder(collectionId: string, folder: Folder): Promise<Folder | null> {
     const collections = this.readAll();
-    const collection = collections.find((c) => c.id === collectionId);
+    const collection = collections.find(c => c.id === collectionId);
     if (!collection) return null;
 
     if (!collection.folders) collection.folders = [];
     collection.folders.push(folder);
-    collection.updatedAt = Date.now();
+
     this.writeAll(collections);
     return folder;
   }
 
-  async updateFolder(
-    collectionId: string,
-    folderId: string,
-    updates: Partial<Folder>,
-  ): Promise<Folder | null> {
+  async updateFolder(collectionId: string, folderId: string, updates: Partial<Folder>): Promise<Folder | null> {
     const collections = this.readAll();
-    const collection = collections.find((c) => c.id === collectionId);
+    const collection = collections.find(c => c.id === collectionId);
     if (!collection?.folders) return null;
 
-    const index = collection.folders.findIndex((f) => f.id === folderId);
+    const index = collection.folders.findIndex(f => f.id === folderId);
     if (index === -1) return null;
 
     const current = collection.folders[index];
     const merged = { ...current, ...updates };
-    if (
-      !hasChanged(
-        current as unknown as Record<string, unknown>,
-        merged as unknown as Record<string, unknown>,
-      )
-    ) {
+    if (!hasChanged(current as unknown as Record<string, unknown>, merged as unknown as Record<string, unknown>)) {
       return current;
     }
 
-    collection.folders[index] = { ...merged, updatedAt: Date.now() };
-    collection.updatedAt = Date.now();
+    collection.folders[index] = { ...merged };
     this.writeAll(collections);
     return collection.folders[index];
   }
 
   async deleteFolder(collectionId: string, folderId: string): Promise<boolean> {
     const collections = this.readAll();
-    const collection = collections.find((c) => c.id === collectionId);
+    const collection = collections.find(c => c.id === collectionId);
     if (!collection?.folders) return false;
 
     // Recursively remove child folders before removing the parent
     const deleteChildren = (parentId: string) => {
-      const children = collection.folders.filter((f) => f.parentId === parentId);
+      const children = collection.folders.filter(f => f.parentId === parentId);
       for (const child of children) {
         deleteChildren(child.id);
-        collection.folders = collection.folders.filter((f) => f.id !== child.id);
+        collection.folders = collection.folders.filter(f => f.id !== child.id);
       }
     };
     deleteChildren(folderId);
 
     // Remove requests that belong directly to this folder
-    collection.requests = collection.requests.filter((r) => r.folderId !== folderId);
+    collection.requests = collection.requests.filter(r => r.folderId !== folderId);
 
     const initial = collection.folders.length;
-    collection.folders = collection.folders.filter((f) => f.id !== folderId);
+    collection.folders = collection.folders.filter(f => f.id !== folderId);
     if (collection.folders.length === initial) return false;
 
-    collection.updatedAt = Date.now();
     this.writeAll(collections);
     return true;
   }

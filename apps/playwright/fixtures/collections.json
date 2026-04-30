@@ -7,16 +7,12 @@
       {
         "id": "folder-test-users",
         "name": "Users",
-        "collectionId": "col-test-sample-api",
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "collectionId": "col-test-sample-api"
       },
       {
         "id": "folder-test-posts",
         "name": "Posts",
-        "collectionId": "col-test-sample-api",
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "collectionId": "col-test-sample-api"
       }
     ],
     "requests": [
@@ -29,9 +25,7 @@
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-users",
         "order": 0,
-        "auth": { "type": "none" },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "auth": { "type": "none" }
       },
       {
         "id": "req-test-create-user",
@@ -43,9 +37,7 @@
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-users",
         "order": 1,
-        "auth": { "type": "none" },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "auth": { "type": "none" }
       },
       {
         "id": "req-test-get-posts",
@@ -56,13 +48,9 @@
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-posts",
         "order": 0,
-        "auth": { "type": "none" },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "auth": { "type": "none" }
       }
-    ],
-    "createdAt": 1700000000000,
-    "updatedAt": 1700000000000
+    ]
   },
   {
     "id": "col-test-github",
@@ -78,12 +66,8 @@
         "headers": { "Accept": "application/vnd.github.v3+json" },
         "collectionId": "col-test-github",
         "order": 0,
-        "auth": { "type": "none" },
-        "createdAt": 1700000000000,
-        "updatedAt": 1700000000000
+        "auth": { "type": "none" }
       }
-    ],
-    "createdAt": 1700000000000,
-    "updatedAt": 1700000000000
+    ]
   }
 ]

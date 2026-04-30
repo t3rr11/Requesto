@@ -61,7 +61,7 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     return oauthService.getById(request.params.id);
   });
 
-  server.post<{ Body: Omit<OAuthConfigServer, 'id' | 'createdAt' | 'updatedAt'> }>(
+  server.post<{ Body: Omit<OAuthConfigServer, 'id'> }>(
     '/oauth/configs',
     async (request, reply) => {
       const configData = request.body;
@@ -76,7 +76,7 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     },
   );
 
-  server.patch<{ Params: { id: string }; Body: Partial<Omit<OAuthConfigServer, 'id' | 'createdAt'>> }>(
+  server.patch<{ Params: { id: string }; Body: Partial<Omit<OAuthConfigServer, 'id'>> }>(
     '/oauth/configs/:id',
     async (request, _reply) => {
       return oauthService.update(request.params.id, request.body);

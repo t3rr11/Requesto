@@ -8,8 +8,6 @@ const mockWorkspace = {
   id: 'ws-1',
   name: 'Test Workspace',
   path: '/data/workspaces/ws-1',
-  createdAt: 1700000000000,
-  updatedAt: 1700000000000,
 };
 
 const mockRegistry = {

@@ -24,8 +24,6 @@ export type OAuthConfig = {
   usePopup: boolean;
   autoRefreshToken: boolean;
   tokenRefreshThreshold: number;
-  createdAt: number;
-  updatedAt: number;
 };
 
 export type OAuthState = {

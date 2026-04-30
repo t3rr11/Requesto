@@ -41,9 +41,9 @@ export async function importOpenApiSpec(
   const environments = extractEnvironments(api);
 
   if (isV3) {
-    convertV3Operations(api as OpenAPIV3.Document, collectionId, folders, requests, now);
+    convertV3Operations(api as OpenAPIV3.Document, collectionId, folders, requests);
   } else {
-    convertV2Operations(api as OpenAPIV2.Document, collectionId, folders, requests, now);
+    convertV2Operations(api as OpenAPIV2.Document, collectionId, folders, requests);
   }
 
   const openApiSpec: OpenApiSpecLink | undefined = options?.linkSpec
@@ -57,8 +57,6 @@ export async function importOpenApiSpec(
     folders,
     requests,
     openApiSpec,
-    createdAt: now,
-    updatedAt: now,
   };
 
   return { collection, environments, specHash };

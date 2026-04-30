@@ -22,8 +22,6 @@ describe('OAuthConfigList', () => {
       usePopup: false,
       autoRefreshToken: false,
       tokenRefreshThreshold: 300,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
     },
     {
       id: 'config-2',
@@ -39,8 +37,6 @@ describe('OAuthConfigList', () => {
       usePopup: true,
       autoRefreshToken: true,
       tokenRefreshThreshold: 600,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
     },
   ];
 

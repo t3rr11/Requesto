@@ -201,9 +201,6 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                      Created {new Date(workspace.createdAt).toLocaleDateString()}
-                    </p>
                   </button>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                     <Button
