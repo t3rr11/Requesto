@@ -1,11 +1,6 @@
 import type { Environment, EnvironmentsData } from './types';
 import { API_BASE } from '../../helpers/api/config';
-import {
-  importPostmanEnvironment,
-  exportEnvironmentToPostman,
-  downloadJSON,
-  readJSONFile,
-} from '../../helpers/postman';
+import { downloadJSON, readJSONFile } from '../../helpers/file';
 import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
 
 // ── Internal API helpers (not exported) ──────────────────────────────────────
@@ -122,8 +117,7 @@ export async function deleteEnvironment(
 
 export async function importEnvironment(set: SetState, file: File): Promise<Environment> {
   try {
-    const postmanData = await readJSONFile(file);
-    const environment = importPostmanEnvironment(postmanData as Parameters<typeof importPostmanEnvironment>[0]);
+    const environment = await readJSONFile(file) as Environment;
 
     const res = await fetch(`${API_BASE}/environments/import`, {
       method: 'POST',
@@ -146,9 +140,8 @@ export async function exportEnvironment(environmentId: string): Promise<void> {
     if (!res.ok) throw new Error('Failed to export environment');
 
     const environment: Environment = await res.json();
-    const postmanEnv = exportEnvironmentToPostman(environment);
-    const filename = `${environment.name.replace(/[^a-z0-9]/gi, '_')}.postman_environment.json`;
-    downloadJSON(postmanEnv, filename);
+    const filename = `${environment.name.replace(/[^a-z0-9]/gi, '_')}.requesto-environment.json`;
+    downloadJSON(environment, filename);
   } catch (error) {
     console.error('Failed to export environment:', error);
     throw error;

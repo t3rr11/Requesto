@@ -6,7 +6,6 @@ import {
   FolderPlus,
   FileText,
   Trash2,
-  Plus,
   Download,
   Copy,
 } from 'lucide-react';
@@ -27,9 +26,9 @@ interface FolderItemProps {
   collection: Collection;
   depth: number;
   searchQuery?: string;
-  onOpenNewRequest: (collectionId?: string, folderId?: string) => void;
   onRenameRequest: (request: SavedRequest) => void;
   onRenameFolder: (collectionId: string, folderId: string, folderName: string) => void;
+  onCreateFolder: (collectionId: string, parentId?: string) => void;
 }
 
 export function FolderItem({
@@ -37,9 +36,9 @@ export function FolderItem({
   collection,
   depth,
   searchQuery,
-  onOpenNewRequest,
   onRenameRequest,
   onRenameFolder,
+  onCreateFolder,
 }: FolderItemProps) {
   const { moveRequest, moveFolder, exportRequest, exportFolder } = useCollectionsStore();
   const { showAlert } = useAlertStore();
@@ -55,12 +54,6 @@ export function FolderItem({
   } = useItemContextMenu();
 
   const {
-    newFolderInput,
-    folderName,
-    setFolderName,
-    startCreateFolder,
-    handleSaveFolder,
-    handleCancelFolder,
     activeSavedRequestId,
     handleSelectRequest,
     handleDeleteFolder,
@@ -116,6 +109,12 @@ export function FolderItem({
       },
     });
     closeRequestContextMenu();
+  };
+
+  const handleNewSubfolderFromContext = () => {
+    if (!folderContextMenu) return;
+    onCreateFolder(folderContextMenu.collectionId, folderContextMenu.folderId);
+    closeFolderContextMenu();
   };
 
   const handleRenameFolderFromContext = () => {
@@ -238,10 +237,7 @@ export function FolderItem({
           <span className="text-xs text-gray-400 dark:text-gray-500">({folderRequests.length})</span>
         </div>
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-          <Button onClick={e => { e.stopPropagation(); onOpenNewRequest(collection.id, folder.id); }} variant="icon" size="sm" title="Add Request" className="hover:bg-gray-200">
-            <Plus className="w-3 h-3" />
-          </Button>
-          <Button onClick={e => { e.stopPropagation(); startCreateFolder(collection.id, folder.id); }} variant="icon" size="sm" title="New Subfolder" className="hover:bg-gray-200">
+          <Button onClick={e => { e.stopPropagation(); onCreateFolder(collection.id, folder.id); }} variant="icon" size="sm" title="New Subfolder" className="hover:bg-gray-200">
             <FolderPlus className="w-3 h-3" />
           </Button>
           <Button onClick={e => handleDeleteFolder(collection.id, folder.id, e)} variant="icon" size="sm" title="Delete Folder" className="hover:bg-gray-200">
@@ -252,26 +248,6 @@ export function FolderItem({
 
       {isExpanded && (
         <div>
-          {newFolderInput?.collectionId === collection.id && newFolderInput?.parentId === folder.id && (
-            <div className="px-4 py-2 flex items-center gap-2" style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}>
-              <FolderIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
-              <input
-                type="text"
-                value={folderName}
-                onChange={e => setFolderName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleSaveFolder(collection.id);
-                  if (e.key === 'Escape') handleCancelFolder();
-                }}
-                placeholder="Folder name..."
-                className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                autoFocus
-              />
-              <Button onClick={() => handleSaveFolder(collection.id)} variant="primary" size="sm">Save</Button>
-              <Button onClick={handleCancelFolder} variant="secondary" size="sm">Cancel</Button>
-            </div>
-          )}
-
           {childFolders.map(childFolder => (
             <FolderItem
               key={childFolder.id}
@@ -279,9 +255,9 @@ export function FolderItem({
               collection={collection}
               depth={depth + 1}
               searchQuery={searchQuery}
-              onOpenNewRequest={onOpenNewRequest}
               onRenameRequest={onRenameRequest}
               onRenameFolder={onRenameFolder}
+              onCreateFolder={onCreateFolder}
             />
           ))}
 
@@ -357,6 +333,7 @@ export function FolderItem({
         <ContextMenu
           position={{ x: folderContextMenu.x, y: folderContextMenu.y }}
           items={[
+            { label: 'New Subfolder', icon: <FolderPlus className="w-4 h-4" />, onClick: handleNewSubfolderFromContext },
             { label: 'Rename', icon: <FolderIcon className="w-4 h-4" />, onClick: handleRenameFolderFromContext },
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportFolder },
             { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: handleDeleteFolderFromContext, danger: true },

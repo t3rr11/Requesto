@@ -1,21 +1,12 @@
-import { useState } from 'react';
 import { useCollectionsStore } from '../store/collections/store';
-import { useUIStore } from '../store/ui/store';
 import { useTabsStore } from '../store/tabs/store';
 import { useConfirmDialog } from './useDialog';
 import type { SavedRequest } from '../store/collections/types';
 
 export function useItemActions() {
-  const { addFolder, deleteCollection, deleteFolder, deleteRequest, setActiveRequest } = useCollectionsStore();
-  const { expandFolder, expandCollection } = useUIStore();
+  const { deleteCollection, deleteFolder, deleteRequest, setActiveRequest } = useCollectionsStore();
   const { openRequestTab, getActiveTab } = useTabsStore();
   const confirmDialog = useConfirmDialog();
-
-  const [newFolderInput, setNewFolderInput] = useState<{
-    collectionId: string;
-    parentId?: string;
-  } | null>(null);
-  const [folderName, setFolderName] = useState('');
 
   const activeTab = getActiveTab();
   const activeSavedRequestId = activeTab?.savedRequestId || '';
@@ -69,37 +60,7 @@ export function useItemActions() {
     });
   };
 
-  const startCreateFolder = (collectionId: string, parentId?: string) => {
-    setNewFolderInput({ collectionId, parentId });
-  };
-
-  const handleSaveFolder = async (collectionId: string) => {
-    if (!newFolderInput || !folderName.trim()) return;
-
-    await addFolder(newFolderInput.collectionId, folderName.trim(), newFolderInput.parentId);
-
-    if (newFolderInput.parentId) {
-      expandFolder(newFolderInput.parentId);
-    } else {
-      expandCollection(collectionId);
-    }
-
-    setNewFolderInput(null);
-    setFolderName('');
-  };
-
-  const handleCancelFolder = () => {
-    setNewFolderInput(null);
-    setFolderName('');
-  };
-
   return {
-    newFolderInput,
-    folderName,
-    setFolderName,
-    startCreateFolder,
-    handleSaveFolder,
-    handleCancelFolder,
     activeSavedRequestId,
     handleSelectRequest,
     handleDeleteCollection,

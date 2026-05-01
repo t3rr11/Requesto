@@ -1,12 +1,7 @@
 import type { Collection, SavedRequest, Folder, SyncPreviewResult, SyncApplyBody } from './types';
 import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
 import { API_BASE } from '../../helpers/api/config';
-import {
-  importPostmanCollection,
-  exportToPostman,
-  downloadJSON,
-  readJSONFile,
-} from '../../helpers/postman';
+import { downloadJSON, readJSONFile } from '../../helpers/file';
 import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
 import { useTabsStore } from '../tabs/store';
 
@@ -347,8 +342,7 @@ export async function importOpenApiCollection(
 
 export async function importCollection(set: SetState, file: File): Promise<Collection> {
   try {
-    const postmanData = await readJSONFile(file);
-    const collection = importPostmanCollection(postmanData as Parameters<typeof importPostmanCollection>[0]);
+    const collection = await readJSONFile(file) as Collection;
 
     const res = await fetch(`${API_BASE}/collections/import`, {
       method: 'POST',
@@ -371,9 +365,8 @@ export async function exportCollection(collectionId: string): Promise<void> {
     if (!res.ok) throw new Error('Failed to export collection');
 
     const collection: Collection = await res.json();
-    const postmanCollection = exportToPostman(collection);
-    const filename = `${collection.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
-    downloadJSON(postmanCollection, filename);
+    const filename = `${collection.name.replace(/[^a-z0-9]/gi, '_')}.requesto-collection.json`;
+    downloadJSON(collection, filename);
   } catch (error) {
     console.error('Failed to export collection:', error);
     throw error;
@@ -395,9 +388,8 @@ export async function exportRequest(collectionId: string, requestId: string): Pr
       requests: [request],
       folders: [],
     };
-    const postmanCollection = exportToPostman(singleRequestCollection);
-    const filename = `${request.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
-    downloadJSON(postmanCollection, filename);
+    const filename = `${request.name.replace(/[^a-z0-9]/gi, '_')}.requesto-collection.json`;
+    downloadJSON(singleRequestCollection, filename);
   } catch (error) {
     console.error('Failed to export request:', error);
     throw error;
@@ -437,9 +429,8 @@ export async function exportFolder(collectionId: string, folderId: string): Prom
       requests: requestsInExport,
     };
 
-    const postmanCollection = exportToPostman(folderCollection);
-    const filename = `${folder.name.replace(/[^a-z0-9]/gi, '_')}.collection.json`;
-    downloadJSON(postmanCollection, filename);
+    const filename = `${folder.name.replace(/[^a-z0-9]/gi, '_')}.requesto-collection.json`;
+    downloadJSON(folderCollection, filename);
   } catch (error) {
     console.error('Failed to export folder:', error);
     throw error;

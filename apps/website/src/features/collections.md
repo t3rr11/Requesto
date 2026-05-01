@@ -31,7 +31,7 @@ Hover over a collection in the sidebar to reveal two icon buttons:
 - **+** - Add a new request to the collection
 - **Folder+** - Create a new folder inside the collection
 
-Type the folder name inline and press Enter.
+Clicking **Folder+** opens a dialog where you can enter the folder name and confirm. You can also create subfolders by hovering over an existing folder and clicking its **Folder+** button.
 
 <ThemeImage src="/collections/hover-actions.png" alt="Hover actions on collection" />
 

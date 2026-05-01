@@ -168,14 +168,9 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     return openApiService.unlinkSpec(request.params.id);
   });
 
-  // Import collection from JSON (Postman format handled on frontend)
+  // Import collection from Requesto native JSON
   server.post<{ Body: { collection: unknown } }>('/collections/import', async (request, reply) => {
-    // The frontend sends a pre-formatted Collection object
-    const col = request.body.collection as { name?: string; description?: string; folders?: unknown[]; requests?: unknown[] };
-    if (!col || !col.name) {
-      return reply.code(400).send({ error: 'Invalid collection format' });
-    }
-    const created = await collectionService.create(col.name, col.description);
+    const created = await collectionService.importCollection(request.body.collection);
     return reply.code(201).send(created);
   });
 };
