@@ -20,8 +20,7 @@ type RequestState = {
     request: ProxyRequest,
     onUpdate: (response: StreamingResponse) => void,
     signal?: AbortSignal,
-  ) => Promise<StreamingResponse>;
-  isStreamingRequest: (request: ProxyRequest) => boolean;
+  ) => Promise<StreamingResponse | ProxyResponse>;
   addConsoleLog: (log: ConsoleLog) => void;
   clearConsoleLogs: () => void;
 };
@@ -38,7 +37,6 @@ export const useRequestStore = create<RequestState>((set) => ({
 
   sendRequest: (request, signal) => actions.sendRequest(request, signal),
   sendStreamingRequest: (request, onUpdate, signal) => actions.sendStreamingRequest(request, onUpdate, signal),
-  isStreamingRequest: (request) => actions.isStreamingRequest(request),
 
   addConsoleLog: (log) =>
     set((state) => ({ consoleLogs: [...state.consoleLogs, log] })),

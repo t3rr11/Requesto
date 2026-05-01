@@ -89,7 +89,7 @@ const proxyController: FastifyPluginAsync<Options> = async (server, opts) => {
 
       response.headers.forEach((value: string, key: string) => {
         const lowerKey = key.toLowerCase();
-        if (lowerKey !== 'content-length' && lowerKey !== 'connection') {
+        if (lowerKey !== 'content-length' && lowerKey !== 'connection' && lowerKey !== 'content-encoding') {
           reply.raw.setHeader(key, value);
         }
       });

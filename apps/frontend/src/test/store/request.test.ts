@@ -80,23 +80,4 @@ describe('request store', () => {
     expect(useRequestStore.getState().consoleLogs).toEqual([]);
   });
 
-  it('identifies streaming requests by Accept header', () => {
-    const streamReq = {
-      method: 'GET' as const,
-      url: 'https://api.example.com/events',
-      headers: { Accept: 'text/event-stream' },
-      body: '',
-    };
-    expect(useRequestStore.getState().isStreamingRequest(streamReq)).toBe(true);
-  });
-
-  it('identifies non-streaming requests', () => {
-    const normalReq = {
-      method: 'GET' as const,
-      url: 'https://api.example.com/data',
-      headers: {},
-      body: '',
-    };
-    expect(useRequestStore.getState().isStreamingRequest(normalReq)).toBe(false);
-  });
 });

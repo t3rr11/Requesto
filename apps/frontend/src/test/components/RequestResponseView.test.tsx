@@ -38,16 +38,12 @@ vi.mock('../../store/environments/store', () => ({
   }),
 }));
 
-const mockSendRequest = vi.fn();
 const mockSendStreamingRequest = vi.fn();
-const mockIsStreamingRequest = vi.fn(() => false);
 const mockAddConsoleLog = vi.fn();
 
 vi.mock('../../store/request/store', () => ({
   useRequestStore: () => ({
-    sendRequest: mockSendRequest,
     sendStreamingRequest: mockSendStreamingRequest,
-    isStreamingRequest: mockIsStreamingRequest,
     addConsoleLog: mockAddConsoleLog,
   }),
 }));
@@ -250,16 +246,16 @@ describe('RequestResponseView', () => {
 
   // ── Send request ──
 
-  it('calls sendRequest and updates tab on send', async () => {
+  it('calls sendStreamingRequest and updates tab on send', async () => {
     const user = userEvent.setup();
     const mockResponse = { status: 200, statusText: 'OK', headers: {}, body: '{}', duration: 50 };
-    mockSendRequest.mockResolvedValue(mockResponse);
+    mockSendStreamingRequest.mockResolvedValue(mockResponse);
 
     render(<RequestResponseView />);
     await user.click(screen.getByTestId('send-btn'));
 
     expect(mockSetTabLoading).toHaveBeenCalledWith('tab-1', true);
-    expect(mockSendRequest).toHaveBeenCalled();
+    expect(mockSendStreamingRequest).toHaveBeenCalled();
 
     // After resolution
     await vi.waitFor(() => {
@@ -270,7 +266,7 @@ describe('RequestResponseView', () => {
 
   it('sets tab error on sendRequest failure', async () => {
     const user = userEvent.setup();
-    mockSendRequest.mockRejectedValue(new Error('Network error'));
+    mockSendStreamingRequest.mockRejectedValue(new Error('Network error'));
 
     render(<RequestResponseView />);
     await user.click(screen.getByTestId('send-btn'));
@@ -283,7 +279,7 @@ describe('RequestResponseView', () => {
 
   it('logs request and response to console', async () => {
     const user = userEvent.setup();
-    mockSendRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '', duration: 10 });
+    mockSendStreamingRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '', duration: 10 });
 
     render(<RequestResponseView />);
     await user.click(screen.getByTestId('send-btn'));
@@ -299,7 +295,7 @@ describe('RequestResponseView', () => {
 
   it('logs error to console on failure', async () => {
     const user = userEvent.setup();
-    mockSendRequest.mockRejectedValue(new Error('Timeout'));
+    mockSendStreamingRequest.mockRejectedValue(new Error('Timeout'));
 
     render(<RequestResponseView />);
     await user.click(screen.getByTestId('send-btn'));
@@ -317,8 +313,7 @@ describe('RequestResponseView', () => {
 
   it('calls sendStreamingRequest for streaming requests', async () => {
     const user = userEvent.setup();
-    mockIsStreamingRequest.mockReturnValue(true);
-    const streamResponse = { status: 200, statusText: 'OK', headers: {}, events: [], duration: 100, isStreaming: true };
+    const streamResponse = { status: 200, statusText: 'OK', headers: {}, events: [], duration: 100, isStreaming: true as const };
     mockSendStreamingRequest.mockResolvedValue(streamResponse);
 
     render(<RequestResponseView />);
@@ -334,8 +329,8 @@ describe('RequestResponseView', () => {
 
   it('aborts in-flight request on cancel', async () => {
     const user = userEvent.setup();
-    // Make sendRequest hang
-    mockSendRequest.mockImplementation(
+    // Make sendStreamingRequest hang
+    mockSendStreamingRequest.mockImplementation(
       () => new Promise(() => {}),
     );
 
@@ -428,7 +423,7 @@ describe('RequestResponseView', () => {
 
   it('sends request without errors when no active environment', async () => {
     const user = userEvent.setup();
-    mockSendRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '', duration: 10 });
+    mockSendStreamingRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '', duration: 10 });
 
     render(<RequestResponseView />);
     await user.click(screen.getByTestId('send-btn'));
