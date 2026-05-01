@@ -25,7 +25,7 @@ export function RequestResponseView() {
   const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab } = useTabsStore();
   const { updateRequest } = useCollectionsStore();
   const { environmentsData } = useEnvironmentStore();
-  const { sendRequest, sendStreamingRequest, isStreamingRequest, addConsoleLog } = useRequestStore();
+  const { sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
   const { showAlert } = useAlertStore();
   const { isDarkMode } = useThemeStore();
@@ -94,39 +94,23 @@ export function RequestResponseView() {
     setTabError(tab.id, null);
 
     try {
-      if (isStreamingRequest(request)) {
-        const streamResponse = await sendStreamingRequest(
-          request,
-          (partial: StreamingResponse) => setTabResponse(tab.id, partial),
-          controller.signal,
-        );
-        setTabResponse(tab.id, streamResponse);
-        addConsoleLog({
-          id: `res-${Date.now()}`,
-          requestId,
-          timestamp: Date.now(),
-          type: 'response',
-          method: request.method,
-          url: request.url,
-          status: streamResponse.status,
-          duration: streamResponse.duration,
-          responseData: streamResponse,
-        });
-      } else {
-        const response = await sendRequest(request, controller.signal);
-        setTabResponse(tab.id, response);
-        addConsoleLog({
-          id: `res-${Date.now()}`,
-          requestId,
-          timestamp: Date.now(),
-          type: 'response',
-          method: request.method,
-          url: request.url,
-          status: response.status,
-          duration: response.duration,
-          responseData: response,
-        });
-      }
+      const response = await sendStreamingRequest(
+        request,
+        (partial: StreamingResponse) => setTabResponse(tab.id, partial),
+        controller.signal,
+      );
+      setTabResponse(tab.id, response);
+      addConsoleLog({
+        id: `res-${Date.now()}`,
+        requestId,
+        timestamp: Date.now(),
+        type: 'response',
+        method: request.method,
+        url: request.url,
+        status: response.status,
+        duration: response.duration,
+        responseData: response,
+      });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         addConsoleLog({
@@ -158,9 +142,7 @@ export function RequestResponseView() {
   }, [
     getActiveTab,
     environmentsData,
-    sendRequest,
     sendStreamingRequest,
-    isStreamingRequest,
     touchTab,
     setTabLoading,
     setTabError,

@@ -227,6 +227,7 @@ export class ProxyService {
     const fetchOptions: Record<string, unknown> = {
       method: method.toUpperCase(),
       headers: fetchHeaders,
+      compress: false,
       ...(fetchBody !== undefined && { body: fetchBody }),
       ...(insecureTls && {
         agent: (parsedUrl: URL) =>

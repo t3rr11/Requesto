@@ -28,7 +28,6 @@ vi.mock('../../store/request/store', () => ({
       consoleLogs: [],
       sendRequest: vi.fn(),
       sendStreamingRequest: vi.fn(),
-      isStreamingRequest: vi.fn().mockReturnValue(false),
       addConsoleLog: vi.fn(),
       clearConsoleLogs: vi.fn(),
       setResponse: vi.fn(),

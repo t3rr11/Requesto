@@ -6,11 +6,6 @@ import { startOAuthFlow } from '../../helpers/oauth/oauthFlowHandler';
 
 // ── Internal API helpers ─────────────────────────────────────────────────────
 
-function isLikelyStreamingRequest(request: ProxyRequest): boolean {
-  const accept = request.headers?.['Accept'] || request.headers?.['accept'] || '';
-  return accept.includes('text/event-stream') || request.url.includes('/sse/');
-}
-
 /**
  * Result of an attempted re-authentication for a 401 response. The caller
  * uses this to decide whether to retry the request or surface an error.
@@ -97,10 +92,6 @@ async function withOAuthRetry(doFetch: () => Promise<Response>): Promise<Respons
 }
 
 async function sendRequestApi(request: ProxyRequest, signal?: AbortSignal): Promise<ProxyResponse> {
-  if (isLikelyStreamingRequest(request)) {
-    throw new Error('Streaming requests must use sendStreamingRequest');
-  }
-
   const insecureTls = useSettingsStore.getState().insecureTls;
 
   const doFetch = () => fetch(`${API_BASE}/proxy/request`, {
@@ -131,9 +122,8 @@ async function sendStreamingRequestApi(
   request: ProxyRequest,
   onUpdate: (response: StreamingResponse) => void,
   signal?: AbortSignal,
-): Promise<StreamingResponse> {
+): Promise<StreamingResponse | ProxyResponse> {
   const startTime = Date.now();
-  const events: SSEEvent[] = [];
   const insecureTls = useSettingsStore.getState().insecureTls;
 
   const doFetch = () => fetch(`${API_BASE}/proxy/stream`, {
@@ -162,6 +152,22 @@ async function sendStreamingRequestApi(
   res.headers.forEach((value, key) => {
     headers[key] = value;
   });
+
+  const contentType = headers['content-type'] || '';
+  if (!contentType.includes('text/event-stream')) {
+    // Non-SSE response — drain body and return as a regular ProxyResponse
+    const body = await res.text();
+    return {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+      body,
+      duration: Date.now() - startTime,
+    };
+  }
+
+  // SSE response — stream events
+  const events: SSEEvent[] = [];
 
   onUpdate({
     status: res.status,
@@ -297,15 +303,11 @@ export async function sendStreamingRequest(
   request: ProxyRequest,
   onUpdate: (response: StreamingResponse) => void,
   signal?: AbortSignal,
-): Promise<StreamingResponse> {
+): Promise<StreamingResponse | ProxyResponse> {
   try {
     return await sendStreamingRequestApi(request, onUpdate, signal);
   } catch (error) {
     console.error('Failed to send streaming request:', error);
     throw error;
   }
-}
-
-export function isStreamingRequest(request: ProxyRequest): boolean {
-  return isLikelyStreamingRequest(request);
 }
