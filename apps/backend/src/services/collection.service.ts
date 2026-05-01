@@ -320,6 +320,45 @@ export class CollectionService {
     return movedFolder;
   }
 
+  async importCollection(raw: unknown): Promise<Collection> {
+    const col = raw as { name?: string; description?: string; folders?: Folder[]; requests?: SavedRequest[] };
+    if (!col || !col.name) throw AppError.badRequest('Invalid collection format');
+
+    const newCollectionId = `col-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    // Remap folder IDs so imported IDs don't conflict with existing ones
+    const folderIdMap = new Map<string, string>();
+    const folders: Folder[] = (col.folders ?? []).map(f => {
+      const newId = `folder-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      folderIdMap.set(f.id, newId);
+      return { ...f, id: newId, collectionId: newCollectionId };
+    });
+    // Fix parentId references after the full map is built
+    for (const f of folders) {
+      if (f.parentId) {
+        f.parentId = folderIdMap.get(f.parentId) ?? f.parentId;
+      }
+    }
+
+    // Remap request IDs
+    const requests: SavedRequest[] = (col.requests ?? []).map(r => ({
+      ...r,
+      id: `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      collectionId: newCollectionId,
+      folderId: r.folderId ? (folderIdMap.get(r.folderId) ?? r.folderId) : undefined,
+    }));
+
+    const collection: Collection = {
+      id: newCollectionId,
+      name: col.name.trim(),
+      description: col.description,
+      folders,
+      requests,
+    };
+
+    return this.repo.create(collection);
+  }
+
   async saveAll(collection: Collection): Promise<void> {
     const all = await this.repo.getAll();
     const idx = all.findIndex((c) => c.id === collection.id);

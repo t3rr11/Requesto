@@ -7,7 +7,7 @@ import type { SavedRequest } from '../store/collections/types';
 import { Dialog } from './Dialog';
 import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
-import { NewRequestForm } from '../forms/NewRequestForm';
+import { NewFolderForm } from '../forms/NewFolderForm';
 import { ImportOpenApiForm } from '../forms/ImportOpenApiForm';
 import { CollectionItem } from './CollectionItem';
 import { Button } from './Button';
@@ -32,9 +32,9 @@ interface RenameFolderData {
   name: string;
 }
 
-interface NewRequestContext {
-  collectionId?: string;
-  folderId?: string;
+interface NewFolderData {
+  collectionId: string;
+  parentId?: string;
 }
 
 export function CollectionsSidebar() {
@@ -69,10 +69,10 @@ export function CollectionsSidebar() {
 
   const newCollectionDialog = useDialog();
   const importOpenApiDialog = useDialog();
-  const newRequestDialog = useDialogWithData<NewRequestContext>();
   const renameRequestDialog = useDialogWithData<RenameRequestData>();
   const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
   const renameFolderDialog = useDialogWithData<RenameFolderData>();
+  const newFolderDialog = useDialogWithData<NewFolderData>();
   const [importMenuPos, setImportMenuPos] = useState<{ x: number; y: number } | null>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -154,11 +154,11 @@ export function CollectionsSidebar() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
           <div className="flex gap-2">
-            <Button ref={importButtonRef} onClick={handleImportMenuOpen} variant="icon" size="md" title="Import">
-              <Import className="w-5 h-5" />
-            </Button>
             <Button onClick={newCollectionDialog.open} variant="icon" size="md" title="New Collection">
               <FolderPlus className="w-5 h-5" />
+            </Button>
+            <Button ref={importButtonRef} onClick={handleImportMenuOpen} variant="icon" size="md" title="Import">
+              <Import className="w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -215,10 +215,10 @@ export function CollectionsSidebar() {
                 key={collection.id}
                 collection={collection}
                 searchQuery={searchQuery}
-                onOpenNewRequest={(collectionId, folderId) => newRequestDialog.open({ collectionId, folderId })}
                 onRenameRequest={request => renameRequestDialog.open({ request })}
                 onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
                 onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
+                onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
               />
             ))}
           </div>
@@ -229,19 +229,19 @@ export function CollectionsSidebar() {
         <NewCollectionForm onSuccess={newCollectionDialog.close} onCancel={newCollectionDialog.close} />
       </Dialog>
 
-      <Dialog isOpen={importOpenApiDialog.isOpen} onClose={importOpenApiDialog.close} title="Import from OpenAPI">
-        <ImportOpenApiForm onSuccess={importOpenApiDialog.close} onCancel={importOpenApiDialog.close} />
-      </Dialog>
-
-      <Dialog isOpen={newRequestDialog.isOpen} onClose={newRequestDialog.close} title="New Request">
-        {newRequestDialog.data && (
-          <NewRequestForm
-            preselectedCollectionId={newRequestDialog.data.collectionId}
-            preselectedFolderId={newRequestDialog.data.folderId}
-            onSuccess={newRequestDialog.close}
-            onCancel={newRequestDialog.close}
+      <Dialog isOpen={newFolderDialog.isOpen} onClose={newFolderDialog.close} title="New Folder">
+        {newFolderDialog.data && (
+          <NewFolderForm
+            collectionId={newFolderDialog.data.collectionId}
+            parentId={newFolderDialog.data.parentId}
+            onSuccess={newFolderDialog.close}
+            onCancel={newFolderDialog.close}
           />
         )}
+      </Dialog>
+
+      <Dialog isOpen={importOpenApiDialog.isOpen} onClose={importOpenApiDialog.close} title="Import from OpenAPI">
+        <ImportOpenApiForm onSuccess={importOpenApiDialog.close} onCancel={importOpenApiDialog.close} />
       </Dialog>
 
       <RenameForm
@@ -279,7 +279,7 @@ export function CollectionsSidebar() {
           onClose={() => setImportMenuPos(null)}
           items={[
             {
-              label: 'Postman Collection',
+              label: 'Import Collection',
               icon: <FileText className="w-4 h-4" />,
               onClick: handleImportClick,
             },

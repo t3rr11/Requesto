@@ -6,7 +6,6 @@ import {
   FolderPlus,
   FileText,
   Trash2,
-  Plus,
   Download,
   RefreshCw,
   Link2,
@@ -17,7 +16,6 @@ import type { Collection, SavedRequest, SyncPreviewResult } from '../store/colle
 import { useCollectionsStore } from '../store/collections/store';
 import { useUIStore } from '../store/ui/store';
 import { useAlertStore } from '../store/alert/store';
-
 import { FolderItem } from './FolderItem';
 import { getMethodColor } from '../helpers/collections';
 import { Button } from './Button';
@@ -31,19 +29,19 @@ import { useItemActions } from '../hooks/useItemActions';
 interface CollectionItemProps {
   collection: Collection;
   searchQuery?: string;
-  onOpenNewRequest: (collectionId?: string, folderId?: string) => void;
   onRenameRequest: (request: SavedRequest) => void;
   onRenameCollection: (collectionId: string, collectionName: string) => void;
   onRenameFolder: (collectionId: string, folderId: string, folderName: string) => void;
+  onCreateFolder: (collectionId: string, parentId?: string) => void;
 }
 
 export function CollectionItem({
   collection,
   searchQuery,
-  onOpenNewRequest,
   onRenameRequest,
   onRenameCollection,
   onRenameFolder,
+  onCreateFolder,
 }: CollectionItemProps) {
   const { moveRequest, exportCollection, exportRequest, syncPreview, syncApply, unlinkSpec } = useCollectionsStore();
   const { showAlert } = useAlertStore();
@@ -64,12 +62,6 @@ export function CollectionItem({
   } = useItemContextMenu();
 
   const {
-    newFolderInput,
-    folderName,
-    setFolderName,
-    startCreateFolder,
-    handleSaveFolder,
-    handleCancelFolder,
     activeSavedRequestId,
     handleSelectRequest,
     handleDeleteCollection,
@@ -178,6 +170,12 @@ export function CollectionItem({
       },
     });
     closeRequestContextMenu();
+  };
+
+  const handleNewFolderFromContext = () => {
+    if (!collectionContextMenu) return;
+    onCreateFolder(collectionContextMenu.collectionId);
+    closeCollectionContextMenu();
   };
 
   const handleRenameCollectionFromContext = () => {
@@ -306,10 +304,7 @@ export function CollectionItem({
         </div>
         {!collection.isSystem && (
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-            <Button onClick={e => { e.stopPropagation(); onOpenNewRequest(collection.id); }} variant="icon" size="sm" title="Add Request" className="hover:bg-gray-200">
-              <Plus className="w-3.5 h-3.5" />
-            </Button>
-            <Button onClick={e => { e.stopPropagation(); startCreateFolder(collection.id); }} variant="icon" size="sm" title="New Folder" className="hover:bg-gray-200">
+            <Button onClick={e => { e.stopPropagation(); onCreateFolder(collection.id); }} variant="icon" size="sm" title="New Folder" className="hover:bg-gray-200">
               <FolderPlus className="w-3.5 h-3.5" />
             </Button>
             <Button onClick={e => handleDeleteCollection(collection.id, e)} variant="icon" size="sm" title="Delete Collection" className="hover:bg-gray-200">
@@ -321,26 +316,6 @@ export function CollectionItem({
 
       {showExpanded && (
         <div>
-          {newFolderInput?.collectionId === collection.id && !newFolderInput?.parentId && (
-            <div className="px-4 py-2 flex items-center gap-2 ml-6">
-              <FolderIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
-              <input
-                type="text"
-                value={folderName}
-                onChange={e => setFolderName(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleSaveFolder(collection.id);
-                  if (e.key === 'Escape') handleCancelFolder();
-                }}
-                placeholder="Folder name..."
-                className="flex-1 px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-800 dark:text-gray-100"
-                autoFocus
-              />
-              <Button onClick={() => handleSaveFolder(collection.id)} variant="primary" size="sm">Save</Button>
-              <Button onClick={handleCancelFolder} variant="secondary" size="sm">Cancel</Button>
-            </div>
-          )}
-
           {rootFolders.map(folder => (
             <FolderItem
               key={folder.id}
@@ -348,9 +323,9 @@ export function CollectionItem({
               collection={collection}
               depth={0}
               searchQuery={searchQuery}
-              onOpenNewRequest={onOpenNewRequest}
               onRenameRequest={onRenameRequest}
               onRenameFolder={onRenameFolder}
+              onCreateFolder={onCreateFolder}
             />
           ))}
 
@@ -431,6 +406,7 @@ export function CollectionItem({
           position={{ x: collectionContextMenu.x, y: collectionContextMenu.y }}
           items={[
             ...(collection.isSystem ? [] : [
+              { label: 'New Folder', icon: <FolderPlus className="w-4 h-4" />, onClick: handleNewFolderFromContext },
               { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
             ]),
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportCollection },
