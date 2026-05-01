@@ -12,6 +12,8 @@ import { useThemeStore } from '../store/theme/store';
 import { useTabsStore } from '../store/tabs/store';
 import { extractParamsFromUrl } from '../helpers/url';
 import { buildTabRequestFromFormData } from '../helpers/request';
+import { parseCurlCommand } from '../helpers/curl';
+import { useAlertStore } from '../store/alert/store';
 import { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
 
 export { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
@@ -34,6 +36,7 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
   const [showRightScroll, setShowRightScroll] = useState(false);
   const { isDarkMode } = useThemeStore();
   const { getActiveTab, updateTabRequest } = useTabsStore();
+  const { showAlert } = useAlertStore();
   const currentTab = getActiveTab();
 
   const { control, watch, setValue, reset, getValues } = useForm<RequestFormData>({
@@ -108,6 +111,33 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
   }, [currentTab?.id, updateTabRequest]);
 
   const handleUrlChange = (newUrl: string) => {
+    const lower = newUrl.trimStart().toLowerCase();
+    const isCurl = lower.startsWith('curl ');
+    const isPowerShell =
+      lower.startsWith('invoke-webrequest') ||
+      lower.startsWith('invoke-restmethod') ||
+      lower.startsWith('iwr ') ||
+      lower.startsWith('irm ') ||
+      (lower.startsWith('$') && (lower.includes('invoke-webrequest') || lower.includes('invoke-restmethod')));
+
+    if (isCurl || isPowerShell) {
+      const parsed = parseCurlCommand(newUrl);
+      if (!parsed) {
+        showAlert('Could not parse curl command', 'error');
+        return;
+      }
+      setValue('method', parsed.method, { shouldDirty: true });
+      setValue('url', parsed.url, { shouldDirty: true });
+      setValue('headers', parsed.headers, { shouldDirty: true });
+      setValue('params', parsed.params, { shouldDirty: true });
+      setValue('body', parsed.body, { shouldDirty: true });
+      setValue('bodyType', parsed.bodyType, { shouldDirty: true });
+      setValue('formDataEntries', parsed.formDataEntries, { shouldDirty: true });
+      setValue('auth', parsed.auth as RequestFormData['auth'], { shouldDirty: true });
+      showAlert('curl command imported', 'success');
+      return;
+    }
+
     const { baseUrl, params: extractedParams } = extractParamsFromUrl(newUrl);
 
     if (extractedParams.length > 0) {
@@ -237,7 +267,7 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
                 <VariableAwareInput
                   value={field.value}
                   onChange={handleUrlChange}
-                  placeholder="Enter request url"
+                  placeholder="Enter Request URL"
                   disabled={loading}
                   className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-blue-500 bg-transparent text-black dark:text-gray-200"
                 />
