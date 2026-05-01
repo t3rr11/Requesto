@@ -33,8 +33,6 @@ Hover over a collection in the sidebar to reveal two icon buttons:
 
 Clicking **Folder+** opens a dialog where you can enter the folder name and confirm. You can also create subfolders by hovering over an existing folder and clicking its **Folder+** button.
 
-<ThemeImage src="/collections/hover-actions.png" alt="Hover actions on collection" />
-
 ## Drag and Drop
 
 Reorder requests and folders within a collection by dragging them. You can move requests between folders or back to the collection root.
