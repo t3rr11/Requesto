@@ -120,7 +120,7 @@ export function closeTab(set: SetState, get: GetState, tabId: string): void {
   const activeTabId = state.activeTabId as string | null;
 
   if (tabOrder.length === 1) {
-    const empty = createNewTab();
+    const empty = createNewTab({ isTouched: true });
     set({ tabs: { [empty.id]: empty }, tabOrder: [empty.id], activeTabId: empty.id });
     return;
   }
