@@ -211,8 +211,8 @@ test.describe('Collections', () => {
     await takeDocScreenshot('collections', 'expanded-collection');
   });
 
-  test('create folder inline input', async ({ appPage, takeDocScreenshot }) => {
-    // Widen sidebar so the inline input and Save button are fully visible
+  test('create folder dialog', async ({ appPage, takeDocScreenshot }) => {
+    // Widen sidebar so the hover actions are fully visible
     await widenSidebar(appPage, 400);
 
     // Expand collection to provide context
@@ -223,10 +223,13 @@ test.describe('Collections', () => {
     await appPage.waitForTimeout(300);
     await appPage.getByTitle('New Folder').first().click();
 
-    // Wait for inline folder name input to appear
-    const folderInput = appPage.getByPlaceholder('Folder name...');
-    await expect(folderInput).toBeVisible();
-    await folderInput.fill('Products');
+    // Wait for the New Folder dialog to appear
+    const dialogHeading = appPage.locator('h2', { hasText: 'New Folder' });
+    await expect(dialogHeading).toBeVisible();
+
+    // Fill in the name field so the dialog looks realistic
+    await appPage.locator('#folder-name').fill('Products');
+    await appPage.waitForTimeout(200);
 
     await takeDocScreenshot('collections', 'hover-actions');
 
@@ -714,5 +717,110 @@ test.describe('OpenAPI Docs', () => {
   test.afterAll(() => {
     // Restore the original spec file exactly as it was
     fs.writeFileSync(SPEC_PATH, originalSpecContent);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pre-request Scripts
+// ---------------------------------------------------------------------------
+test.describe('Pre-request Scripts', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('pre-request script editor', async ({ appPage, takeDocScreenshot }) => {
+    // Open the GitHub API collection and the Get User request (which has a preRequestScript)
+    await appPage.getByText('GitHub API').click();
+    await appPage.getByText('Get User').click();
+
+    // Click the Pre-request tab in the request form
+    await appPage.getByRole('button', { name: /Pre-request/ }).click();
+
+    // Wait for Monaco editor to be visible
+    const editor = appPage.locator('.monaco-editor').first();
+    await editor.waitFor({ state: 'visible', timeout: 10_000 });
+    await appPage.waitForTimeout(800);
+
+    await takeDocScreenshot('pre-request-scripts', 'editor');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests (Post-request scripts)
+// ---------------------------------------------------------------------------
+test.describe('Tests', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('test script editor', async ({ appPage, takeDocScreenshot }) => {
+    // Open the GitHub API collection and the Get User request (which has a testScript)
+    await appPage.getByText('GitHub API').click();
+    await appPage.getByText('Get User').click();
+
+    // Click the Tests tab in the request form
+    await appPage.getByRole('button', { name: /^Tests/ }).click();
+
+    // Wait for Monaco editor to be visible
+    const editor = appPage.locator('.monaco-editor').first();
+    await editor.waitFor({ state: 'visible', timeout: 10_000 });
+    await appPage.waitForTimeout(800);
+
+    await takeDocScreenshot('tests', 'editor');
+  });
+
+  test('test results after sending request', async ({ appPage, takeDocScreenshot }) => {
+    // Open Get User and send it to generate test results
+    await appPage.getByText('GitHub API').click();
+    await appPage.getByText('Get User').click();
+
+    await appPage.getByRole('button', { name: 'Send' }).click();
+
+    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    await expect(statusBadge).toBeVisible({ timeout: 15_000 });
+
+    // Wait for test results tab to show a pass/fail badge
+    await expect(appPage.getByText('Test Results')).toBeVisible({ timeout: 5_000 });
+
+    // Click the Test Results tab in the response panel
+    await appPage.getByRole('button', { name: /Test Results/ }).click();
+    await appPage.waitForTimeout(400);
+
+    await takeDocScreenshot('tests', 'results');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Collection Runner
+// ---------------------------------------------------------------------------
+test.describe('Collection Runner', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('collection runner dialog', async ({ appPage, takeDocScreenshot }) => {
+    // Right-click the GitHub API collection to open the context menu
+    await appPage.getByText('GitHub API').click({ button: 'right' });
+    await expect(appPage.getByText('Run Collection')).toBeVisible();
+    await appPage.getByText('Run Collection').click();
+
+    // Wait for the runner dialog to appear
+    const dialogHeading = appPage.locator('h2', { hasText: 'Run: GitHub API' });
+    await expect(dialogHeading).toBeVisible({ timeout: 5_000 });
+    await appPage.waitForTimeout(400);
+
+    await takeDocScreenshot('collection-runner', 'dialog');
+
+    // Click Run Collection to execute the requests
+    await appPage.getByRole('button', { name: 'Run Collection' }).click();
+
+    // Wait for the run to complete — status badge changes from running to passed/failed/error
+    await expect(appPage.locator('text=/passed|failed|error/i').first()).toBeVisible({ timeout: 20_000 });
+    await appPage.waitForTimeout(600);
+
+    await takeDocScreenshot('collection-runner', 'results');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
   });
 });

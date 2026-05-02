@@ -32,7 +32,7 @@ features:
     details: Built-in git support for workspaces. Commit, push, pull, and resolve conflicts without leaving the app. Clone repositories as new workspaces.
 
   - title: Collections & Folders
-    details: Organize requests into collections and folders with drag-and-drop. Import and export as JSON, or import from Postman.
+    details: Organize requests into collections and folders with drag-and-drop. Import and export collections and environments as JSON.
 
   - title: OpenAPI Import & Sync
     details: Import OpenAPI v2/v3 specs to auto-generate collections. Link a spec and sync changes as the API evolves.

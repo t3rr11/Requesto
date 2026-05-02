@@ -123,6 +123,9 @@ export default defineConfig({
         items: [
           { text: 'Workspaces', link: '/features/workspaces' },
           { text: 'Collections & Folders', link: '/features/collections' },
+          { text: 'Pre-request Scripts', link: '/features/pre-request-scripts' },
+          { text: 'Tests', link: '/features/tests' },
+          { text: 'Collection Runner', link: '/features/collection-runner' },
           { text: 'Environments', link: '/features/environments' },
           { text: 'Git Integration', link: '/features/git' },
           { text: 'OpenAPI Import & Sync', link: '/features/openapi' },
