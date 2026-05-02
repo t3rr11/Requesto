@@ -42,7 +42,7 @@ export const VariableSuggestions = forwardRef<HTMLDivElement, VariableSuggestion
                   {variable.key}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {variable.isSecret === true ? '••••••••' : variable.value}
+                  {variable.isSecret === true ? '••••••••' : (variable.currentValue ?? variable.value)}
                 </div>
               </div>
               <div className="text-xs text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400">

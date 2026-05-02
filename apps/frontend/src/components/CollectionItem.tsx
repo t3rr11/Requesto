@@ -11,6 +11,7 @@ import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
 import { SyncPreviewDialog } from './SyncPreviewDialog';
+import { CollectionRunnerDialog } from './CollectionRunnerDialog';
 import { useItemContextMenu } from '../hooks/useItemContextMenu';
 import { useItemDragDrop } from '../hooks/useItemDragDrop';
 import { useItemActions } from '../hooks/useItemActions';
@@ -26,6 +27,7 @@ import {
   Link2,
   Unlink,
   Copy,
+  Play,
 } from 'lucide-react';
 
 interface CollectionItemProps {
@@ -53,6 +55,7 @@ export function CollectionItem({
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncPreviewData, setSyncPreviewData] = useState<SyncPreviewResult | null>(null);
+  const [runnerOpen, setRunnerOpen] = useState(false);
 
   const {
     requestContextMenu,
@@ -255,6 +258,11 @@ export function CollectionItem({
     }
   };
 
+  const handleRunCollection = () => {
+    closeCollectionContextMenu();
+    setRunnerOpen(true);
+  };
+
   const isLinked = !!collection.openApiSpec;
 
   const rootFolders = filteredRootFolders;
@@ -359,6 +367,7 @@ export function CollectionItem({
         <ContextMenu
           position={{ x: collectionContextMenu.x, y: collectionContextMenu.y }}
           items={[
+          { label: 'Run Collection', icon: <Play className="w-4 h-4" />, onClick: handleRunCollection },
             ...(collection.isSystem ? [] : [
               { label: 'New Folder', icon: <FolderPlus className="w-4 h-4" />, onClick: handleNewFolderFromContext },
               { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
@@ -385,6 +394,12 @@ export function CollectionItem({
       />
 
       <ConfirmDialog {...confirmDialog.props} />
+
+      <CollectionRunnerDialog
+        isOpen={runnerOpen}
+        onClose={() => setRunnerOpen(false)}
+        collection={collection}
+      />
     </div>
   );
 }

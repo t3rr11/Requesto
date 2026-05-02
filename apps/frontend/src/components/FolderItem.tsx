@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ChevronRight,
   ChevronDown,
@@ -8,6 +8,7 @@ import {
   Trash2,
   Download,
   Copy,
+  Play,
 } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -19,6 +20,7 @@ import { RequestItem } from './RequestItem';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
+import { CollectionRunnerDialog } from './CollectionRunnerDialog';
 import { useItemContextMenu } from '../hooks/useItemContextMenu';
 import { useItemDragDrop } from '../hooks/useItemDragDrop';
 import { useItemActions } from '../hooks/useItemActions';
@@ -139,6 +141,11 @@ export function FolderItem({
     closeFolderContextMenu();
   };
 
+  const handleRunFolder = () => {
+    closeFolderContextMenu();
+    setRunnerOpen(true);
+  };
+
   const handleExportRequest = async () => {
     if (!requestContextMenu) return;
     try {
@@ -164,6 +171,7 @@ export function FolderItem({
 
   const isSearching = !!searchQuery?.trim();
   const query = searchQuery?.toLowerCase() ?? '';
+  const [runnerOpen, setRunnerOpen] = useState(false);
 
   const { filteredChildFolders, filteredFolderRequests } = useMemo(() => {
     const childFolders = (collection.folders || []).filter(f => f.parentId === folder.id);
@@ -293,6 +301,7 @@ export function FolderItem({
         <ContextMenu
           position={{ x: folderContextMenu.x, y: folderContextMenu.y }}
           items={[
+            { label: 'Run Folder', icon: <Play className="w-4 h-4" />, onClick: handleRunFolder },
             { label: 'New Subfolder', icon: <FolderPlus className="w-4 h-4" />, onClick: handleNewSubfolderFromContext },
             { label: 'Rename', icon: <FolderIcon className="w-4 h-4" />, onClick: handleRenameFolderFromContext },
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportFolder },
@@ -303,6 +312,13 @@ export function FolderItem({
       )}
 
       <ConfirmDialog {...confirmDialog.props} />
+
+      <CollectionRunnerDialog
+        isOpen={runnerOpen}
+        onClose={() => setRunnerOpen(false)}
+        collection={collection}
+        folderId={folder.id}
+      />
     </div>
   );
 }

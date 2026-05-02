@@ -21,47 +21,34 @@
         "name": "List Users",
         "method": "GET",
         "url": "{{baseUrl}}/users",
-        "headers": {
-          "Accept": "application/json"
-        },
+        "headers": { "Accept": "application/json" },
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-users",
         "order": 0,
-        "auth": {
-          "type": "none"
-        }
+        "auth": { "type": "none" }
       },
       {
         "id": "req-test-create-user",
         "name": "Create User",
         "method": "POST",
         "url": "{{baseUrl}}/users",
-        "headers": {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
+        "headers": { "Content-Type": "application/json", "Accept": "application/json" },
         "body": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\"\n}",
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-users",
         "order": 1,
-        "auth": {
-          "type": "none"
-        }
+        "auth": { "type": "none" }
       },
       {
         "id": "req-test-get-posts",
         "name": "List Posts",
         "method": "GET",
         "url": "{{baseUrl}}/posts",
-        "headers": {
-          "Accept": "application/json"
-        },
+        "headers": { "Accept": "application/json" },
         "collectionId": "col-test-sample-api",
         "folderId": "folder-test-posts",
         "order": 0,
-        "auth": {
-          "type": "none"
-        }
+        "auth": { "type": "none" }
       }
     ]
   },
@@ -76,83 +63,13 @@
         "name": "Get User",
         "method": "GET",
         "url": "https://api.github.com/users/octocat",
-        "headers": {
-          "Accept": "application/vnd.github.v3+json"
-        },
+        "headers": { "Accept": "application/vnd.github.v3+json" },
         "collectionId": "col-test-github",
         "order": 0,
-        "auth": {
-          "type": "none"
-        }
+        "auth": { "type": "none" },
+        "preRequestScript": "// Set a timestamp before the request runs\nenvironment.set('timestamp', new Date().toISOString());",
+        "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\n\ntest('response has login field', () => {\n  const data = response.json();\n  expect(data.login).toBeDefined();\n});\n\ntest('response time is acceptable', () => {\n  expect(response.duration).toBeLessThan(5000);\n});"
       }
     ]
-  },
-  {
-    "id": "col-1776940394932-kbq30q",
-    "name": "Playwright Test API",
-    "folders": [
-      {
-        "id": "folder-1776940394932-cpgk",
-        "name": "pets",
-        "collectionId": "col-1776940394932-qy54ro"
-      },
-      {
-        "id": "folder-1776940394932-0qhgn5",
-        "name": "users",
-        "collectionId": "col-1776940394932-qy54ro"
-      }
-    ],
-    "requests": [
-      {
-        "id": "req-1776940394932-d2juc",
-        "name": "List all pets",
-        "method": "GET",
-        "url": "{{baseUrl}}/pets?limit=0",
-        "collectionId": "col-1776940394932-qy54ro",
-        "folderId": "folder-1776940394932-cpgk",
-        "operationId": "listPets",
-        "order": 0
-      },
-      {
-        "id": "req-1776940394932-9cgr7a",
-        "name": "Create a pet",
-        "method": "POST",
-        "url": "{{baseUrl}}/pets",
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "body": "{\n  \"name\": \"string\",\n  \"species\": \"string\"\n}",
-        "bodyType": "json",
-        "collectionId": "col-1776940394932-qy54ro",
-        "folderId": "folder-1776940394932-cpgk",
-        "operationId": "createPet",
-        "order": 1
-      },
-      {
-        "id": "req-1776940394932-qlkoxq",
-        "name": "Get a pet by ID",
-        "method": "GET",
-        "url": "{{baseUrl}}/pets/{{petId}}",
-        "collectionId": "col-1776940394932-qy54ro",
-        "folderId": "folder-1776940394932-cpgk",
-        "operationId": "getPet",
-        "order": 2
-      },
-      {
-        "id": "req-1776940394932-sume0f",
-        "name": "List users",
-        "method": "GET",
-        "url": "{{baseUrl}}/users",
-        "collectionId": "col-1776940394932-qy54ro",
-        "folderId": "folder-1776940394932-0qhgn5",
-        "operationId": "listUsers",
-        "order": 3
-      }
-    ],
-    "openApiSpec": {
-      "source": "D:/Projects/Web Apps/Requesto/apps/playwright/fixtures/openapi-spec.json",
-      "lastSyncedAt": 1776940394932,
-      "specHash": "c460a076b6b35fc3fe7c9f11ec772adc18e06e31bd671f7e5b3472802f626513"
-    }
   }
 ]

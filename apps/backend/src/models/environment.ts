@@ -1,6 +1,7 @@
 export interface EnvironmentVariable {
   key: string;
   value: string;
+  currentValue?: string;
   enabled: boolean;
   isSecret?: boolean;
 }

@@ -18,11 +18,14 @@ You can run it as a desktop app (Electron), in Docker, or straight from source.
 - Define environment variables and swap between them (dev, staging, prod)
 - Authenticate with Basic, Bearer, API Key, Digest, or OAuth 2.0
 - Import OpenAPI v2/v3 specs and keep collections in sync as the spec changes
-- Import and export Postman collections and environments
+- Import and export collections and environments
 - Manage multiple workspaces to isolate different projects
 - Version control workspace data with built-in git integration
 - Stream Server-Sent Events (SSE)
 - View request/response logs in a built-in console panel
+- Write pre-request scripts to set environment variables before each request
+- Write test scripts to assert response status, body, headers, and timing
+- Run all requests in a collection or folder sequentially with the collection runner
 
 The backend handles CORS, substitutes environment variables, and manages all data storage so the frontend never has to deal with cross-origin restrictions or file I/O.
 

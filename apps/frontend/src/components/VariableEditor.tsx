@@ -1,28 +1,40 @@
 import { useState, useCallback, type KeyboardEvent } from 'react';
 import {
   useFieldArray,
+  useWatch,
   Controller,
   type Control,
   type FieldValues,
   type ArrayPath,
   type FieldPath,
   type FieldArray,
+  type UseFormSetValue,
+  type PathValue,
 } from 'react-hook-form';
-import { Plus, Trash2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Eye, EyeOff, AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from './Button';
 
 interface VariableEditorProps<T extends FieldValues> {
   control: Control<T>;
   fieldArrayName?: ArrayPath<T>;
+  setValue?: UseFormSetValue<T>;
+  /**
+   * When provided, a reset button appears on each row that has a current value.
+   * Called with the variable key; the parent is responsible for persisting the reset.
+   */
+  onResetCurrentValue?: (key: string) => void;
 }
 
 export function VariableEditor<T extends FieldValues>({
   control,
   fieldArrayName = 'variables' as ArrayPath<T>,
+  setValue,
+  onResetCurrentValue,
 }: VariableEditorProps<T>) {
   const { fields, append, remove } = useFieldArray({ control, name: fieldArrayName });
   const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const watchedRows = useWatch({ control, name: fieldArrayName as unknown as FieldPath<T> }) as Array<Record<string, unknown>>;
 
   const handleToggleSecret = (index: number) => {
     setShowSecrets(prev => ({ ...prev, [index]: !prev[index] }));
@@ -32,6 +44,7 @@ export function VariableEditor<T extends FieldValues>({
     append({
       key: '',
       value: '',
+      currentValue: '',
       enabled: true,
       isSecret: false,
     } as FieldArray<T, ArrayPath<T>>);
@@ -100,11 +113,21 @@ export function VariableEditor<T extends FieldValues>({
         ) : (
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[36px_1fr_1fr_36px_36px] bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="grid grid-cols-[36px_1fr_1fr_1fr_36px_36px_36px] bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               <div className="px-2 py-2 flex items-center justify-center" title="Enabled" />
               <div className="px-3 py-2">Name</div>
-              <div className="px-3 py-2">Value</div>
+              <div className="px-3 py-2">Initial Value</div>
+              <div className="px-3 py-2 flex items-center gap-1.5">
+                Current Value
+                <span
+                  className="normal-case tracking-normal font-normal text-gray-400 dark:text-gray-500"
+                  title="Set by pre-request scripts. Stored locally and never committed to git."
+                >
+                  (local)
+                </span>
+              </div>
               <div className="px-1 py-2 flex items-center justify-center" title="Secret" />
+              <div className="px-1 py-2" />
               <div className="px-1 py-2" />
             </div>
 
@@ -112,7 +135,7 @@ export function VariableEditor<T extends FieldValues>({
             {fields.map((field, index) => (
               <div
                 key={field.id}
-                className={`grid grid-cols-[36px_1fr_1fr_36px_36px] items-center border-b border-gray-100 dark:border-gray-800 last:border-b-0 group transition-colors ${
+                className={`grid grid-cols-[36px_1fr_1fr_1fr_36px_36px_36px] items-center border-b border-gray-100 dark:border-gray-800 last:border-b-0 group transition-colors ${
                   hoveredRow === index ? 'bg-gray-50 dark:bg-gray-800/40' : 'bg-white dark:bg-gray-900'
                 }`}
                 onMouseEnter={() => setHoveredRow(index)}
@@ -153,7 +176,7 @@ export function VariableEditor<T extends FieldValues>({
                   />
                 </div>
 
-                {/* Value input */}
+                {/* Initial value input */}
                 <div className="py-1">
                   <Controller
                     name={`${fieldArrayName}.${index}.value` as FieldPath<T>}
@@ -167,8 +190,23 @@ export function VariableEditor<T extends FieldValues>({
                             <input
                               {...valueField}
                               type={secretField.value && !showSecrets[index] ? 'password' : 'text'}
-                              placeholder="value"
+                              placeholder="initial value"
                               onKeyDown={e => handleKeyDown(e, index, 'value')}
+                              onChange={e => {
+                                const prevInitial = valueField.value as string;
+                                const newInitial = e.target.value;
+                                valueField.onChange(e);
+                                // Mirror to currentValue while the two are in sync
+                                if (setValue) {
+                                  const cv = watchedRows[index]?.currentValue as string | undefined;
+                                  if (cv === prevInitial || cv === '' || cv === undefined) {
+                                    setValue(
+                                      `${fieldArrayName}.${index}.currentValue` as FieldPath<T>,
+                                      newInitial as PathValue<T, FieldPath<T>>,
+                                    );
+                                  }
+                                }
+                              }}
                               className="w-full px-3 py-1.5 pr-8 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 font-mono text-gray-900 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600"
                             />
                             {secretField.value && valueField.value && (
@@ -185,6 +223,34 @@ export function VariableEditor<T extends FieldValues>({
                               </button>
                             )}
                           </div>
+                        )}
+                      />
+                    )}
+                  />
+                </div>
+
+                {/* Current value (editable; overrides initial value at runtime) */}
+                <div className="py-1">
+                  <Controller
+                    name={`${fieldArrayName}.${index}.currentValue` as FieldPath<T>}
+                    control={control}
+                    render={({ field: cvField }) => (
+                      <Controller
+                        name={`${fieldArrayName}.${index}.isSecret` as FieldPath<T>}
+                        control={control}
+                        render={({ field: secretField }) => (
+                          <input
+                            {...cvField}
+                            value={cvField.value ?? ''}
+                            type={secretField.value && !showSecrets[index] ? 'password' : 'text'}
+                            placeholder="same as initial"
+                            className={`w-full px-3 py-1.5 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 font-mono placeholder:text-gray-300 dark:placeholder:text-gray-700 ${
+                              cvField.value
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-gray-900 dark:text-gray-200'
+                            }`}
+                            title="Current value (overrides initial value for this session). Stored locally, never committed to git."
+                          />
                         )}
                       />
                     )}
@@ -211,6 +277,34 @@ export function VariableEditor<T extends FieldValues>({
                       </button>
                     )}
                   />
+                </div>
+
+                {/* Reset current value button */}
+                <div className="px-1 py-1.5 flex items-center justify-center">
+                  {onResetCurrentValue && (
+                    <Controller
+                      name={`${fieldArrayName}.${index}.currentValue` as FieldPath<T>}
+                      control={control}
+                      render={({ field: cvField }) => (
+                        <Controller
+                          name={`${fieldArrayName}.${index}.key` as FieldPath<T>}
+                          control={control}
+                          render={({ field: keyField }) =>
+                            cvField.value ? (
+                              <button
+                                type="button"
+                                onClick={() => onResetCurrentValue(keyField.value as string)}
+                                className="p-1 rounded transition-colors text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                                title="Reset current value back to initial"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                              </button>
+                            ) : <></>
+                          }
+                        />
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Delete button */}

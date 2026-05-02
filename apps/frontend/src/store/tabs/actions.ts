@@ -2,6 +2,7 @@ import type { Tab, TabRequest, HistoryItem } from './types';
 import type { ProxyResponse, StreamingResponse } from '../request/types';
 import { isTabDirty } from '../../helpers/tabs';
 import { API_BASE } from '../../helpers/api/config';
+import { TestResult } from '../../helpers/scriptRunner';
 
 type SetState = (partial: Record<string, unknown> | ((state: Record<string, unknown>) => Record<string, unknown>)) => void;
 type GetState = () => Record<string, unknown>;
@@ -211,6 +212,19 @@ export function updateTabLabel(set: SetState, tabId: string, label: string): voi
     const tab = tabs[tabId];
     if (!tab) return state;
     return { tabs: { ...tabs, [tabId]: { ...tab, label } } };
+  });
+}
+
+export function setTabTestResults(
+  set: SetState,
+  tabId: string,
+  testResults: TestResult[],
+): void {
+  set((state) => {
+    const tabs = state.tabs as Record<string, Tab>;
+    const tab = tabs[tabId];
+    if (!tab) return state;
+    return { tabs: { ...tabs, [tabId]: { ...tab, testResults } } };
   });
 }
 

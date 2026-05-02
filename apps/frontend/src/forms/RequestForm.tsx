@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Editor, { type Monaco } from '@monaco-editor/react';
@@ -15,12 +15,44 @@ import { buildTabRequestFromFormData } from '../helpers/request';
 import { parseCurlCommand } from '../helpers/curl';
 import { useAlertStore } from '../store/alert/store';
 import { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
+import { TEST_SCRIPT_TYPES, PRE_REQUEST_SCRIPT_TYPES } from '../helpers/scriptTypes';
 
 export { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+type RequestTab = 'params' | 'auth' | 'headers' | 'body' | 'pre-request' | 'tests';
 
-type RequestTab = 'params' | 'auth' | 'headers' | 'body';
+function defineEditorTheme(monaco: Monaco) {
+  monaco.editor.defineTheme('custom-dark', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': '#1f2937',
+      'editor.lineHighlightBackground': '#374151',
+      'editorLineNumber.foreground': '#6b7280',
+      'editorLineNumber.activeForeground': '#9ca3af',
+    },
+  });
+}
+
+function createScriptEditorBeforeMount(typeLib: string, libFileName: string) {
+  return (monaco: Monaco) => {
+    defineEditorTheme(monaco);
+    // noLib suppresses all browser/DOM globals so only our declared types appear
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+      ...monaco.languages.typescript.javascriptDefaults.getCompilerOptions(),
+      noLib: true,
+    });
+    monaco.languages.typescript.javascriptDefaults.addExtraLib(typeLib, libFileName);
+  };
+}
+
+const beforeMountPreRequestEditor = createScriptEditorBeforeMount(
+  PRE_REQUEST_SCRIPT_TYPES,
+  'requesto-pre-request-globals.d.ts'
+);
+const beforeMountTestEditor = createScriptEditorBeforeMount(TEST_SCRIPT_TYPES, 'requesto-test-globals.d.ts');
 
 interface RequestFormProps {
   onSend: (formData: RequestFormData) => void;
@@ -94,6 +126,8 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
           ? tabReq.formDataEntries
           : [{ id: Date.now().toString(), key: '', value: '', type: 'text' as const, enabled: true }],
       auth: tabReq.auth || { type: 'none' },
+      preRequestScript: tabReq.preRequestScript ?? '',
+      testScript: tabReq.testScript ?? '',
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTab?.id]);
@@ -173,8 +207,13 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
   const handleFormDataEntriesChange = (newEntries: FormDataEntry[]) =>
     setValue('formDataEntries', newEntries, { shouldDirty: true });
 
+  const preRequestScript = watch('preRequestScript') ?? '';
+  const testScript = watch('testScript') ?? '';
+
   const paramsCount = params.filter(p => p.enabled && p.key.trim()).length;
   const headersCount = headers.filter(h => h.enabled && h.key.trim()).length;
+  const hasPreRequestScript = preRequestScript.trim().length > 0;
+  const hasTestScript = testScript.trim().length > 0;
 
   const checkScrollButtons = () => {
     const container = tabsContainerRef.current;
@@ -244,7 +283,9 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
                   disabled={loading}
                 >
                   {HTTP_METHODS.map(m => (
-                    <option key={m} value={m}>{m}</option>
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
                   ))}
                 </select>
                 <svg
@@ -308,30 +349,21 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
             msOverflowStyle: 'none',
           }}
         >
-          {(['params', 'auth', 'headers', 'body'] as RequestTab[]).map(tab => {
-            let label = tab.charAt(0).toUpperCase() + tab.slice(1);
-            if (tab === 'params' && paramsCount > 0) {
-              label += ` (${paramsCount})`;
-            } else if (tab === 'headers' && headersCount > 0) {
-              label += ` (${headersCount})`;
-            }
-
-            return (
-              <Button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                variant="ghost"
-                size="sm"
-                className={`shrink-0 px-4 py-3 rounded-none border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-              >
-                {label}
-              </Button>
-            );
-          })}
+          {(['params', 'auth', 'headers', 'body', 'pre-request', 'tests'] as RequestTab[]).map(tab => (
+            <Button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              variant="ghost"
+              size="sm"
+              className={`shrink-0 px-4 py-3 rounded-none border-b-2 transition-colors ${
+                activeTab === tab
+                  ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              }`}
+            >
+              {getTabLabel(tab, hasPreRequestScript, hasTestScript, paramsCount, headersCount)}
+            </Button>
+          ))}
         </div>
 
         {showRightScroll && (
@@ -359,9 +391,7 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
           />
         )}
 
-        {activeTab === 'auth' && (
-          <AuthEditor auth={auth} onAuthChange={handleAuthChange} disabled={loading} />
-        )}
+        {activeTab === 'auth' && <AuthEditor auth={auth} onAuthChange={handleAuthChange} disabled={loading} />}
 
         {activeTab === 'headers' && (
           <KeyValueEditor
@@ -377,7 +407,9 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
         {activeTab === 'body' && (
           <div className="h-full min-h-50">
             <div className="mb-3 flex items-center gap-4">
-              <label className={`flex items-center gap-2 text-sm ${bodyType === 'json' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+              <label
+                className={`flex items-center gap-2 text-sm ${bodyType === 'json' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+              >
                 <input
                   type="radio"
                   name="bodyType"
@@ -388,7 +420,9 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
                 />
                 <span>JSON</span>
               </label>
-              <label className={`flex items-center gap-2 text-sm ${bodyType === 'form-data' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+              <label
+                className={`flex items-center gap-2 text-sm ${bodyType === 'form-data' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+              >
                 <input
                   type="radio"
                   name="bodyType"
@@ -399,7 +433,9 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
                 />
                 <span>Form Data</span>
               </label>
-              <label className={`flex items-center gap-2 text-sm ${bodyType === 'x-www-form-urlencoded' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+              <label
+                className={`flex items-center gap-2 text-sm ${bodyType === 'x-www-form-urlencoded' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}
+              >
                 <input
                   type="radio"
                   name="bodyType"
@@ -427,19 +463,7 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
                       value={field.value}
                       onChange={(value: string | undefined) => field.onChange(value || '')}
                       theme={isDarkMode ? 'custom-dark' : 'vs-light'}
-                      beforeMount={(monaco: Monaco) => {
-                        monaco.editor.defineTheme('custom-dark', {
-                          base: 'vs-dark',
-                          inherit: true,
-                          rules: [],
-                          colors: {
-                            'editor.background': '#1f2937',
-                            'editor.lineHighlightBackground': '#374151',
-                            'editorLineNumber.foreground': '#6b7280',
-                            'editorLineNumber.activeForeground': '#9ca3af',
-                          },
-                        });
-                      }}
+                      beforeMount={defineEditorTheme}
                       options={{
                         minimap: { enabled: false },
                         fontSize: 13,
@@ -460,7 +484,9 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
             {(bodyType === 'form-data' || bodyType === 'x-www-form-urlencoded') && (
               <KeyValueEditor
                 items={formDataEntries}
-                onItemsChange={items => handleFormDataEntriesChange(items.map(item => ({ ...item, type: 'text' as const })))}
+                onItemsChange={items =>
+                  handleFormDataEntriesChange(items.map(item => ({ ...item, type: 'text' as const })))
+                }
                 delimiter="="
                 keyPlaceholder="Field"
                 valuePlaceholder="Value"
@@ -470,8 +496,114 @@ export function RequestForm({ onSend, onCancel, onChange, loading }: RequestForm
             )}
           </div>
         )}
+
+        {activeTab === 'pre-request' && (
+          <div className="h-full flex flex-col gap-3 min-h-50">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Runs before the request is sent. Use{' '}
+              <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">environment.set("key", "value")</code> to
+              inject variables.
+            </p>
+            <div className="flex-1 border border-gray-300 dark:border-gray-600 rounded overflow-hidden min-h-50">
+              <Controller
+                name="preRequestScript"
+                control={control}
+                render={({ field }) => (
+                  <Editor
+                    height="100%"
+                    defaultLanguage="javascript"
+                    value={field.value ?? ''}
+                    onChange={value => field.onChange(value ?? '')}
+                    theme={isDarkMode ? 'custom-dark' : 'vs-light'}
+                    beforeMount={beforeMountPreRequestEditor}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      tabSize: 2,
+                      readOnly: loading,
+                    }}
+                  />
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'tests' && (
+          <div className="h-full flex flex-col gap-3 min-h-50">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Runs after the response is received.</p>
+            <div className="flex-1 border border-gray-300 dark:border-gray-600 rounded overflow-hidden min-h-50">
+              <Controller
+                name="testScript"
+                control={control}
+                render={({ field }) => (
+                  <Editor
+                    height="100%"
+                    defaultLanguage="javascript"
+                    value={field.value ?? ''}
+                    onChange={value => field.onChange(value ?? '')}
+                    theme={isDarkMode ? 'custom-dark' : 'vs-light'}
+                    beforeMount={beforeMountTestEditor}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      tabSize: 2,
+                      readOnly: loading,
+                    }}
+                  />
+                )}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
+function getTabLabel(
+  tab: RequestTab,
+  hasPreRequestScript: boolean,
+  hasTestScript: boolean,
+  paramsCount: number,
+  headersCount: number,
+): ReactNode {
+  let label: ReactNode;
+
+  switch (tab) {
+    case 'pre-request':
+      label = hasPreRequestScript ? (
+        <>
+          Pre-request <span className="text-blue-500">●</span>
+        </>
+      ) : (
+        'Pre-request'
+      );
+      break;
+    case 'tests':
+      label = hasTestScript ? (
+        <>
+          Tests <span className="text-blue-500">●</span>
+        </>
+      ) : (
+        'Tests'
+      );
+      break;
+    default:
+      label = tab.charAt(0).toUpperCase() + tab.slice(1);
+  }
+
+  if (tab === 'params' && paramsCount > 0) {
+    return <>{label} ({paramsCount})</>;
+  }
+  if (tab === 'headers' && headersCount > 0) {
+    return <>{label} ({headersCount})</>;
+  }
+  return label;
+}

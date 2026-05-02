@@ -66,7 +66,9 @@
         "headers": { "Accept": "application/vnd.github.v3+json" },
         "collectionId": "col-test-github",
         "order": 0,
-        "auth": { "type": "none" }
+        "auth": { "type": "none" },
+        "preRequestScript": "// Set a timestamp before the request runs\nenvironment.set('timestamp', new Date().toISOString());",
+        "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\n\ntest('response has login field', () => {\n  const data = response.json();\n  expect(data.login).toBeDefined();\n});\n\ntest('response time is acceptable', () => {\n  expect(response.duration).toBeLessThan(5000);\n});"
       }
     ]
   }

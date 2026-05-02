@@ -1,5 +1,6 @@
 import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
 import type { ProxyResponse, StreamingResponse } from '../request/types';
+import type { TestResult } from '../../helpers/scriptRunner';
 
 export type TabRequest = {
   method: string;
@@ -9,6 +10,8 @@ export type TabRequest = {
   bodyType?: BodyType;
   formDataEntries?: FormDataEntry[];
   auth?: AuthConfig;
+  preRequestScript?: string;
+  testScript?: string;
 };
 
 export type Tab = {
@@ -24,6 +27,7 @@ export type Tab = {
   collectionId?: string;
   originalRequest?: TabRequest;
   lastAccessedAt: number;
+  testResults?: TestResult[];
 };
 
 export type HistoryItem = {
