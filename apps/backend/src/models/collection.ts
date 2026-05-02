@@ -40,6 +40,8 @@ export interface SavedRequest {
   folderId?: string;
   order?: number;
   operationId?: string;
+  preRequestScript?: string;
+  testScript?: string;
 }
 
 export interface OpenApiEnvironmentVariable {

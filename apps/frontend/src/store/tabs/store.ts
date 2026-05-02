@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Tab, TabRequest } from './types';
 import type { ProxyResponse, StreamingResponse } from '../request/types';
 import * as actions from './actions';
+import { TestResult } from '../../helpers/scriptRunner';
 
 export { getHistory, clearHistory } from './actions';
 
@@ -30,6 +31,7 @@ type TabsState = {
   getActiveTab: () => Tab | null;
   closeAllTabs: () => void;
   reorderTabs: (newOrder: string[]) => void;
+  setTabTestResults: (tabId: string, testResults: TestResult[]) => void;
 };
 
 export const useTabsStore = create<TabsState>((set, get) => ({
@@ -53,6 +55,7 @@ export const useTabsStore = create<TabsState>((set, get) => ({
   getActiveTab: () => actions.getActiveTab(get),
   closeAllTabs: () => actions.closeAllTabs(set),
   reorderTabs: (newOrder) => actions.reorderTabs(set, newOrder),
+  setTabTestResults: (tabId, testResults) => actions.setTabTestResults(set, tabId, testResults),
 }));
 
 // Open one empty tab on store creation

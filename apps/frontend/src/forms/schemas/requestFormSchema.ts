@@ -32,6 +32,8 @@ export const requestFormSchema = z.object({
       enabled: z.boolean(),
     })
   ),
+  preRequestScript: z.string().optional(),
+  testScript: z.string().optional(),
   auth: z.object({
     type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest', 'oauth']),
     basic: z

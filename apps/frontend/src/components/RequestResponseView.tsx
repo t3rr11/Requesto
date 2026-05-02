@@ -19,12 +19,13 @@ import { useResizablePanel } from '../hooks/useResizablePanel';
 import { buildRequestFromFormData, buildSavePayloadFromFormData } from '../helpers/request';
 import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
 import { applyAuthForDisplay } from '../helpers/api/authPreview';
-import type { StreamingResponse } from '../store/request/types';
+import { runPreRequestScript, runTestScript } from '../helpers/scriptRunner';
+import type { ProxyResponse, StreamingResponse } from '../store/request/types';
 
 export function RequestResponseView() {
-  const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab } = useTabsStore();
+  const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab, setTabTestResults } = useTabsStore();
   const { updateRequest } = useCollectionsStore();
-  const { environmentsData } = useEnvironmentStore();
+  const { environmentsData, saveEnvironment } = useEnvironmentStore();
   const { sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
   const { showAlert } = useAlertStore();
@@ -64,11 +65,42 @@ export function RequestResponseView() {
 
     const activeEnv = environmentsData.environments.find(
       e => e.id === environmentsData.activeEnvironmentId,
-    );
-    const request = activeEnv ? substituteInRequest(rawRequest, activeEnv) : rawRequest;
+    ) ?? null;
 
-    if (activeEnv) {
-      const undefinedVars = getUndefinedVariables(rawRequest, activeEnv);
+    // effectiveEnv starts as the current active environment, and may be updated
+    // by the pre-request script before variable substitution runs.
+    let effectiveEnv = activeEnv;
+    if (formData.preRequestScript?.trim()) {
+      try {
+        const envOverrides = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest);
+        if (activeEnv && Object.keys(envOverrides).length > 0) {
+          const updatedVariables = activeEnv.variables.map(v =>
+            Object.prototype.hasOwnProperty.call(envOverrides, v.key)
+              ? { ...v, value: envOverrides[v.key] }
+              : v,
+          );
+          // Also add any newly-introduced keys
+          Object.entries(envOverrides).forEach(([key, value]) => {
+            if (!updatedVariables.some(v => v.key === key)) {
+              updatedVariables.push({ key, value, enabled: true });
+            }
+          });
+          const updatedEnv = { ...activeEnv, variables: updatedVariables };
+          // Persist to disk so the variables are visible in the environment editor
+          // and available for future requests.
+          await saveEnvironment(updatedEnv);
+          // Use the updated env for this request's variable substitution
+          effectiveEnv = updatedEnv;
+        }
+      } catch (err) {
+        showAlert('Pre-request script error', err instanceof Error ? err.message : String(err), 'error');
+      }
+    }
+
+    const request = effectiveEnv ? substituteInRequest(rawRequest, effectiveEnv) : rawRequest;
+
+    if (effectiveEnv) {
+      const undefinedVars = getUndefinedVariables(rawRequest, effectiveEnv);
       if (undefinedVars.length > 0) {
         showAlert('Warning', `Undefined variables: ${undefinedVars.join(', ')}`, 'warning');
       }
@@ -111,6 +143,24 @@ export function RequestResponseView() {
         duration: response.duration,
         responseData: response,
       });
+
+      const isStreamingResponse = 'isStreaming' in response && response.isStreaming;
+      if (formData.testScript?.trim() && !isStreamingResponse) {
+        try {
+          const testResults = await runTestScript(formData.testScript, response as ProxyResponse, request, effectiveEnv);
+          setTabTestResults(tab.id, testResults);
+          const passed = testResults.filter(r => r.passed).length;
+          addConsoleLog({
+            id: `test-${Date.now()}`,
+            requestId,
+            timestamp: Date.now(),
+            type: 'info',
+            message: `Tests: ${passed}/${testResults.length} passed`,
+          });
+        } catch (err) {
+          showAlert('Test script error', err instanceof Error ? err.message : String(err), 'error');
+        }
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
         addConsoleLog({
@@ -147,8 +197,10 @@ export function RequestResponseView() {
     setTabLoading,
     setTabError,
     setTabResponse,
+    setTabTestResults,
     addConsoleLog,
     showAlert,
+    saveEnvironment,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -264,6 +316,7 @@ export function RequestResponseView() {
           loading={activeTab.isLoading}
           error={activeTab.error}
           isDarkMode={isDarkMode}
+          testResults={activeTab.testResults}
         />
       </div>
 

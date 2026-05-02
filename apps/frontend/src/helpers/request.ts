@@ -1,6 +1,7 @@
 import type { ProxyRequest, AuthConfig, FormDataEntry } from '../store/request/types';
 import type { RequestFormData } from '../forms/schemas/requestFormSchema';
 import type { TabRequest } from '../store/tabs/types';
+import type { SavedRequest } from '../store/collections/types';
 import { buildUrlWithParams } from './url';
 
 /**
@@ -31,6 +32,8 @@ export function buildTabRequestFromFormData(formData: RequestFormData): TabReque
     bodyType: formData.bodyType || 'json',
     formDataEntries: formData.formDataEntries as FormDataEntry[],
     auth: formData.auth as AuthConfig,
+    preRequestScript: formData.preRequestScript,
+    testScript: formData.testScript,
   };
 }
 
@@ -59,7 +62,7 @@ export function buildRequestFromFormData(formData: RequestFormData): ProxyReques
  * Unlike buildRequestFromFormData, this avoids proxy-oriented transformations
  * that cause false "changed" diffs (e.g. body "" → undefined, auth expanded with empty defaults).
  */
-export function buildSavePayloadFromFormData(formData: RequestFormData): Partial<ProxyRequest> {
+export function buildSavePayloadFromFormData(formData: RequestFormData): Partial<SavedRequest> {
   // Only include the active auth type's data to avoid empty defaults expanding the object
   const auth: AuthConfig = { type: formData.auth.type };
   if (formData.auth.type !== 'none') {
@@ -79,12 +82,14 @@ export function buildSavePayloadFromFormData(formData: RequestFormData): Partial
     }
   }
 
-  const payload: Partial<ProxyRequest> = {
+  const payload: Partial<SavedRequest> = {
     method: formData.method,
     url: buildUrlWithParams(formData.url, formData.params),
     headers: buildHeadersFromFormData(formData.headers),
     bodyType: formData.bodyType,
     auth,
+    preRequestScript: formData.preRequestScript,
+    testScript: formData.testScript,
   };
 
   // Only include body/formDataEntries for the active body type to avoid

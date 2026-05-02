@@ -10,6 +10,8 @@ export function areRequestsEqual(a: TabRequest, b: TabRequest): boolean {
   if (a.url !== b.url) return false;
   if (JSON.stringify(a.headers || {}) !== JSON.stringify(b.headers || {})) return false;
   if ((a.body || '') !== (b.body || '')) return false;
+  if ((a.preRequestScript ?? '') !== (b.preRequestScript ?? '')) return false;
+  if ((a.testScript ?? '') !== (b.testScript ?? '')) return false;
 
   const normaliseAuth = (auth: TabRequest['auth']) => {
     if (!auth || auth.type === 'none') return JSON.stringify({ type: 'none' });
@@ -53,6 +55,8 @@ export function savedRequestToTabRequest(saved: {
   headers?: Record<string, string>;
   body?: string;
   auth?: TabRequest['auth'];
+  preRequestScript?: string;
+  testScript?: string;
 }): TabRequest {
   return {
     method: saved.method,
@@ -60,6 +64,8 @@ export function savedRequestToTabRequest(saved: {
     headers: saved.headers,
     body: saved.body,
     auth: normaliseSavedAuth(saved.auth),
+    ...(saved.preRequestScript !== undefined && { preRequestScript: saved.preRequestScript }),
+    ...(saved.testScript !== undefined && { testScript: saved.testScript }),
   };
 }
 
@@ -85,6 +91,8 @@ export function cloneTabRequest(request: TabRequest): TabRequest {
     headers: request.headers ? { ...request.headers } : undefined,
     body: request.body,
     auth: request.auth ? JSON.parse(JSON.stringify(request.auth)) : undefined,
+    ...(request.preRequestScript !== undefined && { preRequestScript: request.preRequestScript }),
+    ...(request.testScript !== undefined && { testScript: request.testScript }),
   };
 }
 

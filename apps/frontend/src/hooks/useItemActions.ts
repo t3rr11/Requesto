@@ -21,6 +21,8 @@ export function useItemActions() {
         headers: request.headers,
         body: request.body,
         auth: request.auth,
+        preRequestScript: request.preRequestScript,
+        testScript: request.testScript,
       },
       label: request.name,
     });
