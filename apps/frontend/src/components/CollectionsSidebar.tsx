@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Folder as FolderIcon, FolderPlus, Import, Search, X, FileText, Braces } from 'lucide-react';
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useUIStore } from '../store/ui/store';
 import { useCollectionsStore } from '../store/collections/store';
 import { useAlertStore } from '../store/alert/store';
+import { getMethodColor } from '../helpers/collections';
 import type { SavedRequest } from '../store/collections/types';
 import { Dialog } from './Dialog';
 import { RenameForm } from '../forms/RenameForm';
@@ -15,7 +18,15 @@ import { ContextMenu } from './ContextMenu';
 import { GitStatusBar } from './GitStatusBar';
 import { GitAccordion } from './GitAccordion';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
-import { useResizablePanel } from '../hooks/useResizablePanel';
+import { useResizablePanel } from '../hooks/useResizablePanel';import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -38,14 +49,75 @@ interface NewFolderData {
 }
 
 export function CollectionsSidebar() {
-  const { isSidebarOpen, sidebarWidth, setSidebarWidth, isGitPanelOpen, gitPanelHeight, toggleGitPanel, setGitPanelHeight, clearSelection } = useUIStore();
+  const {
+    isSidebarOpen,
+    sidebarWidth,
+    setSidebarWidth,
+    isGitPanelOpen,
+    gitPanelHeight,
+    toggleGitPanel,
+    setGitPanelHeight,
+    clearSelection,
+  } = useUIStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeId, setActiveId] = useState<string | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder } =
+  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest } =
     useCollectionsStore();
   const { showAlert } = useAlertStore();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    setActiveId(active.id as string);
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveId(null);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    if (!over || active.id === over.id) return;
+
+    const activeData = active.data.current as { type: string; collectionId: string; folderId?: string } | undefined;
+    if (!activeData || activeData.type !== 'request') return;
+
+    const overData = over.data.current as { type: string; collectionId: string; folderId?: string } | undefined;
+    if (!overData) return;
+
+    let targetCollectionId: string;
+    let targetFolderId: string | undefined;
+    let targetOrder: number | undefined;
+
+    if (overData.type === 'request') {
+      targetCollectionId = overData.collectionId;
+      targetFolderId = overData.folderId;
+      const targetCollection = collections.find(c => c.id === targetCollectionId);
+      if (!targetCollection) return;
+      const slotRequests = targetCollection.requests
+        .filter(r => r.folderId === targetFolderId)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      targetOrder = slotRequests.findIndex(r => r.id === over.id);
+      if (targetOrder === -1) return;
+    } else if (overData.type === 'folder' || overData.type === 'collection-root') {
+      targetCollectionId = overData.collectionId;
+      targetFolderId = overData.folderId;
+      // targetOrder undefined → appends to end of target container
+    } else {
+      return;
+    }
+
+    moveRequest(activeData.collectionId, active.id as string, targetCollectionId, targetFolderId, targetOrder);
+    clearSelection();
+  };
+
+  const activeRequest = activeId ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
 
   const { handleResizeStart } = useResizablePanel({
     containerRef: sidebarRef,
@@ -81,7 +153,7 @@ export function CollectionsSidebar() {
     axis: 'vertical',
     onResize: setGitPanelHeight,
     min: 120,
-    max: (containerHeight) => containerHeight * 0.7,
+    max: containerHeight => containerHeight * 0.7,
     origin: 'end',
   });
 
@@ -209,19 +281,40 @@ export function CollectionsSidebar() {
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try a different search term</p>
           </div>
         ) : (
-          <div className="py-2">
-            {filteredCollections.map(collection => (
-              <CollectionItem
-                key={collection.id}
-                collection={collection}
-                searchQuery={searchQuery}
-                onRenameRequest={request => renameRequestDialog.open({ request })}
-                onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
-                onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
-                onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
-              />
-            ))}
-          </div>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => {
+              document.body.style.cursor = '';
+              document.body.style.userSelect = '';
+            }}
+          >
+            <div className="py-2">
+              {filteredCollections.map(collection => (
+                <CollectionItem
+                  key={collection.id}
+                  collection={collection}
+                  searchQuery={searchQuery}
+                  onRenameRequest={request => renameRequestDialog.open({ request })}
+                  onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
+                  onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
+                  onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
+                />
+              ))}
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeRequest && (
+                <div className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90">
+                  <span className={`text-xs font-medium ${getMethodColor(activeRequest.method)}`}>
+                    {activeRequest.method}
+                  </span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{activeRequest.name}</span>
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
         )}
       </div>
 
@@ -293,10 +386,7 @@ export function CollectionsSidebar() {
       )}
 
       {isGitPanelOpen && (
-        <div
-          className="flex flex-col flex-none min-h-0 overflow-hidden"
-          style={{ height: `${gitPanelHeight}px` }}
-        >
+        <div className="flex flex-col flex-none min-h-0 overflow-hidden" style={{ height: `${gitPanelHeight}px` }}>
           <div
             className="h-1 bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ns-resize transition-colors shrink-0"
             onMouseDown={handleGitPanelResizeStart}
@@ -306,9 +396,7 @@ export function CollectionsSidebar() {
           <GitAccordion isOpen />
         </div>
       )}
-      {!isGitPanelOpen && (
-        <GitStatusBar onTogglePanel={toggleGitPanel} />
-      )}
+      {!isGitPanelOpen && <GitStatusBar onTogglePanel={toggleGitPanel} />}
 
       <div
         className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"

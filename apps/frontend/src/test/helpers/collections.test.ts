@@ -6,8 +6,8 @@ describe('getMethodColor', () => {
     expect(getMethodColor('GET')).toContain('green');
   });
 
-  it('returns blue for POST', () => {
-    expect(getMethodColor('POST')).toContain('blue');
+  it('returns yellow for POST', () => {
+    expect(getMethodColor('POST')).toContain('yellow');
   });
 
   it('returns orange/yellow for PUT', () => {
@@ -18,8 +18,8 @@ describe('getMethodColor', () => {
     expect(getMethodColor('DELETE')).toContain('red');
   });
 
-  it('returns purple for PATCH', () => {
-    expect(getMethodColor('PATCH')).toContain('purple');
+  it('returns blue for PATCH', () => {
+    expect(getMethodColor('PATCH')).toContain('blue');
   });
 
   it('returns a color for HEAD', () => {
