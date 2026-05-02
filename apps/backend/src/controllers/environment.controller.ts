@@ -50,6 +50,37 @@ const environmentController: FastifyPluginAsync<Options> = async (server, opts) 
     }
     return environment;
   });
+
+  /**
+   * PATCH /environments/:id/current-values
+   * Merge runtime overrides into the local sidecar (never committed to git).
+   * Body: `{ overrides: Record<string, string> }`
+   */
+  server.patch<{ Params: { id: string }; Body: { overrides: Record<string, string> } }>(
+    '/environments/:id/current-values',
+    async (request, _reply) => {
+      environmentService.setCurrentValues(request.params.id, request.body.overrides);
+      return { success: true };
+    },
+  );
+
+  /**
+   * DELETE /environments/:id/current-values
+   * Reset all current values back to initial for the given environment.
+   * Optionally scope to a single key via `?key=variableName`.
+   */
+  server.delete<{ Params: { id: string }; Querystring: { key?: string } }>(
+    '/environments/:id/current-values',
+    async (request, _reply) => {
+      const { key } = request.query;
+      if (key) {
+        environmentService.resetCurrentValue(request.params.id, key);
+      } else {
+        environmentService.resetCurrentValues(request.params.id);
+      }
+      return { success: true };
+    },
+  );
 };
 
 export default environmentController;

@@ -9,7 +9,7 @@ export type TestResult = {
 
 type WorkerResponse =
   | { envOverrides: Record<string, string> }
-  | { testResults: TestResult[] }
+  | { testResults: TestResult[]; envOverrides: Record<string, string> }
   | { error: string };
 
 const SCRIPT_TIMEOUT_MS = 5000;
@@ -41,7 +41,9 @@ function runInWorker(message: object): Promise<WorkerResponse> {
 
 function buildEnvRecord(env: Environment | null): Record<string, string> {
   if (!env) return {};
-  return Object.fromEntries(env.variables.filter((v) => v.enabled).map((v) => [v.key, v.value]));
+  return Object.fromEntries(
+    env.variables.filter((v) => v.enabled).map((v) => [v.key, v.currentValue ?? v.value]),
+  );
 }
 
 /**
@@ -72,7 +74,7 @@ export async function runPreRequestScript(
 
 /**
  * Run the test script in an isolated Worker against the completed response.
- * Returns an array of TestResult objects.
+ * Returns test results and any env variable overrides set by the script.
  * Throws if the script errors or times out.
  */
 export async function runTestScript(
@@ -80,8 +82,8 @@ export async function runTestScript(
   response: ProxyResponse,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
   env: Environment | null,
-): Promise<TestResult[]> {
-  if (!script.trim()) return [];
+): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string> }> {
+  if (!script.trim()) return { testResults: [], envOverrides: {} };
 
   const result = await runInWorker({
     type: 'test',
@@ -100,6 +102,6 @@ export async function runTestScript(
   });
 
   if ('error' in result) throw new Error(result.error);
-  if ('testResults' in result) return result.testResults;
-  return [];
+  if ('testResults' in result) return { testResults: result.testResults, envOverrides: result.envOverrides };
+  return { testResults: [], envOverrides: {} };
 }

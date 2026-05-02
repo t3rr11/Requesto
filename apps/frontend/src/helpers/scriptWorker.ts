@@ -151,6 +151,14 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     } else if (type === 'test') {
       const results: TestResult[] = [];
       const { response: responseCtx, request } = context;
+      const envStore: Record<string, string> = { ...context.env };
+
+      const environment = {
+        get: (key: string): string => envStore[key] ?? '',
+        set: (key: string, value: string): void => {
+          envStore[key] = String(value);
+        },
+      };
 
       const response = {
         status: responseCtx.status,
@@ -177,10 +185,10 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
       const expect = (actual: unknown): Expectation => createExpect(actual);
 
       // eslint-disable-next-line no-new-func
-      const fn = new Function('test', 'expect', 'response', 'request', `${SHADOWED_GLOBALS}\n${script}`);
-      fn(test, expect, response, request);
+      const fn = new Function('test', 'expect', 'response', 'request', 'environment', `${SHADOWED_GLOBALS}\n${script}`);
+      fn(test, expect, response, request, environment);
 
-      self.postMessage({ testResults: results });
+      self.postMessage({ testResults: results, envOverrides: envStore });
     }
   } catch (err) {
     self.postMessage({ error: err instanceof Error ? err.message : String(err) });

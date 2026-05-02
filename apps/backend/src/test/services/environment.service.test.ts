@@ -36,7 +36,7 @@ describe('EnvironmentService', () => {
       const data = makeEnvsData([makeEnv()]);
       const repo = mockRepo({ getAll: vi.fn().mockReturnValue(data) });
       const service = new EnvironmentService(repo);
-      expect(service.getAll()).toBe(data);
+      expect(service.getAll()).toEqual(data);
     });
   });
 
@@ -47,7 +47,7 @@ describe('EnvironmentService', () => {
       const service = new EnvironmentService(repo);
       const result = service.save(env);
       expect(repo.save).toHaveBeenCalledWith(env);
-      expect(result).toBe(env);
+      expect(result).toEqual(env);
     });
   });
 

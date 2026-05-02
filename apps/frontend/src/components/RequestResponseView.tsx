@@ -25,7 +25,7 @@ import type { ProxyResponse, StreamingResponse } from '../store/request/types';
 export function RequestResponseView() {
   const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab, setTabTestResults } = useTabsStore();
   const { updateRequest } = useCollectionsStore();
-  const { environmentsData, saveEnvironment } = useEnvironmentStore();
+  const { environmentsData, updateCurrentValues } = useEnvironmentStore();
   const { sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
   const { showAlert } = useAlertStore();
@@ -76,19 +76,18 @@ export function RequestResponseView() {
         if (activeEnv && Object.keys(envOverrides).length > 0) {
           const updatedVariables = activeEnv.variables.map(v =>
             Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-              ? { ...v, value: envOverrides[v.key] }
+              ? { ...v, currentValue: envOverrides[v.key] }
               : v,
           );
           // Also add any newly-introduced keys
           Object.entries(envOverrides).forEach(([key, value]) => {
             if (!updatedVariables.some(v => v.key === key)) {
-              updatedVariables.push({ key, value, enabled: true });
+              updatedVariables.push({ key, value: '', currentValue: value, enabled: true });
             }
           });
           const updatedEnv = { ...activeEnv, variables: updatedVariables };
-          // Persist to disk so the variables are visible in the environment editor
-          // and available for future requests.
-          await saveEnvironment(updatedEnv);
+          // Persist current values to the local sidecar (never committed to git)
+          await updateCurrentValues(activeEnv.id, envOverrides);
           // Use the updated env for this request's variable substitution
           effectiveEnv = updatedEnv;
         }
@@ -147,8 +146,11 @@ export function RequestResponseView() {
       const isStreamingResponse = 'isStreaming' in response && response.isStreaming;
       if (formData.testScript?.trim() && !isStreamingResponse) {
         try {
-          const testResults = await runTestScript(formData.testScript, response as ProxyResponse, request, effectiveEnv);
+          const { testResults, envOverrides: testEnvOverrides } = await runTestScript(formData.testScript, response as ProxyResponse, request, effectiveEnv);
           setTabTestResults(tab.id, testResults);
+          if (effectiveEnv && Object.keys(testEnvOverrides).length > 0) {
+            await updateCurrentValues(effectiveEnv.id, testEnvOverrides);
+          }
           const passed = testResults.filter(r => r.passed).length;
           addConsoleLog({
             id: `test-${Date.now()}`,
@@ -200,7 +202,7 @@ export function RequestResponseView() {
     setTabTestResults,
     addConsoleLog,
     showAlert,
-    saveEnvironment,
+    updateCurrentValues,
   ]);
 
   const handleCancel = useCallback(() => {

@@ -143,7 +143,7 @@ export function VariableAwareInput({
         x: rect.left,
         y: rect.bottom + 5,
         variableKey: variable.key,
-        variableValue: variable.value,
+        variableValue: variable.currentValue ?? variable.value,
         isSecret: variable.isSecret === true,
       });
     }

@@ -15,7 +15,8 @@ export function substituteVariables(text: string, environment: Environment | nul
   for (const variable of environment.variables) {
     if (variable.enabled && variable.key) {
       const pattern = new RegExp(`{{\\s*${escapeRegExp(variable.key)}\\s*}}`, 'g');
-      result = result.replace(pattern, variable.value || '');
+      // currentValue (set by pre-request scripts) takes precedence over value (initial)
+      result = result.replace(pattern, variable.currentValue ?? variable.value ?? '');
     }
   }
   return result;
@@ -119,7 +120,11 @@ export function getUndefinedVariables(
 
   if (!environment) return Array.from(used);
 
-  const defined = new Set(environment.variables.filter(v => v.enabled && v.key).map(v => v.key));
+  const defined = new Set(
+    environment.variables
+      .filter(v => v.enabled && v.key && (v.currentValue !== undefined || v.value !== undefined))
+      .map(v => v.key),
+  );
   return Array.from(used).filter(v => !defined.has(v));
 }
 

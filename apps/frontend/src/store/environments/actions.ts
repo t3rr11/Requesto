@@ -147,3 +147,74 @@ export async function exportEnvironment(environmentId: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Persist runtime current-value overrides to the local sidecar file (never
+ * committed to git). Also updates the in-memory Zustand state so the UI
+ * reflects the new values immediately without a full reload.
+ */
+export async function updateCurrentValues(
+  set: SetState,
+  get: GetState,
+  envId: string,
+  overrides: Record<string, string>,
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/environments/${envId}/current-values`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ overrides }),
+  });
+  if (!res.ok) throw new Error('Failed to update current values');
+
+  // Reflect the change in the Zustand store immediately
+  const { environmentsData } = get();
+  const idx = environmentsData.environments.findIndex((e) => e.id === envId);
+  if (idx < 0) return;
+
+  const env = environmentsData.environments[idx];
+  const updatedVariables = env.variables.map((v) =>
+    Object.prototype.hasOwnProperty.call(overrides, v.key)
+      ? { ...v, currentValue: overrides[v.key] }
+      : v,
+  );
+  // Also add any newly-introduced keys as new variables (current-value only)
+  Object.entries(overrides).forEach(([key, value]) => {
+    if (!updatedVariables.some((v) => v.key === key)) {
+      updatedVariables.push({ key, value: '', currentValue: value, enabled: true });
+    }
+  });
+
+  const updated = [...environmentsData.environments];
+  updated[idx] = { ...env, variables: updatedVariables };
+  set({ environmentsData: { ...environmentsData, environments: updated } });
+}
+
+/**
+ * Reset all current-value overrides for an environment back to their initial
+ * values. Optionally scope to a single variable key.
+ */
+export async function resetCurrentValues(
+  set: SetState,
+  get: GetState,
+  envId: string,
+  key?: string,
+): Promise<void> {
+  const url = key
+    ? `${API_BASE}/environments/${envId}/current-values?key=${encodeURIComponent(key)}`
+    : `${API_BASE}/environments/${envId}/current-values`;
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Failed to reset current values');
+
+  const { environmentsData } = get();
+  const idx = environmentsData.environments.findIndex((e) => e.id === envId);
+  if (idx < 0) return;
+
+  const env = environmentsData.environments[idx];
+  const updatedVariables = key
+    ? env.variables.map((v) => (v.key === key ? { ...v, currentValue: undefined } : v))
+    : env.variables.map(({ currentValue: _removed, ...rest }) => rest);
+
+  const updated = [...environmentsData.environments];
+  updated[idx] = { ...env, variables: updatedVariables };
+  set({ environmentsData: { ...environmentsData, environments: updated } });
+}

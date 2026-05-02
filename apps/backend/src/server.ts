@@ -8,6 +8,7 @@ import { DATA_DIR, PORT, HOST, LOG_LEVEL, CORS_ORIGINS } from './config/index';
 // Repositories
 import { CollectionRepository } from './repositories/collection.repository';
 import { EnvironmentRepository } from './repositories/environment.repository';
+import { EnvironmentLocalRepository } from './repositories/environment-local.repository';
 import { OAuthRepository } from './repositories/oauth.repository';
 import { WorkspaceRepository } from './repositories/workspace.repository';
 import { HistoryRepository } from './repositories/history.repository';
@@ -44,12 +45,13 @@ const getLocalDir = () => workspaceRepo.getLocalDir();
 
 const collectionRepo = new CollectionRepository(getDataDir);
 const environmentRepo = new EnvironmentRepository(getDataDir);
+const environmentLocalRepo = new EnvironmentLocalRepository(getLocalDir);
 const oauthRepo = new OAuthRepository(getDataDir, getLocalDir);
 const historyRepo = new HistoryRepository(getLocalDir);
 
 // Instantiate service layer
 const collectionService = new CollectionService(collectionRepo);
-const environmentService = new EnvironmentService(environmentRepo);
+const environmentService = new EnvironmentService(environmentRepo, environmentLocalRepo);
 const historyService = new HistoryService(historyRepo);
 const oauthService = new OAuthService(oauthRepo);
 const proxyService = new ProxyService(environmentService, historyService, oauthService);

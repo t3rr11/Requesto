@@ -22,7 +22,7 @@ interface EnvironmentManagerDialogProps {
 }
 
 export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManagerDialogProps) {
-  const { environmentsData, loadEnvironments, saveEnvironment, updateEnvironment: storeUpdateEnvironment } =
+  const { environmentsData, loadEnvironments, saveEnvironment, updateEnvironment, updateCurrentValues, resetCurrentValues } =
     useEnvironmentStore();
   const { showAlert } = useAlertStore();
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
@@ -42,9 +42,7 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
     if (!isOpen) return;
     if (selectedEnvId && environmentsData.environments.some(e => e.id === selectedEnvId)) return;
 
-    const defaultId = environmentsData.activeEnvironmentId
-      ?? environmentsData.environments[0]?.id
-      ?? null;
+    const defaultId = environmentsData.activeEnvironmentId ?? environmentsData.environments[0]?.id ?? null;
     setSelectedEnvId(defaultId);
   }, [isOpen, environmentsData.environments, environmentsData.activeEnvironmentId, selectedEnvId]);
 
@@ -54,7 +52,7 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
     defaultValues: { variables: [] },
   });
 
-  const { control, reset, watch, getValues } = form;
+  const { control, reset, watch, getValues, setValue } = form;
 
   // Sync form with selected environment and snapshot the saved state
   useEffect(() => {
@@ -68,7 +66,7 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
 
   // Watch for real changes by comparing to saved snapshot
   useEffect(() => {
-    const subscription = watch((formValues) => {
+    const subscription = watch(formValues => {
       const current = JSON.stringify(formValues.variables ?? []);
       setHasChanges(current !== lastSavedRef.current);
     });
@@ -93,25 +91,36 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
     };
     try {
       await saveEnvironment(updatedEnv);
+
+      // Persist current-value overrides to the local sidecar.
+      // Build a map of key -> currentValue for every variable that has one set.
+      const overrides: Record<string, string> = {};
+      formData.variables.forEach(v => {
+        if (v.key && v.currentValue !== undefined && v.currentValue !== '') {
+          overrides[v.key] = v.currentValue;
+        }
+      });
+      await updateCurrentValues(selectedEnvironment.id, overrides);
+
       lastSavedRef.current = JSON.stringify(formData.variables);
       setHasChanges(false);
       showAlert('Environment saved', 'success');
     } catch {
       showAlert('Failed to save environment', 'error');
     }
-  }, [selectedEnvironment, getValues, saveEnvironment, showAlert]);
+  }, [selectedEnvironment, getValues, saveEnvironment, updateCurrentValues, showAlert]);
 
   const handleNameChange = useCallback(
     async (newName: string) => {
       if (!selectedEnvironment) return;
       try {
-        storeUpdateEnvironment({ ...selectedEnvironment, name: newName });
+        updateEnvironment({ ...selectedEnvironment, name: newName });
         await saveEnvironment({ ...selectedEnvironment, name: newName });
       } catch {
         showAlert('Failed to rename environment', 'error');
       }
     },
-    [selectedEnvironment, storeUpdateEnvironment, saveEnvironment, showAlert],
+    [selectedEnvironment, updateEnvironment, saveEnvironment, showAlert]
   );
 
   // Keyboard shortcut: Ctrl+S to save
@@ -161,7 +170,11 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
                 onSave={handleSave}
                 onNameChange={handleNameChange}
               />
-              <VariableEditor control={control} />
+              <VariableEditor
+                control={control}
+                setValue={setValue}
+                onResetCurrentValue={selectedEnvId ? key => resetCurrentValues(selectedEnvId, key) : undefined}
+              />
             </>
           ) : (
             <EmptyState

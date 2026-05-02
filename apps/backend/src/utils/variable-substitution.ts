@@ -15,7 +15,8 @@ export function substituteVariables(
   for (const variable of environment.variables) {
     if (variable.enabled) {
       const pattern = new RegExp(`{{\\s*${escapeRegex(variable.key)}\\s*}}`, 'g');
-      result = result.replace(pattern, variable.value);
+      // currentValue (set by pre-request scripts) takes precedence over value (initial)
+      result = result.replace(pattern, variable.currentValue ?? variable.value);
     }
   }
   return result;

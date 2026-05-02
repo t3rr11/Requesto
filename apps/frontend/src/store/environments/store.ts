@@ -14,6 +14,8 @@ type EnvironmentState = {
   updateEnvironment: (environment: Environment) => void;
   importEnvironment: (file: File) => Promise<Environment>;
   exportEnvironment: (environmentId: string) => Promise<void>;
+  updateCurrentValues: (envId: string, overrides: Record<string, string>) => Promise<void>;
+  resetCurrentValues: (envId: string, key?: string) => Promise<void>;
 };
 
 export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
@@ -46,4 +48,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   importEnvironment: (file) => actions.importEnvironment(set, file),
   exportEnvironment: (environmentId) => actions.exportEnvironment(environmentId),
+  updateCurrentValues: (envId, overrides) => actions.updateCurrentValues(set, get, envId, overrides),
+  resetCurrentValues: (envId, key) => actions.resetCurrentValues(set, get, envId, key),
 }));
