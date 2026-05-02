@@ -3,11 +3,15 @@ import * as path from 'path';
 import { isDev } from './constants';
 import { state } from './state';
 import { createAppMenu } from './appMenu';
+import { getInitialWindowState, attachWindowStateHandler } from './windowStateManager';
 
 export function createWindow(): void {
+  const windowState = getInitialWindowState();
+
   state.mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
+    width: windowState.width,
+    height: windowState.height,
+    ...(windowState.hasPosition ? { x: windowState.x, y: windowState.y } : {}),
     minWidth: 800,
     minHeight: 600,
     icon: path.join(__dirname, '../../../frontend/public/logo.png'),
@@ -35,8 +39,14 @@ export function createWindow(): void {
     return { action: 'allow' };
   });
 
-  // Show window when ready
+  // Persist size/position changes
+  attachWindowStateHandler(state.mainWindow);
+
+  // Show window when ready, restoring maximized state if applicable
   state.mainWindow.once('ready-to-show', () => {
+    if (windowState.isMaximized) {
+      state.mainWindow?.maximize();
+    }
     state.mainWindow?.show();
   });
 

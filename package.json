@@ -1,6 +1,6 @@
 {
   "name": "requesto",
-  "version": "1.5.9",
+  "version": "1.5.10",
   "author": "Matthew Allen",
   "description": "A lightweight, self-hosted API client",
   "private": true,

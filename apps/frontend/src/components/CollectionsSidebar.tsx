@@ -3,6 +3,7 @@ import { Folder as FolderIcon, FolderPlus, Import, Search, X, FileText, Braces }
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useUIStore } from '../store/ui/store';
+import { useGitStore } from '../store/git/store';
 import { useCollectionsStore } from '../store/collections/store';
 import { useAlertStore } from '../store/alert/store';
 import { getMethodColor } from '../helpers/collections';
@@ -57,8 +58,10 @@ export function CollectionsSidebar() {
     gitPanelHeight,
     toggleGitPanel,
     setGitPanelHeight,
+    setGitPanelOpen,
     clearSelection,
   } = useUIStore();
+  const { isRepo } = useGitStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeId, setActiveId] = useState<string | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -67,6 +70,13 @@ export function CollectionsSidebar() {
   const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest } =
     useCollectionsStore();
   const { showAlert } = useAlertStore();
+
+  // Close the git panel when switching to a workspace that isn't a git repo
+  useEffect(() => {
+    if (!isRepo && isGitPanelOpen) {
+      setGitPanelOpen(false);
+    }
+  }, [isRepo, isGitPanelOpen, setGitPanelOpen]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
