@@ -9,11 +9,13 @@ import {
   Download,
   Copy,
 } from 'lucide-react';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Folder, Collection, SavedRequest } from '../store/collections/types';
 import { useCollectionsStore } from '../store/collections/store';
 import { useUIStore } from '../store/ui/store';
 import { useAlertStore } from '../store/alert/store';
-import { getMethodColor } from '../helpers/collections';
+import { RequestItem } from './RequestItem';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -24,7 +26,6 @@ import { useItemActions } from '../hooks/useItemActions';
 interface FolderItemProps {
   folder: Folder;
   collection: Collection;
-  depth: number;
   searchQuery?: string;
   onRenameRequest: (request: SavedRequest) => void;
   onRenameFolder: (collectionId: string, folderId: string, folderName: string) => void;
@@ -34,13 +35,12 @@ interface FolderItemProps {
 export function FolderItem({
   folder,
   collection,
-  depth,
   searchQuery,
   onRenameRequest,
   onRenameFolder,
   onCreateFolder,
 }: FolderItemProps) {
-  const { moveRequest, moveFolder, exportRequest, exportFolder } = useCollectionsStore();
+  const { moveFolder, exportRequest, exportFolder } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { expandedFolders, toggleFolder, selectedRequestIds, toggleRequestSelection, clearSelection } = useUIStore();
 
@@ -63,31 +63,21 @@ export function FolderItem({
 
   const {
     isDragOver,
-    dragOverIndex,
     handleDragOver,
     handleDragLeave,
     handleDrop,
-    handleDragOverIndex,
-    handleDragLeaveIndex,
-    handleDropAtIndex,
-    createRequestDragHandlers,
     createFolderDragHandlers,
   } = useItemDragDrop({
-    onDropRequest: async (collectionId, requestId, targetOrder) => {
-      await moveRequest(collectionId, requestId, collection.id, folder.id, targetOrder);
-      clearSelection();
-    },
     onDropFolder: async (collectionId, folderId) => {
       if (folderId !== folder.id) {
         await moveFolder(collectionId, folderId, collection.id, folder.id);
       }
     },
-    onDropMultipleRequests: async (requests, targetOrder) => {
-      for (const req of requests) {
-        await moveRequest(req.collectionId, req.requestId, collection.id, folder.id, targetOrder);
-      }
-      clearSelection();
-    },
+  });
+
+  const { setNodeRef: setFolderDropRef, isOver: isRequestDragOver } = useDroppable({
+    id: folder.id,
+    data: { type: 'folder', collectionId: collection.id, folderId: folder.id },
   });
 
   const handleRenameRequestFromContext = () => {
@@ -208,17 +198,16 @@ export function FolderItem({
   const childFolders = filteredChildFolders;
   const folderRequests = filteredFolderRequests;
   const isExpanded = isSearching || expandedFolders.has(folder.id);
-  const paddingLeft = `${(depth + 1) * 16 + 16}px`;
   const allRequestIds = folderRequests.map(r => r.id);
 
   return (
     <div>
       <div
         data-folder-item
-        className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
-          isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
+        ref={setFolderDropRef}
+        className={`pl-3 pr-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
+          isDragOver || isRequestDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
-        style={{ paddingLeft }}
         onClick={() => toggleFolder(folder.id)}
         onContextMenu={e => openFolderContextMenu(e, collection.id, folder.id, folder.name)}
         {...createFolderDragHandlers(folder.id, collection.id)}
@@ -247,13 +236,12 @@ export function FolderItem({
       </div>
 
       {isExpanded && (
-        <div>
+        <div className="ml-4 border-l border-gray-200 dark:border-gray-700">
           {childFolders.map(childFolder => (
             <FolderItem
               key={childFolder.id}
               folder={childFolder}
               collection={collection}
-              depth={depth + 1}
               searchQuery={searchQuery}
               onRenameRequest={onRenameRequest}
               onRenameFolder={onRenameFolder}
@@ -261,21 +249,16 @@ export function FolderItem({
             />
           ))}
 
-          {folderRequests.map((request, index) => (
-            <div key={request.id}>
-              <div
-                className={`transition-all ${dragOverIndex === index ? 'bg-blue-400 h-1' : 'h-0'}`}
-                onDragOver={e => handleDragOverIndex(e, index)}
-                onDragLeave={handleDragLeaveIndex}
-                onDrop={e => handleDropAtIndex(e, index)}
-              />
-              <div
-                data-request-item
-                className={`px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
-                  activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
-                } ${selectedRequestIds.has(request.id) ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''}`}
-                style={{ paddingLeft: `${(depth + 2) * 16 + 16}px` }}
-                onClick={e => {
+          <SortableContext items={folderRequests.map(r => r.id)} strategy={verticalListSortingStrategy}>
+            {folderRequests.map(request => (
+              <RequestItem
+                key={request.id}
+                request={request}
+                collectionId={collection.id}
+
+                isActive={activeSavedRequestId === request.id}
+                isSelected={selectedRequestIds.has(request.id)}
+                onSelect={e => {
                   if (e.ctrlKey || e.metaKey) {
                     toggleRequestSelection(request.id, true, false);
                   } else if (e.shiftKey) {
@@ -286,33 +269,10 @@ export function FolderItem({
                   }
                 }}
                 onContextMenu={e => openRequestContextMenu(e, request)}
-                {...createRequestDragHandlers(request.id, collection.id)}
-              >
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <FileText className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
-                  <span className={`text-xs font-medium ${getMethodColor(request.method)} min-w-11.25`}>
-                    {request.method}
-                  </span>
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
-                </div>
-                <button
-                  onClick={e => handleDeleteRequest(collection.id, request.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
-                  title="Delete Request"
-                >
-                  <Trash2 className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                </button>
-              </div>
-              {index === folderRequests.length - 1 && (
-                <div
-                  className={`transition-all ${dragOverIndex === index + 1 ? 'bg-blue-400 h-1' : 'h-0'}`}
-                  onDragOver={e => handleDragOverIndex(e, index + 1)}
-                  onDragLeave={handleDragLeaveIndex}
-                  onDrop={e => handleDropAtIndex(e, index + 1)}
-                />
-              )}
-            </div>
-          ))}
+                onDelete={e => handleDeleteRequest(collection.id, request.id, e)}
+              />
+            ))}
+          </SortableContext>
         </div>
       )}
 

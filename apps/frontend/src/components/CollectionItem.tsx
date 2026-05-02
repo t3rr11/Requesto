@@ -1,4 +1,19 @@
 import React, { useMemo, useState } from 'react';
+import type { Collection, SavedRequest, SyncPreviewResult } from '../store/collections/types';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useCollectionsStore } from '../store/collections/store';
+import { useUIStore } from '../store/ui/store';
+import { useAlertStore } from '../store/alert/store';
+import { FolderItem } from './FolderItem';
+import { RequestItem } from './RequestItem';
+import { Button } from './Button';
+import { ContextMenu } from './ContextMenu';
+import { ConfirmDialog } from './ConfirmDialog';
+import { SyncPreviewDialog } from './SyncPreviewDialog';
+import { useItemContextMenu } from '../hooks/useItemContextMenu';
+import { useItemDragDrop } from '../hooks/useItemDragDrop';
+import { useItemActions } from '../hooks/useItemActions';
 import {
   ChevronRight,
   ChevronDown,
@@ -12,19 +27,6 @@ import {
   Unlink,
   Copy,
 } from 'lucide-react';
-import type { Collection, SavedRequest, SyncPreviewResult } from '../store/collections/types';
-import { useCollectionsStore } from '../store/collections/store';
-import { useUIStore } from '../store/ui/store';
-import { useAlertStore } from '../store/alert/store';
-import { FolderItem } from './FolderItem';
-import { getMethodColor } from '../helpers/collections';
-import { Button } from './Button';
-import { ContextMenu } from './ContextMenu';
-import { ConfirmDialog } from './ConfirmDialog';
-import { SyncPreviewDialog } from './SyncPreviewDialog';
-import { useItemContextMenu } from '../hooks/useItemContextMenu';
-import { useItemDragDrop } from '../hooks/useItemDragDrop';
-import { useItemActions } from '../hooks/useItemActions';
 
 interface CollectionItemProps {
   collection: Collection;
@@ -43,7 +45,7 @@ export function CollectionItem({
   onRenameFolder,
   onCreateFolder,
 }: CollectionItemProps) {
-  const { moveRequest, exportCollection, exportRequest, syncPreview, syncApply, unlinkSpec } = useCollectionsStore();
+  const { exportCollection, exportRequest, syncPreview, syncApply, unlinkSpec } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const { expandedCollections, toggleCollection, selectedRequestIds, toggleRequestSelection, clearSelection } =
     useUIStore();
@@ -71,30 +73,20 @@ export function CollectionItem({
 
   const {
     isDragOver,
-    dragOverIndex,
     handleDragOver,
     handleDragLeave,
-    handleDragOverIndex,
-    handleDragLeaveIndex,
-    handleDropAtIndex,
-    createRequestDragHandlers,
   } = useItemDragDrop({
-    onDropRequest: async (collectionId, requestId, targetOrder) => {
-      await moveRequest(collectionId, requestId, collection.id, undefined, targetOrder);
-      clearSelection();
-    },
     onDropFolder: async (collectionId, folderId) => {
       if (folderId !== collection.id) {
         const { moveFolder } = useCollectionsStore.getState();
         await moveFolder(collectionId, folderId, collection.id, undefined);
       }
     },
-    onDropMultipleRequests: async (requests, targetOrder) => {
-      for (const req of requests) {
-        await moveRequest(req.collectionId, req.requestId, collection.id, undefined, targetOrder);
-      }
-      clearSelection();
-    },
+  });
+
+  const { setNodeRef: setCollectionDropRef, isOver: isRequestDragOver } = useDroppable({
+    id: collection.id,
+    data: { type: 'collection-root', collectionId: collection.id, folderId: undefined },
   });
 
   const isExpanded = expandedCollections.has(collection.id);
@@ -133,16 +125,7 @@ export function CollectionItem({
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const dragType = e.dataTransfer.types.find(t => t.startsWith('application/'));
-    if (dragType === 'application/request') {
-      const data = JSON.parse(e.dataTransfer.getData('application/request'));
-      if (data.isMultiSelect) {
-        for (const req of data.requests) await moveRequest(req.collectionId, req.requestId, collection.id, undefined);
-        clearSelection();
-      } else {
-        await moveRequest(data.collectionId, data.requestId, collection.id, undefined);
-      }
-    } else if (dragType === 'application/folder') {
+    if (e.dataTransfer.types.includes('application/folder')) {
       const data = JSON.parse(e.dataTransfer.getData('application/folder'));
       if (data.folderId !== collection.id) {
         const { moveFolder } = useCollectionsStore.getState();
@@ -282,8 +265,9 @@ export function CollectionItem({
   return (
     <div className="mb-1">
       <div
+        ref={setCollectionDropRef}
         className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
-          isDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
+          isDragOver || isRequestDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
         onClick={() => toggleCollection(collection.id)}
         onContextMenu={e => openCollectionContextMenu(e, collection.id, collection.name)}
@@ -315,13 +299,12 @@ export function CollectionItem({
       </div>
 
       {showExpanded && (
-        <div>
+        <div className="ml-4 border-l border-gray-200 dark:border-gray-700">
           {rootFolders.map(folder => (
             <FolderItem
               key={folder.id}
               folder={folder}
               collection={collection}
-              depth={0}
               searchQuery={searchQuery}
               onRenameRequest={onRenameRequest}
               onRenameFolder={onRenameFolder}
@@ -330,23 +313,17 @@ export function CollectionItem({
           ))}
 
           {rootRequests.length === 0 && rootFolders.length === 0 ? (
-            <div className="px-4 py-2 text-xs text-gray-400 italic ml-6">No requests yet</div>
+            <div className="pl-3 pr-4 py-2 text-xs text-gray-400 italic">No requests yet</div>
           ) : (
-            rootRequests.map((request, index) => (
-              <div key={request.id}>
-                <div
-                  className={`transition-all ${dragOverIndex === index ? 'bg-blue-400 h-1' : 'h-0'}`}
-                  onDragOver={e => handleDragOverIndex(e, index)}
-                  onDragLeave={handleDragLeaveIndex}
-                  onDrop={e => handleDropAtIndex(e, index)}
-                />
-                <div
-                  data-request-item
-                  className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
-                    activeSavedRequestId === request.id ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
-                  } ${selectedRequestIds.has(request.id) ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''}`}
-                  style={{ paddingLeft: '32px' }}
-                  onClick={e => {
+            <SortableContext items={rootRequests.map(r => r.id)} strategy={verticalListSortingStrategy}>
+              {rootRequests.map(request => (
+                <RequestItem
+                  key={request.id}
+                  request={request}
+                  collectionId={collection.id}
+                  isActive={activeSavedRequestId === request.id}
+                  isSelected={selectedRequestIds.has(request.id)}
+                  onSelect={e => {
                     if (e.ctrlKey || e.metaKey) {
                       toggleRequestSelection(request.id, true, false);
                     } else if (e.shiftKey) {
@@ -357,33 +334,10 @@ export function CollectionItem({
                     }
                   }}
                   onContextMenu={e => openRequestContextMenu(e, request)}
-                  {...createRequestDragHandlers(request.id, collection.id)}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
-                    <span className={`text-xs font-medium ${getMethodColor(request.method)} min-w-11.25`}>
-                      {request.method}
-                    </span>
-                    <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{request.name}</span>
-                  </div>
-                  <button
-                    onClick={e => handleDeleteRequest(collection.id, request.id, e)}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-all"
-                    title="Delete Request"
-                  >
-                    <Trash2 className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                  </button>
-                </div>
-                {index === rootRequests.length - 1 && (
-                  <div
-                    className={`transition-all ${dragOverIndex === index + 1 ? 'bg-blue-400 h-1' : 'h-0'}`}
-                    onDragOver={e => handleDragOverIndex(e, index + 1)}
-                    onDragLeave={handleDragLeaveIndex}
-                    onDrop={e => handleDropAtIndex(e, index + 1)}
-                  />
-                )}
-              </div>
-            ))
+                  onDelete={e => handleDeleteRequest(collection.id, request.id, e)}
+                />
+              ))}
+            </SortableContext>
           )}
         </div>
       )}

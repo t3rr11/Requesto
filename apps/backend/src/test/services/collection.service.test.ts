@@ -215,7 +215,7 @@ describe('CollectionService', () => {
 
   describe('moveRequest', () => {
     it('throws notFound when source collection not found', async () => {
-      const repo = mockRepo({ getById: vi.fn().mockResolvedValue(null) });
+      const repo = mockRepo({ getAll: vi.fn().mockResolvedValue([]) });
       const service = new CollectionService(repo);
       await expect(service.moveRequest({
         sourceCollectionId: 'col-1',
@@ -225,8 +225,8 @@ describe('CollectionService', () => {
     });
 
     it('throws notFound when request not found in source', async () => {
-      const col = makeCollection({ requests: [] });
-      const repo = mockRepo({ getById: vi.fn().mockResolvedValue(col) });
+      const col = makeCollection({ id: 'col-1', requests: [] });
+      const repo = mockRepo({ getAll: vi.fn().mockResolvedValue([col]) });
       const service = new CollectionService(repo);
       await expect(service.moveRequest({
         sourceCollectionId: 'col-1',
@@ -240,16 +240,10 @@ describe('CollectionService', () => {
       const sourceCol = makeCollection({ id: 'col-1', requests: [req] });
       const targetCol = makeCollection({ id: 'col-2', requests: [] });
 
-      const getByIdFn = vi.fn()
-        .mockResolvedValueOnce(sourceCol)   // source lookup
-        .mockResolvedValueOnce(targetCol)   // target lookup (after delete)
-        .mockResolvedValueOnce(targetCol);  // saveAll reload
-
-      const savedReq = { ...req, collectionId: 'col-2' };
+      const saveAllFn = vi.fn().mockResolvedValue(undefined);
       const repo = mockRepo({
-        getById: getByIdFn,
-        deleteRequest: vi.fn().mockResolvedValue(true),
-        addRequest: vi.fn().mockResolvedValue(savedReq),
+        getAll: vi.fn().mockResolvedValue([sourceCol, targetCol]),
+        saveAll: saveAllFn,
       });
 
       const service = new CollectionService(repo);
@@ -260,7 +254,7 @@ describe('CollectionService', () => {
       });
 
       expect(result.collectionId).toBe('col-2');
-      expect(repo.deleteRequest).toHaveBeenCalledWith('col-1', 'req-1');
+      expect(saveAllFn).toHaveBeenCalledTimes(1);
     });
 
     it('assigns order 0 when target is empty', async () => {
@@ -268,25 +262,20 @@ describe('CollectionService', () => {
       const sourceCol = makeCollection({ id: 'col-1', requests: [req] });
       const targetCol = makeCollection({ id: 'col-2', requests: [] });
 
-      const getByIdFn = vi.fn()
-        .mockResolvedValueOnce(sourceCol)
-        .mockResolvedValueOnce(targetCol);
-
-      const addReqFn = vi.fn().mockImplementation(async (_id: string, r: SavedRequest) => r);
+      const saveAllFn = vi.fn().mockResolvedValue(undefined);
       const repo = mockRepo({
-        getById: getByIdFn,
-        deleteRequest: vi.fn().mockResolvedValue(true),
-        addRequest: addReqFn,
+        getAll: vi.fn().mockResolvedValue([sourceCol, targetCol]),
+        saveAll: saveAllFn,
       });
 
       const service = new CollectionService(repo);
-      await service.moveRequest({ sourceCollectionId: 'col-1', requestId: 'req-1', targetCollectionId: 'col-2' });
+      const result = await service.moveRequest({ sourceCollectionId: 'col-1', requestId: 'req-1', targetCollectionId: 'col-2' });
 
-      const addedReq = addReqFn.mock.calls[0][1] as SavedRequest;
-      expect(addedReq.order).toBe(0);
+      expect(result.order).toBe(0);
+      expect(saveAllFn).toHaveBeenCalledTimes(1);
     });
 
-    it('shifts existing requests when targetOrder is specified', async () => {
+    it('inserts at targetOrder and re-normalises sequential order values', async () => {
       const req1 = makeRequest({ id: 'req-1', collectionId: 'col-1', order: 0 });
       const req2 = makeRequest({ id: 'req-2', collectionId: 'col-1', order: 1 });
       const srcReq = makeRequest({ id: 'req-src', collectionId: 'col-src' });
@@ -294,29 +283,86 @@ describe('CollectionService', () => {
       const sourceCol = makeCollection({ id: 'col-src', requests: [srcReq] });
       const targetCol = makeCollection({ id: 'col-1', requests: [req1, req2] });
 
-      const getByIdFn = vi.fn()
-        .mockResolvedValueOnce(sourceCol)
-        .mockResolvedValueOnce(targetCol);
-
-      const updateReqFn = vi.fn().mockResolvedValue({});
-      const addReqFn = vi.fn().mockImplementation(async (_id: string, r: SavedRequest) => r);
+      const saveAllFn = vi.fn().mockResolvedValue(undefined);
       const repo = mockRepo({
-        getById: getByIdFn,
-        deleteRequest: vi.fn().mockResolvedValue(true),
-        updateRequest: updateReqFn,
-        addRequest: addReqFn,
+        getAll: vi.fn().mockResolvedValue([sourceCol, targetCol]),
+        saveAll: saveAllFn,
       });
 
       const service = new CollectionService(repo);
-      await service.moveRequest({
+      const result = await service.moveRequest({
         sourceCollectionId: 'col-src',
         requestId: 'req-src',
         targetCollectionId: 'col-1',
         targetOrder: 0,
       });
 
-      // Both existing requests have order >= 0 and should be shifted
-      expect(updateReqFn).toHaveBeenCalledTimes(2);
+      // Inserted at position 0; existing items shift to 1, 2
+      expect(result.order).toBe(0);
+      expect(req1.order).toBe(1);
+      expect(req2.order).toBe(2);
+      expect(saveAllFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('correctly inserts when existing orders are non-sequential', async () => {
+      const req1 = makeRequest({ id: 'req-1', collectionId: 'col-1', order: 0 });
+      const req2 = makeRequest({ id: 'req-2', collectionId: 'col-1', order: 5 });
+      const req3 = makeRequest({ id: 'req-3', collectionId: 'col-1', order: 10 });
+      const srcReq = makeRequest({ id: 'req-src', collectionId: 'col-src' });
+
+      const sourceCol = makeCollection({ id: 'col-src', requests: [srcReq] });
+      const targetCol = makeCollection({ id: 'col-1', requests: [req1, req2, req3] });
+
+      const saveAllFn = vi.fn().mockResolvedValue(undefined);
+      const repo = mockRepo({
+        getAll: vi.fn().mockResolvedValue([sourceCol, targetCol]),
+        saveAll: saveAllFn,
+      });
+
+      const service = new CollectionService(repo);
+      const result = await service.moveRequest({
+        sourceCollectionId: 'col-src',
+        requestId: 'req-src',
+        targetCollectionId: 'col-1',
+        targetOrder: 1, // insert between req1 and req2 (visual index 1)
+      });
+
+      // After normalisation: req1=0, srcReq=1, req2=2, req3=3
+      expect(req1.order).toBe(0);
+      expect(result.order).toBe(1);
+      expect(req2.order).toBe(2);
+      expect(req3.order).toBe(3);
+    });
+
+    it('same-slot reorder: dragging first item to second-to-last position places it correctly', async () => {
+      // [A, B, C, D] — drag A to targetOrder=3 (between C and D, as seen in the full list).
+      // After removal, the adjusted index should be 2, yielding [B, C, A, D].
+      const reqA = makeRequest({ id: 'req-a', collectionId: 'col-1', order: 0 });
+      const reqB = makeRequest({ id: 'req-b', collectionId: 'col-1', order: 1 });
+      const reqC = makeRequest({ id: 'req-c', collectionId: 'col-1', order: 2 });
+      const reqD = makeRequest({ id: 'req-d', collectionId: 'col-1', order: 3 });
+
+      const col = makeCollection({ id: 'col-1', requests: [reqA, reqB, reqC, reqD] });
+
+      const saveAllFn = vi.fn().mockResolvedValue(undefined);
+      const repo = mockRepo({
+        getAll: vi.fn().mockResolvedValue([col]),
+        saveAll: saveAllFn,
+      });
+
+      const service = new CollectionService(repo);
+      const result = await service.moveRequest({
+        sourceCollectionId: 'col-1',
+        requestId: 'req-a',
+        targetCollectionId: 'col-1',
+        targetOrder: 2, // @dnd-kit sends the desired final index: A ends up at 2 → [B, C, A, D]
+      });
+
+      // Expected order: [B=0, C=1, A=2, D=3]
+      expect(reqB.order).toBe(0);
+      expect(reqC.order).toBe(1);
+      expect(result.order).toBe(2);
+      expect(reqD.order).toBe(3);
     });
   });
 

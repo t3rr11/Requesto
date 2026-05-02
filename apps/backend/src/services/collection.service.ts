@@ -201,7 +201,9 @@ export class CollectionService {
   async moveRequest(params: MoveRequestParams): Promise<SavedRequest> {
     const { sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder } = params;
 
-    const sourceCollection = await this.repo.getById(sourceCollectionId);
+    const allCollections = await this.repo.getAll();
+
+    const sourceCollection = allCollections.find((c) => c.id === sourceCollectionId);
     if (!sourceCollection) {
       throw AppError.notFound('Source collection not found');
     }
@@ -211,38 +213,48 @@ export class CollectionService {
       throw AppError.notFound('Request not found');
     }
 
-    await this.repo.deleteRequest(sourceCollectionId, requestId);
+    // Remove from source in-memory (handles same-collection moves correctly
+    // because source and target will be the same object reference).
+    sourceCollection.requests = sourceCollection.requests.filter((r) => r.id !== requestId);
 
-    const targetCollection = await this.repo.getById(targetCollectionId);
+    const targetCollection = allCollections.find((c) => c.id === targetCollectionId);
     if (!targetCollection) {
       throw AppError.notFound('Target collection not found');
     }
 
-    let order = targetOrder;
-    if (order === undefined) {
-      const targetRequests = targetCollection.requests.filter((r) => r.folderId === targetFolderId);
-      order = targetRequests.length > 0 ? Math.max(...targetRequests.map((r) => r.order || 0)) + 1 : 0;
-    } else {
-      const targetRequests = targetCollection.requests.filter((r) => r.folderId === targetFolderId);
-      for (const req of targetRequests) {
-        if ((req.order || 0) >= order) {
-          await this.repo.updateRequest(targetCollectionId, req.id, { order: (req.order || 0) + 1 });
-        }
-      }
-    }
+    // Gather and sort existing requests in the target slot (folder or collection root).
+    const slotRequests = targetCollection.requests
+      .filter((r) => r.folderId === targetFolderId)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
     const movedRequest: SavedRequest = {
       ...requestToMove,
       collectionId: targetCollectionId,
       folderId: targetFolderId,
-      order
+      order: 0, // will be normalised below
     };
 
-    const saved = await this.repo.addRequest(targetCollectionId, movedRequest);
-    if (!saved) {
-      throw AppError.notFound('Target collection not found');
-    }
-    return saved;
+    // Insert at the requested position (clamped), then re-normalise to 0-based sequential order.
+    // The caller sends the desired final index of the moved item in the target slot's sorted array,
+    // which equals the insert position in the remaining (post-removal) list.
+    const insertAt =
+      targetOrder !== undefined
+        ? Math.max(0, Math.min(targetOrder, slotRequests.length))
+        : slotRequests.length;
+
+    slotRequests.splice(insertAt, 0, movedRequest);
+    slotRequests.forEach((r, i) => {
+      r.order = i;
+    });
+
+    // Replace the target slot's requests with the re-normalised set.
+    targetCollection.requests = [
+      ...targetCollection.requests.filter((r) => r.folderId !== targetFolderId),
+      ...slotRequests,
+    ];
+
+    await this.repo.saveAll(allCollections);
+    return movedRequest;
   }
 
   async moveFolder(params: MoveFolderParams): Promise<Folder> {
