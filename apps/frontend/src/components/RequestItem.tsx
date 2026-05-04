@@ -43,7 +43,7 @@ export function RequestItem({
     <div
       ref={setNodeRef}
       data-request-item
-      className={`py-2 pl-3 pr-4 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
+      className={`py-2 pl-6 pr-4 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
         isActive || isSelected ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
       }`}
       style={style}

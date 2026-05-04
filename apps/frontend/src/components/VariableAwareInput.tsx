@@ -1,11 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useEnvironmentStore } from '../store/environments/store';
-import { extractVariableNames } from '../helpers/environment';
 import { useVariableDetection } from '../hooks/useVariableDetection';
 import { VariableHighlight } from './variable-input/VariableHighlight';
 import { VariableSuggestions } from './variable-input/VariableSuggestions';
 import { VariableTooltip } from './variable-input/VariableTooltip';
-import { VariableBadge } from './variable-input/VariableBadge';
 
 interface VariableAwareInputProps {
   value: string;
@@ -73,10 +71,6 @@ export function VariableAwareInput({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [manualSuggestions]);
-
-  const usedVariables = extractVariableNames(value);
-  const definedVariableKeys = new Set(enabledVariables.map(v => v.key));
-  const hasUndefinedVariables = usedVariables.some(v => !definedVariableKeys.has(v));
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -202,8 +196,6 @@ export function VariableAwareInput({
         onVariableLeave={handleVariableLeave}
         onVariableClick={handleVariableClick}
       />
-
-      <VariableBadge variableCount={usedVariables.length} hasUndefinedVariables={hasUndefinedVariables} />
 
       <VariableTooltip
         show={tooltip.show}
