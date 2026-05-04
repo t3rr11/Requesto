@@ -134,19 +134,6 @@ async function sendStreamingRequestApi(
   });
 
   const res = await withOAuthRetry(doFetch);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    let errorMessage = `HTTP error! status: ${res.status}`;
-    if (text) {
-      try {
-        const parsed = JSON.parse(text);
-        errorMessage = parsed.message || parsed.error || text;
-      } catch {
-        errorMessage = text;
-      }
-    }
-    throw new Error(errorMessage);
-  }
 
   const headers: Record<string, string> = {};
   res.headers.forEach((value, key) => {

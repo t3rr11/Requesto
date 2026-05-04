@@ -1,18 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTabsStore } from '../store/tabs/store';
@@ -31,8 +20,31 @@ interface SortableTabProps {
   onAuxClick: (e: React.MouseEvent) => void;
 }
 
-function SortableTab({ tabId, label, isActive, isDirty, isTouched, onActivate, onDoubleClick, onClose, onAuxClick }: SortableTabProps) {
+function SortableTab({
+  tabId,
+  label,
+  isActive,
+  isDirty,
+  isTouched,
+  onActivate,
+  onDoubleClick,
+  onClose,
+  onAuxClick,
+}: SortableTabProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tabId });
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [marqueeOffset, setMarqueeOffset] = useState(0);
+
+  const handleMouseEnter = () => {
+    const el = labelRef.current;
+    if (!el) return;
+    const overflow = el.scrollWidth - el.clientWidth;
+    setMarqueeOffset(overflow > 0 ? overflow : 0);
+  };
+
+  const handleMouseLeave = () => {
+    setMarqueeOffset(0);
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -50,20 +62,39 @@ function SortableTab({ tabId, label, isActive, isDirty, isTouched, onActivate, o
       onClick={onActivate}
       onAuxClick={onAuxClick}
       onDoubleClick={onDoubleClick}
-      onMouseDown={e => { if (e.button === 1) e.preventDefault(); }}
+      onMouseDown={e => {
+        if (e.button === 1) e.preventDefault();
+      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className={`group flex items-center gap-2 px-4 border-r border-gray-300 dark:border-gray-600 cursor-grab active:cursor-grabbing transition-colors shrink-0 min-w-30 max-w-50 h-full text-sm whitespace-nowrap select-none ${
         isActive
           ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-b-2 border-b-blue-500 dark:border-b-blue-700'
           : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
       }`}
     >
-      <span className="flex-1 truncate flex items-center gap-1">
+      <span className="flex-1 flex items-center gap-1 overflow-hidden">
         {isDirty && (
-          <span className="text-orange-500 dark:text-orange-400 font-bold text-xs" title="Unsaved changes">
+          <span className="text-orange-500 dark:text-orange-400 font-bold text-xs shrink-0" title="Unsaved changes">
             ●
           </span>
         )}
-        <span className={`truncate ${!isTouched ? 'italic' : 'not-italic'}`}>{label}</span>
+        <span className="flex-1 overflow-hidden">
+          <span
+            ref={labelRef}
+            className={`block ${marqueeOffset > 0 ? 'whitespace-nowrap' : 'truncate'} ${!isTouched ? 'italic' : 'not-italic'}`}
+            style={
+              marqueeOffset > 0
+                ? ({
+                    '--marquee-distance': `-${marqueeOffset}px`,
+                    animation: `marquee-scroll ${Math.max(1.5, marqueeOffset / 40)}s linear 0.5s infinite alternate`,
+                  } as React.CSSProperties)
+                : undefined
+            }
+          >
+            {label}
+          </span>
+        </span>
       </span>
       <button
         onClick={onClose}
@@ -77,25 +108,14 @@ function SortableTab({ tabId, label, isActive, isDirty, isTouched, onActivate, o
 }
 
 export function TabsBar() {
-  const {
-    tabs,
-    tabOrder,
-    activeTabId,
-    activateTab,
-    touchTab,
-    closeTab,
-    openNewTab,
-    reorderTabs,
-  } = useTabsStore();
+  const { tabs, tabOrder, activeTabId, activateTab, touchTab, closeTab, openNewTab, reorderTabs } = useTabsStore();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [pendingCloseTabId, setPendingCloseTabId] = useState<string | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current;
@@ -152,7 +172,7 @@ export function TabsBar() {
         closeTab(tabId);
       }
     },
-    [tabs, closeTab],
+    [tabs, closeTab]
   );
 
   const handleDragEnd = useCallback(
@@ -172,7 +192,7 @@ export function TabsBar() {
       newOrder.splice(newIndex, 0, active.id as string);
       reorderTabs(newOrder);
     },
-    [tabOrder, reorderTabs, touchTab],
+    [tabOrder, reorderTabs, touchTab]
   );
 
   const scroll = (direction: 'left' | 'right') => {
@@ -182,14 +202,16 @@ export function TabsBar() {
     });
   };
 
-  const orderedTabs = useMemo(
-    () => tabOrder.map(id => tabs[id]).filter(Boolean),
-    [tabOrder, tabs],
-  );
+  const orderedTabs = useMemo(() => tabOrder.map(id => tabs[id]).filter(Boolean), [tabOrder, tabs]);
 
   return (
     <>
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToHorizontalAxis]}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        modifiers={[restrictToHorizontalAxis]}
+      >
         <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-300 dark:border-gray-600 flex items-center h-10 shrink-0">
           {canScrollLeft && (
             <button

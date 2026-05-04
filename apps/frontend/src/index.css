@@ -25,6 +25,11 @@ button {
   cursor: pointer;
 }
 
+@keyframes marquee-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(var(--marquee-distance, 0px)); }
+}
+
 /* Utility: hide scrollbar (use !important to override global * scrollbar rules) */
 .scrollbar-hide::-webkit-scrollbar {
   display: none !important;
