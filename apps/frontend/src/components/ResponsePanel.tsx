@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react';
-import { Loader2, AlertTriangle, Send } from 'lucide-react';
-import { getStatusBadgeColor, formatBytes } from '../helpers/response';
+import { Loader2, AlertTriangle, Send, Download } from 'lucide-react';
+import { getStatusBadgeColor, formatBytes, downloadResponseBody } from '../helpers/response';
 import { ResponseBody } from './response/ResponseBody';
 import { ResponseHeaders } from './response/ResponseHeaders';
 import { ResponseTests } from './response/ResponseTests';
@@ -16,6 +16,7 @@ interface ResponsePanelProps {
   error: string | null;
   isDarkMode: boolean;
   testResults?: TestResult[];
+  requestUrl?: string;
 }
 
 function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined): string | ReactElement {
@@ -46,7 +47,7 @@ function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined)
   );
 }
 
-export function ResponsePanel({ response, loading, error, isDarkMode, testResults }: ResponsePanelProps) {
+export function ResponsePanel({ response, loading, error, isDarkMode, testResults, requestUrl }: ResponsePanelProps) {
   const [activeResponseTab, setActiveResponseTab] = useState<ResponseTab>('body');
 
   const isStreaming = response && 'isStreaming' in response && response.isStreaming;
@@ -141,6 +142,18 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
               <span className="text-gray-600 dark:text-gray-400">
                 <span className="font-medium">Size:</span> {formatBytes(responseSize)}
               </span>
+            )}
+            {!isStreaming && (response as ProxyResponse).body && (
+              <Button
+                onClick={() => downloadResponseBody(response as ProxyResponse, requestUrl)}
+                variant="ghost"
+                size="sm"
+                title="Download response body"
+                className="flex items-center gap-1.5"
+              >
+                <Download className="w-4 h-4" />
+                Download
+              </Button>
             )}
           </div>
         </div>

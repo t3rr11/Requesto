@@ -24,7 +24,13 @@ export function ResponseBody({ response, isDarkMode }: ResponseBodyProps) {
     );
   }
 
-  const body = 'body' in response ? response.body : '';
+  const proxyResponse = response as ProxyResponse;
+  let body = proxyResponse.body ?? '';
+
+  if (proxyResponse.bodyEncoding === 'base64') {
+    // Convert base64 to binary string for proper display in Monaco Editor
+    body = atob(body);
+  }
 
   return (
     <div className="h-full p-6">
@@ -32,7 +38,7 @@ export function ResponseBody({ response, isDarkMode }: ResponseBodyProps) {
         <Editor
           height="100%"
           defaultLanguage="json"
-          value={formatResponseBody(body || '')}
+          value={formatResponseBody(body)}
           theme={isDarkMode ? 'custom-dark' : 'vs-light'}
           beforeMount={(monaco: Monaco) => {
             monaco.editor.defineTheme('custom-dark', {
@@ -56,6 +62,11 @@ export function ResponseBody({ response, isDarkMode }: ResponseBodyProps) {
             tabSize: 2,
             readOnly: true,
             wordWrap: 'on',
+            unicodeHighlight: {
+              ambiguousCharacters: false,
+              invisibleCharacters: false,
+              nonBasicASCII: false,
+            },
           }}
         />
       </div>

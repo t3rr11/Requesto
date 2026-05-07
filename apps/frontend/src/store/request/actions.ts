@@ -1,8 +1,9 @@
-import type { ProxyRequest, ProxyResponse, StreamingResponse, SSEEvent } from './types';
+import type { BodyEncoding, ProxyRequest, ProxyResponse, StreamingResponse, SSEEvent } from './types';
 import { API_BASE } from '../../helpers/api/config';
 import { useSettingsStore } from '../settings/store';
 import { useOAuthStore } from '../oauth/store';
 import { startOAuthFlow } from '../../helpers/oauth/oauthFlowHandler';
+import { bytesToBase64, isTextContentType, parseCharset } from '../../helpers/response';
 
 // ── Internal API helpers ─────────────────────────────────────────────────────
 
@@ -142,13 +143,29 @@ async function sendStreamingRequestApi(
 
   const contentType = headers['content-type'] || '';
   if (!contentType.includes('text/event-stream')) {
-    // Non-SSE response — drain body and return as a regular ProxyResponse
-    const body = await res.text();
+    // Non-SSE: drain bytes and encode the same way the backend does.
+    const buffer = await res.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let body: string;
+    let bodyEncoding: BodyEncoding;
+    if (isTextContentType(contentType)) {
+      const charset = parseCharset(contentType);
+      try {
+        body = new TextDecoder(charset).decode(bytes);
+      } catch {
+        body = new TextDecoder('utf-8').decode(bytes);
+      }
+      bodyEncoding = 'utf8';
+    } else {
+      body = bytes.length === 0 ? '' : bytesToBase64(bytes);
+      bodyEncoding = bytes.length === 0 ? 'utf8' : 'base64';
+    }
     return {
       status: res.status,
       statusText: res.statusText,
       headers,
       body,
+      bodyEncoding,
       duration: Date.now() - startTime,
     };
   }
