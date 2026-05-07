@@ -30,13 +30,6 @@ RUN apk update && apk upgrade --no-cache && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
-# Copy backend production dependencies using workspace-aware install
-COPY package.json package-lock.json ./
-COPY apps/backend/package.json ./apps/backend/
-RUN npm ci --workspace=apps/backend --include-workspace-root --omit=dev && \
-    npm cache clean --force && \
-    rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-
 COPY --from=backend-build /app/apps/backend/dist ./dist
 
 # Copy frontend build
