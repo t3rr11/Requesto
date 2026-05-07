@@ -9,6 +9,7 @@ const mockResponse: ProxyResponse = {
   statusText: 'OK',
   headers: { 'Content-Type': 'application/json' },
   body: '{"message":"hello"}',
+  bodyEncoding: 'utf8',
   duration: 150,
 };
 
@@ -56,7 +57,7 @@ describe('ResponsePanel', () => {
     render(
       <ResponsePanel response={mockResponse} loading={false} error={null} isDarkMode={false} />,
     );
-    await user.click(screen.getByText('headers'));
+    await user.click(screen.getByText('Headers'));
     expect(screen.getByText('Content-Type')).toBeInTheDocument();
     expect(screen.getByText('application/json')).toBeInTheDocument();
   });
@@ -74,8 +75,8 @@ describe('ResponsePanel', () => {
     render(
       <ResponsePanel response={mockResponse} loading={false} error={null} isDarkMode={false} />,
     );
-    expect(screen.getByText('body')).toBeInTheDocument();
-    expect(screen.getByText('headers')).toBeInTheDocument();
+    expect(screen.getByText('Body')).toBeInTheDocument();
+    expect(screen.getByText('Headers')).toBeInTheDocument();
     expect(screen.getByText('Test Results')).toBeInTheDocument();
   });
 });

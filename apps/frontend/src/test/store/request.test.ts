@@ -31,6 +31,7 @@ describe('request store', () => {
       statusText: 'OK',
       headers: {},
       body: '{"ok":true}',
+      bodyEncoding: 'utf8' as const,
       duration: 42,
       size: 11,
     };
@@ -49,6 +50,7 @@ describe('request store', () => {
       statusText: 'OK',
       headers: {},
       body: '',
+      bodyEncoding: 'utf8',
       duration: 0,
     });
     useRequestStore.getState().setResponse(null);

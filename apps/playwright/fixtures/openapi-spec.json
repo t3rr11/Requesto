@@ -5,27 +5,37 @@
     "version": "1.0.0"
   },
   "servers": [
-    { "url": "https://api.example.com/v1" }
+    {
+      "url": "https://api.example.com/v1"
+    }
   ],
   "paths": {
     "/pets": {
       "get": {
-        "tags": ["pets"],
+        "tags": [
+          "pets"
+        ],
         "summary": "List all pets",
         "operationId": "listPets",
         "parameters": [
           {
             "name": "limit",
             "in": "query",
-            "schema": { "type": "integer" }
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "A list of pets" }
+          "200": {
+            "description": "A list of pets"
+          }
         }
       },
       "post": {
-        "tags": ["pets"],
+        "tags": [
+          "pets"
+        ],
         "summary": "Create a pet",
         "operationId": "createPet",
         "requestBody": {
@@ -34,21 +44,29 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": { "type": "string" },
-                  "species": { "type": "string" }
+                  "name": {
+                    "type": "string"
+                  },
+                  "species": {
+                    "type": "string"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Pet created" }
+          "201": {
+            "description": "Pet created"
+          }
         }
       }
     },
     "/pets/{petId}": {
       "get": {
-        "tags": ["pets"],
+        "tags": [
+          "pets"
+        ],
         "summary": "Get a pet by ID",
         "operationId": "getPet",
         "parameters": [
@@ -56,21 +74,29 @@
             "name": "petId",
             "in": "path",
             "required": true,
-            "schema": { "type": "integer" }
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "A pet" }
+          "200": {
+            "description": "A pet"
+          }
         }
       }
     },
     "/users": {
       "get": {
-        "tags": ["users"],
+        "tags": [
+          "users"
+        ],
         "summary": "List users",
         "operationId": "listUsers",
         "responses": {
-          "200": { "description": "User list" }
+          "200": {
+            "description": "User list"
+          }
         }
       }
     }

@@ -102,6 +102,7 @@ describe('tabs store', () => {
       statusText: 'OK',
       headers: {},
       body: '{}',
+      bodyEncoding: 'utf8' as const,
       duration: 100,
       size: 2,
     };

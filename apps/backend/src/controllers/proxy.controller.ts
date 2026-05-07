@@ -44,6 +44,7 @@ const proxyController: FastifyPluginAsync<Options> = async (server, opts) => {
               code: error.code,
               ...(error.response?.data && { responseData: error.response.data }),
             }),
+            bodyEncoding: 'utf8',
             duration,
           });
         }

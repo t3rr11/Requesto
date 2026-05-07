@@ -7,6 +7,7 @@ import { HistoryService } from './history.service';
 import { OAuthService } from './oauth.service';
 import { applyAuthentication, getAxiosAuthConfig, type OAuthTokenResolver } from '../utils/auth';
 import { getHttpsAgent } from '../utils/httpsAgent';
+import { encodeResponseBody } from '../utils/responseEncoding';
 import type { ProxyRequest, ProxyResponse, FormDataEntry, BodyType } from '../models/proxy';
 
 function isValidUrl(urlString: string): boolean {
@@ -160,6 +161,7 @@ export class ProxyService {
       headers: built.headers,
       validateStatus: () => true,
       timeout: 30000,
+      responseType: 'arraybuffer',
       ...(httpsAgent && { httpsAgent }),
     };
 
@@ -175,11 +177,33 @@ export class ProxyService {
     const response = await axios(config);
     const duration = Date.now() - startTime;
 
+    const responseHeaders = response.headers as Record<string, string>;
+    const contentType =
+      responseHeaders['content-type'] ??
+      responseHeaders['Content-Type'] ??
+      Object.entries(responseHeaders).find(([k]) => k.toLowerCase() === 'content-type')?.[1];
+
+    let buffer: Buffer;
+    if (Buffer.isBuffer(response.data)) {
+      buffer = response.data;
+    } else if (response.data instanceof ArrayBuffer) {
+      buffer = Buffer.from(response.data);
+    } else if (response.data == null) {
+      buffer = Buffer.alloc(0);
+    } else if (typeof response.data === 'string') {
+      buffer = Buffer.from(response.data);
+    } else {
+      buffer = Buffer.from(JSON.stringify(response.data));
+    }
+
+    const encoded = encodeResponseBody(buffer, contentType);
+
     const proxyResponse: ProxyResponse = {
       status: response.status,
       statusText: response.statusText,
-      headers: response.headers as Record<string, string>,
-      body: typeof response.data === 'string' ? response.data : JSON.stringify(response.data),
+      headers: responseHeaders,
+      body: encoded.body,
+      bodyEncoding: encoded.bodyEncoding,
       duration,
     };
 

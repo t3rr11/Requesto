@@ -55,11 +55,19 @@ export type ProxyRequest = {
   auth?: AuthConfig;
 };
 
+/**
+ * How body is encoded:
+ *  - utf8: body is the decoded text payload (using charset from content-type when present, defaulting to UTF-8).
+ *  - base64: body is the raw response bytes encoded as base64. Used for binary content types (PDFs, images, octet-stream, etc.) so payloads survive JSON transport without corruption.
+ */
+export type BodyEncoding = 'utf8' | 'base64';
+
 export type ProxyResponse = {
   status: number;
   statusText: string;
   headers: Record<string, string>;
   body: string;
+  bodyEncoding: BodyEncoding;
   duration: number;
 };
 

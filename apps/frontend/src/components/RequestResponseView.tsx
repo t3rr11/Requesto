@@ -319,6 +319,7 @@ export function RequestResponseView() {
           error={activeTab.error}
           isDarkMode={isDarkMode}
           testResults={activeTab.testResults}
+          requestUrl={activeTab.request.url}
         />
       </div>
 

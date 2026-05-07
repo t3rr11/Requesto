@@ -48,7 +48,7 @@ const groupedLogs: ConsoleLog[] = [
     url: 'https://api.example.com/data',
     status: 201,
     duration: 320,
-    responseData: { status: 201, statusText: 'Created', headers: {}, body: '{"id":1}', duration: 320 },
+    responseData: { status: 201, statusText: 'Created', headers: {}, body: '{"id":1}', bodyEncoding: 'utf8', duration: 320 },
   },
 ];
 
