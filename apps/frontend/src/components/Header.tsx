@@ -43,6 +43,18 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-3">
+          {showUpdateBadge && (
+            <Button
+              onClick={() => setUpdateDialogOpen(true)}
+              variant="ghost"
+              size="sm"
+              title="Update available"
+              className="flex items-center gap-1.5 text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white! px-2"
+            >
+              <ArrowDownToLine className="w-4 h-4 shrink-0" />
+              <span className="text-xs font-medium">Update available</span>
+            </Button>
+          )}
           <Button
             onClick={helpDialog.open}
             variant="icon"
@@ -52,18 +64,6 @@ export function Header() {
           >
             <HelpCircle className="w-5 h-5" />
           </Button>
-          {showUpdateBadge && (
-            <Button
-              onClick={() => setUpdateDialogOpen(true)}
-              variant="icon"
-              size="sm"
-              title="Update available"
-              className="relative text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white!"
-            >
-              <ArrowDownToLine className="w-5 h-5" />
-              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            </Button>
-          )}
           <Button
             onClick={toggleTheme}
             variant="icon"

@@ -16,9 +16,6 @@ export function UpdateDialog({ isOpen, onClose }: UpdateDialogProps) {
   const { status, version, releaseNotes, progress, errorMessage, setDownloading, setError } = useUpdateStore();
 
   function handleClose() {
-    if (status === 'available' && version) {
-      localStorage.setItem('update-dismissed-version', version);
-    }
     onClose();
   }
 
