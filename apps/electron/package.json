@@ -39,10 +39,8 @@
         "from": "../../apps/backend",
         "to": "backend",
         "filter": [
-          "dist/**/*",
-          "data/**/*",
-          "package.json",
-          "package-lock.json"
+          "dist/server.js",
+          "data/**/*"
         ]
       }
     ],
