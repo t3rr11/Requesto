@@ -1,6 +1,6 @@
 {
   "name": "requesto-electron",
-  "version": "1.5.12",
+  "version": "1.5.13",
   "description": "Requesto - API Client",
   "homepage": "https://requesto.com.au",
   "main": "dist/main.js",
@@ -77,7 +77,7 @@
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": true,
+      "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,

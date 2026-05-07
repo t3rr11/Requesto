@@ -58,10 +58,6 @@ function App() {
     if (!api) return;
     const unsubAvailable = api.onAvailable(info => {
       setAvailable(info);
-      const dismissed = localStorage.getItem('update-dismissed-version');
-      if (dismissed !== info.version) {
-        setDialogOpen(true);
-      }
     });
     const unsubProgress = api.onProgress(p => {
       setDownloading();

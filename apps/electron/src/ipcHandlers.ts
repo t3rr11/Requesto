@@ -70,7 +70,13 @@ export function registerIpcHandlers(): void {
       return;
     }
 
-    autoUpdater.quitAndInstall();
+    if (SIMULATE_UPDATE_AVAILABLE) {
+      console.log('[simulate] quitAndInstall called — skipping in dev simulation mode');
+      return;
+    }
+
+    // isSilent=true runs NSIS with /S (no installer wizard); isForceRunAfter=true relaunches the app
+    autoUpdater.quitAndInstall(true, true);
   });
 
   // OAuth: open a child BrowserWindow for the OAuth flow, intercept the redirect
