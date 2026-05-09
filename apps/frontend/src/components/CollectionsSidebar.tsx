@@ -6,19 +6,20 @@ import { useUIStore } from '../store/ui/store';
 import { useGitStore } from '../store/git/store';
 import { useCollectionsStore } from '../store/collections/store';
 import { useAlertStore } from '../store/alert/store';
-import { getMethodColor } from '../helpers/collections';
 import type { SavedRequest } from '../store/collections/types';
 import { Dialog } from './Dialog';
+import { ConfirmDialog } from './ConfirmDialog';
 import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { NewFolderForm } from '../forms/NewFolderForm';
 import { ImportOpenApiForm } from '../forms/ImportOpenApiForm';
-import { CollectionItem } from './CollectionItem';
+import { CollectionItem } from './sidebar/CollectionItem';
+import { MethodBadge } from './sidebar/MethodBadge';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { GitStatusBar } from './GitStatusBar';
 import { GitAccordion } from './GitAccordion';
-import { useDialog, useDialogWithData } from '../hooks/useDialog';
+import { useDialog, useDialogWithData, useConfirmDialog } from '../hooks/useDialog';
 import { useResizablePanel } from '../hooks/useResizablePanel';import {
   DndContext,
   DragOverlay,
@@ -68,9 +69,80 @@ export function CollectionsSidebar() {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest, moveCollection } =
+  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest, moveCollection, deleteRequests, duplicateRequests } =
     useCollectionsStore();
   const { showAlert } = useAlertStore();
+  const clipboardRef = useRef<SavedRequest[]>([]);
+  const multiDeleteDialog = useConfirmDialog();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      // Don't fire when a modal dialog is open
+      if (document.querySelector('[role="dialog"]')) return;
+
+      const ids = useUIStore.getState().selectedRequestIds as Set<string>;
+      if (ids.size === 0) return;
+
+      const isMod = e.ctrlKey || e.metaKey;
+
+      if (isMod && e.key === 'c') {
+        e.preventDefault();
+        const allRequests = useCollectionsStore.getState().collections.flatMap(c => c.requests);
+        clipboardRef.current = [...ids]
+          .map(id => allRequests.find(r => r.id === id))
+          .filter((r): r is SavedRequest => r !== undefined);
+        showAlert(
+          `${clipboardRef.current.length} request${clipboardRef.current.length !== 1 ? 's' : ''} copied`,
+          'success',
+        );
+        return;
+      }
+
+      if (isMod && e.key === 'v') {
+        if (clipboardRef.current.length === 0) return;
+        e.preventDefault();
+        const reqs = clipboardRef.current.map(r => ({ collectionId: r.collectionId, requestId: r.id }));
+        duplicateRequests(reqs)
+          .then(() =>
+            showAlert(
+              `${reqs.length} request${reqs.length !== 1 ? 's' : ''} pasted`,
+              'success',
+            ),
+          )
+          .catch(() => showAlert('Failed to paste requests', 'error'));
+        return;
+      }
+
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        const allRequests = useCollectionsStore.getState().collections.flatMap(c => c.requests);
+        const toDelete = [...ids]
+          .map(id => allRequests.find(r => r.id === id))
+          .filter((r): r is SavedRequest => r !== undefined);
+        if (toDelete.length === 0) return;
+        multiDeleteDialog.open({
+          title: `Delete ${toDelete.length} Request${toDelete.length !== 1 ? 's' : ''}`,
+          message:
+            toDelete.length === 1
+              ? 'Are you sure you want to delete this request? This action cannot be undone.'
+              : `Are you sure you want to delete these ${toDelete.length} requests? This action cannot be undone.`,
+          confirmText: 'Delete',
+          variant: 'danger',
+          onConfirm: async () => {
+            await deleteRequests(
+              toDelete.map(r => ({ collectionId: r.collectionId, requestId: r.id })),
+            );
+            clearSelection();
+          },
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [clearSelection, deleteRequests, duplicateRequests, multiDeleteDialog, showAlert]);
 
   // Close the git panel when switching to a workspace that isn't a git repo
   useEffect(() => {
@@ -358,9 +430,7 @@ export function CollectionsSidebar() {
               )}
               {activeRequest && (
                 <div className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90">
-                  <span className={`text-xs font-medium ${getMethodColor(activeRequest.method)}`}>
-                    {activeRequest.method}
-                  </span>
+                  <MethodBadge method={activeRequest.method} />
                   <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{activeRequest.name}</span>
                 </div>
               )}
@@ -448,6 +518,8 @@ export function CollectionsSidebar() {
         </div>
       )}
       {!isGitPanelOpen && <GitStatusBar onTogglePanel={toggleGitPanel} />}
+
+      <ConfirmDialog {...multiDeleteDialog.props} />
 
       <div
         className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"

@@ -36,7 +36,7 @@ export function ConfirmDialog({
         <Button onClick={onClose} variant="ghost" size="md">
           {cancelText}
         </Button>
-        <Button onClick={handleConfirm} variant={buttonVariant} size="md">
+        <Button autoFocus onClick={handleConfirm} variant={buttonVariant} size="md">
           {confirmText}
         </Button>
       </div>

@@ -267,6 +267,31 @@ export async function duplicateRequest(set: SetState, collectionId: string, requ
   }
 }
 
+export async function deleteRequests(
+  set: SetState,
+  requests: Array<{ collectionId: string; requestId: string }>,
+): Promise<void> {
+  try {
+    await Promise.all(requests.map(({ collectionId, requestId }) => deleteRequestApi(collectionId, requestId)));
+    await loadCollections(set);
+  } catch (error) {
+    console.error('Failed to delete requests:', error);
+  }
+}
+
+export async function duplicateRequests(
+  set: SetState,
+  requests: Array<{ collectionId: string; requestId: string }>,
+): Promise<void> {
+  try {
+    await Promise.all(requests.map(({ collectionId, requestId }) => duplicateRequestApi(collectionId, requestId)));
+    await loadCollections(set);
+    notifyDataMutated();
+  } catch (error) {
+    console.error('Failed to duplicate requests:', error);
+  }
+}
+
 export async function duplicateCollection(set: SetState, id: string): Promise<void> {
   try {
     await duplicateCollectionApi(id);
