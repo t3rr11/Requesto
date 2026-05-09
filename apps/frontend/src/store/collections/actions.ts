@@ -361,6 +361,25 @@ export async function moveRequest(
   }
 }
 
+export async function moveRequests(
+  set: SetState,
+  requests: Array<{ sourceCollectionId: string; requestId: string }>,
+  targetCollectionId: string,
+  targetFolderId: string | undefined,
+  baseOrder: number | undefined,
+): Promise<void> {
+  try {
+    for (let i = 0; i < requests.length; i++) {
+      const { sourceCollectionId, requestId } = requests[i];
+      const targetOrder = baseOrder !== undefined ? baseOrder + i : undefined;
+      await moveRequestApi(sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder);
+    }
+    await loadCollections(set);
+  } catch (error) {
+    console.error('Failed to move requests:', error);
+  }
+}
+
 export async function moveFolder(
   set: SetState, sourceCollectionId: string, folderId: string,
   targetCollectionId: string, targetParentId?: string,

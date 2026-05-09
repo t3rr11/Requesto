@@ -38,6 +38,7 @@ type CollectionsState = {
   updateRequest: (collectionId: string, requestId: string, updates: Partial<SavedRequest>) => Promise<void>;
   updateFolder: (collectionId: string, folderId: string, updates: Partial<Folder>) => Promise<void>;
   moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
+  moveRequests: (requests: Array<{ sourceCollectionId: string; requestId: string }>, targetCollectionId: string, targetFolderId?: string, baseOrder?: number) => Promise<void>;
   moveFolder: (sourceCollectionId: string, folderId: string, targetCollectionId: string, targetParentId?: string) => Promise<void>;
   moveCollection: (id: string, targetOrder: number) => Promise<void>;
   importCollection: (file: File) => Promise<Collection>;
@@ -79,6 +80,8 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
     actions.updateFolder(set, collectionId, folderId, updates),
   moveRequest: (sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder) =>
     actions.moveRequest(set, sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder),
+  moveRequests: (requests, targetCollectionId, targetFolderId, baseOrder) =>
+    actions.moveRequests(set, requests, targetCollectionId, targetFolderId, baseOrder),
   moveFolder: (sourceCollectionId, folderId, targetCollectionId, targetParentId) =>
     actions.moveFolder(set, sourceCollectionId, folderId, targetCollectionId, targetParentId),
   moveCollection: (id, targetOrder) => actions.moveCollection(set, id, targetOrder),

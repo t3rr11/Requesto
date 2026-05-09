@@ -20,7 +20,8 @@ import { ContextMenu } from './ContextMenu';
 import { GitStatusBar } from './GitStatusBar';
 import { GitAccordion } from './GitAccordion';
 import { useDialog, useDialogWithData, useConfirmDialog } from '../hooks/useDialog';
-import { useResizablePanel } from '../hooks/useResizablePanel';import {
+import { useResizablePanel } from '../hooks/useResizablePanel';
+import {
   DndContext,
   DragOverlay,
   PointerSensor,
@@ -62,6 +63,7 @@ export function CollectionsSidebar() {
     setGitPanelHeight,
     setGitPanelOpen,
     clearSelection,
+    selectedRequestIds,
   } = useUIStore();
   const { isRepo } = useGitStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,8 +71,19 @@ export function CollectionsSidebar() {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest, moveCollection, deleteRequests, duplicateRequests } =
-    useCollectionsStore();
+  const {
+    collections,
+    loading,
+    importCollection,
+    updateCollection,
+    updateRequest,
+    updateFolder,
+    moveRequest,
+    moveRequests,
+    moveCollection,
+    deleteRequests,
+    duplicateRequests,
+  } = useCollectionsStore();
   const { showAlert } = useAlertStore();
   const clipboardRef = useRef<SavedRequest[]>([]);
   const multiDeleteDialog = useConfirmDialog();
@@ -95,7 +108,7 @@ export function CollectionsSidebar() {
           .filter((r): r is SavedRequest => r !== undefined);
         showAlert(
           `${clipboardRef.current.length} request${clipboardRef.current.length !== 1 ? 's' : ''} copied`,
-          'success',
+          'success'
         );
         return;
       }
@@ -105,12 +118,7 @@ export function CollectionsSidebar() {
         e.preventDefault();
         const reqs = clipboardRef.current.map(r => ({ collectionId: r.collectionId, requestId: r.id }));
         duplicateRequests(reqs)
-          .then(() =>
-            showAlert(
-              `${reqs.length} request${reqs.length !== 1 ? 's' : ''} pasted`,
-              'success',
-            ),
-          )
+          .then(() => showAlert(`${reqs.length} request${reqs.length !== 1 ? 's' : ''} pasted`, 'success'))
           .catch(() => showAlert('Failed to paste requests', 'error'));
         return;
       }
@@ -131,9 +139,7 @@ export function CollectionsSidebar() {
           confirmText: 'Delete',
           variant: 'danger',
           onConfirm: async () => {
-            await deleteRequests(
-              toDelete.map(r => ({ collectionId: r.collectionId, requestId: r.id })),
-            );
+            await deleteRequests(toDelete.map(r => ({ collectionId: r.collectionId, requestId: r.id })));
             clearSelection();
           },
         });
@@ -156,13 +162,11 @@ export function CollectionsSidebar() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const collisionDetection: CollisionDetection = useCallback((args) => {
+  const collisionDetection: CollisionDetection = useCallback(args => {
     if (args.active.data.current?.type === 'collection') {
       return closestCenter({
         ...args,
-        droppableContainers: args.droppableContainers.filter(
-          c => c.data.current?.type === 'collection'
-        ),
+        droppableContainers: args.droppableContainers.filter(c => c.data.current?.type === 'collection'),
       });
     }
     return closestCenter(args);
@@ -186,7 +190,7 @@ export function CollectionsSidebar() {
     if (activeData.type === 'collection') {
       const overData = over.data.current as { type: string; collectionId?: string } | undefined;
       if (!overData) return;
-      
+
       const targetCollectionId =
         overData.type === 'collection'
           ? (over.id as string)
@@ -227,12 +231,27 @@ export function CollectionsSidebar() {
       return;
     }
 
+    // If dragging one of multiple selected items, move all of them to the same target
+    const dragSelectedIds = useUIStore.getState().selectedRequestIds as Set<string>;
+    if (dragSelectedIds.size > 1 && dragSelectedIds.has(active.id as string)) {
+      const allRequests = collections.flatMap(c => c.requests);
+      const toMove = [...dragSelectedIds]
+        .map(id => allRequests.find(r => r.id === id))
+        .filter((r): r is SavedRequest => r !== undefined)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map(r => ({ sourceCollectionId: r.collectionId, requestId: r.id }));
+      moveRequests(toMove, targetCollectionId, targetFolderId, targetOrder);
+      clearSelection();
+      return;
+    }
+
     moveRequest(activeData.collectionId!, active.id as string, targetCollectionId, targetFolderId, targetOrder);
     clearSelection();
   };
 
   const activeCollection = activeId ? collections.find(c => c.id === activeId) : null;
-  const activeRequest = activeId && !activeCollection ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
+  const activeRequest =
+    activeId && !activeCollection ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
 
   const { handleResizeStart } = useResizablePanel({
     containerRef: sidebarRef,
@@ -425,15 +444,35 @@ export function CollectionsSidebar() {
               {activeCollection && (
                 <div className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90">
                   <FolderIcon className="w-4 h-4 text-orange-500 dark:text-orange-400 shrink-0" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{activeCollection.name}</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {activeCollection.name}
+                  </span>
                 </div>
               )}
-              {activeRequest && (
-                <div className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90">
-                  <MethodBadge method={activeRequest.method} />
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{activeRequest.name}</span>
-                </div>
-              )}
+              {activeRequest &&
+                (() => {
+                  const isMulti = selectedRequestIds.has(activeRequest.id) && selectedRequestIds.size > 1;
+                  const draggedRequests = isMulti
+                    ? collections
+                        .flatMap(c => c.requests)
+                        .filter(r => selectedRequestIds.has(r.id))
+                        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                    : [activeRequest];
+                  return (
+                    <div className="flex flex-col gap-0.5">
+                      {draggedRequests.map((r, i) => (
+                        <div
+                          key={r.id}
+                          className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90"
+                          style={{ transform: `translateY(${i * 2}px)`, zIndex: draggedRequests.length - i }}
+                        >
+                          <MethodBadge method={r.method} />
+                          <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{r.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
             </DragOverlay>
           </DndContext>
         )}
