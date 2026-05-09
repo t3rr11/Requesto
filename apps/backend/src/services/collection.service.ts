@@ -371,6 +371,58 @@ export class CollectionService {
     return this.repo.create(collection);
   }
 
+  async duplicateCollection(id: string): Promise<Collection> {
+    const source = await this.repo.getById(id);
+    if (!source) throw AppError.notFound('Collection not found');
+    if (source.isSystem) throw AppError.badRequest('System collections cannot be duplicated');
+
+    const newCollectionId = `col-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const folderIdMap = new Map<string, string>();
+    const folders: Folder[] = (source.folders ?? []).map((f) => {
+      const newId = `folder-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      folderIdMap.set(f.id, newId);
+      return { ...f, id: newId, collectionId: newCollectionId };
+    });
+    for (const f of folders) {
+      if (f.parentId) {
+        f.parentId = folderIdMap.get(f.parentId) ?? f.parentId;
+      }
+    }
+
+    const requests: SavedRequest[] = source.requests.map((r) => ({
+      ...r,
+      id: `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      collectionId: newCollectionId,
+      folderId: r.folderId ? (folderIdMap.get(r.folderId) ?? r.folderId) : undefined,
+    }));
+
+    const duplicate: Collection = {
+      ...source,
+      id: newCollectionId,
+      name: `${source.name} Copy`,
+      isSystem: undefined,
+      openApiSpec: undefined,
+      folders,
+      requests,
+    };
+
+    return this.repo.create(duplicate);
+  }
+
+  async moveCollection(id: string, targetOrder: number): Promise<Collection> {
+    const allCollections = await this.repo.getAll();
+    const sourceIndex = allCollections.findIndex((c) => c.id === id);
+    if (sourceIndex === -1) throw AppError.notFound('Collection not found');
+
+    const [collection] = allCollections.splice(sourceIndex, 1);
+    const insertAt = Math.max(0, Math.min(targetOrder, allCollections.length));
+    allCollections.splice(insertAt, 0, collection);
+
+    await this.repo.saveAll(allCollections);
+    return collection;
+  }
+
   async saveAll(collection: Collection): Promise<void> {
     const all = await this.repo.getAll();
     const idx = all.findIndex((c) => c.id === collection.id);

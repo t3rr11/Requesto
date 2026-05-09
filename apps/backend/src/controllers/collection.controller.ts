@@ -43,6 +43,23 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     return { success: true };
   });
 
+  server.post<{ Params: { id: string } }>(
+    '/collections/:id/duplicate',
+    async (request, reply) => {
+      const collection = await collectionService.duplicateCollection(request.params.id);
+      return reply.code(201).send(collection);
+    },
+  );
+
+  server.put<{ Params: { id: string }; Body: { targetOrder: number } }>(
+    '/collections/:id/move',
+    async (request, _reply) => {
+      const { targetOrder } = request.body;
+      const collection = await collectionService.moveCollection(request.params.id, targetOrder);
+      return collection;
+    },
+  );
+
   server.post<{
     Params: { id: string };
     Body: { name: string; method: string; url: string; headers?: Record<string, string>; body?: string; bodyType?: BodyType; formDataEntries?: FormDataEntry[]; auth?: AuthConfig; folderId?: string };

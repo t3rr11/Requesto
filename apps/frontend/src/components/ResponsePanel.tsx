@@ -128,7 +128,7 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
             )}
           </h3>
           <div className="flex items-center gap-3 text-sm">
-            <span className={`px-2 py-1 rounded font-medium ${getStatusBadgeColor(response.status)}`}>
+            <span className={`px-2 py-1 rounded font-medium text-xs ${getStatusBadgeColor(response.status)}`}>
               {response.status} {response.statusText}
             </span>
             <span className="text-gray-600 dark:text-gray-400">

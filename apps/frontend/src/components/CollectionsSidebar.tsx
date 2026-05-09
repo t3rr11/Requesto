@@ -1,25 +1,27 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Folder as FolderIcon, FolderPlus, Import, Search, X, FileText, Braces } from 'lucide-react';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useUIStore } from '../store/ui/store';
 import { useGitStore } from '../store/git/store';
 import { useCollectionsStore } from '../store/collections/store';
 import { useAlertStore } from '../store/alert/store';
-import { getMethodColor } from '../helpers/collections';
 import type { SavedRequest } from '../store/collections/types';
 import { Dialog } from './Dialog';
+import { ConfirmDialog } from './ConfirmDialog';
 import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { NewFolderForm } from '../forms/NewFolderForm';
 import { ImportOpenApiForm } from '../forms/ImportOpenApiForm';
-import { CollectionItem } from './CollectionItem';
+import { CollectionItem } from './sidebar/CollectionItem';
+import { MethodBadge } from './sidebar/MethodBadge';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { GitStatusBar } from './GitStatusBar';
 import { GitAccordion } from './GitAccordion';
-import { useDialog, useDialogWithData } from '../hooks/useDialog';
-import { useResizablePanel } from '../hooks/useResizablePanel';import {
+import { useDialog, useDialogWithData, useConfirmDialog } from '../hooks/useDialog';
+import { useResizablePanel } from '../hooks/useResizablePanel';
+import {
   DndContext,
   DragOverlay,
   PointerSensor,
@@ -28,6 +30,7 @@ import { useResizablePanel } from '../hooks/useResizablePanel';import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core';
+import type { CollisionDetection } from '@dnd-kit/core';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -60,6 +63,7 @@ export function CollectionsSidebar() {
     setGitPanelHeight,
     setGitPanelOpen,
     clearSelection,
+    selectedRequestIds,
   } = useUIStore();
   const { isRepo } = useGitStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,9 +71,84 @@ export function CollectionsSidebar() {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest } =
-    useCollectionsStore();
+  const {
+    collections,
+    loading,
+    importCollection,
+    updateCollection,
+    updateRequest,
+    updateFolder,
+    moveRequest,
+    moveRequests,
+    moveCollection,
+    deleteRequests,
+    duplicateRequests,
+  } = useCollectionsStore();
   const { showAlert } = useAlertStore();
+  const clipboardRef = useRef<SavedRequest[]>([]);
+  const multiDeleteDialog = useConfirmDialog();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      // Don't fire when a modal dialog is open
+      if (document.querySelector('[role="dialog"]')) return;
+
+      const ids = useUIStore.getState().selectedRequestIds as Set<string>;
+      if (ids.size === 0) return;
+
+      const isMod = e.ctrlKey || e.metaKey;
+
+      if (isMod && e.key === 'c') {
+        e.preventDefault();
+        const allRequests = useCollectionsStore.getState().collections.flatMap(c => c.requests);
+        clipboardRef.current = [...ids]
+          .map(id => allRequests.find(r => r.id === id))
+          .filter((r): r is SavedRequest => r !== undefined);
+        showAlert(
+          `${clipboardRef.current.length} request${clipboardRef.current.length !== 1 ? 's' : ''} copied`,
+          'success'
+        );
+        return;
+      }
+
+      if (isMod && e.key === 'v') {
+        if (clipboardRef.current.length === 0) return;
+        e.preventDefault();
+        const reqs = clipboardRef.current.map(r => ({ collectionId: r.collectionId, requestId: r.id }));
+        duplicateRequests(reqs)
+          .then(() => showAlert(`${reqs.length} request${reqs.length !== 1 ? 's' : ''} pasted`, 'success'))
+          .catch(() => showAlert('Failed to paste requests', 'error'));
+        return;
+      }
+
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        const allRequests = useCollectionsStore.getState().collections.flatMap(c => c.requests);
+        const toDelete = [...ids]
+          .map(id => allRequests.find(r => r.id === id))
+          .filter((r): r is SavedRequest => r !== undefined);
+        if (toDelete.length === 0) return;
+        multiDeleteDialog.open({
+          title: `Delete ${toDelete.length} Request${toDelete.length !== 1 ? 's' : ''}`,
+          message:
+            toDelete.length === 1
+              ? 'Are you sure you want to delete this request? This action cannot be undone.'
+              : `Are you sure you want to delete these ${toDelete.length} requests? This action cannot be undone.`,
+          confirmText: 'Delete',
+          variant: 'danger',
+          onConfirm: async () => {
+            await deleteRequests(toDelete.map(r => ({ collectionId: r.collectionId, requestId: r.id })));
+            clearSelection();
+          },
+        });
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [clearSelection, deleteRequests, duplicateRequests, multiDeleteDialog, showAlert]);
 
   // Close the git panel when switching to a workspace that isn't a git repo
   useEffect(() => {
@@ -83,6 +162,16 @@ export function CollectionsSidebar() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const collisionDetection: CollisionDetection = useCallback(args => {
+    if (args.active.data.current?.type === 'collection') {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(c => c.data.current?.type === 'collection'),
+      });
+    }
+    return closestCenter(args);
+  }, []);
+
   const handleDragStart = ({ active }: DragStartEvent) => {
     setActiveId(active.id as string);
     document.body.style.cursor = 'grabbing';
@@ -95,8 +184,27 @@ export function CollectionsSidebar() {
     document.body.style.userSelect = '';
     if (!over || active.id === over.id) return;
 
-    const activeData = active.data.current as { type: string; collectionId: string; folderId?: string } | undefined;
-    if (!activeData || activeData.type !== 'request') return;
+    const activeData = active.data.current as { type: string; collectionId?: string; folderId?: string } | undefined;
+    if (!activeData) return;
+
+    if (activeData.type === 'collection') {
+      const overData = over.data.current as { type: string; collectionId?: string } | undefined;
+      if (!overData) return;
+
+      const targetCollectionId =
+        overData.type === 'collection'
+          ? (over.id as string)
+          : overData.type === 'collection-root' && overData.collectionId
+            ? overData.collectionId
+            : null;
+      if (!targetCollectionId) return;
+      const targetIndex = collections.findIndex(c => c.id === targetCollectionId);
+      if (targetIndex === -1) return;
+      moveCollection(active.id as string, targetIndex);
+      return;
+    }
+
+    if (activeData.type !== 'request') return;
 
     const overData = over.data.current as { type: string; collectionId: string; folderId?: string } | undefined;
     if (!overData) return;
@@ -123,11 +231,27 @@ export function CollectionsSidebar() {
       return;
     }
 
-    moveRequest(activeData.collectionId, active.id as string, targetCollectionId, targetFolderId, targetOrder);
+    // If dragging one of multiple selected items, move all of them to the same target
+    const dragSelectedIds = useUIStore.getState().selectedRequestIds as Set<string>;
+    if (dragSelectedIds.size > 1 && dragSelectedIds.has(active.id as string)) {
+      const allRequests = collections.flatMap(c => c.requests);
+      const toMove = [...dragSelectedIds]
+        .map(id => allRequests.find(r => r.id === id))
+        .filter((r): r is SavedRequest => r !== undefined)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map(r => ({ sourceCollectionId: r.collectionId, requestId: r.id }));
+      moveRequests(toMove, targetCollectionId, targetFolderId, targetOrder);
+      clearSelection();
+      return;
+    }
+
+    moveRequest(activeData.collectionId!, active.id as string, targetCollectionId, targetFolderId, targetOrder);
     clearSelection();
   };
 
-  const activeRequest = activeId ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
+  const activeCollection = activeId ? collections.find(c => c.id === activeId) : null;
+  const activeRequest =
+    activeId && !activeCollection ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
 
   const { handleResizeStart } = useResizablePanel({
     containerRef: sidebarRef,
@@ -293,7 +417,7 @@ export function CollectionsSidebar() {
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={collisionDetection}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragCancel={() => {
@@ -302,27 +426,53 @@ export function CollectionsSidebar() {
             }}
           >
             <div className="py-2">
-              {filteredCollections.map(collection => (
-                <CollectionItem
-                  key={collection.id}
-                  collection={collection}
-                  searchQuery={searchQuery}
-                  onRenameRequest={request => renameRequestDialog.open({ request })}
-                  onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
-                  onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
-                  onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
-                />
-              ))}
+              <SortableContext items={filteredCollections.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                {filteredCollections.map(collection => (
+                  <CollectionItem
+                    key={collection.id}
+                    collection={collection}
+                    searchQuery={searchQuery}
+                    onRenameRequest={request => renameRequestDialog.open({ request })}
+                    onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
+                    onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
+                    onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
+                  />
+                ))}
+              </SortableContext>
             </div>
             <DragOverlay dropAnimation={null}>
-              {activeRequest && (
+              {activeCollection && (
                 <div className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90">
-                  <span className={`text-xs font-medium ${getMethodColor(activeRequest.method)}`}>
-                    {activeRequest.method}
+                  <FolderIcon className="w-4 h-4 text-orange-500 dark:text-orange-400 shrink-0" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {activeCollection.name}
                   </span>
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{activeRequest.name}</span>
                 </div>
               )}
+              {activeRequest &&
+                (() => {
+                  const isMulti = selectedRequestIds.has(activeRequest.id) && selectedRequestIds.size > 1;
+                  const draggedRequests = isMulti
+                    ? collections
+                        .flatMap(c => c.requests)
+                        .filter(r => selectedRequestIds.has(r.id))
+                        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+                    : [activeRequest];
+                  return (
+                    <div className="flex flex-col gap-0.5">
+                      {draggedRequests.map((r, i) => (
+                        <div
+                          key={r.id}
+                          className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90"
+                          style={{ transform: `translateY(${i * 2}px)`, zIndex: draggedRequests.length - i }}
+                        >
+                          <MethodBadge method={r.method} />
+                          <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{r.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
             </DragOverlay>
           </DndContext>
         )}
@@ -407,6 +557,8 @@ export function CollectionsSidebar() {
         </div>
       )}
       {!isGitPanelOpen && <GitStatusBar onTogglePanel={toggleGitPanel} />}
+
+      <ConfirmDialog {...multiDeleteDialog.props} />
 
       <div
         className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"
