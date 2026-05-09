@@ -40,6 +40,22 @@ async function deleteCollectionApi(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete collection');
 }
 
+async function duplicateCollectionApi(id: string): Promise<Collection> {
+  const res = await fetch(`${API_BASE}/collections/${id}/duplicate`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to duplicate collection');
+  return res.json();
+}
+
+async function moveCollectionApi(id: string, targetOrder: number): Promise<Collection> {
+  const res = await fetch(`${API_BASE}/collections/${id}/move`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ targetOrder }),
+  });
+  if (!res.ok) throw new Error('Failed to move collection');
+  return res.json();
+}
+
 async function addRequestApi(
   collectionId: string,
   data: {
@@ -248,6 +264,26 @@ export async function duplicateRequest(set: SetState, collectionId: string, requ
     notifyDataMutated();
   } catch (error) {
     console.error('Failed to duplicate request:', error);
+  }
+}
+
+export async function duplicateCollection(set: SetState, id: string): Promise<void> {
+  try {
+    await duplicateCollectionApi(id);
+    await loadCollections(set);
+    notifyDataMutated();
+  } catch (error) {
+    console.error('Failed to duplicate collection:', error);
+    throw error;
+  }
+}
+
+export async function moveCollection(set: SetState, id: string, targetOrder: number): Promise<void> {
+  try {
+    await moveCollectionApi(id, targetOrder);
+    await loadCollections(set);
+  } catch (error) {
+    console.error('Failed to move collection:', error);
   }
 }
 

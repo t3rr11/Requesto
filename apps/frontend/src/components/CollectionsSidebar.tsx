@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Folder as FolderIcon, FolderPlus, Import, Search, X, FileText, Braces } from 'lucide-react';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useUIStore } from '../store/ui/store';
 import { useGitStore } from '../store/git/store';
 import { useCollectionsStore } from '../store/collections/store';
@@ -28,6 +28,7 @@ import { useResizablePanel } from '../hooks/useResizablePanel';import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core';
+import type { CollisionDetection } from '@dnd-kit/core';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -67,7 +68,7 @@ export function CollectionsSidebar() {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest } =
+  const { collections, loading, importCollection, updateCollection, updateRequest, updateFolder, moveRequest, moveCollection } =
     useCollectionsStore();
   const { showAlert } = useAlertStore();
 
@@ -83,6 +84,18 @@ export function CollectionsSidebar() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    if (args.active.data.current?.type === 'collection') {
+      return closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(
+          c => c.data.current?.type === 'collection'
+        ),
+      });
+    }
+    return closestCenter(args);
+  }, []);
+
   const handleDragStart = ({ active }: DragStartEvent) => {
     setActiveId(active.id as string);
     document.body.style.cursor = 'grabbing';
@@ -95,8 +108,27 @@ export function CollectionsSidebar() {
     document.body.style.userSelect = '';
     if (!over || active.id === over.id) return;
 
-    const activeData = active.data.current as { type: string; collectionId: string; folderId?: string } | undefined;
-    if (!activeData || activeData.type !== 'request') return;
+    const activeData = active.data.current as { type: string; collectionId?: string; folderId?: string } | undefined;
+    if (!activeData) return;
+
+    if (activeData.type === 'collection') {
+      const overData = over.data.current as { type: string; collectionId?: string } | undefined;
+      if (!overData) return;
+      
+      const targetCollectionId =
+        overData.type === 'collection'
+          ? (over.id as string)
+          : overData.type === 'collection-root' && overData.collectionId
+            ? overData.collectionId
+            : null;
+      if (!targetCollectionId) return;
+      const targetIndex = collections.findIndex(c => c.id === targetCollectionId);
+      if (targetIndex === -1) return;
+      moveCollection(active.id as string, targetIndex);
+      return;
+    }
+
+    if (activeData.type !== 'request') return;
 
     const overData = over.data.current as { type: string; collectionId: string; folderId?: string } | undefined;
     if (!overData) return;
@@ -123,11 +155,12 @@ export function CollectionsSidebar() {
       return;
     }
 
-    moveRequest(activeData.collectionId, active.id as string, targetCollectionId, targetFolderId, targetOrder);
+    moveRequest(activeData.collectionId!, active.id as string, targetCollectionId, targetFolderId, targetOrder);
     clearSelection();
   };
 
-  const activeRequest = activeId ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
+  const activeCollection = activeId ? collections.find(c => c.id === activeId) : null;
+  const activeRequest = activeId && !activeCollection ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
 
   const { handleResizeStart } = useResizablePanel({
     containerRef: sidebarRef,
@@ -293,7 +326,7 @@ export function CollectionsSidebar() {
         ) : (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={collisionDetection}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onDragCancel={() => {
@@ -302,19 +335,27 @@ export function CollectionsSidebar() {
             }}
           >
             <div className="py-2">
-              {filteredCollections.map(collection => (
-                <CollectionItem
-                  key={collection.id}
-                  collection={collection}
-                  searchQuery={searchQuery}
-                  onRenameRequest={request => renameRequestDialog.open({ request })}
-                  onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
-                  onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
-                  onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
-                />
-              ))}
+              <SortableContext items={filteredCollections.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                {filteredCollections.map(collection => (
+                  <CollectionItem
+                    key={collection.id}
+                    collection={collection}
+                    searchQuery={searchQuery}
+                    onRenameRequest={request => renameRequestDialog.open({ request })}
+                    onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
+                    onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
+                    onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
+                  />
+                ))}
+              </SortableContext>
             </div>
             <DragOverlay dropAnimation={null}>
+              {activeCollection && (
+                <div className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90">
+                  <FolderIcon className="w-4 h-4 text-orange-500 dark:text-orange-400 shrink-0" />
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{activeCollection.name}</span>
+                </div>
+              )}
               {activeRequest && (
                 <div className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90">
                   <span className={`text-xs font-medium ${getMethodColor(activeRequest.method)}`}>

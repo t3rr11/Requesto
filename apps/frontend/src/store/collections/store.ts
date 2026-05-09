@@ -31,11 +31,13 @@ type CollectionsState = {
   deleteFolder: (collectionId: string, folderId: string) => Promise<void>;
   deleteRequest: (collectionId: string, requestId: string) => Promise<void>;
   duplicateRequest: (collectionId: string, requestId: string) => Promise<void>;
+  duplicateCollection: (id: string) => Promise<void>;
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
   updateRequest: (collectionId: string, requestId: string, updates: Partial<SavedRequest>) => Promise<void>;
   updateFolder: (collectionId: string, folderId: string, updates: Partial<Folder>) => Promise<void>;
   moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
   moveFolder: (sourceCollectionId: string, folderId: string, targetCollectionId: string, targetParentId?: string) => Promise<void>;
+  moveCollection: (id: string, targetOrder: number) => Promise<void>;
   importCollection: (file: File) => Promise<Collection>;
   importOpenApiCollection: (data: { source: string; name?: string; linkSpec?: boolean }) => Promise<Collection>;
   exportCollection: (collectionId: string) => Promise<void>;
@@ -65,6 +67,7 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
   deleteFolder: (collectionId, folderId) => actions.deleteFolder(set, collectionId, folderId),
   deleteRequest: (collectionId, requestId) => actions.deleteRequest(set, collectionId, requestId),
   duplicateRequest: (collectionId, requestId) => actions.duplicateRequest(set, collectionId, requestId),
+  duplicateCollection: (id) => actions.duplicateCollection(set, id),
   updateCollection: (id, updates) => actions.updateCollection(set, id, updates),
   updateRequest: (collectionId, requestId, updates) =>
     actions.updateRequest(set, collectionId, requestId, updates),
@@ -74,6 +77,7 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
     actions.moveRequest(set, sourceCollectionId, requestId, targetCollectionId, targetFolderId, targetOrder),
   moveFolder: (sourceCollectionId, folderId, targetCollectionId, targetParentId) =>
     actions.moveFolder(set, sourceCollectionId, folderId, targetCollectionId, targetParentId),
+  moveCollection: (id, targetOrder) => actions.moveCollection(set, id, targetOrder),
   importCollection: (file) => actions.importCollection(set, file),
   importOpenApiCollection: (data) => actions.importOpenApiCollection(set, data),
   exportCollection: (collectionId) => actions.exportCollection(collectionId),

@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import type { Collection, SavedRequest, SyncPreviewResult } from '../store/collections/types';
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable, useDndContext } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useCollectionsStore } from '../store/collections/store';
 import { useUIStore } from '../store/ui/store';
@@ -88,9 +90,25 @@ export function CollectionItem({
   });
 
   const { setNodeRef: setCollectionDropRef, isOver: isRequestDragOver } = useDroppable({
-    id: collection.id,
+    id: `${collection.id}-root`,
     data: { type: 'collection-root', collectionId: collection.id, folderId: undefined },
   });
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setSortableRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: collection.id,
+    data: { type: 'collection', collectionId: collection.id },
+    disabled: !!searchQuery?.trim() || !!collection.isSystem,
+  });
+
+  const { active } = useDndContext();
+  const isDraggingCollection = active?.data.current?.type === 'collection';
 
   const isExpanded = expandedCollections.has(collection.id);
   const isSearching = !!searchQuery?.trim();
@@ -263,6 +281,18 @@ export function CollectionItem({
     setRunnerOpen(true);
   };
 
+  const handleDuplicateCollection = async () => {
+    if (!collectionContextMenu) return;
+    const { duplicateCollection } = useCollectionsStore.getState();
+    closeCollectionContextMenu();
+    try {
+      await duplicateCollection(collectionContextMenu.collectionId);
+      showAlert('Collection duplicated successfully', 'success');
+    } catch {
+      showAlert('Failed to duplicate collection', 'error');
+    }
+  };
+
   const isLinked = !!collection.openApiSpec;
 
   const rootFolders = filteredRootFolders;
@@ -271,17 +301,23 @@ export function CollectionItem({
   const allRequestIds = rootRequests.map(r => r.id);
 
   return (
-    <div className="mb-1">
+    <div
+      ref={setSortableRef}
+      className="mb-1"
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 }}
+    >
       <div
         ref={setCollectionDropRef}
         className={`px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group ${
-          isDragOver || isRequestDragOver ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
+          !isDraggingCollection && (isDragOver || isRequestDragOver) ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500' : ''
         }`}
         onClick={() => toggleCollection(collection.id)}
         onContextMenu={e => openCollectionContextMenu(e, collection.id, collection.name)}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        {...attributes}
+        {...listeners}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {isExpanded ? (
@@ -371,6 +407,7 @@ export function CollectionItem({
             ...(collection.isSystem ? [] : [
               { label: 'New Folder', icon: <FolderPlus className="w-4 h-4" />, onClick: handleNewFolderFromContext },
               { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
+              { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: handleDuplicateCollection },
             ]),
             { label: 'Export', icon: <Download className="w-4 h-4" />, onClick: handleExportCollection },
             ...(isLinked ? [
