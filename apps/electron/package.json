@@ -1,6 +1,6 @@
 {
   "name": "requesto-electron",
-  "version": "1.5.12",
+  "version": "1.5.13",
   "description": "Requesto - API Client",
   "homepage": "https://requesto.com.au",
   "main": "dist/main.js",
@@ -85,13 +85,13 @@
     }
   },
   "dependencies": {
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.8.3"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "electron": "41.2.1",
+    "@types/node": "^25.6.2",
+    "electron": "42.0.1",
     "electron-builder": "^26.8.1",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   }
 }
