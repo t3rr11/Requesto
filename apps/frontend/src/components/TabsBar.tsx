@@ -115,7 +115,8 @@ export function TabsBar() {
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [pendingCloseTabId, setPendingCloseTabId] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const sensorConfig = useMemo(() => ({ activationConstraint: { distance: 8 } }), []);
+  const sensors = useSensors(useSensor(PointerSensor, sensorConfig));
 
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current;

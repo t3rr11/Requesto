@@ -122,6 +122,24 @@ function getGroupColor(group: ConsoleGroup): string {
   return 'text-gray-400';
 }
 
+const LOG_REFRESH_INTERVAL_MS = 30_000;
+
+function RelativeTime({ timestamp }: { timestamp: number }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), LOG_REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <span
+      className="text-gray-600 dark:text-gray-700 text-xs whitespace-nowrap"
+      title={new Date(timestamp).toLocaleString()}
+    >
+      {formatRelativeTime(timestamp)}
+    </span>
+  );
+}
+
 export function ConsolePanel({
   isOpen,
   consoleHeight,
@@ -132,7 +150,6 @@ export function ConsolePanel({
 }: ConsolePanelProps) {
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
-  const [, setTick] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { handleResizeStart } = useResizablePanel({
@@ -145,13 +162,6 @@ export function ConsolePanel({
   });
 
   const groups = useMemo(() => groupConsoleLogs(consoleLogs), [consoleLogs]);
-
-  // Periodically re-render to keep relative times fresh
-  useEffect(() => {
-    if (!isOpen || consoleLogs.length === 0) return;
-    const interval = setInterval(() => setTick(t => t + 1), 30_000);
-    return () => clearInterval(interval);
-  }, [isOpen, consoleLogs.length]);
 
   const handleToggleLog = (groupId: string) => {
     setExpandedLogs(prev => {
@@ -310,12 +320,7 @@ export function ConsolePanel({
               <div className="text-sm mt-1">{group.infoLog.message}</div>
             )}
           </div>
-          <span
-            className="text-gray-600 dark:text-gray-700 text-xs whitespace-nowrap"
-            title={new Date(group.timestamp).toLocaleString()}
-          >
-            {formatRelativeTime(group.timestamp)}
-          </span>
+          <RelativeTime timestamp={group.timestamp} />
           <Button
             variant="icon"
             size="sm"
