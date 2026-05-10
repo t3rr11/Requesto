@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useEnvironmentStore } from '../store/environments/store';
 import { useVariableDetection } from '../hooks/useVariableDetection';
 import { VariableHighlight } from './variable-input/VariableHighlight';
@@ -47,10 +47,14 @@ export function VariableAwareInput({
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const { environmentsData } = useEnvironmentStore();
 
-  const activeEnvironment = environmentsData.environments.find(
-    e => e.id === environmentsData.activeEnvironmentId,
+  const activeEnvironment = useMemo(
+    () => environmentsData.environments.find(e => e.id === environmentsData.activeEnvironmentId),
+    [environmentsData.environments, environmentsData.activeEnvironmentId],
   );
-  const enabledVariables = activeEnvironment?.variables.filter(v => v.enabled) || [];
+  const enabledVariables = useMemo(
+    () => activeEnvironment?.variables.filter(v => v.enabled) ?? [],
+    [activeEnvironment],
+  );
 
   const { showSuggestions: autoShowSuggestions, currentVariable } = useVariableDetection(
     value,

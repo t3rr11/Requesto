@@ -14,14 +14,29 @@ export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }
   const [visible, setVisible] = useState(false);
   const [animate, setAnimate] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClose = useCallback(() => {
     setAnimate(false);
-    setTimeout(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
+
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
       setVisible(false);
       onClose();
     }, 150);
   }, [onClose]);
+
+  // Clear any pending close timers on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,7 +88,7 @@ export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }
           ring-1 ring-black/8 dark:ring-white/8
           transition-all duration-150 ease-out origin-center
           ${animate ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.97] translate-y-1'}`}
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={e => e.stopPropagation()}
       >
         {title ? (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700/60 shrink-0">
