@@ -5,8 +5,9 @@ import { useAlertStore } from '../store/alert/store';
 import { Dialog, DialogFooter } from './Dialog';
 import { Button } from './Button';
 import { CreateWorkspaceForm } from '../forms/CreateWorkspaceForm';
-import { useConfirmDialog } from '../hooks/useDialog';
+import { useConfirmDialog, useDialogWithData } from '../hooks/useDialog';
 import { ConfirmDialog } from './ConfirmDialog';
+import { RenameForm } from '../forms/RenameForm';
 import type { Workspace } from '../store/workspace/types';
 
 interface WorkspaceManagerDialogProps {
@@ -15,12 +16,12 @@ interface WorkspaceManagerDialogProps {
 }
 
 export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDialogProps) {
-  const { registry, deleteWorkspace, updateWorkspace, switchWorkspace, exportWorkspace, importWorkspace } = useWorkspaceStore();
+  const { registry, deleteWorkspace, updateWorkspace, switchWorkspace, exportWorkspace, importWorkspace } =
+    useWorkspaceStore();
   const { showAlert } = useAlertStore();
   const confirmDialog = useConfirmDialog();
+  const renameDialog = useDialogWithData<Workspace>();
   const [createMode, setCreateMode] = useState<'empty' | 'clone' | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
 
   const handleDelete = (workspace: Workspace) => {
@@ -50,23 +51,17 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
   };
 
   const handleStartRename = (workspace: Workspace) => {
-    setEditingId(workspace.id);
-    setEditName(workspace.name);
+    renameDialog.open(workspace);
   };
 
-  const handleSaveRename = async () => {
-    if (!editingId || !editName.trim()) return;
+  const handleSaveRename = async (newName: string) => {
+    if (!renameDialog.data) return;
     try {
-      await updateWorkspace(editingId, { name: editName.trim() });
-      setEditingId(null);
+      await updateWorkspace(renameDialog.data.id, { name: newName });
+      renameDialog.close();
     } catch {
       showAlert('Error', 'Failed to rename workspace', 'error');
     }
-  };
-
-  const handleCancelRename = () => {
-    setEditingId(null);
-    setEditName('');
   };
 
   const handleSwitch = async (id: string) => {
@@ -107,7 +102,12 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
 
   if (createMode !== null) {
     return (
-      <Dialog isOpen={isOpen} onClose={onClose} title={createMode === 'clone' ? 'Clone from Git' : 'New Workspace'} size="md">
+      <Dialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title={createMode === 'clone' ? 'Clone from Git' : 'New Workspace'}
+        size="md"
+      >
         <CreateWorkspaceForm
           onSuccess={handleCreateSuccess}
           onCancel={() => setCreateMode(null)}
@@ -119,124 +119,109 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
 
   return (
     <>
-    <Dialog
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Manage Workspaces"
-      size="lg"
-      footer={
-        <DialogFooter>
-          <div className="flex gap-2">
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImport}
-              className="hidden"
-            />
-            <Button variant="secondary" size="md" onClick={() => importInputRef.current?.click()}>
-              <Upload className="w-4 h-4" />
-              Import
-            </Button>
-            <Button variant="secondary" size="md" onClick={() => setCreateMode('clone')}>
-              <GitBranch className="w-4 h-4" />
-              Clone from Git
-            </Button>
-            <Button variant="primary" size="md" onClick={() => setCreateMode('empty')}>
-              New Workspace
-            </Button>
-          </div>
-        </DialogFooter>
-      }
-    >
-      <div className="space-y-1">
-        {registry.workspaces.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-            No workspaces yet. Create one to get started.
-          </p>
-        ) : (
-          registry.workspaces.map(workspace => (
-            <div
-              key={workspace.id}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 group"
-            >
-              {editingId === workspace.id ? (
-                <div className="flex-1 flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleSaveRename();
-                      if (e.key === 'Escape') handleCancelRename();
+      <Dialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Manage Workspaces"
+        size="lg"
+        footer={
+          <DialogFooter>
+            <div className="flex gap-2">
+              <input ref={importInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
+              <Button variant="secondary" size="md" onClick={() => importInputRef.current?.click()}>
+                <Upload className="w-4 h-4" />
+                Import
+              </Button>
+              <Button variant="secondary" size="md" onClick={() => setCreateMode('clone')}>
+                <GitBranch className="w-4 h-4" />
+                Clone from Git
+              </Button>
+              <Button variant="primary" size="md" onClick={() => setCreateMode('empty')}>
+                New Workspace
+              </Button>
+            </div>
+          </DialogFooter>
+        }
+      >
+        <div className="space-y-1">
+          {registry.workspaces.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+              No workspaces yet. Create one to get started.
+            </p>
+          ) : (
+            registry.workspaces.map(workspace => (
+              <button
+                key={workspace.id}
+                onClick={() => handleSwitch(workspace.id)}
+                className="flex items-center w-full gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 group"
+              >
+                <div className="flex-1 text-left min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                      {workspace.name}
+                    </span>
+                    {workspace.isGitRepo && (
+                      <span title="Git repository">
+                        <GitBranch className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
+                      </span>
+                    )}
+                    {workspace.id === registry.activeWorkspaceId && (
+                      <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full shrink-0">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="Export"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleExport(workspace);
                     }}
-                    className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                    autoFocus
-                  />
-                  <Button variant="primary" size="sm" onClick={handleSaveRename}>
-                    Save
+                  >
+                    <Download className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleCancelRename}>
-                    Cancel
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="Rename"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleStartRename(workspace);
+                    }}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="icon"
+                    size="sm"
+                    title="Delete"
+                    onClick={e => {
+                      e.stopPropagation();
+                      handleDelete(workspace);
+                    }}
+                    disabled={registry.workspaces.length <= 1}
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-              ) : (
-                <>
-                  <button
-                    onClick={() => handleSwitch(workspace.id)}
-                    className="flex-1 text-left min-w-0"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {workspace.name}
-                      </span>
-                      {workspace.isGitRepo && (
-                        <span title="Git repository">
-                          <GitBranch className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 shrink-0" />
-                        </span>
-                      )}
-                      {workspace.id === registry.activeWorkspaceId && (
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full shrink-0">
-                          Active
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button
-                      variant="icon"
-                      size="sm"
-                      title="Export"
-                      onClick={() => handleExport(workspace)}
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="icon"
-                      size="sm"
-                      title="Rename"
-                      onClick={() => handleStartRename(workspace)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="icon"
-                      size="sm"
-                      title="Delete"
-                      onClick={() => handleDelete(workspace)}
-                      disabled={registry.workspaces.length <= 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))
-        )}
-      </div>
-    </Dialog>
-    <ConfirmDialog {...confirmDialog.props} />
+              </button>
+            ))
+          )}
+        </div>
+      </Dialog>
+      <ConfirmDialog {...confirmDialog.props} />
+      <RenameForm
+        isOpen={renameDialog.isOpen}
+        onClose={renameDialog.close}
+        onSave={handleSaveRename}
+        currentName={renameDialog.data?.name ?? ''}
+        title="Rename Workspace"
+        label="Workspace Name"
+      />
     </>
   );
 }

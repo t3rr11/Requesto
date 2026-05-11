@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Settings, Check, Search, GitBranch, Pencil, X } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspace/store';
 import { useAlertStore } from '../store/alert/store';
+import { useDialogWithData } from '../hooks/useDialog';
+import { RenameForm } from '../forms/RenameForm';
 
 interface WorkspaceSwitcherProps {
   onManageWorkspaces: () => void;
@@ -13,8 +15,7 @@ export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: W
   const { showAlert } = useAlertStore();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const renameDialog = useDialogWithData<{ id: string; name: string }>();
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -30,7 +31,6 @@ export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: W
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
         setSearch('');
-        setEditingId(null);
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -59,24 +59,18 @@ export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: W
 
   const handleStartRename = (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
-    setEditingId(id);
-    setEditName(name);
+    setIsOpen(false);
+    setSearch('');
+    renameDialog.open({ id, name });
   };
 
-  const handleSaveRename = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!editingId || !editName.trim()) return;
+  const handleSaveRename = async (newName: string) => {
+    if (!renameDialog.data) return;
     try {
-      await updateWorkspace(editingId, { name: editName.trim() });
-      setEditingId(null);
+      await updateWorkspace(renameDialog.data.id, { name: newName });
     } catch {
       showAlert('Error', 'Failed to rename workspace', 'error');
     }
-  };
-
-  const handleCancelRename = () => {
-    setEditingId(null);
-    setEditName('');
   };
 
   return (
@@ -126,49 +120,33 @@ export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: W
               filtered.map(workspace => (
                 <div
                   key={workspace.id}
-                  className={`group flex items-center gap-1 ${editingId === workspace.id ? 'px-3 py-2' : ''} hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
+                  className="group flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  {editingId === workspace.id ? (
-                    <form onSubmit={handleSaveRename} className="flex-1 flex items-center gap-1">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Escape') handleCancelRename(); }}
-                        className="flex-1 px-1.5 py-0.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                        autoFocus
-                        onClick={e => e.stopPropagation()}
-                      />
-                      <button type="submit" className="text-xs text-blue-600 dark:text-blue-400 hover:underline px-1">Save</button>
-                      <button type="button" onClick={handleCancelRename} className="text-xs text-gray-400 hover:underline px-1">Cancel</button>
-                    </form>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => handleSwitch(workspace.id)}
-                        className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-left min-w-0"
-                      >
-                        {workspace.id === registry.activeWorkspaceId ? (
-                          <Check className="w-4 h-4 text-blue-500 shrink-0" />
-                        ) : (
-                          <span className="w-4 h-4 shrink-0" />
-                        )}
-                        <span className="truncate">{workspace.name}</span>
-                        {workspace.isGitRepo && (
-                          <span title="Git repository">
-                            <GitBranch className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
-                          </span>
-                        )}
-                      </button>
-                      <button
-                        onClick={e => handleStartRename(e, workspace.id, workspace.name)}
-                        className="p-1 rounded opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
-                        title="Rename"
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </button>
-                    </>
-                  )}
+                  <>
+                    <button
+                      onClick={() => handleSwitch(workspace.id)}
+                      className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-left min-w-0"
+                    >
+                      {workspace.id === registry.activeWorkspaceId ? (
+                        <Check className="w-4 h-4 text-blue-500 shrink-0" />
+                      ) : (
+                        <span className="w-4 h-4 shrink-0" />
+                      )}
+                      <span className="truncate">{workspace.name}</span>
+                      {workspace.isGitRepo && (
+                        <span title="Git repository">
+                          <GitBranch className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={e => handleStartRename(e, workspace.id, workspace.name)}
+                      className="p-1 mr-2 rounded opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+                      title="Rename"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  </>
                 </div>
               ))
             )}
@@ -188,6 +166,14 @@ export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: W
           </div>
         </div>
       )}
+      <RenameForm
+        isOpen={renameDialog.isOpen}
+        onClose={renameDialog.close}
+        onSave={handleSaveRename}
+        currentName={renameDialog.data?.name ?? ''}
+        title="Rename Workspace"
+        label="Workspace Name"
+      />
     </div>
   );
 }

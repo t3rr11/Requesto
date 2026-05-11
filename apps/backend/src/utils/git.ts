@@ -582,7 +582,6 @@ export async function listBranches(workspacePath: string): Promise<{
   const repoRoot = await getRepoRoot(workspacePath);
   const gitDir = repoRoot || workspacePath;
   const git = simpleGit(gitDir);
-  // Use getCurrentBranch for a reliable "what is checked out" answer
   const current = await getCurrentBranch(gitDir);
   const summary = await git.branch(['-a']);
   const local = summary.branches
