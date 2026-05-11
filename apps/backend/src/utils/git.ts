@@ -3,8 +3,25 @@ import path from 'path';
 import fs from 'fs';
 
 const GITIGNORE_CONTENT = `# Requesto local data (history, secrets)
-.requesto/
+local/
 `;
+
+/**
+ * Remove any Requesto-managed entries we previously added to the root .gitignore.
+ */
+function cleanRootGitignore(workspacePath: string): void {
+  const rootGitignorePath = path.join(workspacePath, '.gitignore');
+  if (!fs.existsSync(rootGitignorePath)) return;
+  const content = fs.readFileSync(rootGitignorePath, 'utf-8');
+  const updated = content
+    .replace(/^# Requesto local data \(history, secrets\)\n/m, '')
+    .replace(/^\.requesto\/local\/\n?/m, '')
+    .replace(/^\.requesto\/\n?/m, '');
+  if (updated !== content) {
+    const trimmed = updated.trimEnd();
+    fs.writeFileSync(rootGitignorePath, trimmed ? trimmed + '\n' : '', 'utf-8');
+  }
+}
 
 /**
  * Check if git binary is available on the system.
@@ -177,19 +194,26 @@ export async function initRepo(workspacePath: string): Promise<void> {
 }
 
 /**
- * Ensure .gitignore exists and contains .requesto/ exclusion.
+ * Ensure .requesto/.gitignore exists and ignores the local/ subdirectory.
  */
 export async function ensureGitignore(workspacePath: string): Promise<void> {
-  const gitignorePath = path.join(workspacePath, '.gitignore');
+  const requestoDir = path.join(workspacePath, '.requesto');
+  if (!fs.existsSync(requestoDir)) {
+    fs.mkdirSync(requestoDir, { recursive: true });
+  }
+  const gitignorePath = path.join(requestoDir, '.gitignore');
 
   if (fs.existsSync(gitignorePath)) {
     const content = fs.readFileSync(gitignorePath, 'utf-8');
-    if (!content.includes('.requesto/')) {
+    if (!content.split('\n').some((line) => line.trim() === 'local/')) {
       fs.appendFileSync(gitignorePath, '\n' + GITIGNORE_CONTENT, 'utf-8');
     }
   } else {
     fs.writeFileSync(gitignorePath, GITIGNORE_CONTENT, 'utf-8');
   }
+
+  // Remove any entries we previously wrote to the root .gitignore
+  cleanRootGitignore(workspacePath);
 }
 
 /**
@@ -205,21 +229,12 @@ export async function commitWorkspace(
   const git = simpleGit(gitDir);
   const relPath = repoRoot ? path.relative(repoRoot, workspacePath) : '.';
 
-  // Stage workspace files
+  // Stage workspace files (use directory path so dot dirs like .requesto/ are included)
   const filesToStage = relPath && relPath !== '.'
-    ? [`${relPath}/*`]
+    ? [relPath]
     : ['.'];
 
   await git.add(filesToStage);
-
-  // Also stage .gitignore if at workspace root
-  const gitignorePath = relPath && relPath !== '.'
-    ? path.join(relPath, '.gitignore')
-    : '.gitignore';
-  const fullGitignore = path.join(gitDir, gitignorePath);
-  if (fs.existsSync(fullGitignore)) {
-    await git.add([gitignorePath]);
-  }
 
   const result = await git.commit(message);
   return result.commit;

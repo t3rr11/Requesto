@@ -34,22 +34,28 @@ function resetTestData() {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
   }
 
-  // Create .requesto/ local data directory
-  const localDir = path.join(TEST_DATA_DIR, '.requesto');
+  // Create .requesto/ directory for committed workspace data
+  const requestoDir = path.join(TEST_DATA_DIR, '.requesto');
+  if (!fs.existsSync(requestoDir)) {
+    fs.mkdirSync(requestoDir, { recursive: true });
+  }
+
+  // Create .requesto/local/ directory for gitignored local-only data
+  const localDir = path.join(requestoDir, 'local');
   if (!fs.existsSync(localDir)) {
     fs.mkdirSync(localDir, { recursive: true });
   }
 
-  // Copy workspace-scoped files to workspace root
+  // Copy workspace-scoped files to .requesto/
   for (const file of WORKSPACE_FILES) {
     const src = path.join(FIXTURES_DIR, file);
-    const dest = path.join(TEST_DATA_DIR, file);
+    const dest = path.join(requestoDir, file);
     if (fs.existsSync(src)) {
       fs.copyFileSync(src, dest);
     }
   }
 
-  // Copy local-only files to .requesto/
+  // Copy local-only files to .requesto/local/
   for (const file of LOCAL_FILES) {
     const src = path.join(FIXTURES_DIR, file);
     const dest = path.join(localDir, file);
@@ -58,7 +64,7 @@ function resetTestData() {
     }
   }
 
-  // Initialize oauth-secrets.json in .requesto/
+  // Initialize oauth-secrets.json in .requesto/local/
   const secretsFile = path.join(localDir, 'oauth-secrets.json');
   if (!fs.existsSync(secretsFile)) {
     fs.writeFileSync(secretsFile, JSON.stringify({ secrets: {} }, null, 2), 'utf-8');
