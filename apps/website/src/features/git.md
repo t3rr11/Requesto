@@ -1,6 +1,6 @@
 ---
 title: Git Integration
-description: Version-control your Requesto workspace with built-in Git support. Init repos, clone from remote, commit, push, pull, and sync collections with your team - all from inside the app.
+description: Version-control your Requesto workspace with built-in Git support. Init repos, clone from remote, commit, push, pull, manage branches, and sync collections with your team - all from inside the app.
 ---
 
 # Git Integration
@@ -13,7 +13,7 @@ Git must be installed and available on the system `PATH`. Requesto checks for th
 
 ## Initializing a Repository
 
-If your workspace is not already a git repository, you can initialize one from the git panel. This runs `git init` in the workspace directory and creates a `.gitignore` that excludes the `.requesto/` directory, which contains local-only data like request history and OAuth secrets.
+If your workspace is not already a git repository, you can initialize one from the git panel. This runs `git init` in the workspace directory and creates `.requesto/.gitignore`, which excludes the `local/` subdirectory containing local-only data like request history and OAuth secrets.
 
 ## Cloning a Repository
 
@@ -29,13 +29,32 @@ The workspace switcher shows a branch icon next to workspaces that are git repos
 
 Status is refreshed automatically by fetching from the remote when you check it.
 
+The status view only shows Requesto-owned files (collections, environments, OAuth configs, and the `.requesto/` directory). Files belonging to the rest of your project are intentionally hidden, so Requesto works cleanly inside an existing repository without polluting the diff view.
+
+<ThemeImage src="/git/changes-panel.png" alt="Git changes panel showing modified Requesto files" />
+
 ## Committing Changes
 
-Click **Commit** in the git panel, enter a commit message, and confirm. All workspace files are staged automatically before the commit. This includes `collections.json`, `environments.json`, and `oauth-configs.json`. Files in `.requesto/` are excluded by the auto-generated `.gitignore`.
+Click **Commit** in the git panel, enter a commit message, and confirm. Only Requesto-owned files are staged automatically — `collections.json`, `environments.json`, `oauth-configs.json`, and the `.requesto/` directory. Your project source code is never touched.
 
 ## Push and Pull
 
 **Push** sends your commits to the remote. **Pull** fetches and merges changes from the remote. If there are uncommitted local changes when you pull, they are automatically stashed and re-applied after the merge.
+
+## Branch Management
+
+The **Branches** section of the git panel lists all local branches. The currently checked-out branch is highlighted with a checkmark.
+
+<ThemeImage src="/git/branches-panel.png" alt="Git branches panel" />
+
+- **Checkout** — click a branch name to switch to it. Requesto will reload your collections and environments from the new branch.
+- **Create** — click the **+** button to create a new branch from the current HEAD. You can also right-click any branch and choose **New branch from here** to branch from a specific point.
+- **Rename** — right-click a branch and choose **Rename**.
+- **Delete** — right-click a branch and choose **Delete**. The active branch cannot be deleted.
+
+::: warning
+Switching branches requires a clean working directory. Commit or discard any pending changes before checking out a different branch.
+:::
 
 ## Conflict Resolution
 
@@ -54,13 +73,15 @@ The git panel lists configured remotes. You can add a new remote by providing a 
 
 | File | Committed | Why |
 |------|-----------|-----|
-| `collections.json` | Yes | Shared API definitions |
-| `environments.json` | Yes | Shared environment configs |
-| `oauth-configs.json` | Yes | OAuth configs without secrets |
-| `.requesto/history.json` | No | Local request history |
-| `.requesto/oauth-secrets.json` | No | Contains client secrets |
+| `.requesto/collections.json` | Yes | Shared API definitions |
+| `.requesto/environments.json` | Yes | Shared environment configs |
+| `.requesto/oauth-configs.json` | Yes | OAuth configs without secrets |
+| `.requesto/local/history.json` | No | Local request history |
+| `.requesto/local/oauth-secrets.json` | No | Contains client secrets |
 
-The `.gitignore` is created automatically when you initialize or clone a repository. It excludes `.requesto/` so that sensitive data and local history stay on your machine.
+Workspace data is stored inside the `.requesto/` subdirectory of your workspace folder. A `.requesto/.gitignore` file is created automatically when you initialize or clone a repository — it excludes the `local/` subdirectory so that sensitive data and request history stay on your machine.
+
+This layout is designed to work inside existing git projects. You can point Requesto at a directory that already has source code; only the `.requesto/` folder will be touched.
 
 ## Private Repositories
 
