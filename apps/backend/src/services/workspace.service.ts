@@ -37,8 +37,12 @@ export class WorkspaceService {
     return this.repo.open(name, targetPath);
   }
 
-  open(name: string, workspacePath: string): Workspace {
-    return this.repo.open(name, workspacePath);
+  async open(name: string, workspacePath: string): Promise<Workspace> {
+    const workspace = this.repo.open(name, workspacePath);
+    
+    // Ensure .requesto/.gitignore exists so the local/ folder is never committed
+    await git.ensureGitignore(workspacePath);
+    return workspace;
   }
 
   update(id: string, updates: Partial<Pick<Workspace, 'name'>>): Workspace {

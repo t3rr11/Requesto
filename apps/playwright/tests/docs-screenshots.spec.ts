@@ -2,6 +2,7 @@ import { test as baseTest, expect, resetData } from '../helpers/test-fixtures';
 import { type Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 
 /**
  * Documentation screenshots for the VitePress website.
@@ -822,5 +823,89 @@ test.describe('Collection Runner', () => {
 
     // Close dialog
     await appPage.keyboard.press('Escape');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Git Panel — requires a git-initialized workspace
+// ---------------------------------------------------------------------------
+
+const GIT_WORKSPACE_DIR = path.resolve(__dirname, '..', 'test-data');
+const GIT_DIR = path.join(GIT_WORKSPACE_DIR, '.git');
+
+/** Extended fixture that pre-opens the git panel via localStorage. */
+const gitTest = test.extend<{ appPage: Page }>({
+  appPage: async ({ page }, use) => {
+    await page.addInitScript(() => {
+      const uiState = {
+        state: {
+          isSidebarOpen: true,
+          sidebarWidth: 350,
+          requestPanelWidth: 810,
+          requestPanelHeight: 400,
+          panelLayout: 'horizontal',
+          isConsoleOpen: false,
+          consoleHeight: 300,
+          expandedCollections: [],
+          expandedFolders: [],
+          gitPanelHeight: 460,
+        },
+      };
+      localStorage.setItem('requesto-ui-storage', JSON.stringify(uiState));
+    });
+    await page.goto('/');
+    await page.waitForSelector('text=Collections', { timeout: 15_000 });
+    // Wait for the backend to detect the git repo, then open the panel by clicking the status bar.
+    const gitStatusBtn = page.locator('button[title*="Branch:"]');
+    await gitStatusBtn.waitFor({ state: 'visible', timeout: 15_000 });
+    await gitStatusBtn.click();
+    await page.waitForTimeout(400);
+    await use(page);
+  },
+});
+
+gitTest.describe('Git Panel', () => {
+  gitTest.beforeAll(() => {
+    resetData();
+    // Initialise a git repository in the test workspace so the git panel activates.
+    try {
+      execSync('git init', { cwd: GIT_WORKSPACE_DIR, stdio: 'pipe' });
+      execSync('git config user.email "test@requesto.test"', { cwd: GIT_WORKSPACE_DIR, stdio: 'pipe' });
+      execSync('git config user.name "Requesto Test"', { cwd: GIT_WORKSPACE_DIR, stdio: 'pipe' });
+      // Stage Requesto data files and create an initial commit so HEAD exists.
+      execSync('git add .requesto', { cwd: GIT_WORKSPACE_DIR, stdio: 'pipe' });
+      execSync('git commit -m "Initial commit"', { cwd: GIT_WORKSPACE_DIR, stdio: 'pipe' });
+      // Create a second branch for screenshot variety.
+      execSync('git branch feature/team-api', { cwd: GIT_WORKSPACE_DIR, stdio: 'pipe' });
+    } catch (e) {
+      console.warn('Git setup skipped (git not available or already initialised):', e);
+    }
+  });
+
+  gitTest.afterAll(() => {
+    // Remove the test git repository so it does not affect subsequent test runs.
+    if (fs.existsSync(GIT_DIR)) {
+      fs.rmSync(GIT_DIR, { recursive: true, force: true });
+    }
+  });
+
+  gitTest('git changes panel', async ({ appPage, takeDocScreenshot }) => {
+    // The git panel header should appear once the backend detects the repo.
+    await expect(appPage.getByText('Changes')).toBeVisible({ timeout: 10_000 });
+
+    await takeDocScreenshot('git', 'changes-panel');
+  });
+
+  gitTest('git branches panel', async ({ appPage, takeDocScreenshot }) => {
+    await expect(appPage.getByText('Branches')).toBeVisible({ timeout: 10_000 });
+
+    // Expand the Branches section.
+    await appPage.getByText('Branches').click();
+    await appPage.waitForTimeout(400);
+
+    // The branch list should show at least the current branch (main or master).
+    await expect(appPage.locator('span.flex-1.truncate.font-mono.cursor-pointer').filter({ hasText: /^(main|master)$/ })).toBeVisible({ timeout: 5_000 });
+
+    await takeDocScreenshot('git', 'branches-panel');
   });
 });

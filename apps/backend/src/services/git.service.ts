@@ -38,12 +38,23 @@ export class GitService {
     const aheadBehind = await git.getAheadBehind(workspacePath);
     const branch = await git.getCurrentBranch(workspacePath);
 
+    // Only surface Requesto-owned files — ignore the rest of the repo
+    const requiestoFiles = status.files.filter((f) => {
+      const p = f.path.replace(/\\/g, '/');
+      return (
+        p === 'collections.json' ||
+        p === 'environments.json' ||
+        p === 'oauth-configs.json' ||
+        p.startsWith('.requesto/')
+      );
+    });
+
     return {
       branch,
       ahead: aheadBehind.ahead,
       behind: aheadBehind.behind,
-      files: status.files.map((f) => ({ path: f.path, index: f.index, workingDir: f.working_dir })),
-      isClean: status.isClean(),
+      files: requiestoFiles.map((f) => ({ path: f.path, index: f.index, workingDir: f.working_dir })),
+      isClean: requiestoFiles.length === 0,
     };
   }
 
@@ -147,5 +158,63 @@ export class GitService {
       throw AppError.badRequest('Workspace is not a git repository');
     }
     return git.getRemotes(workspacePath);
+  }
+
+  async listBranches(): Promise<{ local: string[]; remote: string[]; current: string | null }> {
+    const workspacePath = this.getWorkspacePath();
+    const isRepo = await git.isGitRepoRoot(workspacePath);
+    if (!isRepo) {
+      throw AppError.badRequest('Workspace is not a git repository');
+    }
+    return git.listBranches(workspacePath);
+  }
+
+  async createBranch(name: string, from?: string): Promise<{ success: boolean; branch: string }> {
+    const workspacePath = this.getWorkspacePath();
+    const isRepo = await git.isGitRepoRoot(workspacePath);
+    if (!isRepo) {
+      throw AppError.badRequest('Workspace is not a git repository');
+    }
+    await git.createBranch(workspacePath, name, from);
+    return { success: true, branch: name };
+  }
+
+  async checkoutBranch(branch: string): Promise<{ success: boolean; branch: string }> {
+    const workspacePath = this.getWorkspacePath();
+    const isRepo = await git.isGitRepoRoot(workspacePath);
+    if (!isRepo) {
+      throw AppError.badRequest('Workspace is not a git repository');
+    }
+    try {
+      await git.checkoutBranch(workspacePath, branch);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw AppError.badRequest(msg);
+    }
+    return { success: true, branch };
+  }
+
+  async deleteBranch(name: string, force = false): Promise<{ success: boolean }> {
+    const workspacePath = this.getWorkspacePath();
+    const isRepo = await git.isGitRepoRoot(workspacePath);
+    if (!isRepo) {
+      throw AppError.badRequest('Workspace is not a git repository');
+    }
+    const current = await git.getCurrentBranch(workspacePath);
+    if (current === name) {
+      throw AppError.badRequest(`Cannot delete '${name}' because it is the currently checked-out branch. Switch to a different branch first.`);
+    }
+    await git.deleteBranch(workspacePath, name, force);
+    return { success: true };
+  }
+
+  async renameBranch(oldName: string, newName: string): Promise<{ success: boolean; branch: string }> {
+    const workspacePath = this.getWorkspacePath();
+    const isRepo = await git.isGitRepoRoot(workspacePath);
+    if (!isRepo) {
+      throw AppError.badRequest('Workspace is not a git repository');
+    }
+    await git.renameBranch(workspacePath, oldName, newName);
+    return { success: true, branch: newName };
   }
 }

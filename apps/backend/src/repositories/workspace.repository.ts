@@ -53,11 +53,11 @@ export class WorkspaceRepository extends BaseRepository {
   }
 
   getDataDir(): string {
-    return this.getActiveWorkspace().path;
+    return path.join(this.getActiveWorkspace().path, '.requesto');
   }
 
   getLocalDir(): string {
-    return path.join(this.getActiveWorkspace().path, '.requesto');
+    return path.join(this.getActiveWorkspace().path, '.requesto', 'local');
   }
 
   // ── Workspace mutation ───────────────────────────────────────────────────
@@ -125,6 +125,13 @@ export class WorkspaceRepository extends BaseRepository {
       path: resolvedPath
     };
 
+    // Migrate old root-level layout to .requesto/ if needed
+    const hasOldLayout = DATA_FILES.some((f) => fs.existsSync(path.join(resolvedPath, f)));
+    const hasNewLayout = DATA_FILES.some((f) => fs.existsSync(path.join(resolvedPath, '.requesto', f)));
+    if (hasOldLayout && !hasNewLayout) {
+      this.migrateToRequestoLayout(resolvedPath);
+    }
+
     this.ensureLocalDirs(resolvedPath);
 
     registry.workspaces.push(workspace);
@@ -184,9 +191,10 @@ export class WorkspaceRepository extends BaseRepository {
     const workspace = this.findById(id);
     if (!workspace) throw new Error('Workspace not found');
 
+    const requestoDir = path.join(workspace.path, '.requesto');
     const data: Record<string, unknown> = { name: workspace.name };
     for (const file of DATA_FILES) {
-      const filePath = path.join(workspace.path, file);
+      const filePath = path.join(requestoDir, file);
       if (fs.existsSync(filePath)) {
         try {
           data[file] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -202,9 +210,10 @@ export class WorkspaceRepository extends BaseRepository {
     const name = typeof bundle.name === 'string' ? bundle.name : 'Imported Workspace';
     const workspace = this.create(name);
 
+    const requestoDir = path.join(workspace.path, '.requesto');
     for (const file of DATA_FILES) {
       if (bundle[file] != null) {
-        const filePath = path.join(workspace.path, file);
+        const filePath = path.join(requestoDir, file);
         atomicWrite(filePath, bundle[file]);
       }
     }
@@ -236,6 +245,21 @@ export class WorkspaceRepository extends BaseRepository {
             this.saveRegistry(registry);
           }
         }
+        // Migrate any workspaces still using the old root-level layout to .requesto/
+        for (const ws of registry.workspaces) {
+          if (!fs.existsSync(ws.path)) continue;
+          const hasOldLayout = DATA_FILES.some((f) => fs.existsSync(path.join(ws.path, f)));
+          const hasNewLayout = DATA_FILES.some((f) =>
+            fs.existsSync(path.join(ws.path, '.requesto', f)),
+          );
+          if (hasOldLayout && !hasNewLayout) {
+            console.log(`Migrating workspace "${ws.name}" to .requesto/ layout...`);
+            this.migrateToRequestoLayout(ws.path);
+          }
+          // Always ensure local-only files aren't stranded in .requesto/ (e.g. oauth-tokens.json)
+          this.rescueLocalFiles(ws.path);
+          this.ensureRequestoGitignore(ws.path);
+        }
         return;
       }
     }
@@ -249,16 +273,17 @@ export class WorkspaceRepository extends BaseRepository {
       console.log('Migrating existing data into Default workspace...');
       this.ensureWorkspaceDirs(defaultPath);
 
+      const requestoDir = path.join(defaultPath, '.requesto');
       for (const file of DATA_FILES) {
         const src = path.join(this.dataDir, file);
-        const dest = path.join(defaultPath, file);
+        const dest = path.join(requestoDir, file);
         if (fs.existsSync(src) && !fs.existsSync(dest)) {
           fs.copyFileSync(src, dest);
           fs.unlinkSync(src);
         }
       }
 
-      const localDir = path.join(defaultPath, '.requesto');
+      const localDir = path.join(defaultPath, '.requesto', 'local');
       for (const file of LOCAL_DATA_FILES) {
         const src = path.join(this.dataDir, file);
         const dest = path.join(localDir, file);
@@ -269,7 +294,7 @@ export class WorkspaceRepository extends BaseRepository {
       }
 
       // Split OAuth secrets into separate local file
-      const oauthConfigPath = path.join(defaultPath, 'oauth-configs.json');
+      const oauthConfigPath = path.join(requestoDir, 'oauth-configs.json');
       if (fs.existsSync(oauthConfigPath)) {
         try {
           const oauthData = JSON.parse(fs.readFileSync(oauthConfigPath, 'utf-8'));
@@ -325,11 +350,13 @@ export class WorkspaceRepository extends BaseRepository {
   private ensureWorkspaceDirs(workspacePath: string): void {
     ensureDir(workspacePath);
     ensureDir(path.join(workspacePath, '.requesto'));
+    ensureDir(path.join(workspacePath, '.requesto', 'local'));
   }
 
   private ensureLocalDirs(workspacePath: string): void {
     ensureDir(path.join(workspacePath, '.requesto'));
-    const localDir = path.join(workspacePath, '.requesto');
+    const localDir = path.join(workspacePath, '.requesto', 'local');
+    ensureDir(localDir);
     const historyFile = path.join(localDir, 'history.json');
     const secretsFile = path.join(localDir, 'oauth-secrets.json');
     if (!fs.existsSync(historyFile)) atomicWrite(historyFile, []);
@@ -339,6 +366,7 @@ export class WorkspaceRepository extends BaseRepository {
   private initializeWorkspaceFiles(workspacePath: string): void {
     this.ensureWorkspaceDirs(workspacePath);
 
+    const requestoDir = path.join(workspacePath, '.requesto');
     const defaults: Record<string, unknown> = {
       'collections.json': [],
       'environments.json': { activeEnvironmentId: null, environments: [] },
@@ -346,14 +374,85 @@ export class WorkspaceRepository extends BaseRepository {
     };
 
     for (const [file, defaultData] of Object.entries(defaults)) {
-      const filePath = path.join(workspacePath, file);
+      const filePath = path.join(requestoDir, file);
       if (!fs.existsSync(filePath)) atomicWrite(filePath, defaultData);
     }
 
-    const localDir = path.join(workspacePath, '.requesto');
+    const localDir = path.join(workspacePath, '.requesto', 'local');
     if (!fs.existsSync(path.join(localDir, 'history.json')))
       atomicWrite(path.join(localDir, 'history.json'), []);
     if (!fs.existsSync(path.join(localDir, 'oauth-secrets.json')))
       atomicWrite(path.join(localDir, 'oauth-secrets.json'), { secrets: {} });
+  }
+
+  private migrateToRequestoLayout(workspacePath: string): void {
+    const requestoDir = path.join(workspacePath, '.requesto');
+    const localDir = path.join(requestoDir, 'local');
+    ensureDir(requestoDir);
+    ensureDir(localDir);
+
+    // Move DATA_FILES from workspace root into .requesto/
+    for (const file of DATA_FILES) {
+      const src = path.join(workspacePath, file);
+      const dest = path.join(requestoDir, file);
+      if (fs.existsSync(src) && !fs.existsSync(dest)) {
+        fs.renameSync(src, dest);
+      }
+    }
+
+    // Move local files from old .requesto/ into .requesto/local/
+    for (const file of [...LOCAL_DATA_FILES, 'oauth-secrets.json', 'oauth-tokens.json', 'environments.local.json']) {
+      const src = path.join(requestoDir, file);
+      const dest = path.join(localDir, file);
+      if (fs.existsSync(src) && !fs.existsSync(dest)) {
+        fs.renameSync(src, dest);
+      }
+    }
+
+    // Create .requesto/.gitignore to ignore the local/ subdirectory
+    const requestoDotGitignore = path.join(requestoDir, '.gitignore');
+    if (!fs.existsSync(requestoDotGitignore)) {
+      fs.writeFileSync(requestoDotGitignore, '# Requesto local data (history, secrets)\nlocal/\n', 'utf-8');
+    }
+
+    // Clean up any Requesto entries previously added to the root .gitignore
+    const rootGitignorePath = path.join(workspacePath, '.gitignore');
+    if (fs.existsSync(rootGitignorePath)) {
+      const content = fs.readFileSync(rootGitignorePath, 'utf-8');
+      const updated = content
+        .replace(/^# Requesto local data \(history, secrets\)\n/m, '')
+        .replace(/^\.requesto\/local\/\n?/m, '')
+        .replace(/^\.requesto\/\n?/m, '');
+      if (updated !== content) {
+        const trimmed = updated.trimEnd();
+        fs.writeFileSync(rootGitignorePath, trimmed ? trimmed + '\n' : '', 'utf-8');
+      }
+    }
+
+    console.log(`Migration to .requesto/ layout complete for "${workspacePath}".`);
+  }
+
+  private ensureRequestoGitignore(workspacePath: string): void {
+    const requestoDir = path.join(workspacePath, '.requesto');
+    if (!fs.existsSync(requestoDir)) return;
+    const gitignorePath = path.join(requestoDir, '.gitignore');
+    if (!fs.existsSync(gitignorePath)) {
+      fs.writeFileSync(gitignorePath, '# Requesto local data (history, secrets)\nlocal/\n', 'utf-8');
+    }
+  }
+
+  private rescueLocalFiles(workspacePath: string): void {
+    const requestoDir = path.join(workspacePath, '.requesto');
+    if (!fs.existsSync(requestoDir)) return;
+    const localDir = path.join(requestoDir, 'local');
+    const localOnlyFiles = [...LOCAL_DATA_FILES, 'oauth-secrets.json', 'oauth-tokens.json', 'environments.local.json'];
+    for (const file of localOnlyFiles) {
+      const src = path.join(requestoDir, file);
+      const dest = path.join(localDir, file);
+      if (fs.existsSync(src) && !fs.existsSync(dest)) {
+        ensureDir(localDir);
+        fs.renameSync(src, dest);
+      }
+    }
   }
 }

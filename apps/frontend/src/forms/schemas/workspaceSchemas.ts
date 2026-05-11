@@ -5,9 +5,14 @@ export const createWorkspaceSchema = z.object({
   cloneFromRepo: z.boolean().optional(),
   repoUrl: z.string().optional(),
   authToken: z.string().optional(),
+  openExisting: z.boolean().optional(),
+  existingPath: z.string().optional(),
 }).refine(
   (data) => !data.cloneFromRepo || (data.repoUrl && data.repoUrl.trim().length > 0),
   { message: 'Repository URL is required when cloning', path: ['repoUrl'] },
+).refine(
+  (data) => !data.openExisting || (data.existingPath && data.existingPath.trim().length > 0),
+  { message: 'A directory path is required', path: ['existingPath'] },
 );
 
 export type CreateWorkspaceFormData = z.infer<typeof createWorkspaceSchema>;

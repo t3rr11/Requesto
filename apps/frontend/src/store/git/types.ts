@@ -42,3 +42,9 @@ export type FileDiff = {
   path: string;
   diff: string;
 };
+
+export type GitBranches = {
+  local: string[];
+  remote: string[];
+  current: string | null;
+};

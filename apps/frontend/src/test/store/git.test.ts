@@ -31,6 +31,8 @@ describe('git store', () => {
       isGitInstalled: false,
       isRepo: false,
       branch: null,
+      branches: [],
+      remoteBranches: [],
       status: null,
       log: [],
       remotes: [],
@@ -458,10 +460,12 @@ describe('git store', () => {
   });
 
   describe('reset', () => {
-    it('resets repo-related state', () => {
+    it('resets repo-related state including branches', () => {
       useGitStore.setState({
         isRepo: true,
         branch: 'main',
+        branches: ['main', 'feature/x'],
+        remoteBranches: ['origin/main'],
         status: mockStatus,
         log: [mockLogEntry],
         remotes: [mockRemote],
@@ -473,10 +477,153 @@ describe('git store', () => {
       const state = useGitStore.getState();
       expect(state.isRepo).toBe(false);
       expect(state.branch).toBeNull();
+      expect(state.branches).toEqual([]);
+      expect(state.remoteBranches).toEqual([]);
       expect(state.status).toBeNull();
       expect(state.log).toEqual([]);
       expect(state.remotes).toEqual([]);
       expect(state.conflicts).toEqual([]);
+    });
+  });
+
+  describe('loadBranches', () => {
+    it('loads branches and updates current branch', async () => {
+      const branchData = { local: ['main', 'feature/x'], remote: ['origin/main'], current: 'main' };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(branchData),
+      });
+
+      await useGitStore.getState().loadBranches();
+
+      const state = useGitStore.getState();
+      expect(state.branches).toEqual(['main', 'feature/x']);
+      expect(state.remoteBranches).toEqual(['origin/main']);
+      expect(state.branch).toBe('main');
+    });
+
+    it('silently ignores failure', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+      await useGitStore.getState().loadBranches();
+      // No throw
+    });
+  });
+
+  describe('createBranch', () => {
+    it('creates a branch and refreshes branch list', async () => {
+      // createBranchApi
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, branch: 'feature/new' }),
+      });
+      // loadBranches
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ local: ['main', 'feature/new'], remote: [], current: 'main' }),
+      });
+
+      await useGitStore.getState().createBranch('feature/new');
+
+      expect(mockFetch.mock.calls[0][0]).toContain('/git/branches');
+      expect(mockFetch.mock.calls[0][1]).toMatchObject({
+        method: 'POST',
+        body: JSON.stringify({ name: 'feature/new' }),
+      });
+      expect(useGitStore.getState().branches).toEqual(['main', 'feature/new']);
+      expect(useGitStore.getState().operating).toBe(false);
+    });
+
+    it('throws on create failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Branch already exists' }),
+      });
+
+      await expect(useGitStore.getState().createBranch('main')).rejects.toThrow('Branch already exists');
+      expect(useGitStore.getState().operating).toBe(false);
+    });
+  });
+
+  describe('checkoutBranch', () => {
+    it('checks out a branch and refreshes status and branches', async () => {
+      // checkoutBranchApi
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, branch: 'feature/x' }),
+      });
+      // loadStatus
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ ...mockStatus, branch: 'feature/x' }),
+      });
+      // loadBranches
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ local: ['main', 'feature/x'], remote: [], current: 'feature/x' }),
+      });
+
+      const dispatchSpy = vi.spyOn(window, 'dispatchEvent');
+      await useGitStore.getState().checkoutBranch('feature/x');
+
+      expect(useGitStore.getState().branch).toBe('feature/x');
+      expect(useGitStore.getState().operating).toBe(false);
+      expect(dispatchSpy).toHaveBeenCalledWith(expect.any(Event));
+      dispatchSpy.mockRestore();
+    });
+
+    it('throws when checkout fails (e.g. uncommitted changes)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Cannot switch branches with uncommitted changes' }),
+      });
+
+      await expect(useGitStore.getState().checkoutBranch('other')).rejects.toThrow(
+        'Cannot switch branches with uncommitted changes',
+      );
+      expect(useGitStore.getState().operating).toBe(false);
+    });
+  });
+
+  describe('deleteBranch', () => {
+    it('deletes a branch and refreshes branch list', async () => {
+      // deleteBranchApi
+      mockFetch.mockResolvedValueOnce({ ok: true });
+      // loadBranches
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ local: ['main'], remote: [], current: 'main' }),
+      });
+
+      await useGitStore.getState().deleteBranch('feature/old');
+
+      expect(mockFetch.mock.calls[0][0]).toContain('/git/branches/feature%2Fold');
+      expect(mockFetch.mock.calls[0][1]).toMatchObject({ method: 'DELETE' });
+      expect(useGitStore.getState().branches).toEqual(['main']);
+      expect(useGitStore.getState().operating).toBe(false);
+    });
+
+    it('uses force flag when specified', async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ local: ['main'], remote: [], current: 'main' }),
+      });
+
+      await useGitStore.getState().deleteBranch('feature/old', true);
+
+      expect(mockFetch.mock.calls[0][0]).toContain('?force=true');
+    });
+
+    it('throws on delete failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: 'Branch not fully merged' }),
+      });
+
+      await expect(useGitStore.getState().deleteBranch('feature/unmerged')).rejects.toThrow(
+        'Branch not fully merged',
+      );
+      expect(useGitStore.getState().operating).toBe(false);
     });
   });
 });

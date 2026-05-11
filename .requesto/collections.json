@@ -1,0 +1,21 @@
+[
+  {
+    "id": "col-1778494719264-666hi5",
+    "name": "Collections",
+    "folders": [],
+    "requests": [
+      {
+        "id": "req-1778494734756-u4kvk9",
+        "name": "GET /api/collections",
+        "method": "GET",
+        "url": "http://localhost:4747/api/collections",
+        "headers": {},
+        "bodyType": "json",
+        "auth": {
+          "type": "none"
+        },
+        "collectionId": "col-1778494719264-666hi5"
+      }
+    ]
+  }
+]

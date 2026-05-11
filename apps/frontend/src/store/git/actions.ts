@@ -1,4 +1,4 @@
-import type { GitCheckResult, GitStatus, GitLogEntry, GitRemote, PullResult, FileDiff } from './types';
+import type { GitCheckResult, GitStatus, GitLogEntry, GitRemote, PullResult, FileDiff, GitBranches } from './types';
 import { API_BASE } from '../../helpers/api/config';
 
 type SetState = (partial: Record<string, unknown>) => void;
@@ -248,6 +248,125 @@ export async function addRemote(set: SetState, name: string, url: string): Promi
     await loadRemotes(set);
   } catch (error) {
     console.error('Failed to add remote:', error);
+    throw error;
+  } finally {
+    set({ operating: false });
+  }
+}
+
+async function getBranchesApi(): Promise<GitBranches> {
+  const res = await fetch(`${API_BASE}/git/branches`);
+  if (!res.ok) throw new Error('Failed to load branches');
+  return res.json();
+}
+
+async function createBranchApi(name: string, from?: string): Promise<{ success: boolean; branch: string }> {
+  const res = await fetch(`${API_BASE}/git/branches`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, ...(from ? { from } : {}) }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to create branch' }));
+    throw new Error(err.error);
+  }
+  return res.json();
+}
+
+async function checkoutBranchApi(branch: string): Promise<{ success: boolean; branch: string }> {
+  const res = await fetch(`${API_BASE}/git/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ branch }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to checkout branch' }));
+    throw new Error(err.error);
+  }
+  return res.json();
+}
+
+async function deleteBranchApi(name: string, force: boolean): Promise<void> {
+  const url = `${API_BASE}/git/branches/${encodeURIComponent(name)}${force ? '?force=true' : ''}`;
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to delete branch' }));
+    throw new Error(err.error);
+  }
+}
+
+async function renameBranchApi(oldName: string, newName: string): Promise<{ success: boolean; branch: string }> {
+  const res = await fetch(`${API_BASE}/git/branches/${encodeURIComponent(oldName)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: newName }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to rename branch' }));
+    throw new Error(err.error);
+  }
+  return res.json();
+}
+
+export async function loadBranches(set: SetState): Promise<void> {
+  try {
+    const data = await getBranchesApi();
+    set({ branches: data.local, remoteBranches: data.remote, branch: data.current });
+  } catch (error) {
+    console.error('Failed to load branches:', error);
+  }
+}
+
+export async function createBranch(set: SetState, name: string, from?: string): Promise<void> {
+  set({ operating: true });
+  try {
+    await createBranchApi(name, from);
+    await loadBranches(set);
+  } catch (error) {
+    console.error('Failed to create branch:', error);
+    throw error;
+  } finally {
+    set({ operating: false });
+  }
+}
+
+export async function checkoutBranch(set: SetState, branchName: string): Promise<void> {
+  set({ operating: true });
+  try {
+    const result = await checkoutBranchApi(branchName);
+    set({ branch: result.branch });
+    await loadStatus(set);
+    await loadBranches(set);
+    // Notify the app that data files may have changed after switching branches
+    window.dispatchEvent(new Event('requesto:files-changed'));
+  } catch (error) {
+    console.error('Failed to checkout branch:', error);
+    throw error;
+  } finally {
+    set({ operating: false });
+  }
+}
+
+export async function deleteBranch(set: SetState, name: string, force = false): Promise<void> {
+  set({ operating: true });
+  try {
+    await deleteBranchApi(name, force);
+    await loadBranches(set);
+  } catch (error) {
+    console.error('Failed to delete branch:', error);
+    throw error;
+  } finally {
+    set({ operating: false });
+  }
+}
+
+export async function renameBranch(set: SetState, oldName: string, newName: string): Promise<void> {
+  set({ operating: true });
+  try {
+    await renameBranchApi(oldName, newName);
+    await loadBranches(set);
+  } catch (error) {
+    console.error('Failed to rename branch:', error);
     throw error;
   } finally {
     set({ operating: false });

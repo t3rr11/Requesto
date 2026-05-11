@@ -71,6 +71,50 @@ const gitController: FastifyPluginAsync<Options> = async (server, opts) => {
     }
     return gitService.addRemote(name, url);
   });
+
+  server.get('/git/branches', async () => {
+    return gitService.listBranches();
+  });
+
+  server.post<{ Body: { name: string; from?: string } }>('/git/branches', async (request, reply) => {
+    const { name, from } = request.body;
+    if (!name || !name.trim()) {
+      return reply.code(400).send({ error: 'Branch name is required' });
+    }
+    return gitService.createBranch(name.trim(), from?.trim() || undefined);
+  });
+
+  server.post<{ Body: { branch: string } }>('/git/checkout', async (request, reply) => {
+    const { branch } = request.body;
+    if (!branch || !branch.trim()) {
+      return reply.code(400).send({ error: 'Branch name is required' });
+    }
+    return gitService.checkoutBranch(branch.trim());
+  });
+
+  server.delete<{ Params: { name: string }; Querystring: { force?: string } }>(
+    '/git/branches/:name',
+    async (request, reply) => {
+      const { name } = request.params;
+      const force = request.query.force === 'true';
+      if (!name || !name.trim()) {
+        return reply.code(400).send({ error: 'Branch name is required' });
+      }
+      return gitService.deleteBranch(name.trim(), force);
+    },
+  );
+
+  server.patch<{ Params: { name: string }; Body: { name: string } }>(
+    '/git/branches/:name',
+    async (request, reply) => {
+      const oldName = request.params.name;
+      const { name: newName } = request.body;
+      if (!oldName || !newName || !newName.trim()) {
+        return reply.code(400).send({ error: 'Branch name is required' });
+      }
+      return gitService.renameBranch(oldName.trim(), newName.trim());
+    },
+  );
 };
 
 export default gitController;

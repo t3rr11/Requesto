@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { GitBranch } from 'lucide-react';
+import { GitBranch, FolderOpen } from 'lucide-react';
 import { Button } from '../components/Button';
 import { useWorkspaceStore } from '../store/workspace/store';
 import { useAlertStore } from '../store/alert/store';
@@ -13,12 +13,13 @@ interface CreateWorkspaceFormProps {
 }
 
 export function CreateWorkspaceForm({ onSuccess, onCancel, initialCloneMode = false }: CreateWorkspaceFormProps) {
-  const { createWorkspace, cloneWorkspace } = useWorkspaceStore();
+  const { createWorkspace, cloneWorkspace, openWorkspace } = useWorkspaceStore();
   const { showAlert } = useAlertStore();
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<CreateWorkspaceFormData>({
@@ -27,14 +28,39 @@ export function CreateWorkspaceForm({ onSuccess, onCancel, initialCloneMode = fa
       name: '',
       cloneFromRepo: initialCloneMode,
       repoUrl: '',
+      openExisting: false,
+      existingPath: '',
     },
   });
 
   const cloneFromRepo = watch('cloneFromRepo');
+  const openExisting = watch('openExisting');
+  const existingPath = watch('existingPath');
+
+  const isElectron = !!window.electronAPI;
+
+  const handleCloneToggle = (checked: boolean) => {
+    if (checked) setValue('openExisting', false);
+  };
+
+  const handleOpenExistingToggle = (checked: boolean) => {
+    if (checked) setValue('cloneFromRepo', false);
+  };
+
+  const handleBrowse = async () => {
+    if (!window.electronAPI) return;
+    const selected = await window.electronAPI.selectDirectory();
+    if (selected) {
+      setValue('existingPath', selected);
+    }
+  };
 
   const onSubmit = async (data: CreateWorkspaceFormData) => {
     try {
-      if (data.cloneFromRepo && data.repoUrl) {
+      if (data.openExisting && data.existingPath) {
+        await openWorkspace({ name: data.name, path: data.existingPath.trim() });
+        showAlert('Success', 'Workspace added successfully', 'success');
+      } else if (data.cloneFromRepo && data.repoUrl) {
         await cloneWorkspace({ name: data.name, repoUrl: data.repoUrl.trim(), authToken: data.authToken?.trim() || undefined });
         showAlert('Success', 'Repository cloned and workspace created', 'success');
       } else {
@@ -77,7 +103,9 @@ export function CreateWorkspaceForm({ onSuccess, onCancel, initialCloneMode = fa
         <input
           id="clone-toggle"
           type="checkbox"
-          {...register('cloneFromRepo')}
+          {...register('cloneFromRepo', {
+            onChange: (e) => handleCloneToggle(e.target.checked),
+          })}
           className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
         <label htmlFor="clone-toggle" className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
@@ -85,6 +113,48 @@ export function CreateWorkspaceForm({ onSuccess, onCancel, initialCloneMode = fa
           Clone from Git repository
         </label>
       </div>
+
+      {isElectron && (
+        <div className="flex items-center gap-2">
+          <input
+            id="open-existing-toggle"
+            type="checkbox"
+            {...register('openExisting', {
+              onChange: (e) => handleOpenExistingToggle(e.target.checked),
+            })}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="open-existing-toggle" className="flex items-center gap-1.5 text-sm text-gray-700 dark:text-gray-300">
+            <FolderOpen className="w-3.5 h-3.5" />
+            Open existing directory
+          </label>
+        </div>
+      )}
+
+      {openExisting && (
+        <div>
+          <label htmlFor="existing-path" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Directory <span className="text-red-500 dark:text-red-400">*</span>
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="existing-path"
+              type="text"
+              {...register('existingPath')}
+              readOnly
+              value={existingPath}
+              placeholder="Click Browse to select a folder"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 cursor-default"
+            />
+            <Button type="button" onClick={handleBrowse} variant="secondary" size="md">
+              Browse…
+            </Button>
+          </div>
+          {errors.existingPath && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.existingPath.message}</p>
+          )}
+        </div>
+      )}
 
       {cloneFromRepo && (
         <>
@@ -128,7 +198,7 @@ export function CreateWorkspaceForm({ onSuccess, onCancel, initialCloneMode = fa
           Cancel
         </Button>
         <Button type="submit" variant="primary" size="md" loading={isSubmitting} disabled={isSubmitting}>
-          {cloneFromRepo ? 'Clone & Create' : 'Create Workspace'}
+          {openExisting ? 'Add Workspace' : cloneFromRepo ? 'Clone & Create' : 'Create Workspace'}
         </Button>
       </div>
     </form>

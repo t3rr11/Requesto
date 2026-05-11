@@ -3,8 +3,25 @@ import path from 'path';
 import fs from 'fs';
 
 const GITIGNORE_CONTENT = `# Requesto local data (history, secrets)
-.requesto/
+local/
 `;
+
+/**
+ * Remove any Requesto-managed entries we previously added to the root .gitignore.
+ */
+function cleanRootGitignore(workspacePath: string): void {
+  const rootGitignorePath = path.join(workspacePath, '.gitignore');
+  if (!fs.existsSync(rootGitignorePath)) return;
+  const content = fs.readFileSync(rootGitignorePath, 'utf-8');
+  const updated = content
+    .replace(/^# Requesto local data \(history, secrets\)\n/m, '')
+    .replace(/^\.requesto\/local\/\n?/m, '')
+    .replace(/^\.requesto\/\n?/m, '');
+  if (updated !== content) {
+    const trimmed = updated.trimEnd();
+    fs.writeFileSync(rootGitignorePath, trimmed ? trimmed + '\n' : '', 'utf-8');
+  }
+}
 
 /**
  * Check if git binary is available on the system.
@@ -115,8 +132,7 @@ export async function getStatus(workspacePath: string): Promise<StatusResult> {
 
 /**
  * Get ahead/behind counts relative to the tracking branch.
- * When no upstream is configured or the upstream ref doesn't exist,
- * counts all local commits as "ahead" (unpushed).
+ * Returns zeros when no upstream is configured (local-only branch).
  */
 export async function getAheadBehind(workspacePath: string): Promise<{ ahead: number; behind: number }> {
   try {
@@ -125,27 +141,21 @@ export async function getAheadBehind(workspacePath: string): Promise<{ ahead: nu
     const git = simpleGit(gitDir);
     const status = await git.status();
 
-    // If tracking branch exists, verify the upstream ref actually resolves
-    if (status.tracking) {
-      try {
-        await git.raw(['rev-parse', '--verify', status.tracking]);
-        // Upstream ref exists — use simple-git's ahead/behind
-        return {
-          ahead: status.ahead,
-          behind: status.behind,
-        };
-      } catch {
-        // Upstream ref configured but doesn't exist (empty remote)
-        // Fall through to count all local commits as "ahead"
-      }
+    // No tracking branch configured — local-only branch, nothing to compare against
+    if (!status.tracking) {
+      return { ahead: 0, behind: 0 };
     }
 
-    // No tracking branch or upstream doesn't exist — count all local commits as "ahead"
+    // Tracking branch exists, verify the upstream ref actually resolves
     try {
-      const count = await git.raw(['rev-list', '--count', 'HEAD']);
-      return { ahead: parseInt(count.trim(), 10) || 0, behind: 0 };
+      await git.raw(['rev-parse', '--verify', status.tracking]);
+      // Upstream ref exists — use simple-git's ahead/behind
+      return {
+        ahead: status.ahead,
+        behind: status.behind,
+      };
     } catch {
-      // HEAD doesn't exist (no commits yet)
+      // Upstream ref configured but doesn't exist yet (e.g. remote is empty)
       return { ahead: 0, behind: 0 };
     }
   } catch {
@@ -177,24 +187,38 @@ export async function initRepo(workspacePath: string): Promise<void> {
 }
 
 /**
- * Ensure .gitignore exists and contains .requesto/ exclusion.
+ * Ensure .requesto/.gitignore exists and ignores the local/ subdirectory.
  */
 export async function ensureGitignore(workspacePath: string): Promise<void> {
-  const gitignorePath = path.join(workspacePath, '.gitignore');
+  const requestoDir = path.join(workspacePath, '.requesto');
+  if (!fs.existsSync(requestoDir)) {
+    fs.mkdirSync(requestoDir, { recursive: true });
+  }
+  const gitignorePath = path.join(requestoDir, '.gitignore');
 
   if (fs.existsSync(gitignorePath)) {
     const content = fs.readFileSync(gitignorePath, 'utf-8');
-    if (!content.includes('.requesto/')) {
+    if (!content.split('\n').some((line) => line.trim() === 'local/')) {
       fs.appendFileSync(gitignorePath, '\n' + GITIGNORE_CONTENT, 'utf-8');
     }
   } else {
     fs.writeFileSync(gitignorePath, GITIGNORE_CONTENT, 'utf-8');
   }
+
+  // Remove any entries we previously wrote to the root .gitignore
+  cleanRootGitignore(workspacePath);
 }
 
 /**
- * Stage workspace files and commit.
- * Only stages files within the workspace directory (monorepo safe).
+ * The Requesto-owned files that should be committed within a workspace directory.
+ * Only these files are staged — any other project source code is left untouched.
+ */
+const REQUESTO_FILES = ['collections.json', 'environments.json', 'oauth-configs.json', '.requesto'];
+
+/**
+ * Stage only Requesto-owned files and commit.
+ * This ensures that when Requesto operates inside an external/cloned repo,
+ * it never stages the user's project source code.
  */
 export async function commitWorkspace(
   workspacePath: string,
@@ -205,21 +229,17 @@ export async function commitWorkspace(
   const git = simpleGit(gitDir);
   const relPath = repoRoot ? path.relative(repoRoot, workspacePath) : '.';
 
-  // Stage workspace files
-  const filesToStage = relPath && relPath !== '.'
-    ? [`${relPath}/*`]
-    : ['.'];
+  // Build the list of Requesto files to stage, prefixed with the workspace
+  // subdirectory when inside a monorepo. Only include paths that actually exist.
+  const filesToStage = REQUESTO_FILES
+    .map((f) => (relPath && relPath !== '.' ? path.join(relPath, f) : f))
+    .filter((f) => fs.existsSync(path.join(gitDir, f)));
+
+  if (filesToStage.length === 0) {
+    throw new Error('No Requesto data files found to stage');
+  }
 
   await git.add(filesToStage);
-
-  // Also stage .gitignore if at workspace root
-  const gitignorePath = relPath && relPath !== '.'
-    ? path.join(relPath, '.gitignore')
-    : '.gitignore';
-  const fullGitignore = path.join(gitDir, gitignorePath);
-  if (fs.existsSync(fullGitignore)) {
-    await git.add([gitignorePath]);
-  }
 
   const result = await git.commit(message);
   return result.commit;
@@ -549,4 +569,90 @@ export async function addRemote(workspacePath: string, name: string, url: string
   const gitDir = repoRoot || workspacePath;
   const git = simpleGit(gitDir);
   await git.addRemote(name, url);
+}
+
+/**
+ * List all local and remote branches, along with the current branch.
+ */
+export async function listBranches(workspacePath: string): Promise<{
+  local: string[];
+  remote: string[];
+  current: string | null;
+}> {
+  const repoRoot = await getRepoRoot(workspacePath);
+  const gitDir = repoRoot || workspacePath;
+  const git = simpleGit(gitDir);
+  const current = await getCurrentBranch(gitDir);
+  const summary = await git.branch(['-a']);
+  const local = summary.branches
+    ? Object.values(summary.branches)
+        .filter((b) => !b.name.startsWith('remotes/'))
+        .map((b) => b.name)
+        .sort((a, b) => {
+          if (a === current) return -1;
+          if (b === current) return 1;
+          const defaultBranches = ['main', 'master'];
+          const aIsDefault = defaultBranches.includes(a);
+          const bIsDefault = defaultBranches.includes(b);
+          if (aIsDefault && !bIsDefault) return -1;
+          if (bIsDefault && !aIsDefault) return 1;
+          return a.localeCompare(b);
+        })
+    : [];
+  const remote = summary.branches
+    ? Object.values(summary.branches)
+        .filter((b) => b.name.startsWith('remotes/'))
+        .map((b) => b.name.replace(/^remotes\//, ''))
+    : [];
+  return { local, remote, current };
+}
+
+/**
+ * Create a new local branch. Branches from the given `from` ref, or from the
+ * current HEAD if `from` is omitted. Does not switch to the new branch.
+ */
+export async function createBranch(workspacePath: string, branchName: string, from?: string): Promise<void> {
+  const repoRoot = await getRepoRoot(workspacePath);
+  const gitDir = repoRoot || workspacePath;
+  const git = simpleGit(gitDir);
+  await git.branch(from ? [branchName, from] : [branchName]);
+}
+
+/**
+ * Switch to a different branch.
+ * Throws if there are uncommitted changes — user must commit or discard first.
+ */
+export async function checkoutBranch(workspacePath: string, branchName: string): Promise<void> {
+  const repoRoot = await getRepoRoot(workspacePath);
+  const gitDir = repoRoot || workspacePath;
+  const git = simpleGit(gitDir);
+
+  const status = await git.status();
+  if (!status.isClean()) {
+    throw new Error('Cannot switch branches with uncommitted changes. Please commit or discard your changes first.');
+  }
+
+  await git.checkout(branchName);
+}
+
+/**
+ * Delete a local branch.
+ * Use force=true to delete even if the branch has unmerged commits.
+ */
+export async function deleteBranch(workspacePath: string, branchName: string, force = false): Promise<void> {
+  const repoRoot = await getRepoRoot(workspacePath);
+  const gitDir = repoRoot || workspacePath;
+  const git = simpleGit(gitDir);
+  const flag = force ? '-D' : '-d';
+  await git.branch([flag, branchName]);
+}
+
+/**
+ * Rename a local branch.
+ */
+export async function renameBranch(workspacePath: string, oldName: string, newName: string): Promise<void> {
+  const repoRoot = await getRepoRoot(workspacePath);
+  const gitDir = repoRoot || workspacePath;
+  const git = simpleGit(gitDir);
+  await git.branch(['-m', oldName, newName]);
 }
