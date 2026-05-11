@@ -11,11 +11,19 @@ import {
   Clock,
   Settings,
   Plus,
+  Check,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { useGitStore } from '../store/git/store';
 import { useAlertStore } from '../store/alert/store';
+import { useConfirmDialog, useDialogWithData, useDialog } from '../hooks/useDialog';
 import { Button } from './Button';
 import { DiffDialog } from './DiffDialog';
+import { ContextMenu } from './ContextMenu';
+import { ConfirmDialog } from './ConfirmDialog';
+import { RenameForm } from '../forms/RenameForm';
+import { Dialog } from './Dialog';
 
 interface GitAccordionProps {
   isOpen: boolean;
@@ -38,12 +46,14 @@ function formatRelativeDate(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
-type Section = 'changes' | 'history' | 'settings';
+type Section = 'changes' | 'branches' | 'history' | 'settings';
 
 export function GitAccordion({ isOpen }: GitAccordionProps) {
   const {
     isGitInstalled,
     isRepo,
+    branch,
+    branches,
     status,
     log,
     remotes,
@@ -53,19 +63,30 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
     loadStatus,
     loadLog,
     loadRemotes,
+    loadBranches,
     initRepo,
     commit,
     resolveConflicts,
     addRemote,
+    createBranch,
+    checkoutBranch,
+    deleteBranch,
+    renameBranch,
   } = useGitStore();
 
   const { showAlert } = useAlertStore();
+  const confirmDialog = useConfirmDialog();
+  const renameBranchDialog = useDialogWithData<string>();
+  const newBranchDialog = useDialog();
   const [expandedSections, setExpandedSections] = useState<Set<Section>>(new Set(['changes']));
   const [commitMessage, setCommitMessage] = useState('');
   const [diffFile, setDiffFile] = useState<string | null>(null);
   const [showAddRemote, setShowAddRemote] = useState(false);
   const [remoteName, setRemoteName] = useState('origin');
   const [remoteUrl, setRemoteUrl] = useState('');
+  const [newBranchName, setNewBranchName] = useState('');
+  const [newBranchFrom, setNewBranchFrom] = useState<string | null>(null);
+  const [branchContextMenu, setBranchContextMenu] = useState<{ x: number; y: number; branch: string } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -74,6 +95,7 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
           loadStatus();
           loadLog();
           loadRemotes();
+          loadBranches();
         }
       });
     }
@@ -84,6 +106,7 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
       loadStatus();
       loadLog();
       loadRemotes();
+      loadBranches();
     }
   }, [isRepo]);
 
@@ -122,7 +145,11 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
   const handleResolveAll = async (strategy: 'ours' | 'theirs') => {
     try {
       await resolveConflicts(strategy);
-      showAlert('Success', `Conflicts resolved (accepted ${strategy === 'theirs' ? 'incoming' : 'local'} changes). You can now commit.`, 'success');
+      showAlert(
+        'Success',
+        `Conflicts resolved (accepted ${strategy === 'theirs' ? 'incoming' : 'local'} changes). You can now commit.`,
+        'success'
+      );
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Failed to resolve conflicts';
       showAlert('Error', msg, 'error');
@@ -143,6 +170,63 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
     }
   };
 
+  const handleCreateBranch = async () => {
+    if (!newBranchName.trim()) return;
+    const name = newBranchName.trim();
+    try {
+      await createBranch(name, newBranchFrom ?? undefined);
+      setNewBranchName('');
+      setNewBranchFrom(null);
+      newBranchDialog.close();
+      showAlert('Success', `Branch '${name}' created`, 'success');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to create branch';
+      showAlert('Error', msg, 'error');
+    }
+  };
+
+  const handleCheckout = async (targetBranch: string) => {
+    if (targetBranch === branch) return;
+    try {
+      await checkoutBranch(targetBranch);
+      showAlert('Success', `Switched to branch '${targetBranch}'`, 'success');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to switch branch';
+      showAlert('Error', msg, 'error');
+    }
+  };
+
+  const handleDeleteBranch = (name: string) => {
+    confirmDialog.open({
+      title: `Delete branch '${name}'`,
+      message: `Are you sure you want to delete the branch '${name}'? This action cannot be undone.`,
+      confirmText: 'Delete',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteBranch(name);
+          showAlert('Success', `Branch '${name}' deleted`, 'success');
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Failed to delete branch';
+          showAlert('Error', msg, 'error');
+        }
+      },
+    });
+  };
+
+  const handleRenameBranch = async (newName: string) => {
+    const oldName = renameBranchDialog.data;
+    if (!oldName) return;
+    try {
+      await renameBranch(oldName, newName);
+      showAlert('Success', `Branch renamed to '${newName}'`, 'success');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Failed to rename branch';
+      showAlert('Error', msg, 'error');
+      throw error;
+    }
+  };
+
   const getFileIcon = (index: string, workingDir: string) => {
     if (index === '?' || workingDir === '?') return <FilePlus className="w-3 h-3 text-green-500" />;
     if (index === 'D' || workingDir === 'D') return <FileX className="w-3 h-3 text-red-500" />;
@@ -160,7 +244,8 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
   };
 
   const getStatusBg = (index: string, workingDir: string) => {
-    if (index === '?' || workingDir === '?') return 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40';
+    if (index === '?' || workingDir === '?')
+      return 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40';
     if (index === 'D' || workingDir === 'D') return 'text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40';
     if (index === 'A') return 'text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/40';
     return 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40';
@@ -215,7 +300,7 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
           <span className="px-1.5 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-full">
             {status.files.length}
           </span>
-        ) : undefined,
+        ) : undefined
       )}
       {expandedSections.has('changes') && (
         <div className="flex flex-col flex-1 min-h-0">
@@ -247,60 +332,110 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
           </div>
 
           <div className="overflow-y-auto flex-1 min-h-0">
-          {/* Conflict Banner */}
-          {conflicts.length > 0 && (
-            <div className="mx-2 mb-1 border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded p-2 space-y-2">
-              <div className="flex items-start gap-1.5">
-                <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-[10px] font-medium text-amber-800 dark:text-amber-200">
-                    {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''}
-                  </p>
-                  <ul className="mt-0.5 space-y-0.5">
-                    {conflicts.map(file => (
-                      <li key={file} className="text-[10px] font-mono text-amber-700 dark:text-amber-300 truncate">
-                        {file}
-                      </li>
-                    ))}
-                  </ul>
+            {/* Conflict Banner */}
+            {conflicts.length > 0 && (
+              <div className="mx-2 mb-1 border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded p-2 space-y-2">
+                <div className="flex items-start gap-1.5">
+                  <AlertTriangle className="w-3 h-3 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-medium text-amber-800 dark:text-amber-200">
+                      {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''}
+                    </p>
+                    <ul className="mt-0.5 space-y-0.5">
+                      {conflicts.map(file => (
+                        <li key={file} className="text-[10px] font-mono text-amber-700 dark:text-amber-300 truncate">
+                          {file}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="flex gap-1 ml-4">
+                  <Button onClick={() => handleResolveAll('theirs')} variant="secondary" size="sm" loading={operating}>
+                    Accept Incoming
+                  </Button>
+                  <Button onClick={() => handleResolveAll('ours')} variant="secondary" size="sm" loading={operating}>
+                    Keep Local
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-1 ml-4">
-                <Button onClick={() => handleResolveAll('theirs')} variant="secondary" size="sm" loading={operating}>
-                  Accept Incoming
-                </Button>
-                <Button onClick={() => handleResolveAll('ours')} variant="secondary" size="sm" loading={operating}>
-                  Keep Local
-                </Button>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Changed Files */}
-          {status?.isClean ? (
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 py-3 text-center">
-              Working directory clean
-            </p>
-          ) : (
-            <div>
-              {status?.files.map((file, i) => (
-                <button
-                  key={i}
-                  onClick={() => setDiffFile(file.path)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] w-full text-left hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group border-l-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500"
-                >
-                  {getFileIcon(file.index, file.workingDir)}
-                  <span className="flex-1 truncate text-gray-700 dark:text-gray-200 font-mono">
-                    {file.path}
-                  </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getStatusBg(file.index, file.workingDir)} shrink-0`}>
-                    {getFileStatus(file.index, file.workingDir)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+            {/* Changed Files */}
+            {status?.isClean ? (
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 py-3 text-center">Working directory clean</p>
+            ) : (
+              <div>
+                {status?.files.map((file, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setDiffFile(file.path)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] w-full text-left hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group border-l-2 border-transparent hover:border-blue-400 dark:hover:border-blue-500"
+                  >
+                    {getFileIcon(file.index, file.workingDir)}
+                    <span className="flex-1 truncate text-gray-700 dark:text-gray-200 font-mono">{file.path}</span>
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${getStatusBg(file.index, file.workingDir)} shrink-0`}
+                    >
+                      {getFileStatus(file.index, file.workingDir)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+        </div>
+      )}
+
+      {/* BRANCHES Section */}
+      {sectionHeader(
+        'branches',
+        'Branches',
+        <GitBranch className="w-3 h-3" />,
+        branch ? (
+          <span className="px-1.5 cursor-pointer py-0.5 text-[10px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full font-mono">
+            {branch}
+          </span>
+        ) : undefined
+      )}
+      {expandedSections.has('branches') && (
+        <div className="overflow-y-auto flex-1 min-h-0 px-2 py-2 space-y-0.5">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase">Branches</span>
+            <button
+              onClick={() => {
+                setNewBranchName('');
+                setNewBranchFrom(null);
+                newBranchDialog.open();
+              }}
+              className="p-0.5 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="New branch"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+          </div>
+          {branches.length === 0 ? (
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 py-1 text-center">No branches</p>
+          ) : (
+            branches.map(b => (
+              <div
+                key={b}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-[11px] group ${b === branch ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer'}`}
+                onClick={() => b !== branch && handleCheckout(b)}
+                onContextMenu={e => {
+                  e.preventDefault();
+                  setBranchContextMenu({ x: e.clientX, y: e.clientY, branch: b });
+                }}
+              >
+                {b === branch ? (
+                  <Check className="w-3 h-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                ) : (
+                  <GitBranch className="w-3 h-3 text-gray-400 shrink-0" />
+                )}
+                <span className="flex-1 truncate font-mono cursor-pointer">{b}</span>
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -350,7 +485,10 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
           {remotes.length === 0 && !showAddRemote ? (
             <p className="text-[10px] text-gray-400 dark:text-gray-500 py-1 text-center">
               No remotes.{' '}
-              <button onClick={() => setShowAddRemote(true)} className="text-blue-600 dark:text-blue-400 hover:underline">
+              <button
+                onClick={() => setShowAddRemote(true)}
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
                 Add one
               </button>
             </p>
@@ -394,11 +532,101 @@ export function GitAccordion({ isOpen }: GitAccordionProps) {
       )}
 
       {/* Diff Dialog */}
-      <DiffDialog
-        isOpen={diffFile !== null}
-        onClose={() => setDiffFile(null)}
-        filePath={diffFile ?? ''}
+      <DiffDialog isOpen={diffFile !== null} onClose={() => setDiffFile(null)} filePath={diffFile ?? ''} />
+
+      {/* Branch context menu */}
+      {branchContextMenu && (
+        <ContextMenu
+          position={{ x: branchContextMenu.x, y: branchContextMenu.y }}
+          onClose={() => setBranchContextMenu(null)}
+          items={[
+            ...(branchContextMenu.branch !== branch
+              ? [
+                  {
+                    label: 'Checkout',
+                    icon: <Check className="w-3.5 h-3.5" />,
+                    onClick: () => handleCheckout(branchContextMenu.branch),
+                  },
+                ]
+              : []),
+            {
+              label: 'New branch from here',
+              icon: <Plus className="w-3.5 h-3.5" />,
+              onClick: () => {
+                setNewBranchName('');
+                setNewBranchFrom(branchContextMenu.branch);
+                newBranchDialog.open();
+              },
+            },
+            {
+              label: 'Rename',
+              icon: <Pencil className="w-3.5 h-3.5" />,
+              onClick: () => renameBranchDialog.open(branchContextMenu.branch),
+            },
+            {
+              label: 'Delete',
+              icon: <Trash2 className="w-3.5 h-3.5" />,
+              danger: true,
+              onClick: () => handleDeleteBranch(branchContextMenu.branch),
+            },
+          ]}
+        />
+      )}
+
+      {/* New branch dialog */}
+      <Dialog isOpen={newBranchDialog.isOpen} onClose={newBranchDialog.close} title="New Branch" size="sm">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Branch Name</label>
+            <input
+              type="text"
+              value={newBranchName}
+              onChange={e => setNewBranchName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCreateBranch();
+                if (e.key === 'Escape') newBranchDialog.close();
+              }}
+              placeholder="feature/my-branch"
+              autoFocus
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Branching from{' '}
+            <span className="font-mono font-medium text-gray-700 dark:text-gray-300">
+              {newBranchFrom ?? branch ?? 'HEAD'}
+            </span>
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button onClick={newBranchDialog.close} variant="ghost" size="md">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateBranch}
+              variant="primary"
+              size="md"
+              loading={operating}
+              disabled={!newBranchName.trim()}
+            >
+              Create Branch
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Rename branch dialog */}
+      <RenameForm
+        isOpen={renameBranchDialog.isOpen}
+        onClose={renameBranchDialog.close}
+        onSave={handleRenameBranch}
+        currentName={renameBranchDialog.data ?? ''}
+        title="Rename Branch"
+        label="Branch Name"
+        placeholder="Enter branch name..."
       />
+
+      {/* Confirm dialog (delete branch) */}
+      <ConfirmDialog {...confirmDialog.props} />
     </div>
   );
 }

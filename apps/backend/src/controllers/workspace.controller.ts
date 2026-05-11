@@ -42,7 +42,7 @@ const workspaceController: FastifyPluginAsync<Options> = async (server, opts) =>
     if (!name || !workspacePath) {
       return reply.code(400).send({ error: 'Name and path are required' });
     }
-    return workspaceService.open(name, workspacePath);
+    return await workspaceService.open(name, workspacePath);
   });
 
   server.post<{ Body: Record<string, unknown> }>('/workspaces/import', async (request, reply) => {
