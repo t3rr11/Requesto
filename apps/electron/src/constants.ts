@@ -7,4 +7,4 @@ export const BACKEND_PORT = 4747;
 export const SIMULATE_BACKEND_FAILURE = false;
 
 // Set to true to test the update notification UI in dev mode.
-export const SIMULATE_UPDATE_AVAILABLE = true;
+export const SIMULATE_UPDATE_AVAILABLE = false;
