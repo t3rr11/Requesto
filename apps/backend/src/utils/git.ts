@@ -229,11 +229,24 @@ export async function commitWorkspace(
   const git = simpleGit(gitDir);
   const relPath = repoRoot ? path.relative(repoRoot, workspacePath) : '.';
 
+  // Collect paths git tracks as deleted (working-tree or index), so we can
+  // stage the removal even though the files no longer exist on disk.
+  const status = await git.status();
+  const deletedInGit = new Set(
+    status.files
+      .filter((f) => f.working_dir === 'D' || f.index === 'D')
+      .map((f) => f.path.replace(/\\/g, '/')),
+  );
+
   // Build the list of Requesto files to stage, prefixed with the workspace
-  // subdirectory when inside a monorepo. Only include paths that actually exist.
+  // subdirectory when inside a monorepo. Include paths that exist on disk OR
+  // that git knows about as deleted (so removals are committed too).
   const filesToStage = REQUESTO_FILES
     .map((f) => (relPath && relPath !== '.' ? path.join(relPath, f) : f))
-    .filter((f) => fs.existsSync(path.join(gitDir, f)));
+    .filter((f) => {
+      const normalized = f.replace(/\\/g, '/');
+      return fs.existsSync(path.join(gitDir, f)) || deletedInGit.has(normalized);
+    });
 
   if (filesToStage.length === 0) {
     throw new Error('No Requesto data files found to stage');
