@@ -1,6 +1,6 @@
 {
   "name": "requesto",
-  "version": "1.5.15",
+  "version": "1.5.16",
   "author": "Matthew Allen",
   "description": "A lightweight, self-hosted API client",
   "private": true,
@@ -41,7 +41,7 @@
     "version": "npm version %npm_package_version% --no-git-tag-version -w requesto-electron && git add apps/electron/package.json"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.3",
     "rimraf": "^6.1.3"
   }
 }
