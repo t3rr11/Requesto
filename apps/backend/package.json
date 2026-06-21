@@ -22,7 +22,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "@types/node-fetch": "^2.6.13",
     "selfsigned": "^5.5.0",
     "tsx": "^4.22.4",
