@@ -7,7 +7,6 @@ import {
   type FieldValues,
   type ArrayPath,
   type FieldPath,
-  type FieldArray,
   type UseFormSetValue,
   type PathValue,
 } from 'react-hook-form';
@@ -47,7 +46,7 @@ export function VariableEditor<T extends FieldValues>({
       currentValue: '',
       enabled: true,
       isSecret: false,
-    } as FieldArray<T, ArrayPath<T>>);
+    } as never);
 
     // Focus the new row's name input after React renders it
     requestAnimationFrame(() => {
