@@ -19,9 +19,10 @@ export const updateCollectionSchema = z.object({
     .optional(),
 });
 
-export const addRequestSchema = z.object({
+const requestFieldsSchema = z.object({
   id: z.string(),
   name: z.string().min(1, 'Request name is required').trim(),
+  requestType: z.enum(['http', 'graphql']).optional(),
   method: z.string().min(1, 'HTTP method is required'),
   url: z.string(),
   headers: z.record(z.string(), z.string()).optional(),
@@ -33,11 +34,53 @@ export const addRequestSchema = z.object({
   folderId: z.string().optional(),
   order: z.number().optional(),
   operationId: z.string().optional(),
+  preRequestScript: z.string().optional(),
+  testScript: z.string().optional(),
+  graphql: z
+    .object({
+      document: z.string(),
+      variables: z.string(),
+      operationName: z.string().optional(),
+      transport: z.enum(['post', 'get']),
+      schemaProfileId: z.string().optional(),
+    })
+    .optional(),
 });
 
-export const updateRequestSchema = addRequestSchema
+function validateRequestShape(
+  value: Pick<
+    Partial<z.infer<typeof requestFieldsSchema>>,
+    'requestType' | 'graphql' | 'body' | 'formDataEntries'
+  >,
+  context: z.RefinementCtx,
+): void {
+  if (value.requestType === 'graphql') {
+    if (!value.graphql) {
+      context.addIssue({ code: 'custom', path: ['graphql'], message: 'GraphQL request configuration is required' });
+    }
+    if (value.body !== undefined || value.formDataEntries !== undefined) {
+      context.addIssue({ code: 'custom', path: ['body'], message: 'HTTP body fields are not valid for GraphQL requests' });
+    }
+  } else if (value.requestType === 'http' && value.graphql !== undefined) {
+    context.addIssue({ code: 'custom', path: ['graphql'], message: 'GraphQL configuration is not valid for HTTP requests' });
+  }
+}
+
+export const addRequestSchema = requestFieldsSchema.superRefine(validateRequestShape);
+
+export const createRequestPayloadSchema = requestFieldsSchema
+  .omit({ id: true, collectionId: true })
+  .superRefine(validateRequestShape);
+
+export const updateRequestSchema = requestFieldsSchema
   .omit({ id: true })
-  .partial();
+  .partial()
+  .superRefine(validateRequestShape);
+
+export const updateRequestPayloadSchema = requestFieldsSchema
+  .omit({ id: true, collectionId: true })
+  .partial()
+  .superRefine(validateRequestShape);
 
 export const moveRequestSchema = z.object({
   targetCollectionId: z.string(),

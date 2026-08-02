@@ -4,7 +4,7 @@
   "description": "Requesto documentation website",
   "type": "module",
   "scripts": {
-    "dev": "vitepress dev",
+    "dev": "vitepress dev --port 5200",
     "build": "vitepress build",
     "preview": "vitepress preview"
   },

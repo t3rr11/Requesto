@@ -1,8 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
 import { CollectionService } from '../services/collection.service';
 import { OpenApiService } from '../services/openapi.service';
-import type { AuthConfig, BodyType, FormDataEntry } from '../models/proxy';
+import type { SavedRequest } from '../models/collection';
 import type { SyncApplyBody } from '../models/openapi-sync';
+import { createRequestPayloadSchema, updateRequestPayloadSchema } from '../dtos/collection.dto';
 
 interface Options {
   collectionService: CollectionService;
@@ -35,7 +36,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     async (request, _reply) => {
       const collection = await collectionService.update(request.params.id, request.body);
       return collection;
-    },
+    }
   );
 
   server.delete<{ Params: { id: string } }>('/collections/:id', async (request, _reply) => {
@@ -43,13 +44,10 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     return { success: true };
   });
 
-  server.post<{ Params: { id: string } }>(
-    '/collections/:id/duplicate',
-    async (request, reply) => {
-      const collection = await collectionService.duplicateCollection(request.params.id);
-      return reply.code(201).send(collection);
-    },
-  );
+  server.post<{ Params: { id: string } }>('/collections/:id/duplicate', async (request, reply) => {
+    const collection = await collectionService.duplicateCollection(request.params.id);
+    return reply.code(201).send(collection);
+  });
 
   server.put<{ Params: { id: string }; Body: { targetOrder: number } }>(
     '/collections/:id/move',
@@ -57,26 +55,24 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
       const { targetOrder } = request.body;
       const collection = await collectionService.moveCollection(request.params.id, targetOrder);
       return collection;
-    },
+    }
   );
 
   server.post<{
     Params: { id: string };
-    Body: { name: string; method: string; url: string; headers?: Record<string, string>; body?: string; bodyType?: BodyType; formDataEntries?: FormDataEntry[]; auth?: AuthConfig; folderId?: string };
+    Body: SavedRequest;
   }>('/collections/:id/requests', async (request, reply) => {
-    const { name, method, url, headers, body, bodyType, formDataEntries, auth, folderId } = request.body;
-    if (!name || !method || !url) {
-      return reply.code(400).send({ error: 'Name, method, and URL are required' });
-    }
-    const saved = await collectionService.addRequest(request.params.id, { name, method, url, headers, body, bodyType, formDataEntries, auth, folderId });
+    const data = createRequestPayloadSchema.parse(request.body);
+    const saved = await collectionService.addRequest(request.params.id, data);
     return reply.code(201).send(saved);
   });
 
   server.put<{
     Params: { id: string; requestId: string };
-    Body: { name?: string; method?: string; url?: string; headers?: Record<string, string>; body?: string; auth?: AuthConfig; folderId?: string };
+    Body: Partial<SavedRequest>;
   }>('/collections/:id/requests/:requestId', async (request, _reply) => {
-    const saved = await collectionService.updateRequest(request.params.id, request.params.requestId, request.body);
+    const updates = updateRequestPayloadSchema.parse(request.body);
+    const saved = await collectionService.updateRequest(request.params.id, request.params.requestId, updates);
     return saved;
   });
 
@@ -85,7 +81,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     async (request, _reply) => {
       await collectionService.deleteRequest(request.params.id, request.params.requestId);
       return { success: true };
-    },
+    }
   );
 
   server.post<{ Params: { id: string; requestId: string } }>(
@@ -93,7 +89,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     async (request, reply) => {
       const saved = await collectionService.duplicateRequest(request.params.id, request.params.requestId);
       return reply.code(201).send(saved);
-    },
+    }
   );
 
   server.post<{ Params: { id: string }; Body: { name: string; parentId?: string } }>(
@@ -105,7 +101,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
       }
       const saved = await collectionService.addFolder(request.params.id, { name, parentId });
       return reply.code(201).send(saved);
-    },
+    }
   );
 
   server.put<{ Params: { id: string; folderId: string }; Body: { name?: string; parentId?: string } }>(
@@ -113,7 +109,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     async (request, _reply) => {
       const saved = await collectionService.updateFolder(request.params.id, request.params.folderId, request.body);
       return saved;
-    },
+    }
   );
 
   server.delete<{ Params: { id: string; folderId: string } }>(
@@ -121,7 +117,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     async (request, _reply) => {
       await collectionService.deleteFolder(request.params.id, request.params.folderId);
       return { success: true };
-    },
+    }
   );
 
   server.put<{
@@ -162,7 +158,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
       }
       const result = await openApiService.importSpec(source, { name, linkSpec });
       return reply.code(201).send(result);
-    },
+    }
   );
 
   server.get<{ Params: { id: string } }>('/collections/:id/export', async (request, _reply) => {
@@ -178,7 +174,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     '/collections/:id/sync-openapi/apply',
     async (request, _reply) => {
       return openApiService.applySync(request.params.id, request.body);
-    },
+    }
   );
 
   server.delete<{ Params: { id: string } }>('/collections/:id/openapi-link', async (request, _reply) => {

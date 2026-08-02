@@ -72,10 +72,11 @@ test.describe('Collections CRUD', () => {
     const collectionRow = appPage.locator('.group', { hasText: 'My Test Collection' }).first();
     await collectionRow.getByTitle('New Folder').click();
 
-    // Fill in the folder name input that appears inline
-    const folderInput = appPage.getByPlaceholder('Folder name...');
-    await folderInput.fill('Authentication');
-    await appPage.getByRole('button', { name: 'Save' }).first().click();
+    const dialogHeading = appPage.locator('h2', { hasText: 'New Folder' });
+    await expect(dialogHeading).toBeVisible();
+    const dialog = dialogHeading.locator('xpath=ancestor::div[contains(@class, "rounded-xl")]');
+    await dialog.locator('#folder-name').fill('Authentication');
+    await dialog.getByRole('button', { name: 'Create Folder' }).click();
 
     // Folder should appear nested under the collection
     await expect(appPage.getByText('Authentication')).toBeVisible();
@@ -114,7 +115,7 @@ test.describe('Collections CRUD', () => {
     await appPage.getByText('Renamed Collection').click({ button: 'right' });
 
     // Click "Delete" in the context menu
-    await appPage.getByText('Delete').first().click();
+    await appPage.getByRole('button', { name: 'Delete', exact: true }).click();
 
     // Confirm dialog should appear
     const deleteHeading = appPage.locator('h2', { hasText: 'Delete Collection' });

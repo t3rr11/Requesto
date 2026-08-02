@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import type { Collection, SavedRequest, Folder, SyncPreviewResult, SyncApplyBody } from './types';
-import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
+import type { Collection, SavedRequest, Folder, SaveRequestInput, SyncPreviewResult, SyncApplyBody } from './types';
 import * as actions from './actions';
 
 type CollectionsState = {
@@ -15,18 +14,8 @@ type CollectionsState = {
   loadCollections: () => Promise<void>;
   createCollection: (data: { name: string; description?: string }) => Promise<Collection>;
   addFolder: (collectionId: string, name: string, parentId?: string) => Promise<void>;
-  createRequest: (collectionId: string, data: {
-    name: string; method: string; url: string;
-    headers?: Record<string, string>; body?: string;
-    bodyType?: BodyType; formDataEntries?: FormDataEntry[];
-    auth?: AuthConfig; folderId?: string;
-  }) => Promise<SavedRequest>;
-  saveRequest: (collectionId: string, data: {
-    name: string; method: string; url: string;
-    headers?: Record<string, string>; body?: string;
-    bodyType?: BodyType; formDataEntries?: FormDataEntry[];
-    auth?: AuthConfig; folderId?: string;
-  }) => Promise<SavedRequest>;
+  createRequest: (collectionId: string, data: SaveRequestInput) => Promise<SavedRequest>;
+  saveRequest: (collectionId: string, data: SaveRequestInput) => Promise<SavedRequest>;
   deleteCollection: (id: string) => Promise<void>;
   deleteFolder: (collectionId: string, folderId: string) => Promise<void>;
   deleteRequest: (collectionId: string, requestId: string) => Promise<void>;

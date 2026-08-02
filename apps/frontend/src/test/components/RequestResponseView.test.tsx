@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RequestResponseView } from '../../components/RequestResponseView';
 import { touchTab } from '../../store/tabs/actions';
+import type { RequestFormData } from '../../forms/RequestForm';
 
 // ── Store mocks ──────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ vi.mock('../../store/theme/store', () => ({
 
 // ── Component mocks ─────────────────────────────────────────────────
 
-const mockFormData = {
+let mockFormData: RequestFormData = {
   method: 'GET',
   url: 'https://api.test.com',
   headers: [],
@@ -153,6 +154,16 @@ function makeTab(overrides: Record<string, unknown> = {}) {
 describe('RequestResponseView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFormData = {
+      method: 'GET',
+      url: 'https://api.test.com',
+      headers: [],
+      params: [],
+      body: '',
+      bodyType: 'json',
+      formDataEntries: [],
+      auth: { type: 'none' },
+    };
     mockGetActiveTab.mockReturnValue(makeTab());
   });
 
@@ -173,6 +184,18 @@ describe('RequestResponseView', () => {
 
     expect(screen.getByTestId('request-form')).toBeInTheDocument();
     expect(screen.getByTestId('response-panel')).toBeInTheDocument();
+  });
+
+  it('does not compile an empty GraphQL draft while the save dialog is closed', () => {
+    mockFormData = {
+      ...mockFormData,
+      requestType: 'graphql',
+      graphqlDocument: '',
+      graphqlVariables: '',
+      graphqlTransport: 'post',
+    };
+
+    expect(() => render(<RequestResponseView />)).not.toThrow();
   });
 
   it('renders breadcrumb with savedRequestId', () => {

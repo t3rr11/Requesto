@@ -18,10 +18,13 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.4.0",
     "@monaco-editor/react": "^4.7.0",
+    "graphql": "^16.14.2",
+    "graphql-language-service": "^5.5.2",
     "lucide-react": "^1.26.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.82.0",
+    "react-icons": "^5.7.0",
     "react-router": "^8.3.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"

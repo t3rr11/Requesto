@@ -6,9 +6,20 @@ export type OpenApiSpecLink = {
   specHash?: string;
 };
 
+export type RequestType = 'http' | 'graphql';
+
+export type GraphQLRequestConfig = {
+  document: string;
+  variables: string;
+  operationName?: string;
+  transport: 'post' | 'get';
+  schemaProfileId?: string;
+};
+
 export type SavedRequest = {
   id: string;
   name: string;
+  requestType?: RequestType;
   method: string;
   url: string;
   headers?: Record<string, string>;
@@ -22,7 +33,11 @@ export type SavedRequest = {
   operationId?: string;
   preRequestScript?: string;
   testScript?: string;
+  graphql?: GraphQLRequestConfig;
 };
+
+export type RequestSaveDraft = Omit<SavedRequest, 'id' | 'name' | 'collectionId'>;
+export type SaveRequestInput = Omit<SavedRequest, 'id' | 'collectionId'>;
 
 export type Folder = {
   id: string;

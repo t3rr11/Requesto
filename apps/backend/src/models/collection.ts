@@ -26,9 +26,20 @@ export interface Collection {
 /** Stable id of the system-managed catch-all collection. */
 export const UNCATEGORIZED_COLLECTION_ID = 'uncategorized';
 
+export type RequestType = 'http' | 'graphql';
+
+export interface GraphQLRequestConfig {
+  document: string;
+  variables: string;
+  operationName?: string;
+  transport: 'post' | 'get';
+  schemaProfileId?: string;
+}
+
 export interface SavedRequest {
   id: string;
   name: string;
+  requestType?: RequestType;
   method: string;
   url: string;
   headers?: Record<string, string>;
@@ -42,6 +53,7 @@ export interface SavedRequest {
   operationId?: string;
   preRequestScript?: string;
   testScript?: string;
+  graphql?: GraphQLRequestConfig;
 }
 
 export interface OpenApiEnvironmentVariable {

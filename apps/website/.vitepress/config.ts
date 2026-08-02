@@ -129,6 +129,7 @@ export default defineConfig({
           { text: 'Environments', link: '/features/environments' },
           { text: 'Git Integration', link: '/features/git' },
           { text: 'OpenAPI Import & Sync', link: '/features/openapi' },
+          { text: 'GraphQL', link: '/features/graphql' },
           { text: 'OAuth 2.0', link: '/features/oauth' },
           { text: 'Console & Logging', link: '/features/console' },
           { text: 'Settings', link: '/features/settings' },

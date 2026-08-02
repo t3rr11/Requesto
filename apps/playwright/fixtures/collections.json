@@ -71,5 +71,30 @@
         "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\n\ntest('response has login field', () => {\n  const data = response.json();\n  expect(data.login).toBeDefined();\n});\n\ntest('response time is acceptable', () => {\n  expect(response.duration).toBeLessThan(5000);\n});"
       }
     ]
+  },
+  {
+    "id": "col-test-graphql",
+    "name": "GraphQL API",
+    "description": "GraphQL query and schema examples",
+    "folders": [],
+    "requests": [
+      {
+        "id": "req-test-graphql-users",
+        "name": "Get User",
+        "requestType": "graphql",
+        "method": "POST",
+        "url": "http://localhost:5747/api/test/graphql",
+        "headers": { "Accept": "application/graphql-response+json, application/json;q=0.9" },
+        "collectionId": "col-test-graphql",
+        "order": 0,
+        "auth": { "type": "none" },
+        "graphql": {
+          "document": "query GetUser($id: ID!) {\n  user(id: $id) {\n    id\n    name\n    email\n    role\n  }\n}",
+          "variables": "{\n  \"id\": \"1\"\n}",
+          "transport": "post",
+          "schemaProfileId": "gql-schema-test-api"
+        }
+      }
+    ]
   }
 ]

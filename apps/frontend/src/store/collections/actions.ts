@@ -1,5 +1,4 @@
-import type { Collection, SavedRequest, Folder, SyncPreviewResult, SyncApplyBody } from './types';
-import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
+import type { Collection, SavedRequest, Folder, SaveRequestInput, SyncPreviewResult, SyncApplyBody } from './types';
 import { API_BASE } from '../../helpers/api/config';
 import { downloadJSON, readJSONFile } from '../../helpers/file';
 import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
@@ -58,11 +57,7 @@ async function moveCollectionApi(id: string, targetOrder: number): Promise<Colle
 
 async function addRequestApi(
   collectionId: string,
-  data: {
-    name: string; method: string; url: string;
-    headers?: Record<string, string>; body?: string;
-    auth?: AuthConfig; folderId?: string;
-  },
+  data: SaveRequestInput,
 ): Promise<SavedRequest> {
   const res = await fetch(`${API_BASE}/collections/${collectionId}/requests`, {
     method: 'POST',
@@ -193,12 +188,7 @@ export async function addFolder(
 export async function createRequest(
   set: SetState,
   collectionId: string,
-  data: {
-    name: string; method: string; url: string;
-    headers?: Record<string, string>; body?: string;
-    bodyType?: BodyType; formDataEntries?: FormDataEntry[];
-    auth?: AuthConfig; folderId?: string;
-  },
+  data: SaveRequestInput,
 ): Promise<SavedRequest> {
   try {
     const request = await addRequestApi(collectionId, data);
@@ -213,12 +203,7 @@ export async function createRequest(
 export async function saveRequest(
   set: SetState,
   collectionId: string,
-  data: {
-    name: string; method: string; url: string;
-    headers?: Record<string, string>; body?: string;
-    bodyType?: BodyType; formDataEntries?: FormDataEntry[];
-    auth?: AuthConfig; folderId?: string;
-  },
+  data: SaveRequestInput,
 ): Promise<SavedRequest> {
   try {
     const request = await addRequestApi(collectionId, data);

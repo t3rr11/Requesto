@@ -35,6 +35,7 @@ export function NewRequestForm({
     resolver: zodResolver(newRequestSchema),
     defaultValues: {
       name: '',
+      requestType: 'http',
       method: 'GET',
       collectionId: preselectedCollectionId || (collections.length > 0 ? collections[0].id : ''),
       folderId: preselectedFolderId || '',
@@ -42,6 +43,7 @@ export function NewRequestForm({
   });
 
   const collectionId = watch('collectionId');
+  const requestType = watch('requestType');
   const selectedCollection = collections.find(c => c.id === collectionId);
   const availableFolders = selectedCollection?.folders || [];
 
@@ -59,13 +61,18 @@ export function NewRequestForm({
 
   const onSubmit = async (data: NewRequestFormData) => {
     try {
+      const requestType = data.requestType ?? 'http';
       await createRequest(data.collectionId, {
         name: data.name,
-        method: data.method,
+        requestType,
+        method: requestType === 'graphql' ? 'POST' : data.method,
         url: 'http://localhost:3000',
         headers: {},
         body: '',
         folderId: data.folderId || undefined,
+        ...(requestType === 'graphql' && {
+          graphql: { document: '', variables: '', transport: 'post' as const },
+        }),
       });
       showAlert('Success', 'Request created successfully', 'success');
       reset();
@@ -106,6 +113,20 @@ export function NewRequestForm({
           </div>
 
           <div>
+            <label htmlFor="request-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Request Type
+            </label>
+            <select
+              id="request-type"
+              {...register('requestType')}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            >
+              <option value="http">HTTP</option>
+              <option value="graphql">GraphQL</option>
+            </select>
+          </div>
+
+          {requestType === 'http' && <div>
             <label htmlFor="request-method" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               HTTP Method <span className="text-red-500 dark:text-red-400">*</span>
             </label>
@@ -118,7 +139,7 @@ export function NewRequestForm({
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
-          </div>
+          </div>}
 
           <div>
             <label htmlFor="request-collection" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

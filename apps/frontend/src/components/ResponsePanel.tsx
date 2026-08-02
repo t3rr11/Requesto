@@ -1,14 +1,15 @@
 import { useState, type ReactElement } from 'react';
 import { Loader2, AlertTriangle, Send, Download } from 'lucide-react';
-import { getStatusBadgeColor, formatBytes, downloadResponseBody } from '../helpers/response';
+import { getStatusBadgeColor, formatBytes, downloadResponseBody, getGraphQLResponseInfo } from '../helpers/response';
 import { ResponseBody } from './response/ResponseBody';
 import { ResponseHeaders } from './response/ResponseHeaders';
 import { ResponseTests } from './response/ResponseTests';
+import { GraphQLResponseErrors } from './response/GraphQLResponseErrors';
 import { Button } from './Button';
 import type { ProxyResponse, StreamingResponse } from '../store/request/types';
 import type { TestResult } from '../helpers/scriptRunner';
 
-type ResponseTab = 'body' | 'headers' | 'test-results';
+type ResponseTab = 'body' | 'graphql-errors' | 'headers' | 'test-results';
 
 interface ResponsePanelProps {
   response: ProxyResponse | StreamingResponse | null;
@@ -17,6 +18,7 @@ interface ResponsePanelProps {
   isDarkMode: boolean;
   testResults?: TestResult[];
   requestUrl?: string;
+  isGraphQL?: boolean;
 }
 
 function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined): string | ReactElement {
@@ -47,7 +49,7 @@ function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined)
   );
 }
 
-export function ResponsePanel({ response, loading, error, isDarkMode, testResults, requestUrl }: ResponsePanelProps) {
+export function ResponsePanel({ response, loading, error, isDarkMode, testResults, requestUrl, isGraphQL = false }: Readonly<ResponsePanelProps>) {
   const [activeResponseTab, setActiveResponseTab] = useState<ResponseTab>('body');
 
   const isStreaming = response && 'isStreaming' in response && response.isStreaming;
@@ -57,6 +59,9 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
     : response && 'body' in response && response.body
       ? new Blob([response.body]).size
       : 0;
+  const graphqlInfo = isGraphQL && response && !isStreaming
+    ? getGraphQLResponseInfo(response as ProxyResponse)
+    : null;
 
   if (loading && !(isStreaming && streamingResponse!.events.length > 0)) {
     return (
@@ -115,7 +120,12 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
     );
   }
 
-  const tabs: ResponseTab[] = ['body', 'headers', 'test-results'];
+  const tabs: ResponseTab[] = [
+    'body',
+    ...(graphqlInfo?.errors.length ? ['graphql-errors' as const] : []),
+    'headers',
+    'test-results',
+  ];
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-h-0">
@@ -128,6 +138,19 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
             )}
           </h3>
           <div className="flex items-center gap-3 text-sm">
+            {graphqlInfo?.errors.length ? (
+              <span
+                role="status"
+                aria-label={graphqlInfo.isPartial ? 'GraphQL response contains partial data' : 'GraphQL response contains errors'}
+                className={`px-2 py-1 rounded font-medium text-xs ${
+                graphqlInfo.isPartial
+                  ? 'bg-amber-200 text-amber-950 dark:bg-amber-900 dark:text-amber-100'
+                  : 'bg-red-200 text-red-950 dark:bg-red-900 dark:text-red-100'
+              }`}
+              >
+                {graphqlInfo.isPartial ? 'Partial data' : 'GraphQL errors'}
+              </span>
+            ) : null}
             <span className={`px-2 py-1 rounded font-medium text-xs ${getStatusBadgeColor(response.status)}`}>
               {response.status} {response.statusText}
             </span>
@@ -173,7 +196,9 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
                   : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
               }`}
             >
-              {renderTabLabel(tab, testResults)}
+              {tab === 'graphql-errors'
+                ? `Errors (${graphqlInfo?.errors.length ?? 0})`
+                : renderTabLabel(tab, testResults)}
             </Button>
           ))}
         </div>
@@ -181,6 +206,9 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
 
       <div className="flex-1 min-h-0 overflow-hidden">
         {activeResponseTab === 'body' && <ResponseBody response={response} isDarkMode={isDarkMode} />}
+        {activeResponseTab === 'graphql-errors' && graphqlInfo && (
+          <GraphQLResponseErrors errors={graphqlInfo.errors} />
+        )}
         {activeResponseTab === 'headers' && <ResponseHeaders headers={response.headers} />}
         {activeResponseTab === 'test-results' && <ResponseTests testResults={testResults} />}
       </div>

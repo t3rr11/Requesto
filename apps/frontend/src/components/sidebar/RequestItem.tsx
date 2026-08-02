@@ -3,6 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Trash2, Check } from 'lucide-react';
 import type { SavedRequest } from '../../store/collections/types';
 import { MethodBadge } from './MethodBadge';
+import { SiGraphql } from 'react-icons/si';
 
 export interface RequestItemProps {
   request: SavedRequest;
@@ -61,6 +62,12 @@ export function RequestItem({
       {...listeners}
     >
       <div className="flex items-center gap-2 flex-1 min-w-0 pointer-events-none">
+        {request.requestType === 'graphql' && (
+          <SiGraphql
+            className="h-3.5 w-3.5 shrink-0 text-pink-600 dark:text-pink-400"
+            aria-label="GraphQL request"
+          />
+        )}
         <MethodBadge method={request.method} />
         <span
           className={`text-sm truncate ${

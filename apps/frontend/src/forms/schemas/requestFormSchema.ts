@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const requestFormSchema = z.object({
+  requestType: z.enum(['http', 'graphql']).optional(),
   method: z.string(),
   url: z.string().min(1, 'URL is required'),
   headers: z.array(
@@ -34,6 +35,10 @@ export const requestFormSchema = z.object({
   ),
   preRequestScript: z.string().optional(),
   testScript: z.string().optional(),
+  graphqlDocument: z.string().optional(),
+  graphqlVariables: z.string().optional(),
+  graphqlTransport: z.enum(['post', 'get']).optional(),
+  graphqlSchemaProfileId: z.string().optional(),
   auth: z.object({
     type: z.enum(['none', 'basic', 'bearer', 'api-key', 'digest', 'oauth']),
     basic: z

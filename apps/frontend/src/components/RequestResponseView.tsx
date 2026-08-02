@@ -16,17 +16,23 @@ import { Dialog } from './Dialog';
 import { Button } from './Button';
 import { useDialog } from '../hooks/useDialog';
 import { useResizablePanel } from '../hooks/useResizablePanel';
-import { buildRequestFromFormData, buildSavePayloadFromFormData } from '../helpers/request';
+import {
+  buildGraphQLIntrospectionRequest,
+  buildRequestFromFormData,
+  buildSavePayloadFromFormData,
+  parseGraphQLIntrospectionResponse,
+} from '../helpers/request';
 import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
 import { applyAuthForDisplay } from '../helpers/api/authPreview';
 import { runPreRequestScript, runTestScript } from '../helpers/scriptRunner';
 import type { ProxyResponse, StreamingResponse } from '../store/request/types';
+import type { GraphQLSchema } from 'graphql';
 
 export function RequestResponseView() {
   const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab, setTabTestResults } = useTabsStore();
   const { updateRequest } = useCollectionsStore();
   const { environmentsData, updateCurrentValues } = useEnvironmentStore();
-  const { sendStreamingRequest, addConsoleLog } = useRequestStore();
+  const { sendRequest, sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
   const { showAlert } = useAlertStore();
   const { isDarkMode } = useThemeStore();
@@ -61,7 +67,13 @@ export function RequestResponseView() {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    const rawRequest = buildRequestFromFormData(formData);
+    let rawRequest;
+    try {
+      rawRequest = buildRequestFromFormData(formData);
+    } catch (error) {
+      showAlert('Invalid request', error instanceof Error ? error.message : String(error), 'error');
+      return;
+    }
 
     const activeEnv = environmentsData.environments.find(
       e => e.id === environmentsData.activeEnvironmentId,
@@ -210,6 +222,16 @@ export function RequestResponseView() {
     abortControllerRef.current = null;
   }, []);
 
+  const handleFetchGraphQLSchema = useCallback(async (formData: RequestFormData): Promise<GraphQLSchema> => {
+    const activeEnv = environmentsData.environments.find(
+      environment => environment.id === environmentsData.activeEnvironmentId,
+    ) ?? null;
+    const introspectionRequest = buildGraphQLIntrospectionRequest(formData);
+    const request = activeEnv ? substituteInRequest(introspectionRequest, activeEnv) : introspectionRequest;
+    const response = await sendRequest(request);
+    return parseGraphQLIntrospectionResponse(response);
+  }, [environmentsData, sendRequest]);
+
   const handleSave = useCallback(async () => {
     if (!activeTab || !formDataRef.current) return;
 
@@ -298,6 +320,7 @@ export function RequestResponseView() {
             onSend={handleSend}
             onCancel={handleCancel}
             onChange={handleFormChange}
+            onFetchGraphQLSchema={handleFetchGraphQLSchema}
             loading={activeTab.isLoading}
           />
         </div>
@@ -320,13 +343,18 @@ export function RequestResponseView() {
           isDarkMode={isDarkMode}
           testResults={activeTab.testResults}
           requestUrl={activeTab.request.url}
+          isGraphQL={activeTab.request.requestType === 'graphql'}
         />
       </div>
 
       {/* Save Dialog */}
       <Dialog isOpen={saveDialog.isOpen} onClose={saveDialog.close} title="Save Request">
         <SaveRequestForm
-          currentRequest={formDataRef.current ? buildRequestFromFormData(formDataRef.current) : null}
+          currentRequest={
+            saveDialog.isOpen && formDataRef.current
+              ? buildSavePayloadFromFormData(formDataRef.current)
+              : null
+          }
           onSuccess={saveDialog.close}
           onCancel={saveDialog.close}
         />

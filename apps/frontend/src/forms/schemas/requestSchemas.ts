@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const newRequestSchema = z.object({
   name: z.string().min(1, 'Request name is required').trim(),
+  requestType: z.enum(['http', 'graphql']).optional(),
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']),
   collectionId: z.string().min(1, 'Please select a collection'),
   folderId: z.string().optional(),

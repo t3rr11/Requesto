@@ -150,12 +150,15 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
             </p>
           ) : (
             registry.workspaces.map(workspace => (
-              <button
+              <div
                 key={workspace.id}
-                onClick={() => handleSwitch(workspace.id)}
                 className="flex items-center w-full gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 group"
               >
-                <div className="flex-1 text-left min-w-0">
+                <button
+                  type="button"
+                  onClick={() => handleSwitch(workspace.id)}
+                  className="flex-1 text-left min-w-0"
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                       {workspace.name}
@@ -171,7 +174,7 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                   <Button
                     variant="icon"
@@ -208,7 +211,7 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>

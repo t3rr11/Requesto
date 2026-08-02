@@ -60,6 +60,13 @@ async function waitForResponseBody(page: Page) {
   await page.waitForTimeout(1000);
 }
 
+async function openGraphQLDocsRequest(page: Page) {
+  await page.getByText('GraphQL API').click();
+  await page.locator('[data-request-item]').filter({ has: page.getByLabel('GraphQL request') }).click();
+  await expect(page.getByLabel('Request method or type')).toHaveValue('graphql:post');
+  await expect(page.getByLabel('Refresh GraphQL schema')).toBeVisible({ timeout: 15_000 });
+}
+
 // ---------------------------------------------------------------------------
 // Home / Introduction — hero & overview shots
 // ---------------------------------------------------------------------------
@@ -788,6 +795,60 @@ test.describe('Tests', () => {
     await appPage.waitForTimeout(400);
 
     await takeDocScreenshot('tests', 'results');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GraphQL
+// ---------------------------------------------------------------------------
+test.describe('GraphQL', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('query editor with schema-aware tooling', async ({ appPage, takeDocScreenshot }) => {
+    await openGraphQLDocsRequest(appPage);
+    await appPage.locator('.monaco-editor').first().waitFor({ state: 'visible', timeout: 10_000 });
+    await appPage.waitForTimeout(800);
+
+    await takeDocScreenshot('graphql', 'query-editor');
+  });
+
+  test('variables editor', async ({ appPage, takeDocScreenshot }) => {
+    await openGraphQLDocsRequest(appPage);
+    await appPage.getByRole('button', { name: 'Variables' }).click();
+    const editor = appPage.locator('.monaco-editor').first();
+    await editor.waitFor({ state: 'visible', timeout: 10_000 });
+    await editor.click();
+    await appPage.keyboard.press('Control+a');
+    await appPage.keyboard.press('Backspace');
+    await appPage.keyboard.insertText('{\n"id": "{{userId}}"');
+    await expect(editor).toContainText('{{userId}}');
+    await expect(editor.locator('.view-line')).toHaveCount(3);
+    await appPage.getByRole('button', { name: 'Variables' }).click();
+    await appPage.waitForTimeout(500);
+
+    await takeDocScreenshot('graphql', 'variables');
+  });
+
+  test('schema explorer and profile selector', async ({ appPage, takeDocScreenshot }) => {
+    await openGraphQLDocsRequest(appPage);
+    await appPage.getByLabel('View GraphQL schema').click();
+    await expect(appPage.getByRole('heading', { name: 'GraphQL Schema' })).toBeVisible();
+    await expect(appPage.getByLabel('Schema profile', { exact: true })).toHaveValue('gql-schema-test-api');
+    await appPage.waitForTimeout(500);
+
+    await takeDocScreenshot('graphql', 'schema-explorer');
+  });
+
+  test('query response', async ({ appPage, takeDocScreenshot }) => {
+    await openGraphQLDocsRequest(appPage);
+    await appPage.getByRole('button', { name: 'Send' }).click();
+    await expect(appPage.getByText('200 OK')).toBeVisible({ timeout: 15_000 });
+    await expect(appPage.locator('.monaco-editor').last()).toContainText('Ada Lovelace');
+    await waitForResponseBody(appPage);
+
+    await takeDocScreenshot('graphql', 'response');
   });
 });
 

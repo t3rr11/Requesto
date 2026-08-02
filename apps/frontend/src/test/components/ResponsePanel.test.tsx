@@ -79,4 +79,43 @@ describe('ResponsePanel', () => {
     expect(screen.getByText('Headers')).toBeInTheDocument();
     expect(screen.getByText('Test Results')).toBeInTheDocument();
   });
+
+  it('shows partial GraphQL responses and structured errors', async () => {
+    const user = userEvent.setup();
+    const graphqlResponse: ProxyResponse = {
+      ...mockResponse,
+      body: JSON.stringify({
+        data: { user: null },
+        errors: [{
+          message: 'User is unavailable',
+          path: ['user'],
+          locations: [{ line: 2, column: 3 }],
+        }],
+      }),
+    };
+    render(
+      <ResponsePanel
+        response={graphqlResponse}
+        loading={false}
+        error={null}
+        isDarkMode={false}
+        isGraphQL
+      />,
+    );
+
+    expect(screen.getByText('Partial data')).toBeInTheDocument();
+    await user.click(screen.getByText('Errors (1)'));
+    expect(screen.getByText('User is unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Path: user')).toBeInTheDocument();
+    expect(screen.getByText('Line 2, column 3')).toBeInTheDocument();
+  });
+
+  it('does not interpret ordinary JSON errors as GraphQL', () => {
+    render(
+      <ResponsePanel response={mockResponse} loading={false} error={null} isDarkMode={false} />,
+    );
+
+    expect(screen.queryByText(/GraphQL errors/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Errors \(/)).not.toBeInTheDocument();
+  });
 });

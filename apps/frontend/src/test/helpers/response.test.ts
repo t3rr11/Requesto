@@ -9,8 +9,32 @@ import {
   getDownloadFilename,
   decodeResponseBodyToBlob,
   downloadResponseBody,
+  getGraphQLResponseInfo,
 } from '../../helpers/response';
 import type { ProxyResponse } from '../../store/request/types';
+
+describe('getGraphQLResponseInfo', () => {
+  const response = (body: string): ProxyResponse => ({
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    body,
+    bodyEncoding: 'utf8',
+    duration: 1,
+  });
+
+  it('returns null for malformed or non-GraphQL JSON', () => {
+    expect(getGraphQLResponseInfo(response('{'))).toBeNull();
+    expect(getGraphQLResponseInfo(response('{"message":"ok"}'))).toBeNull();
+  });
+
+  it('recognizes partial GraphQL responses', () => {
+    expect(getGraphQLResponseInfo(response(JSON.stringify({
+      data: { user: null },
+      errors: [{ message: 'Unavailable', path: ['user'] }],
+    })))).toMatchObject({ hasData: true, isPartial: true, errors: [{ message: 'Unavailable' }] });
+  });
+});
 
 describe('formatResponseBody', () => {
   it('formats JSON strings with indentation', () => {
