@@ -1,8 +1,9 @@
-import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
-import type { ProxyResponse, StreamingResponse } from '../request/types';
+import type { AuthConfig, BodyType, FormDataEntry, ProxyResponse, StreamingResponse } from '../request/types';
 import type { TestResult } from '../../helpers/scriptRunner';
+import type { GraphQLRequestConfig, RequestType } from '../collections/types';
 
 export type TabRequest = {
+  requestType?: RequestType;
   method: string;
   url: string;
   headers?: Record<string, string>;
@@ -12,6 +13,7 @@ export type TabRequest = {
   auth?: AuthConfig;
   preRequestScript?: string;
   testScript?: string;
+  graphql?: GraphQLRequestConfig;
 };
 
 export type Tab = {

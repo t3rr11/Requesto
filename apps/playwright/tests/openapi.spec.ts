@@ -31,14 +31,14 @@ test.describe('OpenAPI Import & Sync', () => {
       await dialog.getByRole('button', { name: 'Import' }).click();
 
       // Wait for the import to complete — collection should appear in sidebar
-      await expect(appPage.getByText('Playwright Test API')).toBeVisible({ timeout: 15_000 });
+      await expect(appPage.getByRole('button', { name: 'Playwright Test API' })).toBeVisible({ timeout: 15_000 });
 
       await takeScreenshot('openapi', 'after-import');
     });
 
     test('imported collection has correct structure', async ({ appPage }) => {
       // Expand the collection
-      await appPage.getByText('Playwright Test API').click();
+      await appPage.getByRole('button', { name: 'Playwright Test API' }).click();
 
       // Should see folders from tags
       await expect(appPage.getByText('pets')).toBeVisible();
@@ -54,11 +54,14 @@ test.describe('OpenAPI Import & Sync', () => {
     });
 
     test('clicking a request shows correct method and URL', async ({ appPage, takeScreenshot }) => {
+      await appPage.getByRole('button', { name: 'Playwright Test API' }).click();
+      await appPage.getByText('pets').click();
+
       // Click on "Get a pet by ID"
       await appPage.getByText('Get a pet by ID').click();
 
       // Should see the request details with placeholder URL
-      await expect(appPage.locator('input[type="text"]').first()).toHaveValue(
+      await expect(appPage.getByPlaceholder('Enter request url')).toHaveValue(
         /\{\{baseUrl\}\}\/pets\/\{\{petId\}\}/,
       );
 
@@ -74,7 +77,7 @@ test.describe('OpenAPI Import & Sync', () => {
       fs.copyFileSync(updatedSpec, originalSpec);
 
       // Right-click the collection for context menu
-      await appPage.getByText('Playwright Test API').click({ button: 'right' });
+      await appPage.getByRole('button', { name: 'Playwright Test API' }).click({ button: 'right' });
 
       // Click "Sync from Spec"
       await appPage.getByText('Sync from Spec').click();
@@ -94,8 +97,8 @@ test.describe('OpenAPI Import & Sync', () => {
       // The dialog should close
       await expect(syncDialog).not.toBeVisible({ timeout: 10_000 });
 
-      // Expand the pets folder to verify new request is there
-      // It might already be expanded, get the request directly
+      const searchInput = appPage.getByPlaceholder('Search collections...');
+      await searchInput.fill('Delete a pet');
       await expect(appPage.getByText('Delete a pet')).toBeVisible({ timeout: 10_000 });
 
       await takeScreenshot('openapi', 'after-sync-new-operation');
@@ -103,7 +106,7 @@ test.describe('OpenAPI Import & Sync', () => {
 
     test('unlink spec removes spec metadata', async ({ appPage, takeScreenshot }) => {
       // Right-click the collection
-      await appPage.getByText('Playwright Test API').click({ button: 'right' });
+      await appPage.getByRole('button', { name: 'Playwright Test API' }).click({ button: 'right' });
 
       // Click "Unlink Spec"
       await appPage.getByText('Unlink Spec').click();
@@ -114,7 +117,7 @@ test.describe('OpenAPI Import & Sync', () => {
       await takeScreenshot('openapi', 'after-unlink');
 
       // Verify Sync from Spec is no longer in context menu
-      await appPage.getByText('Playwright Test API').click({ button: 'right' });
+      await appPage.getByRole('button', { name: 'Playwright Test API' }).click({ button: 'right' });
       await expect(appPage.getByText('Sync from Spec')).not.toBeVisible();
     });
   });

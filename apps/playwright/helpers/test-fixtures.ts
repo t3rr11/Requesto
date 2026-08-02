@@ -13,6 +13,7 @@ const FIXTURE_FILES = [
   'environments.json',
   'history.json',
   'oauth-configs.json',
+  'graphql-schemas.json',
 ];
 
 /** Workspace data files that live in the workspace root */
@@ -20,6 +21,7 @@ const WORKSPACE_FILES = [
   'collections.json',
   'environments.json',
   'oauth-configs.json',
+  'graphql-schemas.json',
 ];
 
 /** Local-only files that live in .requesto/ */

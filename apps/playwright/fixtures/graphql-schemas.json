@@ -1,0 +1,10 @@
+[
+  {
+    "id": "gql-schema-test-api",
+    "name": "Local GraphQL API",
+    "sourceType": "endpoint",
+    "sourceUrl": "http://localhost:5747/api/test/graphql",
+    "createdAt": 1785628800000,
+    "updatedAt": 1785628800000
+  }
+]

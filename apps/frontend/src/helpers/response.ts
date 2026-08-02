@@ -1,5 +1,46 @@
 import type { ProxyResponse } from '../store/request/types';
 
+export type GraphQLResponseError = {
+  message: string;
+  path?: Array<string | number>;
+  locations?: Array<{ line: number; column: number }>;
+};
+
+export type GraphQLResponseInfo = {
+  errors: GraphQLResponseError[];
+  hasData: boolean;
+  isPartial: boolean;
+};
+
+export function getGraphQLResponseInfo(response: ProxyResponse): GraphQLResponseInfo | null {
+  if (response.bodyEncoding !== 'utf8') return null;
+  try {
+    const payload: unknown = JSON.parse(response.body);
+    if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return null;
+    const envelope = payload as { data?: unknown; errors?: unknown };
+    if (!Array.isArray(envelope.errors)) return null;
+    const errors = envelope.errors
+      .filter((error): error is Record<string, unknown> => typeof error === 'object' && error !== null)
+      .map(error => ({
+        message: typeof error.message === 'string' ? error.message : 'Unknown GraphQL error',
+        ...(Array.isArray(error.path) && { path: error.path as Array<string | number> }),
+        ...(Array.isArray(error.locations) && {
+          locations: error.locations.filter(
+            (location): location is { line: number; column: number } =>
+              typeof location === 'object' &&
+              location !== null &&
+              typeof (location as Record<string, unknown>).line === 'number' &&
+              typeof (location as Record<string, unknown>).column === 'number',
+          ),
+        }),
+      }));
+    const hasData = Object.prototype.hasOwnProperty.call(envelope, 'data') && envelope.data !== null;
+    return { errors, hasData, isPartial: hasData && errors.length > 0 };
+  } catch {
+    return null;
+  }
+}
+
 export function formatResponseBody(body: string): string {
   try {
     return JSON.stringify(JSON.parse(body), null, 2);

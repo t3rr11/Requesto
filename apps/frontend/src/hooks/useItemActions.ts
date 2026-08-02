@@ -16,6 +16,7 @@ export function useItemActions() {
       savedRequestId: request.id,
       collectionId: request.collectionId,
       request: {
+        requestType: request.requestType,
         method: request.method,
         url: request.url,
         headers: request.headers,
@@ -23,6 +24,7 @@ export function useItemActions() {
         auth: request.auth,
         preRequestScript: request.preRequestScript,
         testScript: request.testScript,
+        graphql: request.graphql,
       },
       label: request.name,
     });

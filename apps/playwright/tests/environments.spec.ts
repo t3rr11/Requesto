@@ -48,7 +48,7 @@ test.describe('Environment Variables', () => {
 
     // Should show the variables (use input value selector since Playwright has no getByDisplayValue)
     await expect(dialog.locator('input[value="baseUrl"]')).toBeVisible();
-    await expect(dialog.locator('input[value="https://jsonplaceholder.typicode.com"]')).toBeVisible();
+    await expect(dialog.locator('input[name="variables.0.value"]')).toHaveValue('https://jsonplaceholder.typicode.com');
 
     await takeScreenshot('environments', 'manager-dialog');
 

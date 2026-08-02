@@ -6,22 +6,14 @@ import { useCollectionsStore } from '../store/collections/store';
 import { UNCATEGORIZED_COLLECTION_ID, UNCATEGORIZED_COLLECTION_NAME } from '../store/collections/constants';
 import { useTabsStore } from '../store/tabs/store';
 import { useAlertStore } from '../store/alert/store';
-import type { AuthConfig, BodyType, FormDataEntry } from '../store/request/types';
+import type { RequestSaveDraft } from '../store/collections/types';
 import { extractPathnameFromUrl } from '../helpers/url';
 import { saveRequestSchema, type SaveRequestFormData } from './schemas/requestSchemas';
 
 interface SaveRequestFormProps {
   onSuccess: () => void;
   onCancel: () => void;
-  currentRequest: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-    bodyType?: BodyType;
-    formDataEntries?: FormDataEntry[];
-    auth?: AuthConfig;
-  } | null;
+  currentRequest: RequestSaveDraft | null;
 }
 
 export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveRequestFormProps) {
@@ -48,7 +40,7 @@ export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveReq
       const pathname = extractPathnameFromUrl(currentRequest.url);
       setValue('name', `${currentRequest.method} ${pathname}`);
     }
-  }, [currentRequest, setValue]);
+  }, [currentRequest?.method, currentRequest?.url, setValue]);
 
   useEffect(() => {
     setValue('collectionId', collections.length > 0 ? collections[0].id : UNCATEGORIZED_COLLECTION_ID);
@@ -66,16 +58,7 @@ export function SaveRequestForm({ onSuccess, onCancel, currentRequest }: SaveReq
     }
 
     try {
-      const savedRequestResult = await saveRequest(data.collectionId, {
-        name: data.name,
-        method: currentRequest.method,
-        url: currentRequest.url,
-        headers: currentRequest.headers,
-        body: currentRequest.body,
-        bodyType: currentRequest.bodyType,
-        formDataEntries: currentRequest.formDataEntries,
-        auth: currentRequest.auth,
-      });
+      const savedRequestResult = await saveRequest(data.collectionId, { ...currentRequest, name: data.name });
 
       setActiveRequest(savedRequestResult.id);
 

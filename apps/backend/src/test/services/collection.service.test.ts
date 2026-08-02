@@ -147,6 +147,63 @@ describe('CollectionService', () => {
       expect(captured[0].bodyType).toBe('form-data');
       expect(captured[0].formDataEntries).toHaveLength(1);
     });
+
+    it('persists GraphQL request configuration and scripts', async () => {
+      const repo = mockRepo({
+        addRequest: vi.fn().mockImplementation(async (_id: string, req: SavedRequest) => req),
+      });
+      const service = new CollectionService(repo);
+
+      const result = await service.addRequest('col-1', {
+        name: 'users',
+        requestType: 'graphql',
+        method: 'post',
+        url: 'http://a.com/graphql',
+        preRequestScript: 'environment.set("id", "1")',
+        testScript: 'test("has data", () => expect(response.status).toBe(200))',
+        graphql: {
+          document: 'query Users { users { id } }',
+          variables: '{}',
+          operationName: 'Users',
+          transport: 'post',
+        },
+      });
+
+      expect(result.requestType).toBe('graphql');
+      expect(result.graphql?.operationName).toBe('Users');
+      expect(result.preRequestScript).toContain('environment.set');
+      expect(result.testScript).toContain('has data');
+    });
+  });
+
+  describe('updateRequest', () => {
+    it('passes GraphQL configuration and scripts through to the repository', async () => {
+      const saved = makeRequest({
+        id: 'req-1',
+        requestType: 'graphql',
+        method: 'POST',
+        preRequestScript: 'environment.set("id", "2")',
+        testScript: 'test("updated", () => {})',
+        graphql: { document: 'query Updated { value }', variables: '{}', transport: 'post' },
+      });
+      const updateRequest = vi.fn().mockResolvedValue(saved);
+      const service = new CollectionService(mockRepo({ updateRequest }));
+
+      const result = await service.updateRequest('col-1', 'req-1', {
+        requestType: saved.requestType,
+        preRequestScript: saved.preRequestScript,
+        testScript: saved.testScript,
+        graphql: saved.graphql,
+      });
+
+      expect(updateRequest).toHaveBeenCalledWith('col-1', 'req-1', expect.objectContaining({
+        requestType: 'graphql',
+        preRequestScript: saved.preRequestScript,
+        testScript: saved.testScript,
+        graphql: saved.graphql,
+      }));
+      expect(result).toBe(saved);
+    });
   });
 
   describe('ensureUncategorizedCollection', () => {

@@ -141,8 +141,10 @@ test.describe('Request Execution', () => {
     }
 
     // The request should now appear in the Sample API collection
-    await appPage.getByText('Sample API').first().click();
-    await expect(appPage.getByText('List All Users').first()).toBeVisible();
+    const searchInput = appPage.getByPlaceholder('Search collections...');
+    await searchInput.fill('List All Users');
+    const savedRequest = appPage.locator('[data-request-item]').filter({ hasText: 'List All Users' });
+    await expect(savedRequest).toBeVisible();
 
     await takeScreenshot('requests', 'request-saved-in-collection');
   });

@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import path from 'path';
 import { sseTestRoutes } from './controllers/sse-test.controller';
+import { graphqlTestRoutes } from './controllers/graphql-test.controller';
 import { registerErrorHandler } from './errors/error-handler';
 import { DATA_DIR, PORT, HOST, LOG_LEVEL, CORS_ORIGINS } from './config/index';
 
@@ -12,6 +13,8 @@ import { EnvironmentLocalRepository } from './repositories/environment-local.rep
 import { OAuthRepository } from './repositories/oauth.repository';
 import { WorkspaceRepository } from './repositories/workspace.repository';
 import { HistoryRepository } from './repositories/history.repository';
+import { GraphQLSchemaProfileRepository } from './repositories/graphql-schema-profile.repository';
+import { GraphQLSchemaCacheRepository } from './repositories/graphql-schema-cache.repository';
 
 // Services
 import { CollectionService } from './services/collection.service';
@@ -22,6 +25,7 @@ import { ProxyService } from './services/proxy.service';
 import { WorkspaceService } from './services/workspace.service';
 import { GitService } from './services/git.service';
 import { OpenApiService } from './services/openapi.service';
+import { GraphQLSchemaProfileService } from './services/graphql-schema-profile.service';
 
 // Controllers
 import collectionController from './controllers/collection.controller';
@@ -30,6 +34,7 @@ import proxyController from './controllers/proxy.controller';
 import oauthController from './controllers/oauth.controller';
 import workspaceController from './controllers/workspace.controller';
 import gitController from './controllers/git.controller';
+import graphqlSchemaProfileController from './controllers/graphql-schema-profile.controller';
 
 
 const WORKSPACES_DIR = path.join(DATA_DIR, 'workspaces');
@@ -48,6 +53,8 @@ const environmentRepo = new EnvironmentRepository(getDataDir);
 const environmentLocalRepo = new EnvironmentLocalRepository(getLocalDir);
 const oauthRepo = new OAuthRepository(getDataDir, getLocalDir);
 const historyRepo = new HistoryRepository(getLocalDir);
+const graphqlSchemaProfileRepo = new GraphQLSchemaProfileRepository(getDataDir);
+const graphqlSchemaCacheRepo = new GraphQLSchemaCacheRepository(getLocalDir);
 
 // Instantiate service layer
 const collectionService = new CollectionService(collectionRepo);
@@ -57,6 +64,10 @@ const oauthService = new OAuthService(oauthRepo);
 const proxyService = new ProxyService(environmentService, historyService, oauthService);
 const gitService = new GitService(workspaceService);
 const openApiService = new OpenApiService(collectionService);
+const graphqlSchemaProfileService = new GraphQLSchemaProfileService(
+  graphqlSchemaProfileRepo,
+  graphqlSchemaCacheRepo,
+);
 
 const server = Fastify({
   logger: {
@@ -90,7 +101,9 @@ async function start() {
     await server.register(oauthController, { prefix: '/api', oauthService });
     await server.register(workspaceController, { prefix: '/api', workspaceService });
     await server.register(gitController, { prefix: '/api', gitService });
+    await server.register(graphqlSchemaProfileController, { prefix: '/api', graphqlSchemaProfileService });
     await server.register(sseTestRoutes, { prefix: '/api' });
+    await server.register(graphqlTestRoutes, { prefix: '/api' });
 
     // Bootstrap workspace system before accepting requests
     workspaceService.bootstrap();

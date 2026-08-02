@@ -6,12 +6,14 @@ import type { Tab, TabRequest } from '../store/tabs/types';
  * doesn't leave the tab permanently dirty.
  */
 export function areRequestsEqual(a: TabRequest, b: TabRequest): boolean {
+  if ((a.requestType ?? 'http') !== (b.requestType ?? 'http')) return false;
   if (a.method !== b.method) return false;
   if (a.url !== b.url) return false;
   if (JSON.stringify(a.headers || {}) !== JSON.stringify(b.headers || {})) return false;
   if ((a.body || '') !== (b.body || '')) return false;
   if ((a.preRequestScript ?? '') !== (b.preRequestScript ?? '')) return false;
   if ((a.testScript ?? '') !== (b.testScript ?? '')) return false;
+  if (JSON.stringify(a.graphql) !== JSON.stringify(b.graphql)) return false;
 
   const normaliseAuth = (auth: TabRequest['auth']) => {
     if (!auth || auth.type === 'none') return JSON.stringify({ type: 'none' });
@@ -50,6 +52,7 @@ export function generateTabLabel(request: TabRequest, name?: string): string {
 }
 
 export function savedRequestToTabRequest(saved: {
+  requestType?: TabRequest['requestType'];
   method: string;
   url: string;
   headers?: Record<string, string>;
@@ -57,8 +60,10 @@ export function savedRequestToTabRequest(saved: {
   auth?: TabRequest['auth'];
   preRequestScript?: string;
   testScript?: string;
+  graphql?: TabRequest['graphql'];
 }): TabRequest {
   return {
+    requestType: saved.requestType,
     method: saved.method,
     url: saved.url,
     headers: saved.headers,
@@ -66,6 +71,7 @@ export function savedRequestToTabRequest(saved: {
     auth: normaliseSavedAuth(saved.auth),
     ...(saved.preRequestScript !== undefined && { preRequestScript: saved.preRequestScript }),
     ...(saved.testScript !== undefined && { testScript: saved.testScript }),
+    ...(saved.graphql !== undefined && { graphql: { ...saved.graphql } }),
   };
 }
 
@@ -86,6 +92,7 @@ function normaliseSavedAuth(auth: TabRequest['auth']): TabRequest['auth'] {
 
 export function cloneTabRequest(request: TabRequest): TabRequest {
   return {
+    requestType: request.requestType,
     method: request.method,
     url: request.url,
     headers: request.headers ? { ...request.headers } : undefined,
@@ -93,6 +100,7 @@ export function cloneTabRequest(request: TabRequest): TabRequest {
     auth: request.auth ? JSON.parse(JSON.stringify(request.auth)) : undefined,
     ...(request.preRequestScript !== undefined && { preRequestScript: request.preRequestScript }),
     ...(request.testScript !== undefined && { testScript: request.testScript }),
+    ...(request.graphql !== undefined && { graphql: { ...request.graphql } }),
   };
 }
 

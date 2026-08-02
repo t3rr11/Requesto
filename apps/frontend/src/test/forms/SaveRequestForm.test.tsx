@@ -107,6 +107,26 @@ describe('SaveRequestForm', () => {
     expect(mockOnCancel).toHaveBeenCalledOnce();
   });
 
+  it('does not overwrite a custom name when the request object is recreated', async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <SaveRequestForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} currentRequest={currentRequest} />,
+    );
+    const nameInput = screen.getByLabelText(/request name/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, 'List All Users');
+
+    view.rerender(
+      <SaveRequestForm
+        onSuccess={mockOnSuccess}
+        onCancel={mockOnCancel}
+        currentRequest={{ ...currentRequest }}
+      />,
+    );
+
+    expect(nameInput).toHaveValue('List All Users');
+  });
+
   it('always offers Uncategorized when no user collections exist', () => {
     vi.mocked(useCollectionsStore).mockReturnValue({
       collections: [],
@@ -145,6 +165,38 @@ describe('SaveRequestForm', () => {
     await vi.waitFor(() => {
       expect(mockSaveRequest).toHaveBeenCalledOnce();
       expect(mockOnSuccess).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('preserves GraphQL metadata when saving a new request', async () => {
+    const user = userEvent.setup();
+    const graphqlRequest = {
+      requestType: 'graphql' as const,
+      method: 'POST',
+      url: 'https://api.example.com/graphql',
+      headers: {},
+      auth: { type: 'none' as const },
+      graphql: {
+        document: 'query Users { users { id } }',
+        variables: '{}',
+        transport: 'post' as const,
+      },
+    };
+    render(
+      <SaveRequestForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} currentRequest={graphqlRequest} />,
+    );
+
+    const nameInput = screen.getByLabelText(/request name/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Users');
+    await user.click(screen.getByText('Save Request'));
+
+    await vi.waitFor(() => {
+      expect(mockSaveRequest).toHaveBeenCalledWith('col-1', expect.objectContaining({
+        name: 'Users',
+        requestType: 'graphql',
+        graphql: graphqlRequest.graphql,
+      }));
     });
   });
 });

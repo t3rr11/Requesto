@@ -1,8 +1,16 @@
-import type { ProxyRequest, AuthConfig, FormDataEntry } from '../store/request/types';
+import type { ProxyRequest, ProxyResponse, AuthConfig, FormDataEntry } from '../store/request/types';
 import type { RequestFormData } from '../forms/schemas/requestFormSchema';
 import type { TabRequest } from '../store/tabs/types';
-import type { SavedRequest } from '../store/collections/types';
+import type { GraphQLRequestConfig, RequestSaveDraft } from '../store/collections/types';
 import { buildUrlWithParams } from './url';
+import {
+  buildClientSchema,
+  getIntrospectionQuery,
+  Kind,
+  parse,
+  type GraphQLSchema,
+  type IntrospectionQuery,
+} from 'graphql';
 
 /**
  * Convert form header rows to a plain key/value headers object,
@@ -24,17 +32,168 @@ export function buildHeadersFromFormData(headers: RequestFormData['headers']): R
  * lose in-progress data when switching between body types.
  */
 export function buildTabRequestFromFormData(formData: RequestFormData): TabRequest {
-  return {
-    method: formData.method || 'GET',
+  const requestType = formData.requestType ?? 'http';
+  const request: TabRequest = {
+    requestType,
+    method: requestType === 'graphql' ? (formData.graphqlTransport ?? 'post').toUpperCase() : (formData.method || 'GET'),
     url: buildUrlWithParams(formData.url, formData.params),
     headers: buildHeadersFromFormData(formData.headers),
-    body: formData.body,
-    bodyType: formData.bodyType || 'json',
-    formDataEntries: formData.formDataEntries as FormDataEntry[],
     auth: formData.auth as AuthConfig,
     preRequestScript: formData.preRequestScript,
     testScript: formData.testScript,
   };
+
+  if (requestType === 'graphql') {
+    request.graphql = buildGraphQLConfig(formData);
+  } else {
+    request.body = formData.body;
+    request.bodyType = formData.bodyType || 'json';
+    request.formDataEntries = formData.formDataEntries as FormDataEntry[];
+  }
+
+  return request;
+}
+
+function buildGraphQLConfig(formData: RequestFormData): GraphQLRequestConfig {
+  const config: GraphQLRequestConfig = {
+    document: formData.graphqlDocument ?? '',
+    variables: formData.graphqlVariables ?? '',
+    transport: formData.graphqlTransport ?? 'post',
+  };
+  if (formData.graphqlSchemaProfileId?.trim()) {
+    config.schemaProfileId = formData.graphqlSchemaProfileId;
+  }
+  return config;
+}
+
+function parseGraphQLVariables(value: string | undefined): Record<string, unknown> | undefined {
+  if (!value?.trim()) return undefined;
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('GraphQL variables must be a JSON object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
+export type GraphQLOperationOption = {
+  name: string | null;
+  operation: 'query' | 'mutation' | 'subscription';
+};
+
+export function getGraphQLOperations(document: string): GraphQLOperationOption[] {
+  if (!document.trim()) return [];
+  try {
+    return parse(document).definitions
+      .filter(definition => definition.kind === Kind.OPERATION_DEFINITION)
+      .map(definition => ({
+        name: definition.name?.value ?? null,
+        operation: definition.operation,
+      }));
+  } catch {
+    return [];
+  }
+}
+
+function getGraphQLOperation(document: string) {
+  const operations = parse(document).definitions.filter(
+    definition => definition.kind === Kind.OPERATION_DEFINITION,
+  );
+  if (operations.length > 1) {
+    throw new Error('Multiple GraphQL operations are not supported. Keep one operation in the query.');
+  }
+  if (operations.length === 0) {
+    throw new Error('GraphQL query must contain one operation');
+  }
+  return operations[0];
+}
+
+function setDefaultHeader(headers: Record<string, string>, name: string, value: string): void {
+  if (!Object.keys(headers).some(key => key.toLowerCase() === name.toLowerCase())) {
+    headers[name] = value;
+  }
+}
+
+function buildGraphQLRequest(formData: RequestFormData): ProxyRequest {
+  const document = formData.graphqlDocument?.trim() ?? '';
+  if (!document) throw new Error('GraphQL query is required');
+
+  const operation = getGraphQLOperation(document);
+  const variables = parseGraphQLVariables(formData.graphqlVariables);
+  const transport = formData.graphqlTransport ?? 'post';
+  const headers = buildHeadersFromFormData(formData.headers);
+  setDefaultHeader(headers, 'Accept', 'application/graphql-response+json, application/json;q=0.9');
+
+  if (transport === 'get') {
+    if (operation.operation !== 'query') {
+      throw new Error('GraphQL GET requests can only execute query operations');
+    }
+    const url = new URL(buildUrlWithParams(formData.url, formData.params));
+    url.searchParams.set('query', document);
+    if (variables) url.searchParams.set('variables', JSON.stringify(variables));
+    return { method: 'GET', url: url.toString(), headers, auth: formData.auth as AuthConfig };
+  }
+
+  setDefaultHeader(headers, 'Content-Type', 'application/json');
+  const body = {
+    query: document,
+    ...(variables && { variables }),
+  };
+  return {
+    method: 'POST',
+    url: buildUrlWithParams(formData.url, formData.params),
+    headers,
+    body: JSON.stringify(body),
+    bodyType: 'json',
+    auth: formData.auth as AuthConfig,
+  };
+}
+
+export function buildGraphQLIntrospectionRequest(formData: RequestFormData): ProxyRequest {
+  const headers = buildHeadersFromFormData(formData.headers);
+  setDefaultHeader(headers, 'Accept', 'application/graphql-response+json, application/json;q=0.9');
+  setDefaultHeader(headers, 'Content-Type', 'application/json');
+
+  return {
+    method: 'POST',
+    url: buildUrlWithParams(formData.url, formData.params),
+    headers,
+    body: JSON.stringify({
+      query: getIntrospectionQuery({ descriptions: true, schemaDescription: true }),
+      operationName: 'IntrospectionQuery',
+    }),
+    bodyType: 'json',
+    auth: formData.auth as AuthConfig,
+  };
+}
+
+export function parseGraphQLIntrospectionResponse(response: ProxyResponse): GraphQLSchema {
+  if (response.bodyEncoding !== 'utf8') {
+    throw new Error('Schema endpoint returned a binary response');
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(response.body);
+  } catch {
+    throw new Error('Schema endpoint did not return valid JSON');
+  }
+
+  if (typeof payload !== 'object' || payload === null) {
+    throw new Error('Schema endpoint returned an invalid GraphQL response');
+  }
+
+  const result = payload as {
+    data?: IntrospectionQuery;
+    errors?: Array<{ message?: string }>;
+  };
+  if (result.errors?.length) {
+    throw new Error(result.errors.map(error => error.message || 'Introspection failed').join('\n'));
+  }
+  if (!result.data?.__schema) {
+    throw new Error('Schema endpoint response did not include introspection data');
+  }
+
+  return buildClientSchema(result.data);
 }
 
 /**
@@ -43,6 +202,10 @@ export function buildTabRequestFromFormData(formData: RequestFormData): TabReque
  * appropriately for the active body type.
  */
 export function buildRequestFromFormData(formData: RequestFormData): ProxyRequest {
+  if ((formData.requestType ?? 'http') === 'graphql') {
+    return buildGraphQLRequest(formData);
+  }
+
   return {
     method: formData.method,
     url: buildUrlWithParams(formData.url, formData.params),
@@ -62,7 +225,7 @@ export function buildRequestFromFormData(formData: RequestFormData): ProxyReques
  * Unlike buildRequestFromFormData, this avoids proxy-oriented transformations
  * that cause false "changed" diffs (e.g. body "" → undefined, auth expanded with empty defaults).
  */
-export function buildSavePayloadFromFormData(formData: RequestFormData): Partial<SavedRequest> {
+export function buildSavePayloadFromFormData(formData: RequestFormData): RequestSaveDraft {
   // Only include the active auth type's data to avoid empty defaults expanding the object
   const auth: AuthConfig = { type: formData.auth.type };
   if (formData.auth.type !== 'none') {
@@ -82,15 +245,25 @@ export function buildSavePayloadFromFormData(formData: RequestFormData): Partial
     }
   }
 
-  const payload: Partial<SavedRequest> = {
-    method: formData.method,
+  const payload: RequestSaveDraft = {
+    requestType: formData.requestType ?? 'http',
+    method:
+      (formData.requestType ?? 'http') === 'graphql'
+        ? (formData.graphqlTransport ?? 'post').toUpperCase()
+        : formData.method,
     url: buildUrlWithParams(formData.url, formData.params),
     headers: buildHeadersFromFormData(formData.headers),
-    bodyType: formData.bodyType,
     auth,
     preRequestScript: formData.preRequestScript,
     testScript: formData.testScript,
   };
+
+  if ((formData.requestType ?? 'http') === 'graphql') {
+    payload.graphql = buildGraphQLConfig(formData);
+    return payload;
+  }
+
+  payload.bodyType = formData.bodyType;
 
   // Only include body/formDataEntries for the active body type to avoid
   // sending empty values that differ from undefined in the stored data

@@ -1,6 +1,6 @@
 import { CollectionRepository } from '../repositories/collection.repository';
 import { AppError } from '../errors/app-error';
-import type { Collection, SavedRequest, Folder } from '../models/collection';
+import type { Collection, SavedRequest, Folder, GraphQLRequestConfig, RequestType } from '../models/collection';
 import { UNCATEGORIZED_COLLECTION_ID } from '../models/collection';
 import type { AuthConfig, BodyType, FormDataEntry } from '../models/proxy';
 
@@ -89,6 +89,7 @@ export class CollectionService {
     collectionId: string,
     data: {
       name: string;
+      requestType?: RequestType;
       method: string;
       url: string;
       headers?: Record<string, string>;
@@ -97,6 +98,9 @@ export class CollectionService {
       formDataEntries?: FormDataEntry[];
       auth?: AuthConfig;
       folderId?: string;
+      preRequestScript?: string;
+      testScript?: string;
+      graphql?: GraphQLRequestConfig;
     },
   ): Promise<SavedRequest> {
     if (collectionId === UNCATEGORIZED_COLLECTION_ID) {
@@ -106,6 +110,7 @@ export class CollectionService {
     const newRequest: SavedRequest = {
       id: `req-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       name: data.name.trim(),
+      requestType: data.requestType,
       method: data.method.toUpperCase(),
       url: data.url.trim(),
       headers: data.headers,
@@ -114,6 +119,9 @@ export class CollectionService {
       formDataEntries: data.formDataEntries,
       auth: data.auth,
       folderId: data.folderId,
+      preRequestScript: data.preRequestScript,
+      testScript: data.testScript,
+      graphql: data.graphql,
       collectionId
     };
 
