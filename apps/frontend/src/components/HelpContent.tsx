@@ -5,7 +5,7 @@ interface HelpContentProps {
   onClose: () => void;
 }
 
-export function HelpContent({ onClose }: HelpContentProps) {
+export function HelpContent({ onClose }: Readonly<HelpContentProps>) {
   return (
     <div className="space-y-6">
       <div>
@@ -47,7 +47,7 @@ export function HelpContent({ onClose }: HelpContentProps) {
       </div>
 
       <p className="text-xs text-gray-400 dark:text-gray-500">
-        Use Ctrl (or Cmd on Mac) for keyboard shortcuts.
+        Version: {import.meta.env.PACKAGE_VERSION || 'unknown'}
       </p>
 
       <div className="flex justify-end">
