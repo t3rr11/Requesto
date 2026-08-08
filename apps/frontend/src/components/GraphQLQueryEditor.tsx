@@ -89,12 +89,13 @@ function installGraphQLLanguageFeatures(
   const updateDiagnostics = () => {
     const markers = getDiagnostics(model.getValue(), schema).map(diagnostic => ({
       severity: toMarkerSeverity(monaco, diagnostic.severity),
-      message: diagnostic.message,
+      message: diagnostic.message as string,
       startLineNumber: diagnostic.range.start.line + 1,
       startColumn: diagnostic.range.start.character + 1,
       endLineNumber: diagnostic.range.end.line + 1,
       endColumn: Math.max(diagnostic.range.end.character + 1, diagnostic.range.start.character + 2),
     }));
+
     monaco.editor.setModelMarkers(model, 'requesto-graphql', markers);
   };
 
