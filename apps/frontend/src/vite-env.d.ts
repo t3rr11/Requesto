@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly DEV: boolean;
   readonly PROD: boolean;
   readonly MODE: string;
+  readonly PACKAGE_VERSION: string;
 }
 
 interface ImportMeta {
