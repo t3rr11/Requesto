@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { BaseRepository } from './base.repository';
 import type { GraphQLSchemaCacheEntry } from '../models/graphql-schema-profile';
 

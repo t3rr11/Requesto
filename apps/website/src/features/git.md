@@ -35,7 +35,7 @@ The status view only shows Requesto-owned files (collections, environments, OAut
 
 ## Committing Changes
 
-Click **Commit** in the git panel, enter a commit message, and confirm. Only Requesto-owned files are staged automatically — the `.requesto/` directory (which contains `collections.json`, `environments.json`, and `oauth-configs.json`). Your project source code is never touched.
+Click **Commit** in the git panel, enter a commit message, and confirm. Only Requesto-owned files are staged automatically — the `.requesto/` directory (which contains the per-item `collections/`, `environments/`, and `oauth-configs/` folders plus their `order.json` manifest). Your project source code is never touched.
 
 **Push** always targets the `origin` remote. If you push with uncommitted changes and no new commits, Requesto prompts you for a commit message first so you can commit and push in one step.
 
@@ -79,9 +79,11 @@ The git panel lists configured remotes. You can add a new remote by providing a 
 
 | File | Committed | Why |
 |------|-----------|-----|
-| `.requesto/collections.json` | Yes | Shared API definitions |
-| `.requesto/environments.json` | Yes | Shared environment configs |
-| `.requesto/oauth-configs.json` | Yes | OAuth configs without secrets |
+| `.requesto/order.json` | Yes | Display order of collections, environments, and configs |
+| `.requesto/collections/` | Yes | Shared API definitions (one file per collection) |
+| `.requesto/environments/` | Yes | Shared environment configs (one file per environment) |
+| `.requesto/oauth-configs/` | Yes | OAuth configs without secrets |
+| `.requesto/local/active-environment.json` | No | Your active environment selection |
 | `.requesto/local/history.json` | No | Local request history |
 | `.requesto/local/oauth-secrets.json` | No | Contains client secrets |
 

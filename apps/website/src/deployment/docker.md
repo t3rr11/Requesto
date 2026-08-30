@@ -57,16 +57,17 @@ Mount a volume or bind-mount at `/app/data`. This directory holds all your data,
 
 ```
 data/
-├── workspaces.json           # Workspace registry and active workspace
-├── Default/                  # Built-in workspace (named "Local Workspace")
-│   └── .requesto/            # Requesto data for this workspace (git-tracked)
-│       ├── collections.json  # Collections, folders, and saved requests
-│       ├── environments.json # Environments and initial variable values
-│       ├── oauth-configs.json# OAuth configurations (no client secrets)
-│       └── local/            # Local-only data (excluded from git)
+├── workspaces.json        # Workspace registry and active workspace
+├── Default/               # Built-in workspace (named "Local Workspace")
+│   └── .requesto/         # Requesto data for this workspace (git-tracked)
+│       ├── order.json     # Display order of collections, environments, and configs
+│       ├── collections/   # One JSON file per collection
+│       ├── environments/  # One JSON file per environment and its initial variables
+│       ├── oauth-configs/ # One JSON file per OAuth configuration (no client secrets)
+│       └── local/         # Local-only data (excluded from git)
 │           ├── history.json  # Request/response history (last 100)
 │           └── oauth-secrets.json
-└── workspaces/               # Additional workspaces (created or git-cloned)
+└── workspaces/            # Additional workspaces (created or git-cloned)
 ```
 
 These are plain JSON files. You can back them up by copying the entire data directory:

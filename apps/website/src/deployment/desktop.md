@@ -73,16 +73,17 @@ When you launch the desktop app:
 
 ```
 data/
-├── workspaces.json           # Workspace registry and active workspace
-├── Default/                  # Built-in workspace (named "Local Workspace")
-│   └── .requesto/            # Requesto data for this workspace (git-tracked)
-│       ├── collections.json  # Collections, folders, and saved requests
-│       ├── environments.json # Environments and initial variable values
-│       ├── oauth-configs.json# OAuth configurations (no client secrets)
-│       └── local/            # Local-only data (excluded from git)
+├── workspaces.json        # Workspace registry and active workspace
+├── Default/               # Built-in workspace (named "Local Workspace")
+│   └── .requesto/         # Requesto data for this workspace (git-tracked)
+│       ├── order.json     # Display order of collections, environments, and configs
+│       ├── collections/   # One JSON file per collection
+│       ├── environments/  # One JSON file per environment and its initial variables
+│       ├── oauth-configs/ # One JSON file per OAuth configuration (no client secrets)
+│       └── local/         # Local-only data (excluded from git)
 │           ├── history.json
 │           └── oauth-secrets.json
-└── workspaces/               # Additional workspaces (created or git-cloned)
+└── workspaces/            # Additional workspaces (created or git-cloned)
 ```
 
 To back up, copy the `data` folder. To restore, copy it back and restart the app.

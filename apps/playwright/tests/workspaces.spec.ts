@@ -1,6 +1,6 @@
 import { test, expect, resetData } from '../helpers/test-fixtures';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Workspace creation and management flows, including opening an existing
@@ -11,7 +11,11 @@ const OPEN_FIXTURE_DIR = path.resolve(__dirname, '..', 'open-fixture');
 const PROJECT_A_DIR = path.join(OPEN_FIXTURE_DIR, 'project-a');
 const EMPTY_DIR = path.join(OPEN_FIXTURE_DIR, 'empty-dir');
 
-/** Create a project folder that already contains a Requesto workspace */
+/**
+ * Create a project folder that already contains a Requesto workspace.
+ * Uses the pre-split monolithic layout on purpose — opening it exercises
+ * the automatic migration to per-item files on the backend.
+ */
 function createProjectAFixture() {
   const requestoDir = path.join(PROJECT_A_DIR, '.requesto');
   fs.mkdirSync(requestoDir, { recursive: true });
@@ -139,6 +143,12 @@ test.describe('Workspaces', () => {
     // The new workspace is activated and the app reloads with its collections
     await expect(page.getByText('Project A API')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('button[title="project-a"]')).toBeVisible();
+
+    // Opening the workspace migrated the monolithic files into per-item files
+    await expect
+      .poll(() => fs.existsSync(path.join(PROJECT_A_DIR, '.requesto', 'collections', 'project-a-api.json')))
+      .toBe(true);
+    expect(fs.existsSync(path.join(PROJECT_A_DIR, '.requesto', 'collections.json'))).toBe(false);
   });
 
   test('creates a new empty workspace and switches to it', async ({ page }) => {

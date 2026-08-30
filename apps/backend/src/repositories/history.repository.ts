@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { RequestRecord } from '../models/history';
 import { BaseRepository } from './base.repository';
 

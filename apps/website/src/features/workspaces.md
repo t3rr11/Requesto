@@ -15,19 +15,21 @@ Requesto starts with a built-in workspace named **Local Workspace** (stored in t
 
 ```
 data/
-├── workspaces.json           # Registry of all workspaces
-├── Default/                  # Built-in workspace ("Local Workspace")
-│   └── .requesto/            # All workspace data
-│       ├── collections.json
-│       ├── environments.json
-│       ├── oauth-configs.json
-│       ├── .gitignore        # Ignores the local/ subdirectory
-│       └── local/            # Local-only data (excluded from git)
+├── workspaces.json       # Registry of all workspaces
+├── Default/              # Built-in workspace ("Local Workspace")
+│   └── .requesto/        # All workspace data
+│       ├── order.json    # Display order of items
+│       ├── collections/  # One JSON file per collection
+│       ├── environments/ # One JSON file per environment
+│       ├── oauth-configs/ # One JSON file per OAuth configuration
+│       ├── .gitignore    # Ignores the local/ subdirectory
+│       └── local/        # Local-only data (excluded from git)
 │           ├── history.json
 │           ├── environments.local.json
+│           ├── active-environment.json
 │           ├── oauth-secrets.json
 │           └── oauth-tokens.json
-└── workspaces/               # Additional workspaces (created or git-cloned)
+└── workspaces/           # Additional workspaces (created or git-cloned)
 ```
 
 ## Switching Workspaces
@@ -91,17 +93,21 @@ Click the pencil icon next to a workspace in either the workspace switcher or th
 
 ## Data Isolation
 
-Each workspace stores its data inside a `.requesto/` subdirectory:
+Each workspace stores its data inside a `.requesto/` subdirectory, with one file per item (collection, environment, OAuth config, GraphQL schema profile) so git diffs stay small and merge conflicts are rare:
 
-| File | Location | Shared via git |
+| Data | Location | Shared via git |
 |------|----------|---------------|
-| `collections.json` | `.requesto/` | Yes |
-| `environments.json` | `.requesto/` | Yes |
-| `oauth-configs.json` | `.requesto/` (no secrets) | Yes |
-| `graphql-schemas.json` | `.requesto/` | Yes |
+| `order.json` | `.requesto/` | Yes |
+| `collections/<collection>.json` | `.requesto/` | Yes (one file per collection) |
+| `environments/<environment>.json` | `.requesto/` | Yes (one file per environment) |
+| `oauth-configs/<config>.json` | `.requesto/` (no secrets) | Yes (one file per config) |
+| `graphql-schemas/<profile>.json` | `.requesto/` | Yes (one file per profile) |
+| `active-environment.json` | `.requesto/local/` | No |
 | `history.json` | `.requesto/local/` | No |
 | `environments.local.json` | `.requesto/local/` | No |
 | `oauth-secrets.json` | `.requesto/local/` | No |
 | `oauth-tokens.json` | `.requesto/local/` | No |
+
+Older monolithic files (`collections.json`, `environments.json`, `oauth-configs.json`, `graphql-schemas.json`) are split into this layout automatically the next time the app starts.
 
 The `.requesto/local/` directory holds data that should stay local to your machine. Every workspace gets a `.requesto/.gitignore` automatically (created on workspace creation, clone, git init, and server startup) that excludes the `local/` subdirectory from version control. This means Requesto can safely coexist with an existing git project — only the `.requesto/` folder is added to your repository.

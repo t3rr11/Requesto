@@ -1,4 +1,4 @@
-import fs from 'fs';
+import fs from 'node:fs';
 import { atomicWrite, ensureDir, initializeFile } from '../utils/file';
 
 /**

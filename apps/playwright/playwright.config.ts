@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import path from 'path';
+import path from 'node:path';
 
 const TEST_BACKEND_PORT = 5747;
 const TEST_FRONTEND_PORT = 5174;

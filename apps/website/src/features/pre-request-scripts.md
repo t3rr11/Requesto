@@ -26,7 +26,7 @@ Read and write variables in the active environment.
 | `environment.get(key)` | Returns the current value of `key`, or an empty string if the variable does not exist |
 | `environment.set(key, value)` | Sets the current value of `key` in the active environment |
 
-`environment.set()` writes to the variable's **current value**, which is a local override stored separately from the committed `environments.json` file. This means scripts never cause unintended git changes. See [Environments: Initial Value and Current Value](/features/environments#initial-value-and-current-value) for details.
+`environment.set()` writes to the variable's **current value**, which is a local override stored separately from the committed environment files under `.requesto/environments/`. This means scripts never cause unintended git changes. See [Environments: Initial Value and Current Value](/features/environments#initial-value-and-current-value) for details.
 
 ### `request`
 

@@ -9,3 +9,4 @@ dist/
 test-data/.requesto/
 test-data/Default/
 test-data/workspaces.json
+test-data/workspaces/

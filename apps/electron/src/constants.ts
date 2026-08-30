@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import path from 'path';
+import path from 'node:path';
 
 // Load .env.local for local dev overrides — this file is gitignored so
 // simulate flags can never be accidentally committed as true.

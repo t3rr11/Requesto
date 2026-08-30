@@ -1,13 +1,15 @@
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   OAuthConfigServer,
   OAuthConfigPublic,
-  OAuthData,
   OAuthSecretsData,
   OAuthTokensData,
   StoredOAuthToken,
 } from '../models/oauth';
 import { BaseRepository } from './base.repository';
+import { readOrderSection, removeIdFromOrder, writeOrderSection } from '../utils/order';
+import { resolveUniqueFileName } from '../utils/slug';
 
 export class OAuthRepository extends BaseRepository {
   constructor(
@@ -17,8 +19,8 @@ export class OAuthRepository extends BaseRepository {
     super();
   }
 
-  private getConfigFile(): string {
-    return path.join(this.getDataDir(), 'oauth-configs.json');
+  private getConfigDir(): string {
+    return path.join(this.getDataDir(), 'oauth-configs');
   }
 
   private getSecretsFile(): string {
@@ -29,12 +31,45 @@ export class OAuthRepository extends BaseRepository {
     return path.join(this.getLocalDir(), 'oauth-tokens.json');
   }
 
-  private readData(): OAuthData {
-    return this.readJson<OAuthData>(this.getConfigFile(), { configs: [] });
+  /** Read a single config JSON file. Returns null for unreadable/invalid files. */
+  private readConfigFile(filePath: string): OAuthConfigPublic | null {
+    const parsed = this.readJson<OAuthConfigPublic | null>(filePath, null);
+    if (!parsed || typeof parsed.id !== 'string' || typeof parsed.name !== 'string') return null;
+    return parsed;
   }
 
-  private writeData(data: OAuthData): void {
-    this.writeJson(this.getConfigFile(), data);
+  /** Find the file containing the config with the given id. */
+  private findConfigFile(id: string): { fileName: string; config: OAuthConfigPublic } | null {
+    const dir = this.getConfigDir();
+    if (!fs.existsSync(dir)) return null;
+    for (const fileName of fs.readdirSync(dir)) {
+      if (!fileName.endsWith('.json')) continue;
+      const config = this.readConfigFile(path.join(dir, fileName));
+      if (config && config.id === id) return { fileName, config };
+    }
+    return null;
+  }
+
+  /**
+   * Write a config to its own file, renaming the file when the config name
+   * (and therefore its slug) changed.
+   */
+  private writeConfig(config: OAuthConfigPublic): void {
+    const dir = this.getConfigDir();
+    this.ensureDir(dir);
+    const existing = this.findConfigFile(config.id);
+    const fileName = resolveUniqueFileName(dir, config.name, config.id);
+    this.writeJson(path.join(dir, fileName), config);
+    if (existing && existing.fileName !== fileName) {
+      fs.unlinkSync(path.join(dir, existing.fileName));
+    }
+  }
+
+  private appendToOrder(id: string): void {
+    const ids = readOrderSection(this.getDataDir(), 'oauthConfigs');
+    if (!ids.includes(id)) {
+      writeOrderSection(this.getDataDir(), 'oauthConfigs', [...ids, id]);
+    }
   }
 
   private readSecrets(): OAuthSecretsData {
@@ -54,12 +89,33 @@ export class OAuthRepository extends BaseRepository {
   }
 
   getAll(): OAuthConfigPublic[] {
-    return this.readData().configs;
+    const dir = this.getConfigDir();
+    const byId = new Map<string, OAuthConfigPublic>();
+    if (fs.existsSync(dir)) {
+      for (const fileName of fs.readdirSync(dir)) {
+        if (!fileName.endsWith('.json')) continue;
+        const config = this.readConfigFile(path.join(dir, fileName));
+        if (config && !byId.has(config.id)) byId.set(config.id, config);
+      }
+    }
+
+    const ordered: OAuthConfigPublic[] = [];
+    const seen = new Set<string>();
+    for (const id of readOrderSection(this.getDataDir(), 'oauthConfigs')) {
+      const config = byId.get(id);
+      if (config) {
+        ordered.push(config);
+        seen.add(id);
+      }
+    }
+    for (const [id, config] of byId) {
+      if (!seen.has(id)) ordered.push(config);
+    }
+    return ordered;
   }
 
   findById(id: string, includeSecret = false): OAuthConfigServer | OAuthConfigPublic | null {
-    const data = this.readData();
-    const config = data.configs.find((c) => c.id === id);
+    const config = this.findConfigFile(id)?.config;
     if (!config) return null;
     if (!includeSecret) return config;
 
@@ -70,7 +126,6 @@ export class OAuthRepository extends BaseRepository {
   create(
     configData: Omit<OAuthConfigServer, 'id'>,
   ): OAuthConfigPublic {
-    const data = this.readData();
     const id = `oauth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const { clientSecret, ...publicConfig } = configData;
 
@@ -79,8 +134,8 @@ export class OAuthRepository extends BaseRepository {
       id
     };
 
-    data.configs.push(newConfig);
-    this.writeData(data);
+    this.writeConfig(newConfig);
+    this.appendToOrder(id);
 
     if (clientSecret) {
       const secrets = this.readSecrets();
@@ -95,19 +150,18 @@ export class OAuthRepository extends BaseRepository {
     id: string,
     updates: Partial<Omit<OAuthConfigServer, 'id'>>,
   ): OAuthConfigPublic | null {
-    const data = this.readData();
-    const index = data.configs.findIndex((c) => c.id === id);
-    if (index === -1) return null;
+    const found = this.findConfigFile(id);
+    if (!found) return null;
 
     const { clientSecret, ...publicUpdates } = updates;
 
-    data.configs[index] = {
-      ...data.configs[index],
+    const updated: OAuthConfigPublic = {
+      ...found.config,
       ...publicUpdates,
       id,
     };
 
-    this.writeData(data);
+    this.writeConfig(updated);
 
     if (clientSecret !== undefined) {
       const secrets = this.readSecrets();
@@ -119,16 +173,15 @@ export class OAuthRepository extends BaseRepository {
       this.writeSecrets(secrets);
     }
 
-    return data.configs[index];
+    return updated;
   }
 
   delete(id: string): boolean {
-    const data = this.readData();
-    const initial = data.configs.length;
-    data.configs = data.configs.filter((c) => c.id !== id);
-    if (data.configs.length === initial) return false;
+    const found = this.findConfigFile(id);
+    if (!found) return false;
 
-    this.writeData(data);
+    fs.unlinkSync(path.join(this.getConfigDir(), found.fileName));
+    removeIdFromOrder(this.getDataDir(), id);
 
     const secrets = this.readSecrets();
     if (secrets.secrets[id]) {
