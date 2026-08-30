@@ -1,21 +1,44 @@
 import { z } from 'zod';
 
-export const createWorkspaceSchema = z.object({
-  name: z.string().min(1, 'Workspace name is required').trim(),
-  cloneFromRepo: z.boolean().optional(),
-  repoUrl: z.string().optional(),
-  authToken: z.string().optional(),
-  openExisting: z.boolean().optional(),
-  existingPath: z.string().optional(),
-}).refine(
-  (data) => !data.cloneFromRepo || (data.repoUrl && data.repoUrl.trim().length > 0),
-  { message: 'Repository URL is required when cloning', path: ['repoUrl'] },
-).refine(
-  (data) => !data.openExisting || (data.existingPath && data.existingPath.trim().length > 0),
-  { message: 'A directory path is required', path: ['existingPath'] },
-);
+export const ADD_WORKSPACE_MODES = ['create', 'open', 'clone', 'import'] as const;
 
-export type CreateWorkspaceFormData = z.infer<typeof createWorkspaceSchema>;
+export type AddWorkspaceMode = (typeof ADD_WORKSPACE_MODES)[number];
+
+export const addWorkspaceSchema = z
+  .object({
+    mode: z.enum(ADD_WORKSPACE_MODES),
+    name: z.string().trim().optional().default(''),
+    path: z.string().trim().optional(),
+    repoUrl: z.string().trim().optional(),
+    authToken: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.mode === 'create' && !data.name) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['name'], message: 'Workspace name is required' });
+    }
+    if (data.mode === 'open') {
+      if (!data.name) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['name'], message: 'Workspace name is required' });
+      }
+      if (!data.path) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['path'], message: 'A folder path is required' });
+      }
+    }
+    if (data.mode === 'clone') {
+      if (!data.name) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['name'], message: 'Workspace name is required' });
+      }
+      if (!data.repoUrl) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['repoUrl'], message: 'Repository URL is required' });
+      }
+    }
+  });
+
+/** Form values as they come from the DOM (before zod defaults/transforms). */
+export type AddWorkspaceFormInput = z.input<typeof addWorkspaceSchema>;
+
+/** Parsed, sanitized form values. */
+export type AddWorkspaceFormData = z.output<typeof addWorkspaceSchema>;
 
 export const renameWorkspaceSchema = z.object({
   name: z.string().min(1, 'Workspace name is required').trim(),

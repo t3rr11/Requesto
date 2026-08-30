@@ -1,28 +1,26 @@
-import { useState, useRef } from 'react';
-import { Download, GitBranch, Pencil, Trash2, Upload } from 'lucide-react';
+import { Download, GitBranch, Pencil, Trash2, Plus } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspace/store';
 import { useAlertStore } from '../store/alert/store';
 import { Dialog, DialogFooter } from './Dialog';
 import { Button } from './Button';
-import { CreateWorkspaceForm } from '../forms/CreateWorkspaceForm';
 import { useConfirmDialog, useDialogWithData } from '../hooks/useDialog';
 import { ConfirmDialog } from './ConfirmDialog';
 import { RenameForm } from '../forms/RenameForm';
+import type { AddWorkspaceMode } from './AddWorkspaceDialog';
 import type { Workspace } from '../store/workspace/types';
 
 interface WorkspaceManagerDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onAddWorkspace: (mode?: AddWorkspaceMode) => void;
 }
 
-export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDialogProps) {
-  const { registry, deleteWorkspace, updateWorkspace, switchWorkspace, exportWorkspace, importWorkspace } =
+export function WorkspaceManagerDialog({ isOpen, onClose, onAddWorkspace }: WorkspaceManagerDialogProps) {
+  const { registry, deleteWorkspace, updateWorkspace, switchWorkspace, exportWorkspace } =
     useWorkspaceStore();
   const { showAlert } = useAlertStore();
   const confirmDialog = useConfirmDialog();
   const renameDialog = useDialogWithData<Workspace>();
-  const [createMode, setCreateMode] = useState<'empty' | 'clone' | null>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
 
   const handleDelete = (workspace: Workspace) => {
     if (registry.workspaces.length <= 1) {
@@ -84,39 +82,6 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
     }
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await importWorkspace(file);
-      showAlert('Success', 'Workspace imported successfully.', 'success');
-    } catch {
-      showAlert('Error', 'Failed to import workspace. Make sure the file is valid.', 'error');
-    }
-    if (importInputRef.current) importInputRef.current.value = '';
-  };
-
-  const handleCreateSuccess = () => {
-    setCreateMode(null);
-  };
-
-  if (createMode !== null) {
-    return (
-      <Dialog
-        isOpen={isOpen}
-        onClose={onClose}
-        title={createMode === 'clone' ? 'Clone from Git' : 'New Workspace'}
-        size="md"
-      >
-        <CreateWorkspaceForm
-          onSuccess={handleCreateSuccess}
-          onCancel={() => setCreateMode(null)}
-          initialCloneMode={createMode === 'clone'}
-        />
-      </Dialog>
-    );
-  }
-
   return (
     <>
       <Dialog
@@ -126,20 +91,10 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
         size="lg"
         footer={
           <DialogFooter>
-            <div className="flex gap-2">
-              <input ref={importInputRef} type="file" accept=".json" onChange={handleImport} className="hidden" />
-              <Button variant="secondary" size="md" onClick={() => importInputRef.current?.click()}>
-                <Upload className="w-4 h-4" />
-                Import
-              </Button>
-              <Button variant="secondary" size="md" onClick={() => setCreateMode('clone')}>
-                <GitBranch className="w-4 h-4" />
-                Clone from Git
-              </Button>
-              <Button variant="primary" size="md" onClick={() => setCreateMode('empty')}>
-                New Workspace
-              </Button>
-            </div>
+            <Button variant="primary" size="md" onClick={() => onAddWorkspace()}>
+              <Plus className="w-4 h-4" />
+              Add Workspace
+            </Button>
           </DialogFooter>
         }
       >

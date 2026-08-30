@@ -30,6 +30,7 @@ import { useWorkspaceStore } from '../../store/workspace/store';
 
 describe('WorkspaceSwitcher', () => {
   const mockOnManageWorkspaces = vi.fn();
+  const mockOnAddWorkspace = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,7 +38,7 @@ describe('WorkspaceSwitcher', () => {
   });
 
   it('renders active workspace name', () => {
-    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} />);
+    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} onAddWorkspace={mockOnAddWorkspace} />);
     expect(screen.getByText('Default')).toBeInTheDocument();
   });
 
@@ -47,24 +48,25 @@ describe('WorkspaceSwitcher', () => {
       registry: { activeWorkspaceId: 'missing', workspaces: [] },
     } as any);
 
-    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} />);
+    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} onAddWorkspace={mockOnAddWorkspace} />);
     expect(screen.getByText('No workspace')).toBeInTheDocument();
   });
 
   it('opens dropdown on click', async () => {
     const user = userEvent.setup();
-    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} />);
+    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} onAddWorkspace={mockOnAddWorkspace} />);
 
     await user.click(screen.getByText('Default'));
 
     expect(screen.getByText('Workspaces')).toBeInTheDocument();
     expect(screen.getByText('Production')).toBeInTheDocument();
+    expect(screen.getByText('Add Workspace...')).toBeInTheDocument();
     expect(screen.getByText('Manage Workspaces...')).toBeInTheDocument();
   });
 
   it('closes dropdown when clicking outside', async () => {
     const user = userEvent.setup();
-    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} />);
+    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} onAddWorkspace={mockOnAddWorkspace} />);
 
     await user.click(screen.getByText('Default'));
     expect(screen.getByText('Workspaces')).toBeInTheDocument();
@@ -77,7 +79,7 @@ describe('WorkspaceSwitcher', () => {
 
   it('closes dropdown without switching when clicking active workspace', async () => {
     const user = userEvent.setup();
-    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} />);
+    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} onAddWorkspace={mockOnAddWorkspace} />);
 
     await user.click(screen.getByText('Default'));
 
@@ -91,11 +93,23 @@ describe('WorkspaceSwitcher', () => {
 
   it('calls onManageWorkspaces when Manage Workspaces is clicked', async () => {
     const user = userEvent.setup();
-    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} />);
+    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} onAddWorkspace={mockOnAddWorkspace} />);
 
     await user.click(screen.getByText('Default'));
     await user.click(screen.getByText('Manage Workspaces...'));
 
     expect(mockOnManageWorkspaces).toHaveBeenCalledOnce();
   });
+
+  it('calls onAddWorkspace when Add Workspace is clicked', async () => {
+    const user = userEvent.setup();
+    render(<WorkspaceSwitcher onManageWorkspaces={mockOnManageWorkspaces} onAddWorkspace={mockOnAddWorkspace} />);
+
+    await user.click(screen.getByText('Default'));
+    await user.click(screen.getByText('Add Workspace...'));
+
+    expect(mockOnAddWorkspace).toHaveBeenCalledOnce();
+    expect(mockOnManageWorkspaces).not.toHaveBeenCalled();
+  });
 });
+

@@ -1,13 +1,14 @@
 import { useUIStore } from '../store/ui/store';
 import { useThemeStore } from '../store/theme/store';
 import { useUpdateStore } from '../store/update/store';
-import { useDialog } from '../hooks/useDialog';
+import { useDialog, useDialogWithData } from '../hooks/useDialog';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { HelpContent } from './HelpContent';
 import { SettingsDialog } from './SettingsDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { WorkspaceManagerDialog } from './WorkspaceManagerDialog';
+import { AddWorkspaceDialog, type AddWorkspaceMode } from './AddWorkspaceDialog';
 import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose, ArrowDownToLine, Settings as SettingsIcon } from 'lucide-react';
 
 export function Header() {
@@ -17,6 +18,9 @@ export function Header() {
   const helpDialog = useDialog();
   const settingsDialog = useDialog();
   const workspaceManagerDialog = useDialog();
+  const addWorkspaceDialog = useDialogWithData<AddWorkspaceMode | undefined>();
+
+  const openAddWorkspace = (mode?: AddWorkspaceMode) => addWorkspaceDialog.open(mode);
 
   const showUpdateBadge = updateStatus === 'available' || updateStatus === 'downloading' || updateStatus === 'downloaded';
 
@@ -39,7 +43,11 @@ export function Header() {
             <h1 className="text-xl font-bold">Requesto</h1>
           </div>
 
-          <WorkspaceSwitcher onManageWorkspaces={workspaceManagerDialog.open} variant="header" />
+          <WorkspaceSwitcher
+            onManageWorkspaces={workspaceManagerDialog.open}
+            onAddWorkspace={openAddWorkspace}
+            variant="header"
+          />
         </div>
 
         <div className="flex items-center gap-3">
@@ -107,7 +115,16 @@ export function Header() {
         <HelpContent onClose={helpDialog.close} />
       </Dialog>
       <SettingsDialog isOpen={settingsDialog.isOpen} onClose={settingsDialog.close} />
-      <WorkspaceManagerDialog isOpen={workspaceManagerDialog.isOpen} onClose={workspaceManagerDialog.close} />
+      <WorkspaceManagerDialog
+        isOpen={workspaceManagerDialog.isOpen}
+        onClose={workspaceManagerDialog.close}
+        onAddWorkspace={openAddWorkspace}
+      />
+      <AddWorkspaceDialog
+        isOpen={addWorkspaceDialog.isOpen}
+        initialMode={addWorkspaceDialog.data ?? undefined}
+        onClose={addWorkspaceDialog.close}
+      />
     </header>
   );
 }

@@ -567,6 +567,9 @@ test.describe('UI Variants', () => {
 // ---------------------------------------------------------------------------
 // Workspaces
 // ---------------------------------------------------------------------------
+
+const WORKSPACE_DATA_DIR = path.resolve(__dirname, '..', 'test-data');
+
 test.describe('Workspaces', () => {
   test.beforeAll(() => {
     resetData();
@@ -574,11 +577,12 @@ test.describe('Workspaces', () => {
 
   test('workspace switcher dropdown', async ({ appPage, takeDocScreenshot }) => {
     // Open the workspace switcher dropdown (title is the active workspace name)
-    const switcher = appPage.locator('button[title="Default"]');
+    const switcher = appPage.getByTestId('workspace-switcher');
     await switcher.click();
 
     // Wait for dropdown to appear
     await expect(appPage.getByText('Workspaces', { exact: true })).toBeVisible();
+    await expect(appPage.getByText('Add Workspace...')).toBeVisible();
     await expect(appPage.getByText('Manage Workspaces...')).toBeVisible();
 
     await takeDocScreenshot('workspaces', 'workspace-switcher');
@@ -589,12 +593,17 @@ test.describe('Workspaces', () => {
 
   test('workspace manager dialog', async ({ appPage, takeDocScreenshot }) => {
     // Open the workspace switcher, then click Manage
-    const switcher = appPage.locator('button[title="Default"]');
+    const switcher = appPage.getByTestId('workspace-switcher');
     await switcher.click();
     await appPage.getByText('Manage Workspaces...').click();
 
     const dialogHeading = appPage.locator('h2', { hasText: 'Manage Workspaces' });
     await expect(dialogHeading).toBeVisible();
+
+    // Hover the workspace row so the export/rename/delete actions are visible
+    const workspaceRow = appPage.locator('div.group').filter({ hasText: 'Active' }).first();
+    await workspaceRow.hover();
+    await appPage.waitForTimeout(300);
 
     await takeDocScreenshot('workspaces', 'workspace-manager-dialog');
 
@@ -602,44 +611,61 @@ test.describe('Workspaces', () => {
     await appPage.keyboard.press('Escape');
   });
 
-  test('create workspace form', async ({ appPage, takeDocScreenshot }) => {
-    // Open workspace manager
-    const switcher = appPage.locator('button[title="Default"]');
+  /** Open the Add Workspace dialog via the switcher quick action */
+  async function openAddWorkspaceDialog(page: Page) {
+    const switcher = page.getByTestId('workspace-switcher');
     await switcher.click();
-    await appPage.getByText('Manage Workspaces...').click();
+    await page.getByText('Add Workspace...').click();
+    await expect(page.locator('h2', { hasText: 'Add Workspace' })).toBeVisible();
+  }
 
-    await expect(appPage.locator('h2', { hasText: 'Manage Workspaces' })).toBeVisible();
+  test('add workspace — new (create) mode', async ({ appPage, takeDocScreenshot }) => {
+    await openAddWorkspaceDialog(appPage);
 
-    // Click New Workspace
-    await appPage.getByRole('button', { name: 'New Workspace' }).click();
+    await appPage.locator('#workspace-name').fill('My API Project');
+    await appPage.waitForTimeout(300);
 
-    await expect(appPage.locator('h2', { hasText: 'New Workspace' })).toBeVisible();
-
-    // Fill in the name field
-    await appPage.locator('#workspace-name').fill('My Project');
-
-    await takeDocScreenshot('workspaces', 'create-workspace-form');
+    await takeDocScreenshot('workspaces', 'add-workspace-create');
   });
 
-  test('clone from git form', async ({ appPage, takeDocScreenshot }) => {
-    // The create form should still be open from the previous test, but reset to be safe
-    const heading = appPage.locator('h2', { hasText: 'New Workspace' });
-    if (!await heading.isVisible().catch(() => false)) {
-      const switcher = appPage.locator('button[title="Default"]');
-      await switcher.click();
-      await appPage.getByText('Manage Workspaces...').click();
-      await appPage.getByRole('button', { name: 'New Workspace' }).click();
-      await expect(heading).toBeVisible();
-    }
+  test('add workspace — open folder mode with live preview', async ({ appPage, takeDocScreenshot }) => {
+    await openAddWorkspaceDialog(appPage);
 
-    // Toggle clone from git
-    await appPage.locator('#clone-toggle').check();
+    await appPage.getByTestId('workspace-mode-open').click();
 
-    // Fill in the fields
+    // Point at the active workspace directory so the preview finds Requesto data
+    const preview = appPage.getByTestId('workspace-folder-preview');
+    await appPage.locator('#workspace-path').fill(WORKSPACE_DATA_DIR);
+    await expect(preview).toContainText('Requesto workspace found', { timeout: 10_000 });
+    await appPage.waitForTimeout(300);
+
+    await takeDocScreenshot('workspaces', 'add-workspace-open');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
+  });
+
+  test('add workspace — clone from git mode', async ({ appPage, takeDocScreenshot }) => {
+    await openAddWorkspaceDialog(appPage);
+
+    await appPage.getByTestId('workspace-mode-clone').click();
     await appPage.locator('#workspace-name').fill('Shared API Collection');
     await appPage.locator('#repo-url').fill('https://github.com/team/api-collection.git');
+    await appPage.waitForTimeout(300);
 
     await takeDocScreenshot('git', 'clone-workspace-form');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
+  });
+
+  test('add workspace — import file mode', async ({ appPage, takeDocScreenshot }) => {
+    await openAddWorkspaceDialog(appPage);
+
+    await appPage.getByTestId('workspace-mode-import').click();
+    await appPage.waitForTimeout(300);
+
+    await takeDocScreenshot('workspaces', 'add-workspace-import');
 
     // Close dialog
     await appPage.keyboard.press('Escape');
@@ -970,3 +996,4 @@ gitTest.describe('Git Panel', () => {
     await takeDocScreenshot('git', 'branches-panel');
   });
 });
+
