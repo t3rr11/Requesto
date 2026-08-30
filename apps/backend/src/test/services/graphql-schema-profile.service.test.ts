@@ -26,6 +26,17 @@ describe('GraphQLSchemaProfileService', () => {
     fs.rmSync(localDir, { recursive: true, force: true });
   });
 
+  /** Concatenated content of every committed schema profile file. */
+  function readSharedSchemas(): string {
+    const dir = path.join(sharedDir, 'graphql-schemas');
+    if (!fs.existsSync(dir)) return '';
+    return fs
+      .readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))
+      .join('\n');
+  }
+
   it('persists endpoint profiles without fetched schema data', () => {
     const profile = service.create({
       name: 'Production API',
@@ -38,8 +49,7 @@ describe('GraphQLSchemaProfileService', () => {
       sourceType: 'endpoint',
       sourceUrl: 'https://api.example.com/graphql',
     });
-    const sharedFile = fs.readFileSync(path.join(sharedDir, 'graphql-schemas.json'), 'utf8');
-    expect(sharedFile).not.toContain('__schema');
+    expect(readSharedSchemas()).not.toContain('__schema');
   });
 
   it('validates and persists SDL profiles', () => {
@@ -79,7 +89,7 @@ describe('GraphQLSchemaProfileService', () => {
 
     expect(service.getCache(profile.id)?.introspection).toHaveProperty('__schema');
     expect(fs.existsSync(path.join(localDir, 'graphql-schema-cache.json'))).toBe(true);
-    expect(fs.readFileSync(path.join(sharedDir, 'graphql-schemas.json'), 'utf8')).not.toContain('__schema');
+    expect(readSharedSchemas()).not.toContain('__schema');
   });
 
   it('invalidates local cache when an endpoint source changes', () => {

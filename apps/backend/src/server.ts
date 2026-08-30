@@ -1,6 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import path from 'path';
+import path from 'node:path';
 import { sseTestRoutes } from './controllers/sse-test.controller';
 import { graphqlTestRoutes } from './controllers/graphql-test.controller';
 import { registerErrorHandler } from './errors/error-handler';
@@ -49,7 +49,7 @@ const getDataDir = () => workspaceRepo.getDataDir();
 const getLocalDir = () => workspaceRepo.getLocalDir();
 
 const collectionRepo = new CollectionRepository(getDataDir);
-const environmentRepo = new EnvironmentRepository(getDataDir);
+const environmentRepo = new EnvironmentRepository(getDataDir, getLocalDir);
 const environmentLocalRepo = new EnvironmentLocalRepository(getLocalDir);
 const oauthRepo = new OAuthRepository(getDataDir, getLocalDir);
 const historyRepo = new HistoryRepository(getLocalDir);

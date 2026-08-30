@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { WorkspaceRepository } from '../repositories/workspace.repository';
 import { AppError } from '../errors/app-error';
 import * as git from '../utils/git';
@@ -15,7 +15,8 @@ export interface WorkspaceInspectResult {
   suggestedName: string;
 }
 
-const DATA_FILES = ['collections.json', 'environments.json', 'oauth-configs.json'];
+const DATA_FILES = ['collections.json', 'environments.json', 'oauth-configs.json', 'graphql-schemas.json'];
+const SPLIT_DIRS = ['collections', 'environments', 'oauth-configs', 'graphql-schemas'];
 
 function countJsonEntries(filePath: string, listKey?: string): number {
   try {
@@ -25,6 +26,15 @@ function countJsonEntries(filePath: string, listKey?: string): number {
       return ((parsed as Record<string, unknown>)[listKey] as unknown[]).length;
     }
     return 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Count per-item JSON files in a split-layout data directory. */
+function countSplitItems(dirPath: string): number {
+  try {
+    return fs.readdirSync(dirPath).filter((f) => f.endsWith('.json')).length;
   } catch {
     return 0;
   }
@@ -109,15 +119,22 @@ export class WorkspaceService {
       };
     }
 
-    const hasNewLayout = DATA_FILES.some((f) => fs.existsSync(path.join(resolved, '.requesto', f)));
+    const requestoDir = path.join(resolved, '.requesto');
+    const hasSplitLayout = SPLIT_DIRS.some((d) => fs.existsSync(path.join(requestoDir, d)));
+    const hasNewLayout = hasSplitLayout || DATA_FILES.some((f) => fs.existsSync(path.join(requestoDir, f)));
     const hasLegacyLayout = DATA_FILES.some((f) => fs.existsSync(path.join(resolved, f)));
 
+    // Prefer split-layout counts, falling back to pre-migration monolithic files
+    // (.requesto/ monoliths before the split migration runs, then legacy root files)
     const counts = {
-      collections: countJsonEntries(path.join(resolved, '.requesto', 'collections.json')) ||
+      collections: countSplitItems(path.join(requestoDir, 'collections')) ||
+        countJsonEntries(path.join(requestoDir, 'collections.json')) ||
         (hasLegacyLayout ? countJsonEntries(path.join(resolved, 'collections.json')) : 0),
-      environments: countJsonEntries(path.join(resolved, '.requesto', 'environments.json'), 'environments') ||
+      environments: countSplitItems(path.join(requestoDir, 'environments')) ||
+        countJsonEntries(path.join(requestoDir, 'environments.json'), 'environments') ||
         (hasLegacyLayout ? countJsonEntries(path.join(resolved, 'environments.json'), 'environments') : 0),
-      oauthConfigs: countJsonEntries(path.join(resolved, '.requesto', 'oauth-configs.json'), 'configs') ||
+      oauthConfigs: countSplitItems(path.join(requestoDir, 'oauth-configs')) ||
+        countJsonEntries(path.join(requestoDir, 'oauth-configs.json'), 'configs') ||
         (hasLegacyLayout ? countJsonEntries(path.join(resolved, 'oauth-configs.json'), 'configs') : 0),
     };
 

@@ -45,6 +45,7 @@ export class GitService {
         p === 'collections.json' ||
         p === 'environments.json' ||
         p === 'oauth-configs.json' ||
+        p === 'graphql-schemas.json' ||
         p.startsWith('.requesto/')
       );
     });

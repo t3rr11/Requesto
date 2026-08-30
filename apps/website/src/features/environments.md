@@ -73,7 +73,7 @@ Each environment variable has two value fields:
 
 | Field | Description |
 |-------|-------------|
-| **Value** | The initial value. This is stored in `environments.json` and committed to git when you sync your workspace. |
+| **Value** | The initial value. This is stored in the environment's file under `.requesto/environments/` and committed to git when you sync your workspace. |
 | **Current Value** | A local override. Stored in `.requesto/local/environments.local.json`, which is excluded from git. |
 
 When a request is sent, the current value takes precedence over the initial value if one is set. If no current value exists, the initial value is used.
@@ -85,7 +85,7 @@ The current value column is visible in the variable editor table. A reset icon l
 Pre-request scripts and test scripts use `environment.set()` to update variables at runtime. These writes always go to the current value, never to the initial value. This means:
 
 - Tokens, timestamps, and session IDs set by scripts stay local to your machine
-- Your `environments.json` file stays clean for git commits
+- The environment files under `.requesto/environments/` stay clean for git commits
 - Team members share the initial values in version control and manage their own current values locally
 
 See [Pre-request Scripts](/features/pre-request-scripts) for the full scripting API.

@@ -1,0 +1,36 @@
+{
+  "id": "env-local-backend",
+  "name": "Local Backend",
+  "variables": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4747",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "collectionId",
+      "value": "col-api-collections",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "requestId",
+      "value": "req-test",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "environmentId",
+      "value": "env-test",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "workspaceId",
+      "value": "ws-test",
+      "enabled": true,
+      "isSecret": false
+    }
+  ]
+}

@@ -33,6 +33,45 @@ describe('collections store', () => {
     expect(useCollectionsStore.getState().collections).toEqual(mockCollections);
   });
 
+  it('shares a single request when loadCollections is called concurrently', async () => {
+    const mockCollections = [
+      { id: 'col1', name: 'My API', requests: [], folders: [] },
+    ];
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockCollections),
+    });
+
+    const first = useCollectionsStore.getState().loadCollections();
+    const second = useCollectionsStore.getState().loadCollections();
+    await Promise.all([first, second]);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(useCollectionsStore.getState().collections).toEqual(mockCollections);
+  });
+
+  it('refreshes silently without showing the loader when collections are already loaded', async () => {
+    useCollectionsStore.setState({
+      collections: [{ id: 'col1', name: 'My API', requests: [], folders: [] } as any],
+    });
+    const mockCollections = [
+      { id: 'col1', name: 'My API', requests: [], folders: [] },
+      { id: 'col2', name: 'Other API', requests: [], folders: [] },
+    ];
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockCollections),
+    });
+
+    const load = useCollectionsStore.getState().loadCollections();
+    // The loader must not replace the already-rendered list
+    expect(useCollectionsStore.getState().loading).toBe(false);
+    await load;
+
+    expect(useCollectionsStore.getState().loading).toBe(false);
+    expect(useCollectionsStore.getState().collections).toEqual(mockCollections);
+  });
+
   it('creates a collection via API', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,

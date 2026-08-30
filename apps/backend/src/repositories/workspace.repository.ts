@@ -1,11 +1,31 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { Workspace, WorkspacesRegistry } from '../models/workspace';
 import { BaseRepository } from './base.repository';
 import { atomicWrite, ensureDir } from '../utils/file';
+import { readOrderSection, writeOrderSection, type OrderSection } from '../utils/order';
+import { resolveUniqueFileName } from '../utils/slug';
 
-const DATA_FILES = ['collections.json', 'environments.json', 'oauth-configs.json'];
+const DATA_FILES = ['collections.json', 'environments.json', 'oauth-configs.json', 'graphql-schemas.json'];
 const LOCAL_DATA_FILES = ['history.json'];
+const LOCAL_ONLY_FILES = [
+  ...LOCAL_DATA_FILES,
+  'oauth-secrets.json',
+  'oauth-tokens.json',
+  'environments.local.json',
+  'active-environment.json',
+];
+
+/**
+ * Mapping between the legacy monolithic data files and their split-layout
+ * counterparts (one file per item) plus their section in the order manifest.
+ */
+const SPLIT_DATA: { file: string; dir: string; section: OrderSection; listKey?: string }[] = [
+  { file: 'collections.json', dir: 'collections', section: 'collections' },
+  { file: 'environments.json', dir: 'environments', section: 'environments', listKey: 'environments' },
+  { file: 'oauth-configs.json', dir: 'oauth-configs', section: 'oauthConfigs', listKey: 'configs' },
+  { file: 'graphql-schemas.json', dir: 'graphql-schemas', section: 'graphqlSchemas' },
+];
 
 function generateId(): string {
   return `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -133,6 +153,8 @@ export class WorkspaceRepository extends BaseRepository {
     }
 
     this.ensureLocalDirs(resolvedPath);
+    // Split monolithic data files into per-item files (idempotent, no-op when already split)
+    this.migrateToSplitLayout(resolvedPath);
 
     registry.workspaces.push(workspace);
     if (!registry.activeWorkspaceId) {
@@ -187,20 +209,75 @@ export class WorkspaceRepository extends BaseRepository {
 
   // ── Export / Import ──────────────────────────────────────────────────────
 
+  /** Read all items of a split-layout section, ordered by the order manifest. */
+  private readSplitItems(
+    requestoDir: string,
+    entry: { dir: string; section: OrderSection },
+  ): Record<string, unknown>[] {
+    const dir = path.join(requestoDir, entry.dir);
+    const byId = new Map<string, Record<string, unknown>>();
+    if (fs.existsSync(dir)) {
+      for (const fileName of fs.readdirSync(dir)) {
+        if (!fileName.endsWith('.json')) continue;
+        try {
+          const parsed: unknown = JSON.parse(fs.readFileSync(path.join(dir, fileName), 'utf-8'));
+          const id = (parsed as { id?: unknown } | null)?.id;
+          if (typeof id === 'string' && !byId.has(id)) byId.set(id, parsed as Record<string, unknown>);
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    }
+
+    const ordered: Record<string, unknown>[] = [];
+    const seen = new Set<string>();
+    for (const id of readOrderSection(requestoDir, entry.section)) {
+      const item = byId.get(id);
+      if (item) {
+        ordered.push(item);
+        seen.add(id);
+      }
+    }
+    for (const [id, item] of byId) {
+      if (!seen.has(id)) ordered.push(item);
+    }
+    return ordered;
+  }
+
+  /** The locally stored active environment id, when it refers to an exported environment. */
+  private getExportedActiveEnvironmentId(
+    requestoDir: string,
+    environments: { id: string }[],
+  ): string | null {
+    try {
+      const filePath = path.join(requestoDir, 'local', 'active-environment.json');
+      if (!fs.existsSync(filePath)) return null;
+      const parsed: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      const id = (parsed as { activeEnvironmentId?: unknown } | null)?.activeEnvironmentId;
+      return typeof id === 'string' && environments.some((e) => e.id === id) ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
   exportData(id: string): Record<string, unknown> {
     const workspace = this.findById(id);
     if (!workspace) throw new Error('Workspace not found');
 
     const requestoDir = path.join(workspace.path, '.requesto');
     const data: Record<string, unknown> = { name: workspace.name };
-    for (const file of DATA_FILES) {
-      const filePath = path.join(requestoDir, file);
-      if (fs.existsSync(filePath)) {
-        try {
-          data[file] = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        } catch {
-          data[file] = null;
-        }
+
+    for (const entry of SPLIT_DATA) {
+      const items = this.readSplitItems(requestoDir, entry);
+      if (entry.file === 'environments.json') {
+        data[entry.file] = {
+          activeEnvironmentId: this.getExportedActiveEnvironmentId(requestoDir, items as { id: string }[]),
+          environments: items,
+        };
+      } else if (entry.file === 'oauth-configs.json') {
+        data[entry.file] = { configs: items };
+      } else {
+        data[entry.file] = items;
       }
     }
     return data;
@@ -217,6 +294,9 @@ export class WorkspaceRepository extends BaseRepository {
         atomicWrite(filePath, bundle[file]);
       }
     }
+
+    // Convert the monolithic bundle files into the per-item layout
+    this.migrateToSplitLayout(workspace.path);
     return workspace;
   }
 
@@ -256,6 +336,9 @@ export class WorkspaceRepository extends BaseRepository {
             console.log(`Migrating workspace "${ws.name}" to .requesto/ layout...`);
             this.migrateToRequestoLayout(ws.path);
           }
+          this.ensureLocalDirs(ws.path);
+          // Split monolithic data files into per-item files (idempotent)
+          this.migrateToSplitLayout(ws.path);
           // Always ensure local-only files aren't stranded in .requesto/ (e.g. oauth-tokens.json)
           this.rescueLocalFiles(ws.path);
           this.ensureRequestoGitignore(ws.path);
@@ -322,6 +405,9 @@ export class WorkspaceRepository extends BaseRepository {
       const historyFile = path.join(localDir, 'history.json');
       if (!fs.existsSync(historyFile)) atomicWrite(historyFile, []);
 
+      // Split monolithic data files into per-item files (idempotent)
+      this.migrateToSplitLayout(defaultPath);
+
       console.log('Migration complete.');
     } else {
       this.ensureWorkspaceDirs(defaultPath);
@@ -367,15 +453,9 @@ export class WorkspaceRepository extends BaseRepository {
     this.ensureWorkspaceDirs(workspacePath);
 
     const requestoDir = path.join(workspacePath, '.requesto');
-    const defaults: Record<string, unknown> = {
-      'collections.json': [],
-      'environments.json': { activeEnvironmentId: null, environments: [] },
-      'oauth-configs.json': { configs: [] },
-    };
-
-    for (const [file, defaultData] of Object.entries(defaults)) {
-      const filePath = path.join(requestoDir, file);
-      if (!fs.existsSync(filePath)) atomicWrite(filePath, defaultData);
+    // Per-item data directories (each collection/environment/config lives in its own file)
+    for (const { dir } of SPLIT_DATA) {
+      ensureDir(path.join(requestoDir, dir));
     }
 
     const localDir = path.join(workspacePath, '.requesto', 'local');
@@ -401,7 +481,7 @@ export class WorkspaceRepository extends BaseRepository {
     }
 
     // Move local files from old .requesto/ into .requesto/local/
-    for (const file of [...LOCAL_DATA_FILES, 'oauth-secrets.json', 'oauth-tokens.json', 'environments.local.json']) {
+    for (const file of LOCAL_ONLY_FILES) {
       const src = path.join(requestoDir, file);
       const dest = path.join(localDir, file);
       if (fs.existsSync(src) && !fs.existsSync(dest)) {
@@ -432,6 +512,63 @@ export class WorkspaceRepository extends BaseRepository {
     console.log(`Migration to .requesto/ layout complete for "${workspacePath}".`);
   }
 
+  /**
+   * Split legacy monolithic data files (.requesto/collections.json etc.) into
+   * one file per item under their data directory, preserving order in
+   * .requesto/order.json. The monolithic files are removed after a successful
+   * split, making this a no-op for already-migrated workspaces.
+   */
+  private migrateToSplitLayout(workspacePath: string): void {
+    const requestoDir = path.join(workspacePath, '.requesto');
+    if (!fs.existsSync(requestoDir)) return;
+    const localDir = path.join(requestoDir, 'local');
+
+    for (const entry of SPLIT_DATA) {
+      const src = path.join(requestoDir, entry.file);
+      if (!fs.existsSync(src)) continue;
+      try {
+        const parsed: unknown = JSON.parse(fs.readFileSync(src, 'utf-8'));
+        let items: Record<string, unknown>[] = [];
+        if (entry.listKey) {
+          const list = (parsed as Record<string, unknown> | null)?.[entry.listKey];
+          if (Array.isArray(list)) items = list as Record<string, unknown>[];
+        } else if (Array.isArray(parsed)) {
+          items = parsed as Record<string, unknown>[];
+        }
+
+        const destDir = path.join(requestoDir, entry.dir);
+        ensureDir(destDir);
+
+        const ids: string[] = [];
+        for (const item of items) {
+          const id = (item as { id?: unknown } | null)?.id;
+          if (typeof id !== 'string') continue;
+          const name = typeof (item as { name?: unknown }).name === 'string'
+            ? (item as { name: string }).name
+            : id;
+          const fileName = resolveUniqueFileName(destDir, name, id);
+          atomicWrite(path.join(destDir, fileName), item);
+          ids.push(id);
+        }
+        writeOrderSection(requestoDir, entry.section, ids);
+
+        // Preserve the user's active environment selection locally (not committed)
+        if (entry.file === 'environments.json') {
+          const activeId = (parsed as { activeEnvironmentId?: unknown } | null)?.activeEnvironmentId;
+          if (typeof activeId === 'string' && ids.includes(activeId)) {
+            ensureDir(localDir);
+            atomicWrite(path.join(localDir, 'active-environment.json'), { activeEnvironmentId: activeId });
+          }
+        }
+
+        fs.unlinkSync(src);
+        console.log(`Split ${entry.file} into ${entry.dir}/ (${ids.length} items).`);
+      } catch (error) {
+        console.error(`Error splitting ${entry.file} during migration:`, error);
+      }
+    }
+  }
+
   private ensureRequestoGitignore(workspacePath: string): void {
     const requestoDir = path.join(workspacePath, '.requesto');
     if (!fs.existsSync(requestoDir)) return;
@@ -445,8 +582,7 @@ export class WorkspaceRepository extends BaseRepository {
     const requestoDir = path.join(workspacePath, '.requesto');
     if (!fs.existsSync(requestoDir)) return;
     const localDir = path.join(requestoDir, 'local');
-    const localOnlyFiles = [...LOCAL_DATA_FILES, 'oauth-secrets.json', 'oauth-tokens.json', 'environments.local.json'];
-    for (const file of localOnlyFiles) {
+    for (const file of LOCAL_ONLY_FILES) {
       const src = path.join(requestoDir, file);
       const dest = path.join(localDir, file);
       if (fs.existsSync(src) && !fs.existsSync(dest)) {

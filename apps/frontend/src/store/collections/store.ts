@@ -40,7 +40,7 @@ type CollectionsState = {
   unlinkSpec: (collectionId: string) => Promise<void>;
 };
 
-export const useCollectionsStore = create<CollectionsState>((set) => ({
+export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   collections: [],
   activeCollectionId: null,
   activeRequestId: null,
@@ -50,7 +50,7 @@ export const useCollectionsStore = create<CollectionsState>((set) => ({
   setActiveCollection: (id) => set({ activeCollectionId: id }),
   setActiveRequest: (id) => set({ activeRequestId: id }),
 
-  loadCollections: () => actions.loadCollections(set),
+  loadCollections: () => actions.loadCollections(set, get),
   createCollection: (data) => actions.createCollection(set, data),
   addFolder: (collectionId, name, parentId) => actions.addFolder(set, collectionId, name, parentId),
   createRequest: (collectionId, data) => actions.createRequest(set, collectionId, data),

@@ -1,7 +1,7 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import fs from 'fs';
+import fs from 'node:fs';
 import os from 'os';
-import path from 'path';
+import path from 'node:path';
 import { WorkspaceService } from '../../services/workspace.service';
 import type { WorkspaceRepository } from '../../repositories/workspace.repository';
 
@@ -43,18 +43,24 @@ describe('WorkspaceService.inspect', () => {
 
   it('detects a Requesto workspace and counts its data', async () => {
     const requestoDir = path.join(dir, 'project-a', '.requesto');
-    fs.mkdirSync(requestoDir, { recursive: true });
+    for (const sub of ['collections', 'environments', 'oauth-configs']) {
+      fs.mkdirSync(path.join(requestoDir, sub), { recursive: true });
+    }
     fs.writeFileSync(
-      path.join(requestoDir, 'collections.json'),
-      JSON.stringify([{ id: 'c1' }, { id: 'c2' }]),
+      path.join(requestoDir, 'collections', 'a.json'),
+      JSON.stringify({ id: 'c1' }),
     );
     fs.writeFileSync(
-      path.join(requestoDir, 'environments.json'),
-      JSON.stringify({ activeEnvironmentId: null, environments: [{ id: 'e1' }] }),
+      path.join(requestoDir, 'collections', 'b.json'),
+      JSON.stringify({ id: 'c2' }),
     );
     fs.writeFileSync(
-      path.join(requestoDir, 'oauth-configs.json'),
-      JSON.stringify({ configs: [{ id: 'o1' }] }),
+      path.join(requestoDir, 'environments', 'dev.json'),
+      JSON.stringify({ id: 'e1', name: 'Dev' }),
+    );
+    fs.writeFileSync(
+      path.join(requestoDir, 'oauth-configs', 'github.json'),
+      JSON.stringify({ id: 'o1', name: 'GitHub' }),
     );
     const service = new WorkspaceService(mockRepo());
 

@@ -1,6 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'os';
 import { CollectionService } from '../../services/collection.service';
-import type { CollectionRepository } from '../../repositories/collection.repository';
+import { CollectionRepository } from '../../repositories/collection.repository';
 import type { Collection, SavedRequest, Folder } from '../../models/collection';
 
 function makeCollection(overrides: Partial<Collection> = {}): Collection {
@@ -437,5 +440,58 @@ describe('CollectionService', () => {
         targetParentId: 'f-1',
       })).rejects.toMatchObject({ statusCode: 400, message: 'Cannot move a folder into itself or its descendants' });
     });
+  });
+});
+
+describe('CollectionService with real repository (split file layout)', () => {
+  let tmpDir: string;
+  let repo: CollectionRepository;
+  let service: CollectionService;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'requesto-col-import-'));
+    repo = new CollectionRepository(() => tmpDir);
+    service = new CollectionService(repo);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('importCollection writes a single per-collection file and registers it in the order manifest', async () => {
+    const imported = await service.importCollection({
+      name: 'Imported API',
+      requests: [{ id: 'old-1', name: 'R', method: 'GET', url: 'http://example.com' }],
+    });
+
+    expect(fs.existsSync(path.join(tmpDir, 'collections', 'imported-api.json'))).toBe(true);
+    const order = JSON.parse(fs.readFileSync(path.join(tmpDir, 'order.json'), 'utf-8'));
+    expect(order.collections).toEqual([imported.id]);
+
+    // Request ids are remapped so they cannot clash with existing ones
+    const stored = await repo.getById(imported.id);
+    expect(stored?.requests).toHaveLength(1);
+    expect(stored?.requests[0].id).not.toBe('old-1');
+  });
+
+  it('importing two collections with the same name yields unique file names', async () => {
+    const first = await service.importCollection({ name: 'Same Name' });
+    const second = await service.importCollection({ name: 'Same Name' });
+
+    expect(fs.readdirSync(path.join(tmpDir, 'collections')).sort()).toEqual(['same-name-2.json', 'same-name.json']);
+    expect(second.id).not.toBe(first.id);
+    expect(await repo.getById(first.id)).toBeDefined();
+    expect(await repo.getById(second.id)).toBeDefined();
+  });
+
+  it('moveCollection rewrites only the order manifest, leaving collection files untouched', async () => {
+    const c1 = await service.create('One');
+    const c2 = await service.create('Two');
+
+    await service.moveCollection(c1.id, 1);
+
+    const all = await repo.getAll();
+    expect(all.map((c) => c.id)).toEqual([c2.id, c1.id]);
+    expect(fs.readdirSync(path.join(tmpDir, 'collections')).sort()).toEqual(['one.json', 'two.json']);
   });
 });

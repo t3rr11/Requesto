@@ -1,6 +1,6 @@
 import { test as base, type Page } from '@playwright/test';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const FIXTURES_DIR = path.resolve(__dirname, '..', 'fixtures');
 const TEST_DATA_DIR = path.resolve(__dirname, '..', 'test-data');
@@ -8,26 +8,92 @@ const SCREENSHOTS_DIR = path.resolve(__dirname, '..', 'screenshots');
 const DOC_SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'website', 'src', 'public', 'screenshots');
 const README_IMAGES_DIR = path.resolve(__dirname, '..', '..', '..', 'images');
 
-const FIXTURE_FILES = [
-  'collections.json',
-  'environments.json',
-  'history.json',
-  'oauth-configs.json',
-  'graphql-schemas.json',
-];
-
-/** Workspace data files that live in the workspace root */
-const WORKSPACE_FILES = [
-  'collections.json',
-  'environments.json',
-  'oauth-configs.json',
-  'graphql-schemas.json',
-];
-
 /** Local-only files that live in .requesto/ */
 const LOCAL_FILES = [
   'history.json',
 ];
+
+/**
+ * Slug used for per-item data file names (mirrors backend utils/slug.ts).
+ */
+function slugify(name: string): string {
+  return (name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+interface OrderManifest {
+  collections?: string[];
+  environments?: string[];
+  oauthConfigs?: string[];
+  graphqlSchemas?: string[];
+}
+
+/**
+ * Convert the monolithic fixture files into the split per-item layout:
+ * one JSON file per collection/environment/oauth config/graphql schema,
+ * plus an order.json manifest preserving display order.
+ */
+function writeSplitData(requestoDir: string, localDir: string) {
+  const order: OrderManifest = {};
+
+  // Collections: one file per collection
+  const collectionsFile = path.join(FIXTURES_DIR, 'collections.json');
+  const collections: { id: string; name: string }[] = fs.existsSync(collectionsFile)
+    ? JSON.parse(fs.readFileSync(collectionsFile, 'utf-8'))
+    : [];
+  const collectionsDir = path.join(requestoDir, 'collections');
+  fs.mkdirSync(collectionsDir, { recursive: true });
+  for (const collection of collections) {
+    const fileName = `${slugify(collection.name) || collection.id}.json`;
+    fs.writeFileSync(path.join(collectionsDir, fileName), JSON.stringify(collection, null, 2), 'utf-8');
+  }
+  order.collections = collections.map((c) => c.id);
+
+  // Environments: one file per environment, active selection in local/
+  const environmentsFile = path.join(FIXTURES_DIR, 'environments.json');
+  const environmentsData = fs.existsSync(environmentsFile)
+    ? JSON.parse(fs.readFileSync(environmentsFile, 'utf-8'))
+    : { activeEnvironmentId: null, environments: [] };
+  const environmentsDir = path.join(requestoDir, 'environments');
+  fs.mkdirSync(environmentsDir, { recursive: true });
+  for (const environment of environmentsData.environments ?? []) {
+    const fileName = `${slugify(environment.name) || environment.id}.json`;
+    fs.writeFileSync(path.join(environmentsDir, fileName), JSON.stringify(environment, null, 2), 'utf-8');
+  }
+  order.environments = (environmentsData.environments ?? []).map((e: { id: string }) => e.id);
+  fs.writeFileSync(
+    path.join(localDir, 'active-environment.json'),
+    JSON.stringify({ activeEnvironmentId: environmentsData.activeEnvironmentId ?? null }, null, 2),
+    'utf-8',
+  );
+
+  // OAuth configs: one file per config
+  const oauthFile = path.join(FIXTURES_DIR, 'oauth-configs.json');
+  const oauthData = fs.existsSync(oauthFile)
+    ? JSON.parse(fs.readFileSync(oauthFile, 'utf-8'))
+    : { configs: [] };
+  const oauthDir = path.join(requestoDir, 'oauth-configs');
+  fs.mkdirSync(oauthDir, { recursive: true });
+  for (const config of oauthData.configs ?? []) {
+    const fileName = `${slugify(config.name) || config.id}.json`;
+    fs.writeFileSync(path.join(oauthDir, fileName), JSON.stringify(config, null, 2), 'utf-8');
+  }
+  order.oauthConfigs = (oauthData.configs ?? []).map((c: { id: string }) => c.id);
+
+  // GraphQL schemas: one file per profile
+  const graphqlFile = path.join(FIXTURES_DIR, 'graphql-schemas.json');
+  const schemas: { id: string; name: string }[] = fs.existsSync(graphqlFile)
+    ? JSON.parse(fs.readFileSync(graphqlFile, 'utf-8'))
+    : [];
+  const graphqlDir = path.join(requestoDir, 'graphql-schemas');
+  fs.mkdirSync(graphqlDir, { recursive: true });
+  for (const schema of schemas) {
+    const fileName = `${slugify(schema.name) || schema.id}.json`;
+    fs.writeFileSync(path.join(graphqlDir, fileName), JSON.stringify(schema, null, 2), 'utf-8');
+  }
+  order.graphqlSchemas = schemas.map((s) => s.id);
+
+  fs.writeFileSync(path.join(requestoDir, 'order.json'), JSON.stringify(order, null, 2), 'utf-8');
+}
 
 /** Copy fresh fixture data into test-data directory (workspace-aware layout) */
 function resetTestData() {
@@ -36,11 +102,10 @@ function resetTestData() {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
   }
 
-  // Create .requesto/ directory for committed workspace data
+  // Recreate .requesto/ from scratch so stale per-item files never leak between runs
   const requestoDir = path.join(TEST_DATA_DIR, '.requesto');
-  if (!fs.existsSync(requestoDir)) {
-    fs.mkdirSync(requestoDir, { recursive: true });
-  }
+  fs.rmSync(requestoDir, { recursive: true, force: true });
+  fs.mkdirSync(requestoDir, { recursive: true });
 
   // Create .requesto/local/ directory for gitignored local-only data
   const localDir = path.join(requestoDir, 'local');
@@ -48,14 +113,8 @@ function resetTestData() {
     fs.mkdirSync(localDir, { recursive: true });
   }
 
-  // Copy workspace-scoped files to .requesto/
-  for (const file of WORKSPACE_FILES) {
-    const src = path.join(FIXTURES_DIR, file);
-    const dest = path.join(requestoDir, file);
-    if (fs.existsSync(src)) {
-      fs.copyFileSync(src, dest);
-    }
-  }
+  // Split the monolithic fixtures into per-item data files
+  writeSplitData(requestoDir, localDir);
 
   // Copy local-only files to .requesto/local/
   for (const file of LOCAL_FILES) {

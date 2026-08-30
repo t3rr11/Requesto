@@ -92,7 +92,7 @@ A request linked to an endpoint profile loads the last local cache immediately, 
 
 Requesto separates shareable schema configuration from generated endpoint data:
 
-- Profile names, source URLs, and user-provided SDL or JSON are stored in `.requesto/graphql-schemas.json` and can be committed with the workspace.
+- Profile names, source URLs, and user-provided SDL or JSON are stored in `.requesto/graphql-schemas/` (one file per profile) and can be committed with the workspace.
 - Fetched introspection results are stored in `.requesto/local/graphql-schema-cache.json`, which stays local and should not be committed.
 - Resolved authentication credentials and environment values are never written to a schema profile or cache.
 

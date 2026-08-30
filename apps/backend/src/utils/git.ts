@@ -1,6 +1,6 @@
 import simpleGit, { type StatusResult, type LogResult, type DefaultLogFields } from 'simple-git';
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 
 const GITIGNORE_CONTENT = `# Requesto local data (history, secrets)
 local/
@@ -213,7 +213,7 @@ export async function ensureGitignore(workspacePath: string): Promise<void> {
  * The Requesto-owned files that should be committed within a workspace directory.
  * Only these files are staged — any other project source code is left untouched.
  */
-const REQUESTO_FILES = ['collections.json', 'environments.json', 'oauth-configs.json', '.requesto'];
+const REQUESTO_FILES = ['collections.json', 'environments.json', 'oauth-configs.json', 'graphql-schemas.json', '.requesto'];
 
 /**
  * Stage only Requesto-owned files and commit.

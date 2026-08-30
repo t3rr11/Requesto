@@ -21,22 +21,25 @@ All data lives in plain JSON files on disk, organized by workspace. Each workspa
 
 ```
 data/
-├── workspaces.json                     # Workspace registry and active workspace
-├── Default/                            # Built-in workspace (named "Local Workspace")
-│   └── .requesto/                      # Requesto data for this workspace (git-tracked)
-│       ├── .gitignore                  # Auto-generated - ignores local/
-│       ├── collections.json            # Collections, folders, and saved requests
-│       ├── environments.json           # Environment definitions and initial values
-│       ├── oauth-configs.json          # OAuth configurations (no client secrets)
-│       └── local/                      # Local-only data (excluded from git)
-│           ├── history.json            # Last 100 request/response records
-│           ├── environments.local.json # Current environment variable values
-│           ├── oauth-secrets.json      # OAuth client secrets
-│           └── oauth-tokens.json       # OAuth access/refresh tokens
-└── workspaces/                         # Additional workspaces (created or git-cloned)
+├── workspaces.json                       # Workspace registry and active workspace
+├── Default/                              # Built-in workspace (named "Local Workspace")
+│   └── .requesto/                        # Requesto data for this workspace (git-tracked)
+│       ├── .gitignore                    # Auto-generated - ignores local/
+│       ├── order.json                    # Display order of collections, environments, and configs
+│       ├── collections/                  # One JSON file per collection
+│       ├── environments/                 # One JSON file per environment (initial values)
+│       ├── oauth-configs/                # One JSON file per OAuth configuration (no secrets)
+│       ├── graphql-schemas/              # One JSON file per GraphQL schema profile
+│       └── local/                        # Local-only data (excluded from git)
+│           ├── history.json              # Last 100 request/response records
+│           ├── environments.local.json   # Current environment variable values
+│           ├── active-environment.json   # Your active environment selection
+│           ├── oauth-secrets.json        # OAuth client secrets
+│           └── oauth-tokens.json         # OAuth access/refresh tokens
+└── workspaces/                           # Additional workspaces (created or git-cloned)
 ```
 
-Older layouts (data files at the workspace root, or local files directly inside `.requesto/`) are migrated automatically the next time the app starts.
+Older layouts (data files at the workspace root, local files directly inside `.requesto/`, or the previous monolithic `collections.json`/`environments.json`/`oauth-configs.json`/`graphql-schemas.json` files) are migrated automatically the next time the app starts.
 
 **Data locations:**
 - **Desktop (Windows)**: `%APPDATA%\requesto-electron\data`
@@ -59,7 +62,8 @@ There is no built-in encryption at rest. If your data directory contains sensiti
 - OAuth **client secrets** are stored in `.requesto/local/oauth-secrets.json`, which is excluded from git via the auto-generated `.requesto/.gitignore`. They are never sent to the frontend.
 - OAuth **access and refresh tokens** are persisted server-side in `.requesto/local/oauth-tokens.json` (also excluded from git). The frontend only receives a non-secret token status (such as expiry and a preview) - tokens themselves never reach the browser.
 - Request **history** is stored in `.requesto/local/history.json` so it stays local and is not committed to version control.
-- Environment **current values** (the values written at runtime, e.g. by pre-request scripts) live in `.requesto/local/environments.local.json`, separate from the initial values committed in `environments.json`.
+- Environment **current values** (the values written at runtime, e.g. by pre-request scripts) live in `.requesto/local/environments.local.json`, separate from the initial values committed in `.requesto/environments/`.
+- Your **active environment** selection is stored locally in `.requesto/local/active-environment.json` and is not committed. A fresh clone defaults to the first environment in the workspace order — make an environment the workspace default by moving it to the top.
 
 Everything in `.requesto/local/` is gitignored automatically; the rest of `.requesto/` (collections, environments, OAuth configs) is what gets committed when you use Requesto's git features.
 

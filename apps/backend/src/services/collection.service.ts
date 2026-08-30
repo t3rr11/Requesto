@@ -427,7 +427,8 @@ export class CollectionService {
     const insertAt = Math.max(0, Math.min(targetOrder, allCollections.length));
     allCollections.splice(insertAt, 0, collection);
 
-    await this.repo.saveAll(allCollections);
+    // Only the order manifest changes — collection files are untouched
+    await this.repo.reorder(allCollections.map((c) => c.id));
     return collection;
   }
 

@@ -1,0 +1,10 @@
+{
+  "collections": [
+    "col-api-collections",
+    "col-api-environments",
+    "col-api-workspaces"
+  ],
+  "environments": [
+    "env-local-backend"
+  ]
+}

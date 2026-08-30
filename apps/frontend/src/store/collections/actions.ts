@@ -146,17 +146,28 @@ async function moveFolderApi(
 
 // ── Store action implementations ─────────────────────────────────────────────
 
-export async function loadCollections(set: SetState): Promise<void> {
-  set({ loading: true });
-  try {
-    const data = await getAllCollections();
-    set({ collections: data });
-    notifyDataMutated();
-  } catch (error) {
-    console.error('Failed to load collections:', error);
-  } finally {
-    set({ loading: false });
+type GetState = () => { collections: Collection[] };
+let loadInFlight: Promise<void> | null = null;
+
+export async function loadCollections(set: SetState, get?: GetState): Promise<void> {
+  if (!loadInFlight) {
+    loadInFlight = (async () => {
+      const hasData = (get?.().collections.length ?? 0) > 0;
+      if (!hasData) set({ loading: true });
+      try {
+        const data = await getAllCollections();
+        set({ collections: data });
+        notifyDataMutated();
+      } catch (error) {
+        console.error('Failed to load collections:', error);
+      } finally {
+        set({ loading: false });
+      }
+    })().finally(() => {
+      loadInFlight = null;
+    });
   }
+  return loadInFlight;
 }
 
 export async function createCollection(

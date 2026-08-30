@@ -45,19 +45,20 @@ Electron Wrapper (Desktop)
 
 ```
 data/
-├── workspaces.json           # Workspace registry and active workspace
-├── Default/                  # Built-in workspace (named "Local Workspace")
-│   └── .requesto/            # Requesto data for this workspace (git-tracked)
-│       ├── collections.json  # Collections, folders, and saved requests
-│       ├── environments.json # Environments and initial variable values
-│       ├── oauth-configs.json # OAuth configurations (no client secrets)
-│       └── local/            # Local-only data (excluded from git)
+├── workspaces.json        # Workspace registry and active workspace
+├── Default/               # Built-in workspace (named "Local Workspace")
+│   └── .requesto/         # Requesto data for this workspace (git-tracked)
+│       ├── order.json     # Display order of collections, environments, and configs
+│       ├── collections/   # One JSON file per collection (folders and requests included)
+│       ├── environments/  # One JSON file per environment and its initial variables
+│       ├── oauth-configs/ # One JSON file per OAuth configuration (no client secrets)
+│       └── local/         # Local-only data (excluded from git)
 │           ├── history.json
 │           └── oauth-secrets.json
-└── workspaces/               # Additional workspaces (created or git-cloned)
+└── workspaces/            # Additional workspaces (created or git-cloned)
 ```
 
-Data writes use a temp-file + rename pattern to avoid corruption.
+Data writes use a temp-file + rename pattern to avoid corruption. Storing each collection in its own file keeps git diffs small and merge conflicts rare.
 
 ## Why it's built this way
 

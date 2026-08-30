@@ -1,6 +1,6 @@
 import { test, expect, resetData } from '../helpers/test-fixtures';
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const FIXTURES_DIR = path.resolve(__dirname, '..', 'fixtures');
 const TEST_DATA_DIR = path.resolve(__dirname, '..', 'test-data');

@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 
 export const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 export const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4747;
