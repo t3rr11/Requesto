@@ -1,8 +1,34 @@
+import fs from 'fs';
 import path from 'path';
 import { WorkspaceRepository } from '../repositories/workspace.repository';
 import { AppError } from '../errors/app-error';
 import * as git from '../utils/git';
 import type { Workspace } from '../models/workspace';
+
+/** Result of inspecting a filesystem path for use as a Requesto workspace. */
+export interface WorkspaceInspectResult {
+  exists: boolean;
+  isDirectory: boolean;
+  hasRequestoData: boolean;
+  isGitRepo: boolean;
+  counts: { collections: number; environments: number; oauthConfigs: number };
+  suggestedName: string;
+}
+
+const DATA_FILES = ['collections.json', 'environments.json', 'oauth-configs.json'];
+
+function countJsonEntries(filePath: string, listKey?: string): number {
+  try {
+    const parsed: unknown = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    if (Array.isArray(parsed)) return parsed.length;
+    if (listKey && typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as Record<string, unknown>)[listKey])) {
+      return ((parsed as Record<string, unknown>)[listKey] as unknown[]).length;
+    }
+    return 0;
+  } catch {
+    return 0;
+  }
+}
 
 export class WorkspaceService {
   constructor(private readonly repo: WorkspaceRepository) {}
@@ -38,11 +64,71 @@ export class WorkspaceService {
   }
 
   async open(name: string, workspacePath: string): Promise<Workspace> {
-    const workspace = this.repo.open(name, workspacePath);
-    
+    let workspace: Workspace;
+    try {
+      workspace = this.repo.open(name, workspacePath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to open workspace';
+      throw AppError.badRequest(message);
+    }
+
     // Ensure .requesto/.gitignore exists so the local/ folder is never committed
     await git.ensureGitignore(workspacePath);
     return workspace;
+  }
+
+  /**
+   * Inspect a filesystem path without registering it, so the UI can preview what
+   * adding it as a workspace would do.
+   */
+  async inspect(workspacePath: string): Promise<WorkspaceInspectResult> {
+    const resolved = path.resolve(workspacePath);
+    const suggestedName = path.basename(resolved) || resolved;
+
+    const exists = fs.existsSync(resolved);
+    if (!exists) {
+      return {
+        exists: false,
+        isDirectory: false,
+        hasRequestoData: false,
+        isGitRepo: false,
+        counts: { collections: 0, environments: 0, oauthConfigs: 0 },
+        suggestedName,
+      };
+    }
+
+    const isDirectory = fs.statSync(resolved).isDirectory();
+    if (!isDirectory) {
+      return {
+        exists: true,
+        isDirectory: false,
+        hasRequestoData: false,
+        isGitRepo: false,
+        counts: { collections: 0, environments: 0, oauthConfigs: 0 },
+        suggestedName,
+      };
+    }
+
+    const hasNewLayout = DATA_FILES.some((f) => fs.existsSync(path.join(resolved, '.requesto', f)));
+    const hasLegacyLayout = DATA_FILES.some((f) => fs.existsSync(path.join(resolved, f)));
+
+    const counts = {
+      collections: countJsonEntries(path.join(resolved, '.requesto', 'collections.json')) ||
+        (hasLegacyLayout ? countJsonEntries(path.join(resolved, 'collections.json')) : 0),
+      environments: countJsonEntries(path.join(resolved, '.requesto', 'environments.json'), 'environments') ||
+        (hasLegacyLayout ? countJsonEntries(path.join(resolved, 'environments.json'), 'environments') : 0),
+      oauthConfigs: countJsonEntries(path.join(resolved, '.requesto', 'oauth-configs.json'), 'configs') ||
+        (hasLegacyLayout ? countJsonEntries(path.join(resolved, 'oauth-configs.json'), 'configs') : 0),
+    };
+
+    return {
+      exists: true,
+      isDirectory: true,
+      hasRequestoData: hasNewLayout || hasLegacyLayout,
+      isGitRepo: await git.isGitRepoRoot(resolved).catch(() => false),
+      counts,
+      suggestedName,
+    };
   }
 
   update(id: string, updates: Partial<Pick<Workspace, 'name'>>): Workspace {

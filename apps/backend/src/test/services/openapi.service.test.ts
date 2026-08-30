@@ -77,7 +77,6 @@ describe('OpenApiService.importSpec', () => {
     expect(saved.variables).toEqual([
       { key: 'baseUrl', value: 'https://api.example.com/v1', enabled: true },
     ]);
-    // An existing active environment is never hijacked
     expect(environmentService.setActive).not.toHaveBeenCalled();
   });
 

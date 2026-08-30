@@ -40,6 +40,38 @@ If a workspace is a git repository, a branch icon appears next to its name.
 
 The search box in the dropdown filters workspaces by name.
 
+## Adding a Workspace
+
+Click **Add Workspace...** at the bottom of the workspace switcher dropdown (or open the workspace manager and click **Add Workspace**). The dialog offers four ways to add a workspace:
+
+<ThemeImage src="/workspaces/add-workspace-open.png" alt="Add Workspace dialog in Open Folder mode" />
+
+- **New** — create an empty workspace. Requesto creates the folder and its `.requesto/` data directory under `data/workspaces/`.
+- **Open Folder** — register a folder that already contains Requesto data (for example a project repo with a `.requesto/` folder). See below.
+- **Clone from Git** — clone a git repository into `data/workspaces/` and register it as a workspace. See [Git Integration](/features/git).
+- **Import File** — restore a previously exported workspace bundle (`.json`).
+
+When you add a workspace, Requesto switches to it automatically.
+
+### Opening an Existing Project Folder
+
+If you've pulled down a project repo that already contains a `.requesto/` folder, use **Open Folder**:
+
+1. Open the Add Workspace dialog and choose **Open Folder**
+2. Select the folder (desktop app) or type its path (web/Docker)
+3. Requesto previews what it found — for example *"Requesto workspace found — 3 collections, 2 environments"*
+4. Click **Add Workspace**
+
+The preview tells you what you're about to open before anything is registered:
+
+- **Requesto workspace found** — the folder contains Requesto data and will be opened as-is
+- **No Requesto data here yet** — the folder is valid, and a new workspace will be created inside it
+- **Directory not found** — the path doesn't exist on the machine running Requesto
+
+In the desktop app, **Browse…** opens a native folder picker. In the web/Docker version, type the folder path **as seen by the Requesto server** — for Docker, mount the host folder first, e.g. `-v ~/projects/my-api:/workspaces/my-api`, then open `/workspaces/my-api`.
+
+Older data layouts are migrated to the `.requesto/` layout automatically when opened.
+
 ## Managing Workspaces
 
 Click **Manage Workspaces...** at the bottom of the workspace switcher dropdown to open the workspace manager.
@@ -48,41 +80,14 @@ Click **Manage Workspaces...** at the bottom of the workspace switcher dropdown 
 
 From here you can:
 
-- **Create** a new empty workspace
-- **Clone from Git** to create a workspace from a git repository
-- **Open** an existing directory as a workspace (desktop app only)
 - **Rename** a workspace by clicking the pencil icon, which opens a rename dialog
-- **Delete** a workspace (with confirmation). This removes it from your workspace list only - the folder and its files stay on disk. You cannot delete the last remaining workspace.
+- **Remove** a workspace from the list (with confirmation). This removes it from your workspace list only - the folder and its files stay on disk and it can be re-added later. You cannot remove the last remaining workspace.
 - **Export** a workspace as a JSON bundle containing all its collections, environments, and OAuth configs
-- **Import** a workspace from a previously exported JSON file
-
-## Creating a Workspace
-
-Click **New Workspace** in the workspace manager. Enter a name and click **Create Workspace**.
-
-<ThemeImage src="/workspaces/create-workspace-form.png" alt="Create workspace form" />
-
-### Cloning from Git
-
-Toggle **Clone from Git repository** to create a workspace by cloning a git repo. Enter the repository URL and, for private repositories, a personal access token.
-
-<ThemeImage src="/git/clone-workspace-form.png" alt="Clone from git form" />
-
-The repository is cloned into the `workspaces/` directory and registered as a new workspace. Git operations (commit, push, pull, branch management) are available immediately. See [Git Integration](/features/git) for details.
-
-### Opening an Existing Directory
-
-In the desktop app, toggle **Open existing directory** and click **Browse…** to pick a folder on disk. This is useful when you already have a directory containing Requesto data files or a git repository cloned outside the default data directory. Click **Add Workspace** to register it. If the directory uses an older data layout, it is migrated to the `.requesto/` layout automatically.
+- **Import** a workspace from a previously exported JSON file (via **Add Workspace** → **Import File**)
 
 ## Renaming a Workspace
 
 Click the pencil icon next to a workspace in either the workspace switcher or the workspace manager. A dialog will appear where you can enter the new name and confirm.
-
-## Import & Export
-
-**Export**: Click the export button on a workspace row in the manager. The exported JSON file includes all collections, environments, and OAuth configs from that workspace.
-
-**Import**: Click **Import** in the workspace manager footer and select a JSON file. A new workspace is created with the imported data.
 
 ## Data Isolation
 

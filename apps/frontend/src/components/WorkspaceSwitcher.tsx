@@ -1,16 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Settings, Check, Search, GitBranch, Pencil, X } from 'lucide-react';
+import { ChevronDown, Settings, Check, Search, GitBranch, Pencil, X, Plus } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspace/store';
 import { useAlertStore } from '../store/alert/store';
 import { useDialogWithData } from '../hooks/useDialog';
 import { RenameForm } from '../forms/RenameForm';
+import type { AddWorkspaceMode } from './AddWorkspaceDialog';
 
 interface WorkspaceSwitcherProps {
   onManageWorkspaces: () => void;
+  onAddWorkspace: (mode?: AddWorkspaceMode) => void;
   variant?: 'sidebar' | 'header';
 }
 
-export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({ onManageWorkspaces, onAddWorkspace, variant = 'sidebar' }: WorkspaceSwitcherProps) {
   const { registry, switchWorkspace, updateWorkspace } = useWorkspaceStore();
   const { showAlert } = useAlertStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -77,6 +79,7 @@ export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: W
     <div ref={containerRef} className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        data-testid="workspace-switcher"
         className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-sm font-medium transition-colors max-w-45 ${
           variant === 'header'
             ? 'text-white/90 dark:text-gray-300 hover:bg-white/15 dark:hover:bg-gray-700'
@@ -152,6 +155,17 @@ export function WorkspaceSwitcher({ onManageWorkspaces, variant = 'sidebar' }: W
             )}
           </div>
           <div className="border-t border-gray-200 dark:border-gray-700 mt-1 pt-1">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                setSearch('');
+                onAddWorkspace();
+              }}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              Add Workspace...
+            </button>
             <button
               onClick={() => {
                 setIsOpen(false);

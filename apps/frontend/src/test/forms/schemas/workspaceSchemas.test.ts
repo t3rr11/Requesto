@@ -1,94 +1,92 @@
 import { describe, it, expect } from 'vitest';
-import { createWorkspaceSchema, renameWorkspaceSchema } from '../../../forms/schemas/workspaceSchemas';
+import { addWorkspaceSchema, renameWorkspaceSchema } from '../../../forms/schemas/workspaceSchemas';
 
-describe('createWorkspaceSchema', () => {
-  it('accepts valid workspace name', () => {
-    const result = createWorkspaceSchema.safeParse({ name: 'My Workspace' });
+describe('addWorkspaceSchema', () => {
+  it('accepts create mode with a name', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'create', name: 'My Workspace' });
     expect(result.success).toBe(true);
   });
 
-  it('rejects empty name', () => {
-    const result = createWorkspaceSchema.safeParse({ name: '' });
+  it('rejects create mode with empty name', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'create', name: '' });
     expect(result.success).toBe(false);
-  });
-
-  it('trims whitespace from name', () => {
-    const result = createWorkspaceSchema.safeParse({ name: '  Spaced  ' });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.name).toBe('Spaced');
+    if (!result.success) {
+      const nameError = result.error.issues.find(i => i.path.includes('name'));
+      expect(nameError?.message).toBe('Workspace name is required');
     }
   });
 
-  it('accepts whitespace-only name (trimmed after min check)', () => {
-    const result = createWorkspaceSchema.safeParse({ name: '   ' });
-    // Zod .min(1) runs before .trim(), so '   ' (length 3) passes min check
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts without clone fields', () => {
-    const result = createWorkspaceSchema.safeParse({ name: 'Test' });
-    expect(result.success).toBe(true);
-  });
-
-  it('accepts clone disabled with no repoUrl', () => {
-    const result = createWorkspaceSchema.safeParse({
-      name: 'Test',
-      cloneFromRepo: false,
-      repoUrl: '',
+  it('accepts open mode with name and path', () => {
+    const result = addWorkspaceSchema.safeParse({
+      mode: 'open',
+      name: 'My Project',
+      path: '/home/user/project',
     });
     expect(result.success).toBe(true);
   });
 
-  it('accepts clone enabled with valid repoUrl', () => {
-    const result = createWorkspaceSchema.safeParse({
+  it('rejects open mode without a path', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'open', name: 'My Project' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const pathError = result.error.issues.find(i => i.path.includes('path'));
+      expect(pathError?.message).toBe('A folder path is required');
+    }
+  });
+
+  it('rejects open mode without a name', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'open', path: '/home/user/project' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const nameError = result.error.issues.find(i => i.path.includes('name'));
+      expect(nameError?.message).toBe('Workspace name is required');
+    }
+  });
+
+  it('accepts clone mode with name and repo URL', () => {
+    const result = addWorkspaceSchema.safeParse({
+      mode: 'clone',
       name: 'Cloned',
-      cloneFromRepo: true,
       repoUrl: 'https://github.com/user/repo.git',
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects clone enabled with empty repoUrl', () => {
-    const result = createWorkspaceSchema.safeParse({
-      name: 'Cloned',
-      cloneFromRepo: true,
-      repoUrl: '',
-    });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const repoUrlError = result.error.issues.find(i => i.path.includes('repoUrl'));
-      expect(repoUrlError?.message).toBe('Repository URL is required when cloning');
-    }
-  });
-
-  it('rejects clone enabled with whitespace-only repoUrl', () => {
-    const result = createWorkspaceSchema.safeParse({
-      name: 'Cloned',
-      cloneFromRepo: true,
-      repoUrl: '   ',
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('accepts optional authToken', () => {
-    const result = createWorkspaceSchema.safeParse({
+  it('accepts clone mode with optional auth token', () => {
+    const result = addWorkspaceSchema.safeParse({
+      mode: 'clone',
       name: 'Private',
-      cloneFromRepo: true,
       repoUrl: 'https://github.com/user/repo.git',
       authToken: 'ghp_abc123',
     });
     expect(result.success).toBe(true);
   });
 
-  it('accepts empty authToken', () => {
-    const result = createWorkspaceSchema.safeParse({
-      name: 'Public',
-      cloneFromRepo: true,
-      repoUrl: 'https://github.com/user/repo.git',
-      authToken: '',
-    });
+  it('rejects clone mode without a repo URL', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'clone', name: 'Cloned' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const repoUrlError = result.error.issues.find(i => i.path.includes('repoUrl'));
+      expect(repoUrlError?.message).toBe('Repository URL is required');
+    }
+  });
+
+  it('accepts import mode without name or file (file handled outside the schema)', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'import' });
     expect(result.success).toBe(true);
+  });
+
+  it('trims whitespace from name', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'create', name: '  Spaced  ' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe('Spaced');
+    }
+  });
+
+  it('rejects an unknown mode', () => {
+    const result = addWorkspaceSchema.safeParse({ mode: 'teleport', name: 'X' });
+    expect(result.success).toBe(false);
   });
 });
 

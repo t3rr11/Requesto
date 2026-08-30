@@ -17,11 +17,11 @@ If your workspace is not already a git repository, you can initialize one from t
 
 ## Cloning a Repository
 
-You can create a new workspace by cloning a git repository. In the workspace manager, click **Clone from Git**, enter the repository URL and an optional access token for private repos.
+You can create a new workspace by cloning a git repository. In the workspace switcher, click **Add Workspace...**, choose **Clone from Git**, then enter the repository URL and an optional access token for private repos.
 
 <ThemeImage src="/git/clone-workspace-form.png" alt="Clone from git form" />
 
-The repository is cloned into the `workspaces/` directory and registered as a new workspace. See [Workspaces](/features/workspaces) for more on workspace management.
+The repository is cloned into the `workspaces/` directory and registered as a new workspace. Git operations (commit, push, pull, branch management) are available immediately. See [Workspaces](/features/workspaces) for more on workspace management.
 
 ## Git Status
 

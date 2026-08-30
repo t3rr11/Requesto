@@ -45,6 +45,14 @@ const workspaceController: FastifyPluginAsync<Options> = async (server, opts) =>
     return await workspaceService.open(name, workspacePath);
   });
 
+  server.get<{ Querystring: { path: string } }>('/workspaces/inspect', async (request, reply) => {
+    const { path: workspacePath } = request.query;
+    if (!workspacePath || workspacePath.trim() === '') {
+      return reply.code(400).send({ error: 'Path is required' });
+    }
+    return await workspaceService.inspect(workspacePath.trim());
+  });
+
   server.post<{ Body: Record<string, unknown> }>('/workspaces/import', async (request, reply) => {
     const bundle = request.body;
     if (!bundle || typeof bundle !== 'object') {
