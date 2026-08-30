@@ -1,6 +1,6 @@
 ﻿---
 title: OAuth 2.0
-description: Built-in OAuth 2.0 support in Requesto. Configure Authorization Code, PKCE, Client Credentials, and more. Tokens refresh automatically. Supports GitHub, Google, Spotify, and any provider.
+description: Built-in OAuth 2.0 support in Requesto. Configure Authorization Code, PKCE, Client Credentials, and more. Tokens refresh automatically. Includes templates for Microsoft, Google, GitHub, Auth0, and Okta.
 ---
 
 # OAuth 2.0
@@ -17,10 +17,11 @@ Requesto has built-in OAuth 2.0 support with automatic token management.
 
 ## Creating a Configuration
 
-1. Go to the **OAuth 2.0** page
-2. Click **New Configuration**
-3. Fill in the fields for your chosen grant type
-4. Click **Save**
+1. Open a request's **Auth** tab and select **OAuth 2.0**
+2. Click **New** (or **Manage** → **New Config**) to open the configuration wizard
+3. Pick a provider template (Microsoft Entra ID, Google, GitHub, Auth0, or Okta) or configure manually
+4. Fill in the fields for your chosen grant type
+5. Click **Save**
 
 Common fields:
 
@@ -33,12 +34,14 @@ Common fields:
 | Redirect URI | Auto-detected from your browser URL - typically `http://localhost:5173/oauth/callback` in dev or `http://localhost:4747/oauth/callback` in Docker |
 | Scopes | Space-separated list of permissions |
 
-## Authorizing
+Any OAuth provider works - the templates just pre-fill the URLs for the most common ones.
 
-1. Click **Authorize** on your config
-2. A browser window opens to the provider's login page
+## Authenticating
+
+1. Click **Authenticate** on your config
+2. A browser window (or popup, depending on your choice) opens to the provider's login page
 3. After granting access, the provider redirects back to Requesto
-4. The access token is stored client-side
+4. The token is stored server-side, ready to use
 
 ## Using a Token in Requests
 
@@ -51,18 +54,16 @@ In a request's **Auth** tab:
 
 ## Token Storage
 
-- **Access tokens and refresh tokens**: stored client-side (sessionStorage or localStorage, depending on your config choice)
-- **Client secrets**: stored server-side only in `oauth-configs.json` - never exposed to the frontend
-
-Choose **Session** storage if tokens should be cleared when the browser tab closes, or **Persistent** if you want them to survive across sessions.
+- **Access tokens and refresh tokens**: stored server-side by the backend in `.requesto/local/oauth-tokens.json` inside the active workspace. This folder is local-only and excluded from git. The browser never receives the tokens themselves - only a non-secret status (expiry and preview) so the UI can show when a token is active or expiring.
+- **Client secrets**: stored server-side only in `.requesto/local/oauth-secrets.json` - never exposed to the frontend
 
 ## Automatic Refresh
 
-If **Auto Refresh Tokens** is enabled on a config:
-- Requesto will automatically refresh the token before it expires
-- The refresh threshold (seconds before expiry) is configurable per config
+When a request needs a token and the stored one is expired (or expiring within the next 30 seconds), the backend silently refreshes it before sending - or silently re-fetches a new token for client credentials and password flows.
 
-You can also manually refresh by clicking **Refresh Token** on the OAuth page.
+The **Refresh Threshold** setting on a config controls when the UI shows a "Token Expiring Soon" warning.
+
+You can also manually refresh by clicking **Refresh Token** in the auth editor, or **Revoke** to invalidate the token with the provider.
 
 ## PKCE
 
@@ -96,6 +97,8 @@ Scope: openid https://www.googleapis.com/auth/userinfo.email
 
 ### Spotify
 
+Spotify has no built-in template, but works via manual configuration:
+
 ```
 Grant Type: Authorization Code with PKCE
 Authorization URL: https://accounts.spotify.com/authorize
@@ -107,10 +110,10 @@ Scope: user-read-private user-read-email
 
 ## Troubleshooting
 
-**"Invalid Redirect URI"** - The redirect URI registered with your provider must exactly match what Requesto sends. Check the auto-detected URI shown in the config form and register that exact value with your provider.
+**"Invalid Redirect URI"** - The redirect URI registered with your provider must exactly match what Requesto sends. Check the auto-detected URI shown in the config form and register that exact value with your provider. Note that GitHub requires an `https` callback unless you're on localhost, and Microsoft Entra ID has its own redirect handling built into the config form.
 
-**Token not refreshing** - Make sure Auto Refresh is enabled in the config, and that your provider actually issued a refresh token (not all do).
+**Token not refreshing** - Refreshing happens automatically when a request runs. Make sure your provider actually issued a refresh token (not all do), and that your provider allows refresh grants for your client.
 
-**Authorization window not opening** - Check that your browser isn't blocking the popup. Verify the authorization URL is correct.
+**Authorization window not opening** - Check that your browser isn't blocking the popup. If popups are blocked, Requesto falls back to a full-page redirect. Verify the authorization URL is correct.
 
 **Self-signed certificate on the token endpoint** - If your OAuth provider's token URL uses a self-signed or otherwise untrusted TLS certificate, enable **Ignore SSL certificate errors** in [Settings](./settings#ignore-ssl-certificate-errors). This applies to both OAuth token exchange and outgoing API requests.

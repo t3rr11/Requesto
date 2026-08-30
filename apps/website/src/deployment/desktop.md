@@ -47,8 +47,6 @@ chmod +x Requesto-*.AppImage
 
 **Debian/Ubuntu**: `sudo dpkg -i Requesto-*.deb`
 
-**Fedora/RHEL**: `sudo rpm -i Requesto-*.rpm`
-
 **Data location**: `~/.config/requesto-electron/data`
 
 ## Updates
@@ -76,14 +74,15 @@ When you launch the desktop app:
 ```
 data/
 ├── workspaces.json           # Workspace registry and active workspace
-├── Default/                  # Default workspace
-│   ├── collections.json      # Collections, folders, and saved requests
-│   ├── environments.json     # Environments and variables
-│   ├── oauth-configs.json    # OAuth configurations (no client secrets)
-│   └── .requesto/            # Local-only data
-│       ├── history.json
-│       └── oauth-secrets.json
-└── workspaces/               # Additional workspaces (including git clones)
+├── Default/                  # Built-in workspace (named "Local Workspace")
+│   └── .requesto/            # Requesto data for this workspace (git-tracked)
+│       ├── collections.json  # Collections, folders, and saved requests
+│       ├── environments.json # Environments and initial variable values
+│       ├── oauth-configs.json# OAuth configurations (no client secrets)
+│       └── local/            # Local-only data (excluded from git)
+│           ├── history.json
+│           └── oauth-secrets.json
+└── workspaces/               # Additional workspaces (created or git-cloned)
 ```
 
 To back up, copy the `data` folder. To restore, copy it back and restart the app.
@@ -95,10 +94,10 @@ git clone https://github.com/t3rr11/Requesto.git
 cd Requesto
 npm install
 npm run build
-npm run package:electron:win   # or :mac or :linux
+npm run package:electron:win   # Windows. For other platforms: npm run package:mac -w requesto-electron or npm run package:linux -w requesto-electron
 ```
 
-Output goes to `apps/electron/dist/`.
+Output goes to `dist/` at the repository root.
 
 ## Troubleshooting
 
@@ -112,4 +111,4 @@ Output goes to `apps/electron/dist/`.
 
 - **Windows**: Use "Add or Remove Programs"
 - **macOS**: Delete from Applications. Optionally remove data: `rm -rf ~/Library/Application\ Support/requesto-electron`
-- **Linux**: `sudo apt remove requesto` or `sudo rpm -e requesto` or just delete the AppImage. Optionally remove data: `rm -rf ~/.config/requesto-electron`
+- **Linux**: `sudo apt remove requesto` or just delete the AppImage. Optionally remove data: `rm -rf ~/.config/requesto-electron`

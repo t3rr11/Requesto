@@ -17,9 +17,9 @@ Enter the source - either a file path or a URL pointing to a JSON or YAML spec. 
 
 Requesto parses the spec, resolves all `$ref` pointers, and generates:
 
-- A **collection** with folders grouped by tags (or paths, if no tags are defined)
-- A **request** for each operation, with the method, URL template, and headers from the spec
-- An **environment** with the base URL(s) extracted from the spec's `servers` (v3) or `host` (v2) field
+- A **collection** with folders grouped by tags
+- A **request** for each operation, with the method, URL template, headers, query parameters, example request bodies, and auth stubs (basic/bearer/api-key) from the spec
+- An **environment** named after the collection with the base URL(s) extracted from the spec's `servers` (v3) or `host` (v2) field - created automatically and activated if no other environment is active
 
 <ThemeImage src="/openapi/imported-collection.png" alt="Imported collection in sidebar" />
 
@@ -33,15 +33,17 @@ If you don't link the spec, the import is a one-time operation and subsequent ch
 
 ## Syncing Changes
 
-For linked collections, right-click the collection in the sidebar and choose **Sync from Spec**. Requesto fetches the latest spec, compares it against the stored hash, and shows a preview of what changed.
+For linked collections, right-click the collection in the sidebar and choose **Sync from Spec**. Requesto re-fetches the spec, diffs it against the collection by `operationId`, and shows a preview of what changed.
 
 <ThemeImage src="/openapi/sync-preview.png" alt="Sync preview dialog" />
 
 The preview shows:
 
 - **New** operations that will be added as requests
-- **Updated** operations where the method, URL, or parameters changed
+- **Updated** operations where the method or URL changed
 - **Orphaned** requests that no longer match any operation in the spec
+
+Your own edits to a request's body, headers, auth, and name are preserved during sync - only the method and URL are compared. Additions and updates are pre-selected in the preview; removals are not.
 
 Review the changes and click **Apply Changes** to update the collection.
 
@@ -54,7 +56,7 @@ Right-click a linked collection and choose **Unlink Spec** to remove the spec me
 | Version | Support |
 |---------|---------|
 | OpenAPI 3.x | Full |
-| Swagger 2.0 | Full (converted to v3 internally) |
+| Swagger 2.0 | Full (handled by a dedicated Swagger 2.0 converter) |
 
 Both JSON and YAML formats are accepted. Remote `$ref` pointers are resolved during import.
 

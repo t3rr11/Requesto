@@ -11,12 +11,12 @@ Workspaces let you isolate different projects. Each workspace has its own collec
 
 A workspace is a directory on disk. When you switch workspaces, the backend reads and writes to that workspace's directory, so collections and environments from one project never bleed into another.
 
-Requesto starts with a **Default** workspace. You can create as many additional workspaces as you need.
+Requesto starts with a built-in workspace named **Local Workspace** (stored in the `Default/` directory). You can create as many additional workspaces as you need.
 
 ```
 data/
 ├── workspaces.json           # Registry of all workspaces
-├── Default/                  # Default workspace
+├── Default/                  # Built-in workspace ("Local Workspace")
 │   └── .requesto/            # All workspace data
 │       ├── collections.json
 │       ├── environments.json
@@ -24,20 +24,15 @@ data/
 │       ├── .gitignore        # Ignores the local/ subdirectory
 │       └── local/            # Local-only data (excluded from git)
 │           ├── history.json
-│           └── oauth-secrets.json
-└── workspaces/               # Additional workspaces
-    └── my-project/
-        └── .requesto/
-            ├── collections.json
-            ├── environments.json
-            ├── oauth-configs.json
-            ├── .gitignore
-            └── local/
+│           ├── environments.local.json
+│           ├── oauth-secrets.json
+│           └── oauth-tokens.json
+└── workspaces/               # Additional workspaces (created or git-cloned)
 ```
 
 ## Switching Workspaces
 
-The workspace switcher is at the top of the sidebar. Click it to open a dropdown listing all your workspaces. Select one to switch to it.
+The workspace switcher is in the top header bar. Click it to open a dropdown listing all your workspaces. Select one to switch to it.
 
 <ThemeImage src="/workspaces/workspace-switcher.png" alt="Workspace switcher dropdown" />
 
@@ -57,7 +52,7 @@ From here you can:
 - **Clone from Git** to create a workspace from a git repository
 - **Open** an existing directory as a workspace (desktop app only)
 - **Rename** a workspace by clicking the pencil icon, which opens a rename dialog
-- **Delete** a workspace (with confirmation). You cannot delete the last remaining workspace.
+- **Delete** a workspace (with confirmation). This removes it from your workspace list only - the folder and its files stay on disk. You cannot delete the last remaining workspace.
 - **Export** a workspace as a JSON bundle containing all its collections, environments, and OAuth configs
 - **Import** a workspace from a previously exported JSON file
 
@@ -77,7 +72,7 @@ The repository is cloned into the `workspaces/` directory and registered as a ne
 
 ### Opening an Existing Directory
 
-In the desktop app, toggle **Open existing directory** and click **Browse…** to pick a folder on disk. This is useful when you already have a directory containing Requesto data files or a git repository cloned outside the default data directory. Click **Add Workspace** to register it.
+In the desktop app, toggle **Open existing directory** and click **Browse…** to pick a folder on disk. This is useful when you already have a directory containing Requesto data files or a git repository cloned outside the default data directory. Click **Add Workspace** to register it. If the directory uses an older data layout, it is migrated to the `.requesto/` layout automatically.
 
 ## Renaming a Workspace
 
@@ -98,7 +93,10 @@ Each workspace stores its data inside a `.requesto/` subdirectory:
 | `collections.json` | `.requesto/` | Yes |
 | `environments.json` | `.requesto/` | Yes |
 | `oauth-configs.json` | `.requesto/` (no secrets) | Yes |
+| `graphql-schemas.json` | `.requesto/` | Yes |
 | `history.json` | `.requesto/local/` | No |
+| `environments.local.json` | `.requesto/local/` | No |
 | `oauth-secrets.json` | `.requesto/local/` | No |
+| `oauth-tokens.json` | `.requesto/local/` | No |
 
-The `.requesto/local/` directory holds data that should stay local to your machine. When git is initialized in a workspace, a `.requesto/.gitignore` is automatically created to exclude the `local/` subdirectory from version control. This means Requesto can safely coexist with an existing git project — only the `.requesto/` folder is added to your repository.
+The `.requesto/local/` directory holds data that should stay local to your machine. Every workspace gets a `.requesto/.gitignore` automatically (created on workspace creation, clone, git init, and server startup) that excludes the `local/` subdirectory from version control. This means Requesto can safely coexist with an existing git project — only the `.requesto/` folder is added to your repository.

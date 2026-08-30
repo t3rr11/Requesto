@@ -92,8 +92,8 @@ Requesto/
 | `npm run build:backend` | Build backend only |
 | `npm run build:frontend` | Build frontend only |
 | `npm run package:electron:win` | Windows installer |
-| `npm run package:electron:mac` | macOS dmg |
-| `npm run package:electron:linux` | Linux packages |
+| `npm run package:mac -w requesto-electron` | macOS dmg |
+| `npm run package:linux -w requesto-electron` | Linux packages |
 | `docker-compose up --build` | Build and run Docker image |
 
 ## Architecture

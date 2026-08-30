@@ -17,8 +17,8 @@ Right-click any collection in the sidebar and choose **Run Collection**. To run 
 
 The dialog shows all requests grouped by their folder structure. The toolbar at the top has three controls:
 
-- **Run** - starts executing requests from the beginning
-- **Stop** - cancels the run after the current request finishes
+- **Run Collection** - starts executing requests from the beginning
+- **Stop** - aborts the in-flight request immediately and marks the remaining requests as skipped
 - **Reset** - clears all results and resets every request to pending
 
 A summary count at the top right shows how many requests passed, failed, or errored during the run.
@@ -43,7 +43,9 @@ Click a request row to expand it and see the response details. Expanded rows hav
 - **Response** - status code, headers, body, and duration
 - **Tests** - individual test names and pass/fail status
 
-Rows with test results expand automatically when the run completes.
+Rows with test results (or errors) expand automatically as each request finishes.
+
+The runner uses the currently active environment for every request. GraphQL requests run as proper GraphQL (the saved query document and variables are sent), and pre-request scripts, test scripts, and environment chaining all apply to them as well.
 
 ## Scripts and Environment Chaining
 

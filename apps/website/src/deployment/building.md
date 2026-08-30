@@ -19,7 +19,7 @@ cd Requesto
 npm install
 ```
 
-This installs dependencies for all three apps (backend, frontend, electron) via npm workspaces.
+This installs dependencies for all workspace apps via npm workspaces.
 
 ## Project Structure
 
@@ -57,11 +57,16 @@ npm run build:frontend   # Frontend only → apps/frontend/dist/
 
 ```bash
 npm run package:electron:win     # Windows (.exe installer + portable)
-npm run package:electron:mac     # macOS (.dmg)
-npm run package:electron:linux   # Linux (.AppImage, .deb, .rpm)
 ```
 
-Output goes to `apps/electron/dist/`.
+For macOS and Linux, use the workspace scripts directly:
+
+```bash
+npm run package:mac -w requesto-electron     # macOS (.dmg, .zip)
+npm run package:linux -w requesto-electron   # Linux (.AppImage, .deb)
+```
+
+Output goes to `dist/` at the repository root.
 
 ## Docker
 
@@ -92,6 +97,6 @@ docker-compose up --build
 | `npm run dev:electron` | All three with Electron window |
 | `npm run build` | Build all apps for production |
 | `npm run package:electron:win` | Windows installer |
-| `npm run package:electron:mac` | macOS dmg |
-| `npm run package:electron:linux` | Linux packages |
+| `npm run package:mac -w requesto-electron` | macOS dmg |
+| `npm run package:linux -w requesto-electron` | Linux packages |
 | `docker-compose up --build` | Build and run Docker image |
