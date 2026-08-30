@@ -1,7 +1,7 @@
 import type { ProxyRequest, ProxyResponse, AuthConfig, FormDataEntry } from '../store/request/types';
 import type { RequestFormData } from '../forms/schemas/requestFormSchema';
 import type { TabRequest } from '../store/tabs/types';
-import type { GraphQLRequestConfig, RequestSaveDraft } from '../store/collections/types';
+import type { GraphQLRequestConfig, RequestSaveDraft, SavedRequest } from '../store/collections/types';
 import { buildUrlWithParams } from './url';
 import {
   buildClientSchema,
@@ -145,6 +145,60 @@ function buildGraphQLRequest(formData: RequestFormData): ProxyRequest {
     body: JSON.stringify(body),
     bodyType: 'json',
     auth: formData.auth as AuthConfig,
+  };
+}
+
+/**
+ * Build a ProxyRequest from a saved GraphQL request. Mirrors buildGraphQLRequest
+ * but works from the persisted SavedRequest shape, so the Collection Runner and
+ * other non-form callers execute GraphQL requests correctly.
+ */
+export function buildSavedGraphQLRequest(req: SavedRequest): ProxyRequest {
+  const config = req.graphql;
+  if (!config) {
+    // Legacy saved GraphQL request without a config: fall back to the stored raw fields
+    return {
+      method: req.method,
+      url: req.url,
+      headers: { ...(req.headers ?? {}) },
+      body: req.body,
+      bodyType: req.bodyType,
+      formDataEntries: req.formDataEntries,
+      auth: req.auth,
+    };
+  }
+
+  const document = config.document.trim();
+  if (!document) throw new Error('GraphQL query is required');
+
+  const operation = getGraphQLOperation(document);
+  const variables = parseGraphQLVariables(config.variables);
+  const transport = config.transport ?? 'post';
+  const headers = { ...(req.headers ?? {}) };
+  setDefaultHeader(headers, 'Accept', 'application/graphql-response+json, application/json;q=0.9');
+
+  if (transport === 'get') {
+    if (operation.operation !== 'query') {
+      throw new Error('GraphQL GET requests can only execute query operations');
+    }
+    const url = new URL(req.url);
+    url.searchParams.set('query', document);
+    if (variables) url.searchParams.set('variables', JSON.stringify(variables));
+    return { method: 'GET', url: url.toString(), headers, auth: req.auth };
+  }
+
+  setDefaultHeader(headers, 'Content-Type', 'application/json');
+  const body = {
+    query: document,
+    ...(variables && { variables }),
+  };
+  return {
+    method: 'POST',
+    url: req.url,
+    headers,
+    body: JSON.stringify(body),
+    bodyType: 'json',
+    auth: req.auth,
   };
 }
 

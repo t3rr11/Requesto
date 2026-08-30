@@ -1,13 +1,19 @@
+import { randomUUID } from 'node:crypto';
 import { importOpenApiSpec } from '../utils/openapi/parser';
 import { buildSyncPreview, applySyncToCollection } from '../utils/openapi/reconcile';
 import type { SyncApplyBody } from '../models/openapi-sync';
 import { CollectionService } from './collection.service';
+import { EnvironmentService } from './environment.service';
 import { AppError } from '../errors/app-error';
-import type { Collection } from '../models/collection';
+import type { Collection, OpenApiEnvironmentVariable } from '../models/collection';
 import type { ParsedSpecResult } from '../models/collection';
+import type { Environment, EnvironmentVariable } from '../models/environment';
 
 export class OpenApiService {
-  constructor(private readonly collectionService: CollectionService) {}
+  constructor(
+    private readonly collectionService: CollectionService,
+    private readonly environmentService?: EnvironmentService,
+  ) {}
 
   async importSpec(
     source: string,
@@ -33,7 +39,42 @@ export class OpenApiService {
 
     await this.collectionService.saveAll(merged);
 
+    this.persistSpecEnvironments(result.environments, savedCollection.name);
+
     return { collection: merged, environments: result.environments };
+  }
+
+  /**
+   * Persist the baseUrl variables extracted from the spec as a real environment so
+   * `{{baseUrl}}` resolves out of the box. Activated only when no environment is
+   * active yet, so existing setups are never hijacked.
+   */
+  private persistSpecEnvironments(
+    variables: OpenApiEnvironmentVariable[],
+    collectionName: string,
+  ): void {
+    if (!this.environmentService || variables.length === 0) return;
+
+    const data = this.environmentService.getAll();
+    let name = `${collectionName} Base URLs`;
+    let suffix = 2;
+    while (data.environments.some((e) => e.name === name)) {
+      name = `${collectionName} Base URLs (${suffix++})`;
+    }
+
+    const envVariables: EnvironmentVariable[] = variables.map(
+      ({ key, value, enabled }) => ({ key, value, enabled }),
+    );
+    const environment: Environment = {
+      id: `env-${randomUUID()}`,
+      name,
+      variables: envVariables,
+    };
+    this.environmentService.save(environment);
+
+    if (!data.activeEnvironmentId) {
+      this.environmentService.setActive(environment.id);
+    }
   }
 
   async previewSync(collectionId: string): Promise<ReturnType<typeof buildSyncPreview> & { noChanges?: boolean; specHash?: string }> {

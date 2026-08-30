@@ -1,3 +1,4 @@
+import './appIdentity';
 import { app, BrowserWindow } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { isDev, SIMULATE_BACKEND_FAILURE, SIMULATE_UPDATE_AVAILABLE } from './constants';

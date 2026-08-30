@@ -26,8 +26,8 @@ Download the latest release for your platform from GitHub:
 Available formats:
 
 - **Windows**: `.exe` installer or portable `.exe`
-- **macOS**: `.dmg`
-- **Linux**: `.AppImage`, `.deb`, `.rpm`
+- **macOS**: `.dmg` (plus `.zip`)
+- **Linux**: `.AppImage`, `.deb`
 
 See the [Desktop App](/deployment/desktop) page for platform-specific setup instructions.
 

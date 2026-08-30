@@ -63,7 +63,7 @@ const historyService = new HistoryService(historyRepo);
 const oauthService = new OAuthService(oauthRepo);
 const proxyService = new ProxyService(environmentService, historyService, oauthService);
 const gitService = new GitService(workspaceService);
-const openApiService = new OpenApiService(collectionService);
+const openApiService = new OpenApiService(collectionService, environmentService);
 const graphqlSchemaProfileService = new GraphQLSchemaProfileService(
   graphqlSchemaProfileRepo,
   graphqlSchemaCacheRepo,

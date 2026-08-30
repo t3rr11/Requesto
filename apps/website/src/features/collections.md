@@ -28,10 +28,16 @@ E-commerce API
 
 Hover over a collection in the sidebar to reveal two icon buttons:
 
-- **+** - Add a new request to the collection
 - **New Folder** - Create a new folder inside the collection
+- **Delete Collection** - Remove the collection
 
 Clicking **New Folder** opens a dialog where you can enter the folder name and confirm. You can also create subfolders by hovering over an existing folder and clicking its **New Folder** button.
+
+New requests are added from the request editor's **Save** dialog - save into any collection or folder.
+
+## Multi-Select and Bulk Actions
+
+Ctrl+click (or Shift+click) requests to multi-select them. You can then drag the selection between folders, or right-click for bulk **Duplicate (N)** and **Delete (N)** actions. Collections, folders, and individual requests can each be duplicated from their context menus.
 
 ## Drag and Drop
 
@@ -39,21 +45,23 @@ Reorder requests and folders within a collection by dragging them. You can move 
 
 ## Context Menu
 
-Right-click any collection, folder, or request in the sidebar. The menu has three actions:
+Right-click any collection, folder, or request in the sidebar:
 
-- **Rename**
-- **Export** - downloads the item as a JSON file
-- **Delete**
+**Collections**: Run Collection, New Folder, Rename, Duplicate, Export, Sync from Spec / Unlink Spec (for [OpenAPI-linked collections](/features/openapi)), and Delete.
+
+**Folders**: Run Folder, New Subfolder, Rename, Duplicate, Export, and Delete.
+
+**Requests**: Rename, Duplicate, Export, and Delete.
 
 <ThemeImage src="/collections/context-menu.png" alt="Context menu" />
 
 ## Import & Export
 
-**Import**: Click the upload icon in the sidebar header and select a JSON file. The collection is added to the sidebar.
+**Import**: Click the upload icon in the sidebar header and pick **Import Collection**, then select a JSON file. The collection is added to the sidebar.
 
 **Export**: Right-click a collection, folder, or request and choose **Export**. The exported JSON includes all nested folders and requests.
 
-Environment import and export works the same way from the [Environments](/features/environments) page.
+Environment import and export works the same way from the environment manager (see [Environments](/features/environments)).
 
 ### OpenAPI Import
 
@@ -63,10 +71,12 @@ You can also generate a collection from an OpenAPI spec. See [OpenAPI Import & S
 
 A saved request stores:
 
+- Request type (HTTP or GraphQL)
 - URL (can include environment variables)
 - HTTP method
 - Headers, query parameters, body
 - Authentication configuration
+- Pre-request and test scripts
 
 Click a saved request in the sidebar to open it. Edit it and click **Save** to save changes.
 

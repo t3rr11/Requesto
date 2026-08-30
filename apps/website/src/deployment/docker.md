@@ -58,14 +58,15 @@ Mount a volume or bind-mount at `/app/data`. This directory holds all your data,
 ```
 data/
 ├── workspaces.json           # Workspace registry and active workspace
-├── Default/                  # Default workspace
-│   ├── collections.json      # Collections, folders, and saved requests
-│   ├── environments.json     # Environments and variables
-│   ├── oauth-configs.json    # OAuth configurations (no client secrets)
-│   └── .requesto/            # Local-only data
-│       ├── history.json      # Request/response history (last 100)
-│       └── oauth-secrets.json
-└── workspaces/               # Additional workspaces (including git clones)
+├── Default/                  # Built-in workspace (named "Local Workspace")
+│   └── .requesto/            # Requesto data for this workspace (git-tracked)
+│       ├── collections.json  # Collections, folders, and saved requests
+│       ├── environments.json # Environments and initial variable values
+│       ├── oauth-configs.json# OAuth configurations (no client secrets)
+│       └── local/            # Local-only data (excluded from git)
+│           ├── history.json  # Request/response history (last 100)
+│           └── oauth-secrets.json
+└── workspaces/               # Additional workspaces (created or git-cloned)
 ```
 
 These are plain JSON files. You can back them up by copying the entire data directory:
@@ -95,7 +96,7 @@ The Dockerfile uses a multi-stage build: backend and frontend are built in separ
 ## Health Check
 
 ```bash
-curl http://localhost:4747/api/health
+curl http://localhost:4747/health
 ```
 
 ```json

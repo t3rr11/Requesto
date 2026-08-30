@@ -1,6 +1,7 @@
 import { CheckCircle, XCircle, Minus, Loader2 } from 'lucide-react';
 import type { Collection, Folder, SavedRequest } from '../../store/collections/types';
 import type { ProxyRequest } from '../../store/request/types';
+import { buildSavedGraphQLRequest } from '../../helpers/request';
 import type { DisplayItem, RequestStatus } from './types';
 
 export function buildDisplayItems(collection: Collection, folderId?: string): DisplayItem[] {
@@ -41,6 +42,9 @@ export function buildDisplayItems(collection: Collection, folderId?: string): Di
 }
 
 export function buildProxyRequest(req: SavedRequest): ProxyRequest {
+  if (req.requestType === 'graphql') {
+    return buildSavedGraphQLRequest(req);
+  }
   return {
     method: req.method,
     url: req.url,

@@ -31,14 +31,14 @@ export function WorkspaceManagerDialog({ isOpen, onClose }: WorkspaceManagerDial
     }
 
     confirmDialog.open({
-      title: 'Delete Workspace',
-      message: `Are you sure you want to delete "${workspace.name}"? All workspace data will be permanently removed. This action cannot be undone.`,
-      confirmText: 'Delete',
+      title: 'Remove Workspace',
+      message: `Are you sure you want to remove "${workspace.name}" from your workspace list? Its folder and files are kept on disk and it can be re-added later.`,
+      confirmText: 'Remove',
       variant: 'danger',
       onConfirm: async () => {
         try {
           await deleteWorkspace(workspace.id);
-          showAlert('Success', `Workspace "${workspace.name}" deleted.`, 'success');
+          showAlert('Success', `Workspace "${workspace.name}" removed from your list.`, 'success');
           if (workspace.id === registry.activeWorkspaceId) {
             window.location.reload();
           }

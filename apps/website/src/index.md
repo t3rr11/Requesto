@@ -34,6 +34,9 @@ features:
   - title: Collections & Folders
     details: Organize requests into collections and folders with drag-and-drop. Import and export collections and environments as JSON.
 
+  - title: GraphQL
+    details: Send GraphQL queries and mutations with a built-in schema explorer, introspection, and saved schema profiles.
+
   - title: OpenAPI Import & Sync
     details: Import OpenAPI v2/v3 specs to auto-generate collections. Link a spec and sync changes as the API evolves.
 

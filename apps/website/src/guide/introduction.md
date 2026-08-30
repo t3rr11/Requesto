@@ -14,6 +14,7 @@ You can run it as a desktop app (Electron), in Docker, or straight from source.
 ## What it does
 
 - Send HTTP requests (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)
+- Query GraphQL APIs with a schema explorer, introspection, and saved schema profiles
 - Organize requests into collections and folders with drag-and-drop
 - Define environment variables and swap between them (dev, staging, prod)
 - Authenticate with Basic, Bearer, API Key, Digest, or OAuth 2.0
@@ -44,15 +45,16 @@ Electron Wrapper (Desktop)
 
 ```
 data/
-├── workspaces.json         # Workspace registry and active workspace
-├── Default/                # Default workspace
-│   ├── collections.json    # Collections, folders, and saved requests
-│   ├── environments.json   # Environments and variables
-│   ├── oauth-configs.json  # OAuth configurations (no client secrets)
-│   └── .requesto/          # Local-only data (excluded from git)
-│       ├── history.json
-│       └── oauth-secrets.json
-└── workspaces/             # Additional workspaces (including git clones)
+├── workspaces.json           # Workspace registry and active workspace
+├── Default/                  # Built-in workspace (named "Local Workspace")
+│   └── .requesto/            # Requesto data for this workspace (git-tracked)
+│       ├── collections.json  # Collections, folders, and saved requests
+│       ├── environments.json # Environments and initial variable values
+│       ├── oauth-configs.json # OAuth configurations (no client secrets)
+│       └── local/            # Local-only data (excluded from git)
+│           ├── history.json
+│           └── oauth-secrets.json
+└── workspaces/               # Additional workspaces (created or git-cloned)
 ```
 
 Data writes use a temp-file + rename pattern to avoid corruption.

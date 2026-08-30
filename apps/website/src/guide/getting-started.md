@@ -35,7 +35,7 @@ Head to the [Download & Install](/guide/download) page first.
 
 Environments let you swap between configs (dev, staging, prod) without editing requests.
 
-1. Go to the **Environments** page via the header navigation
+1. Open the **environment selector** in the tabs bar and choose **Manage Environments** (gear icon)
 2. Create a new environment (e.g. "Development")
 3. Add variables as key-value pairs:
    - `base_url` → `http://localhost:3000`
@@ -43,7 +43,7 @@ Environments let you swap between configs (dev, staging, prod) without editing r
 4. Select the environment from the dropdown in the tabs bar
 5. Use variables in requests with <code v-pre>{{base_url}}</code> syntax - they're substituted before sending
 
-Variables work in URLs, headers, query parameters, and request bodies.
+Variables work in URLs, headers, query parameters, request bodies, form-data entries, and auth fields.
 
 ## Organize with Folders
 
@@ -61,24 +61,26 @@ My API
 
 ## Set Up OAuth 2.0
 
-1. Go to the **OAuth 2.0** page via the header
-2. Click **New Configuration**
+1. Open a request's **Auth** tab and select **OAuth 2.0**
+2. Click **New** (or **Manage** → **New Config**) to open the configuration wizard
 3. Fill in your provider details (client ID, auth URL, token URL, etc.)
-4. Client secrets are stored server-side and never exposed to the browser
-5. Click **Authorize** to run the OAuth flow
-6. In any request's Auth tab, select OAuth 2.0 and choose your config
+4. Client secrets are stored server-side in the workspace's `.requesto/local/` folder and never exposed to the browser
+5. Click **Authenticate** to run the OAuth flow
+6. Select your saved config in any request's Auth tab
+
+See [OAuth 2.0](/features/oauth) for the full guide.
 
 ## Interface Layout
 
 <ThemeImage src="/getting-started/interface-overview.png" alt="Full interface overview" />
 
-**Header**: Navigation between Requests, Environments, and OAuth pages. Also has theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, and help.
+**Header**: Workspace switcher, settings (gear icon), theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, update badge, and help. Requesto is a single-page app - there's no page navigation.
 
-**Sidebar** (left): Workspace switcher at the top to switch between projects. Below that, your collections, folders, and saved requests. Search box filters by name and URL.
+**Sidebar** (left): Your collections, folders, and saved requests, plus an environments panel. Search box filters by name and URL.
 
-**Tabs bar**: Open request tabs. An orange dot means unsaved changes. The environment selector dropdown is here too.
+**Tabs bar**: Open request tabs. An orange dot means unsaved changes. The environment selector (with its gear icon for managing environments) is here too.
 
-**Request panel**: URL bar, method dropdown, and tabs for Params, Headers, Body (Monaco editor), and Auth.
+**Request panel**: URL bar, method dropdown, and tabs for Params, Headers, Body (Monaco editor), Auth, Tests, and Pre-request Script.
 
 **Response panel**: Status code, response time, size. Tabs for response Body (formatted), Headers, and Test Results.
 

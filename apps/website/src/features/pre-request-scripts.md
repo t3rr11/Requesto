@@ -66,3 +66,4 @@ After the script runs, any variables set with `environment.set()` are applied be
 - No `require` or `import` - scripts run in an isolated sandbox
 - No `async`/`await` - scripts must be synchronous
 - Only enabled variables in the active environment are visible to `environment.get()`
+- If the script throws an error, the request is still sent (without the script's overrides) after the error is shown

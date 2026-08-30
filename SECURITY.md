@@ -33,12 +33,12 @@ We take security seriously. If you discover a security vulnerability, please rep
 
 - All data is stored locally in JSON files, organized by workspace
 - Sensitive data is not encrypted at rest (use OS-level encryption)
-- OAuth client secrets are stored separately from workspace data in a local-only directory
-- OAuth access tokens are stored client-side and never persisted server-side
+- OAuth client secrets are stored in the workspace's `.requesto/local/oauth-secrets.json`, which is excluded from git
+- OAuth access and refresh tokens are persisted server-side in the workspace's `.requesto/local/oauth-tokens.json`, which is excluded from git. Tokens are never sent to the browser.
 
 ### Network
 
-- Local first approach
+- Local first approach: the client and backend run on the same machine, and nothing leaves your device except the requests you send
 - Backend executes API requests on your behalf
 - Requests history can be found in the session console
 - No data is sent to external servers

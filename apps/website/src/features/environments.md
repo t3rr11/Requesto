@@ -27,18 +27,18 @@ Authorization: Bearer sk_abc123
 
 <ThemeImage src="/environments/manage-dialog.png" alt="Manage Environments dialog" />
 
-Open the **Manage Environments** dialog from the Environments page (or the environment selector in the header).
+Open the **Manage Environments** dialog from the gear icon next to the environment selector in the tabs bar (or via **Manage Environments** in the selector dropdown).
 
 **Sidebar actions:**
 - **New Environment** - creates an empty environment
 - **Import** - load an environment from a JSON file
 
-**Per-environment actions** (buttons in the environment header):
+**Per-environment actions** (in the **⋯** menu of the environment header, or right-click an environment in the list):
 - **Set Active** - choose which environment supplies variable values
 - **Duplicate** - copy an environment with all its variables
 - **Export** - download the environment as a JSON file
-- **Delete** - remove the environment (with confirmation)
-- **Rename** - right-click an environment in the sidebar list (or use the **⋯** menu in the environment header) and choose **Rename** to edit its name in a dialog
+- **Delete** - remove the environment (with confirmation; the last remaining environment cannot be deleted)
+- **Rename** - edit its name in a dialog
 
 ## Variables
 
@@ -63,7 +63,7 @@ The `VariableAwareInput` fields throughout the app (URL bar, header values, etc.
 
 ## Switching Environments
 
-Use the **environment selector** dropdown in the header bar. Selecting a different environment changes which variables are substituted - you don't need to edit any requests.
+Use the **environment selector** dropdown in the tabs bar. Selecting a different environment changes which variables are substituted - you don't need to edit any requests.
 
 <ThemeImage src="/environments/selector-dropdown.png" alt="Environment selector dropdown" />
 
@@ -74,11 +74,11 @@ Each environment variable has two value fields:
 | Field | Description |
 |-------|-------------|
 | **Value** | The initial value. This is stored in `environments.json` and committed to git when you sync your workspace. |
-| **Current Value** | A local override. Stored separately in a sidecar file that is excluded from git by default. |
+| **Current Value** | A local override. Stored in `.requesto/local/environments.local.json`, which is excluded from git. |
 
 When a request is sent, the current value takes precedence over the initial value if one is set. If no current value exists, the initial value is used.
 
-The current value column is visible in the variable editor table.
+The current value column is visible in the variable editor table. A reset icon lets you clear the current value on a single variable, and the environment's **⋯** menu can reset all current values back to their initial values.
 
 ### Why This Matters for Scripts
 
@@ -97,6 +97,8 @@ The backend replaces <code v-pre>{{variable}}</code> placeholders in:
 - Request URL
 - Header values
 - Request body
+- Form-data entries (text keys and values)
+- Auth credential fields (basic, bearer, API key, digest)
 
 Substitution is a single pass - variables cannot reference other variables (no nesting).
 

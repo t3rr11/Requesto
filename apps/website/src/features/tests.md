@@ -127,3 +127,4 @@ test('extract token', () => {
 - No network access (`fetch` and `XMLHttpRequest` are not available)
 - No `require` or `import` - scripts run in an isolated sandbox
 - No `async`/`await` - scripts must be synchronous
+- Tests do not run for streaming (SSE) responses

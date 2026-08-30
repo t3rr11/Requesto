@@ -25,9 +25,9 @@ The repository is cloned into the `workspaces/` directory and registered as a ne
 
 ## Git Status
 
-The workspace switcher shows a branch icon next to workspaces that are git repositories. The git panel displays the current branch, ahead/behind commit counts, and the status of changed files.
+The workspace switcher shows a branch icon next to workspaces that are git repositories. The git panel displays the current branch, ahead/behind commit counts, and the status of changed files. A git status bar at the bottom of the sidebar shows the branch, changed-file count, and quick pull/push/refresh actions.
 
-Status is refreshed automatically by fetching from the remote when you check it.
+Status is refreshed automatically: it fetches from the remote on each check, polls periodically, and refreshes when you change workspace data.
 
 The status view only shows Requesto-owned files (collections, environments, OAuth configs, and the `.requesto/` directory). Files belonging to the rest of your project are intentionally hidden, so Requesto works cleanly inside an existing repository without polluting the diff view.
 
@@ -35,7 +35,9 @@ The status view only shows Requesto-owned files (collections, environments, OAut
 
 ## Committing Changes
 
-Click **Commit** in the git panel, enter a commit message, and confirm. Only Requesto-owned files are staged automatically — `collections.json`, `environments.json`, `oauth-configs.json`, and the `.requesto/` directory. Your project source code is never touched.
+Click **Commit** in the git panel, enter a commit message, and confirm. Only Requesto-owned files are staged automatically — the `.requesto/` directory (which contains `collections.json`, `environments.json`, and `oauth-configs.json`). Your project source code is never touched.
+
+**Push** always targets the `origin` remote. If you push with uncommitted changes and no new commits, Requesto prompts you for a commit message first so you can commit and push in one step.
 
 ## Push and Pull
 
@@ -58,12 +60,16 @@ Switching branches requires a clean working directory. Commit or discard any pen
 
 ## Conflict Resolution
 
-If a pull results in merge conflicts, the git panel shows the conflicted files and lets you resolve them. Two strategies are available:
+If a pull results in merge conflicts, the git panel shows the conflicted files and lets you apply one strategy to all of them at once:
 
-- **Ours** - keep your local version of the file
-- **Theirs** - accept the remote version of the file
+- **Keep Local** - keep your local version of every conflicted file (ours)
+- **Accept Incoming** - accept the remote version of every conflicted file (theirs)
 
-You can resolve conflicts file by file or apply the same strategy to all conflicted files at once. After resolving, commit the result.
+Clicking an individual conflicted file opens a read-only diff viewer so you can inspect the difference before choosing. After resolving, commit the result.
+
+## Commit History and Diffs
+
+The git panel also shows recent commits with their hash, message, author, and relative date. Click any changed file in the status view to see its diff in a dialog before committing.
 
 ## Remotes
 

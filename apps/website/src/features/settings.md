@@ -13,7 +13,7 @@ Click the **gear icon** in the top-right of the header to open the Settings dial
 
 <ThemeImage src="/settings/dialog.png" alt="Settings dialog" />
 
-Settings are saved as soon as you click **Save Settings** and apply immediately to all subsequent requests.
+Settings are saved as soon as you click **Save Settings** and apply immediately to all subsequent requests. They are stored in your browser's local storage, so they apply to every workspace but are per installation/browser rather than per workspace.
 
 ## Network
 
@@ -21,9 +21,10 @@ Settings are saved as soon as you click **Save Settings** and apply immediately 
 
 Allow connections to servers using self-signed or otherwise untrusted TLS certificates.
 
-This applies to both:
+This applies to all of:
 - **Outgoing API requests** sent from the request panel
 - **OAuth token requests** made during the OAuth flow
+- **GraphQL introspection requests** made when fetching a schema
 
 <ThemeImage src="/settings/dialog-warning.png" alt="Settings dialog with the SSL warning visible" />
 
