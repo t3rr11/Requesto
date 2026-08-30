@@ -1,5 +1,3 @@
-import { useEffect } from 'react';
-import { useCollectionsStore } from '../store/collections/store';
 import { useRequestStore } from '../store/request/store';
 import { useUIStore } from '../store/ui/store';
 import { CollectionsSidebar } from '../components/CollectionsSidebar';
@@ -8,13 +6,8 @@ import { RequestResponseView } from '../components/RequestResponseView';
 import { ConsolePanel } from '../components/ConsolePanel';
 
 export function RequestsPage() {
-  const { loadCollections } = useCollectionsStore();
   const { consoleLogs, clearConsoleLogs } = useRequestStore();
   const { isConsoleOpen, consoleHeight, toggleConsole, setConsoleHeight } = useUIStore();
-
-  useEffect(() => {
-    loadCollections();
-  }, [loadCollections]);
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col relative min-h-0 bg-white dark:bg-gray-900">
