@@ -38,5 +38,8 @@ data/
 logs/
 *.log
 
+# Test reports
+test-results/
+
 # Docker
 .docker/

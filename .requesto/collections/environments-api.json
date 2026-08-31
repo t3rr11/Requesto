@@ -1,9 +1,24 @@
 {
   "id": "col-api-environments",
   "name": "Environments API",
-  "description": "Smoke tests for the environment endpoints of Requesto's own backend. The scratch environment ({{environmentId}}) is created by \"Save Environment\" and cleaned up by \"Delete Environment\".",
+  "description": "Regression tests for the environment endpoints of Requesto's own backend. A stable baseline environment is saved first (so the scratch environment can always be deleted afterwards), then the scratch environment ({{environmentId}}) is created, asserted on, and cleaned up.",
   "folders": [],
   "requests": [
+    {
+      "id": "req-api-env-save-baseline",
+      "name": "Save Baseline Environment",
+      "method": "POST",
+      "url": "{{baseUrl}}/api/environments",
+      "headers": {},
+      "bodyType": "json",
+      "auth": { "type": "none" },
+      "collectionId": "col-api-environments",
+      "order": 0,
+      "requestType": "http",
+      "body": "{\n  \"id\": \"env-baseline\",\n  \"name\": \"Baseline Environment\",\n  \"variables\": []\n}",
+      "preRequestScript": "",
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('save succeeds', () => {\n  expect(response.json().success).toBe(true);\n});\ntest('environment id is preserved', () => {\n  expect(response.json().environment.id).toBe('env-baseline');\n});"
+    },
     {
       "id": "req-api-env-list",
       "name": "List Environments",
@@ -13,11 +28,11 @@
       "bodyType": "json",
       "auth": { "type": "none" },
       "collectionId": "col-api-environments",
-      "order": 0,
+      "order": 1,
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('active environment id is present', () => {\n  expect(response.json().activeEnvironmentId).toBeDefined();\n});\ntest('returns the environments array', () => {\n  expect(Array.isArray(response.json().environments)).toBeTruthy();\n  expect(response.json().environments.length).toBeGreaterThan(0);\n});"
     },
     {
       "id": "req-api-env-save",
@@ -28,11 +43,11 @@
       "bodyType": "json",
       "auth": { "type": "none" },
       "collectionId": "col-api-environments",
-      "order": 1,
+      "order": 2,
       "requestType": "http",
       "body": "{\n  \"id\": \"{{environmentId}}\",\n  \"name\": \"Test Environment\",\n  \"variables\": [\n    { \"key\": \"token\", \"value\": \"secret-123\", \"enabled\": true }\n  ]\n}",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('save succeeds', () => {\n  expect(response.json().success).toBe(true);\n});\ntest('environment id is preserved', () => {\n  expect(response.json().environment.id).toBe(environment.get('environmentId'));\n});"
     },
     {
       "id": "req-api-env-export",
@@ -43,11 +58,11 @@
       "bodyType": "json",
       "auth": { "type": "none" },
       "collectionId": "col-api-environments",
-      "order": 2,
+      "order": 3,
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('export matches the saved environment', () => {\n  expect(response.json().id).toBe(environment.get('environmentId'));\n  expect(response.json().name).toBe('Test Environment');\n});\ntest('variables survive the round trip', () => {\n  const variables = response.json().variables;\n  expect(variables).toHaveLength(1);\n  expect(variables[0].key).toBe('token');\n});"
     },
     {
       "id": "req-api-env-set-active",
@@ -58,11 +73,11 @@
       "bodyType": "json",
       "auth": { "type": "none" },
       "collectionId": "col-api-environments",
-      "order": 3,
+      "order": 4,
       "requestType": "http",
       "body": "{\n  \"id\": \"{{environmentId}}\"\n}",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('activation succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
     },
     {
       "id": "req-api-env-reset-current-values",
@@ -73,11 +88,11 @@
       "bodyType": "json",
       "auth": { "type": "none" },
       "collectionId": "col-api-environments",
-      "order": 4,
+      "order": 5,
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('reset succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
     },
     {
       "id": "req-api-env-delete",
@@ -88,11 +103,26 @@
       "bodyType": "json",
       "auth": { "type": "none" },
       "collectionId": "col-api-environments",
-      "order": 5,
+      "order": 6,
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
+    },
+    {
+      "id": "req-api-env-restore-active",
+      "name": "Restore Active Environment",
+      "method": "POST",
+      "url": "{{baseUrl}}/api/environments/active",
+      "headers": {},
+      "bodyType": "json",
+      "auth": { "type": "none" },
+      "collectionId": "col-api-environments",
+      "order": 7,
+      "requestType": "http",
+      "body": "{\n  \"id\": \"env-baseline\"\n}",
+      "preRequestScript": "",
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('activation succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
     }
   ]
 }

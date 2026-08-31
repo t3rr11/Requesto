@@ -9,26 +9,50 @@
       "isSecret": false
     },
     {
-      "key": "collectionId",
-      "value": "col-api-collections",
-      "enabled": true,
-      "isSecret": false
-    },
-    {
-      "key": "requestId",
-      "value": "req-test",
-      "enabled": true,
-      "isSecret": false
-    },
-    {
       "key": "environmentId",
       "value": "env-test",
       "enabled": true,
       "isSecret": false
     },
     {
-      "key": "workspaceId",
-      "value": "ws-test",
+      "key": "createdCollectionId",
+      "value": "pending",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "duplicateCollectionId",
+      "value": "pending",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "createdRequestId",
+      "value": "pending",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "createdWorkspaceId",
+      "value": "pending",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "workspacePath",
+      "value": "pending",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "workspacePathEncoded",
+      "value": "pending",
+      "enabled": true,
+      "isSecret": false
+    },
+    {
+      "key": "activeWorkspaceIdBefore",
+      "value": "pending",
       "enabled": true,
       "isSecret": false
     }

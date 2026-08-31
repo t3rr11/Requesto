@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Folder as FolderIcon, FolderPlus, Import, Search, X, FileText, Braces } from 'lucide-react';
+import { Folder as FolderIcon, FolderPlus, Import, Play, Search, X, FileText, Braces } from 'lucide-react';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useUIStore } from '../store/ui/store';
@@ -13,6 +13,7 @@ import { RenameForm } from '../forms/RenameForm';
 import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { NewFolderForm } from '../forms/NewFolderForm';
 import { ImportOpenApiForm } from '../forms/ImportOpenApiForm';
+import { CollectionRunnerDialog } from './CollectionRunnerDialog';
 import { CollectionItem } from './sidebar/CollectionItem';
 import { MethodBadge } from './sidebar/MethodBadge';
 import { Button } from './Button';
@@ -87,6 +88,7 @@ export function CollectionsSidebar() {
   const { showAlert } = useAlertStore();
   const clipboardRef = useRef<SavedRequest[]>([]);
   const multiDeleteDialog = useConfirmDialog();
+  const [runnerOpen, setRunnerOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -360,6 +362,15 @@ export function CollectionsSidebar() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
           <div className="flex gap-2">
+            <Button
+              onClick={() => setRunnerOpen(true)}
+              variant="icon"
+              size="md"
+              title="Run All Collections"
+              disabled={collections.length === 0}
+            >
+              <Play className="w-5 h-5" />
+            </Button>
             <Button onClick={newCollectionDialog.open} variant="icon" size="md" title="New Collection">
               <FolderPlus className="w-5 h-5" />
             </Button>
@@ -496,6 +507,12 @@ export function CollectionsSidebar() {
       <Dialog isOpen={importOpenApiDialog.isOpen} onClose={importOpenApiDialog.close} title="Import from OpenAPI">
         <ImportOpenApiForm onSuccess={importOpenApiDialog.close} onCancel={importOpenApiDialog.close} />
       </Dialog>
+
+      <CollectionRunnerDialog
+        isOpen={runnerOpen}
+        onClose={() => setRunnerOpen(false)}
+        collections={collections}
+      />
 
       <RenameForm
         isOpen={renameRequestDialog.isOpen}

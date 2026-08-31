@@ -4,6 +4,7 @@ import path from 'node:path';
 import { sseTestRoutes } from './controllers/sse-test.controller';
 import { graphqlTestRoutes } from './controllers/graphql-test.controller';
 import { registerErrorHandler } from './errors/error-handler';
+import { registerEmptyBodyParser } from './utils/empty-body-parser';
 import { DATA_DIR, PORT, HOST, LOG_LEVEL, CORS_ORIGINS } from './config/index';
 
 // Repositories
@@ -94,6 +95,7 @@ async function start() {
     });
 
     registerErrorHandler(server);
+    registerEmptyBodyParser(server);
 
     await server.register(collectionController, { prefix: '/api', collectionService, openApiService });
     await server.register(environmentController, { prefix: '/api', environmentService });

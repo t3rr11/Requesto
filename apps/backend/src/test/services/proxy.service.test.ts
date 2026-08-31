@@ -55,6 +55,7 @@ function startServer(routes: Record<string, RouteResponse>): Promise<TestServerH
 
 function makeProxyServiceDeps(): { environmentService: EnvironmentService; historyService: HistoryService } {
   const environmentService = {
+    getActive: () => null,
     substituteInRequest: (req: { url: string; headers?: Record<string, string>; body?: string; formDataEntries?: unknown }) => req,
     substituteInAuth: (auth: unknown) => auth,
   } as unknown as EnvironmentService;

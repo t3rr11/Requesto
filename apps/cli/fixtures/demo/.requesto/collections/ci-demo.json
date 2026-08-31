@@ -1,0 +1,91 @@
+{
+  "id": "col-ci-demo",
+  "name": "CI Demo",
+  "description": "Fixture collection used by the CLI test suite",
+  "folders": [
+    { "id": "fld-demo-users", "name": "Users", "collectionId": "col-ci-demo" }
+  ],
+  "requests": [
+    {
+      "id": "req-demo-list",
+      "name": "List Items",
+      "method": "GET",
+      "url": "{{baseUrl}}/items",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-ci-demo",
+      "order": 0,
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('returns two items', () => {\n  expect(response.json().items).toHaveLength(2);\n});"
+    },
+    {
+      "id": "req-demo-fail",
+      "name": "Failing Assertion",
+      "method": "GET",
+      "url": "{{baseUrl}}/items",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-ci-demo",
+      "order": 1,
+      "testScript": "test('missing field is defined', () => {\n  expect(response.json().nope).toBeDefined();\n});"
+    },
+    {
+      "id": "req-demo-error",
+      "name": "Unreachable Endpoint",
+      "method": "GET",
+      "url": "http://127.0.0.1:1/refused",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-ci-demo",
+      "order": 2
+    },
+    {
+      "id": "req-demo-chain",
+      "name": "Script Chaining",
+      "method": "GET",
+      "url": "{{baseUrl}}/echo?greeting={{greeting}}",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-ci-demo",
+      "folderId": "fld-demo-users",
+      "order": 0,
+      "preRequestScript": "environment.set('greeting', 'hello');",
+      "testScript": "test('greeting echoed', () => {\n  expect(response.json().greeting).toBe('hello');\n});"
+    },
+    {
+      "id": "req-demo-auth",
+      "name": "OAuth Protected",
+      "method": "GET",
+      "url": "{{baseUrl}}/me",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "oauth", "oauth": { "configId": "ci-auth" } },
+      "collectionId": "col-ci-demo",
+      "folderId": "fld-demo-users",
+      "order": 1,
+      "testScript": "test('bearer token applied', () => {\n  expect(response.json().authorization).toBe('Bearer ci-token-123');\n});"
+    },
+    {
+      "id": "req-demo-secret",
+      "name": "Secret Variable",
+      "method": "GET",
+      "url": "{{baseUrl}}/echo?key={{apiKey}}",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-ci-demo",
+      "folderId": "fld-demo-users",
+      "order": 2,
+      "testScript": "test('override applied', () => {\n  expect(response.json().key).toBe('from-cli');\n});"
+    }
+  ]
+}

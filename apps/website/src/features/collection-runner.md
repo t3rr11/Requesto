@@ -11,17 +11,31 @@ Run all requests in a collection or folder in sequence. The runner executes each
 
 Right-click any collection in the sidebar and choose **Run Collection**. To run only a subset of requests, right-click a folder and choose **Run Folder**.
 
+To run every collection in the workspace in one go, use the **Run All Collections** button (play icon) in the sidebar header next to *New Collection* and *Import*. Requests run in collection order and environment chaining carries across collections.
+
 <ThemeImage src="/collection-runner/dialog.png" alt="Collection runner dialog" />
 
 ## The Runner Dialog
 
-The dialog shows all requests grouped by their folder structure. The toolbar at the top has three controls:
+The dialog shows all requests grouped by their folder structure. The toolbar at the top has these controls:
 
 - **Run Collection** - starts executing requests from the beginning
 - **Stop** - aborts the in-flight request immediately and marks the remaining requests as skipped
 - **Reset** - clears all results and resets every request to pending
 
 A summary count at the top right shows how many requests passed, failed, or errored during the run.
+
+## Isolation
+
+Every run executes inside a temporary server-side workspace, so runs can never damage your own data:
+
+1. Before the first request, a scratch workspace is created and activated. It **inherits your active workspace's environments and OAuth configurations** (including stored client secrets and cached tokens), so requests resolve variables and authenticate exactly as they would outside a run.
+2. The whole run happens inside it.
+3. Afterwards — even if the run fails or is stopped — your previous workspace is restored and the scratch workspace is deleted.
+
+Collections, environments and workspaces created or deleted by a run disappear with the scratch workspace. One consequence: environment "current values" set by scripts during a run chain forward through the run but are not persisted to your workspace afterwards.
+
+The CLI supports the same behaviour with `--isolated <serverUrl>` (see [CLI Reference](/cli/reference#isolated-runs-isolated)); in pipelines you opt in there because the CLI can also target APIs that aren't Requesto servers.
 
 ## Request Status
 

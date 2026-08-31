@@ -1,0 +1,23 @@
+{
+  "id": "col-api-health",
+  "name": "Server Health",
+  "description": "Fast canary for pipelines: verifies the Requesto backend is up before the full regression suite runs.",
+  "folders": [],
+  "requests": [
+    {
+      "id": "req-api-health",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{baseUrl}}/health",
+      "headers": {},
+      "bodyType": "json",
+      "auth": { "type": "none" },
+      "collectionId": "col-api-health",
+      "order": 0,
+      "requestType": "http",
+      "body": "",
+      "preRequestScript": "",
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('server reports ok', () => {\n  expect(response.json().status).toBe('ok');\n});"
+    }
+  ]
+}

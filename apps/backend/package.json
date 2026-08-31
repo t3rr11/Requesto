@@ -3,6 +3,29 @@
   "version": "1.0.0",
   "description": "Backend API proxy for Requesto",
   "main": "dist/server.js",
+  "exports": {
+    ".": "./dist/server.js",
+    "./errors/*": {
+      "types": "./dist/errors/*.d.ts",
+      "default": "./dist/errors/*.js"
+    },
+    "./models/*": {
+      "types": "./dist/models/*.d.ts",
+      "default": "./dist/models/*.js"
+    },
+    "./repositories/*": {
+      "types": "./dist/repositories/*.d.ts",
+      "default": "./dist/repositories/*.js"
+    },
+    "./services/*": {
+      "types": "./dist/services/*.d.ts",
+      "default": "./dist/services/*.js"
+    },
+    "./utils/*": {
+      "types": "./dist/utils/*.d.ts",
+      "default": "./dist/utils/*.js"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",

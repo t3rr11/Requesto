@@ -1,10 +1,11 @@
 {
   "id": "col-api-collections",
   "name": "Collections API",
-  "description": "Smoke tests for the collection endpoints of Requesto's own backend. Start the dev server first (npm run dev, port 4747) and select the Local Backend environment.",
+  "description": "Regression tests for the collection endpoints of Requesto's own backend. The suite is self-contained: 'Create Collection' captures the new id and every later request operates on that scratch data, cleaning up after itself. Run with the Local Backend environment against a server started via 'npm run dev' (port 4747) or the CLI in CI.",
   "folders": [
-    { "id": "fld-api-collections", "name": "Collections", "collectionId": "col-api-collections" },
-    { "id": "fld-api-requests", "name": "Requests", "collectionId": "col-api-collections" }
+    { "id": "fld-api-collections", "name": "1. Collections", "collectionId": "col-api-collections" },
+    { "id": "fld-api-requests", "name": "2. Requests", "collectionId": "col-api-collections" },
+    { "id": "fld-api-cleanup", "name": "3. Cleanup", "collectionId": "col-api-collections" }
   ],
   "requests": [
     {
@@ -21,23 +22,7 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
-    },
-    {
-      "id": "req-api-collections-get",
-      "name": "Get Single Collection",
-      "method": "GET",
-      "url": "{{baseUrl}}/api/collections/{{collectionId}}",
-      "headers": {},
-      "bodyType": "json",
-      "auth": { "type": "none" },
-      "collectionId": "col-api-collections",
-      "folderId": "fld-api-collections",
-      "order": 1,
-      "requestType": "http",
-      "body": "",
-      "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('returns an array of collections', () => {\n  expect(Array.isArray(response.json())).toBeTruthy();\n});"
     },
     {
       "id": "req-api-collections-create",
@@ -49,17 +34,33 @@
       "auth": { "type": "none" },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-collections",
+      "order": 1,
+      "requestType": "http",
+      "body": "{\n  \"name\": \"CLI Regression Suite\",\n  \"description\": \"Scratch collection created by Requesto's self-test suite\"\n}",
+      "preRequestScript": "",
+      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('collection has a generated id', () => {\n  expect(response.json().id).toMatch(/^col-/);\n});\ntest('collection name is stored', () => {\n  expect(response.json().name).toBe('CLI Regression Suite');\n});\ntest('capture id for later requests', () => {\n  environment.set('createdCollectionId', response.json().id);\n});"
+    },
+    {
+      "id": "req-api-collections-get",
+      "name": "Get Single Collection",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}",
+      "headers": {},
+      "bodyType": "json",
+      "auth": { "type": "none" },
+      "collectionId": "col-api-collections",
+      "folderId": "fld-api-collections",
       "order": 2,
       "requestType": "http",
-      "body": "{\n  \"name\": \"Test Collection\",\n  \"description\": \"Created by the Collections API test requests\"\n}",
+      "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('returns the created collection', () => {\n  expect(response.json().id).toBe(environment.get('createdCollectionId'));\n  expect(response.json().name).toBe('CLI Regression Suite');\n});\ntest('new collection starts empty', () => {\n  expect(response.json().requests).toHaveLength(0);\n  expect(response.json().folders).toHaveLength(0);\n});"
     },
     {
       "id": "req-api-collections-update",
       "name": "Update Collection",
       "method": "PUT",
-      "url": "{{baseUrl}}/api/collections/{{collectionId}}",
+      "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -67,15 +68,15 @@
       "folderId": "fld-api-collections",
       "order": 3,
       "requestType": "http",
-      "body": "{\n  \"description\": \"Updated by the Collections API test requests\"\n}",
+      "body": "{\n  \"description\": \"Updated by Requesto's self-test suite\"\n}",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('description is updated', () => {\n  expect(response.json().description).toBe(\"Updated by Requesto's self-test suite\");\n});"
     },
     {
       "id": "req-api-collections-duplicate",
       "name": "Duplicate Collection",
       "method": "POST",
-      "url": "{{baseUrl}}/api/collections/{{collectionId}}/duplicate",
+      "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/duplicate",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -85,13 +86,13 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('copy gets a new id', () => {\n  expect(response.json().id).toMatch(/^col-/);\n  expect(response.json().id).not.toBe(environment.get('createdCollectionId'));\n});\ntest('copy is named after the original', () => {\n  expect(response.json().name).toBe('CLI Regression Suite Copy');\n});\ntest('capture id for cleanup', () => {\n  environment.set('duplicateCollectionId', response.json().id);\n});"
     },
     {
       "id": "req-api-collections-export",
       "name": "Export Collection",
       "method": "GET",
-      "url": "{{baseUrl}}/api/collections/{{collectionId}}/export",
+      "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/export",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -101,29 +102,13 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
-    },
-    {
-      "id": "req-api-collections-delete",
-      "name": "Delete Collection",
-      "method": "DELETE",
-      "url": "{{baseUrl}}/api/collections/{{collectionId}}",
-      "headers": {},
-      "bodyType": "json",
-      "auth": { "type": "none" },
-      "collectionId": "col-api-collections",
-      "folderId": "fld-api-collections",
-      "order": 6,
-      "requestType": "http",
-      "body": "",
-      "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('export matches the collection', () => {\n  expect(response.json().id).toBe(environment.get('createdCollectionId'));\n  expect(response.json().name).toBe('CLI Regression Suite');\n});"
     },
     {
       "id": "req-api-requests-add",
       "name": "Add Request",
       "method": "POST",
-      "url": "{{baseUrl}}/api/collections/{{collectionId}}/requests",
+      "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/requests",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -131,15 +116,15 @@
       "folderId": "fld-api-requests",
       "order": 0,
       "requestType": "http",
-      "body": "{\n  \"name\": \"Test Request\",\n  \"requestType\": \"http\",\n  \"method\": \"GET\",\n  \"url\": \"{{baseUrl}}/api/collections\"\n}",
+      "body": "{\n  \"name\": \"Self Test Request\",\n  \"requestType\": \"http\",\n  \"method\": \"GET\",\n  \"url\": \"{{baseUrl}}/health\"\n}",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('request gets a generated id', () => {\n  expect(response.json().id).toMatch(/^req-/);\n});\ntest('method is normalised to uppercase', () => {\n  expect(response.json().method).toBe('GET');\n});\ntest('capture id for later requests', () => {\n  environment.set('createdRequestId', response.json().id);\n});"
     },
     {
       "id": "req-api-requests-delete",
       "name": "Delete Request",
       "method": "DELETE",
-      "url": "{{baseUrl}}/api/collections/{{collectionId}}/requests/{{requestId}}",
+      "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/requests/{{createdRequestId}}",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -149,7 +134,39 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
+    },
+    {
+      "id": "req-api-collections-delete-duplicate",
+      "name": "Delete Duplicate",
+      "method": "DELETE",
+      "url": "{{baseUrl}}/api/collections/{{duplicateCollectionId}}",
+      "headers": {},
+      "bodyType": "json",
+      "auth": { "type": "none" },
+      "collectionId": "col-api-collections",
+      "folderId": "fld-api-cleanup",
+      "order": 0,
+      "requestType": "http",
+      "body": "",
+      "preRequestScript": "",
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
+    },
+    {
+      "id": "req-api-collections-delete",
+      "name": "Delete Collection",
+      "method": "DELETE",
+      "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}",
+      "headers": {},
+      "bodyType": "json",
+      "auth": { "type": "none" },
+      "collectionId": "col-api-collections",
+      "folderId": "fld-api-cleanup",
+      "order": 1,
+      "requestType": "http",
+      "body": "",
+      "preRequestScript": "",
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
     }
   ]
 }

@@ -62,8 +62,12 @@ export class WorkspaceService {
     return workspace;
   }
 
-  create(name: string): Workspace {
-    return this.repo.create(name);
+  findById(id: string): Workspace | null {
+    return this.repo.findById(id);
+  }
+
+  create(name: string, copyFromId?: string): Workspace {
+    return this.repo.create(name, copyFromId);
   }
 
   async clone(name: string, repoUrl: string, authToken?: string): Promise<Workspace> {

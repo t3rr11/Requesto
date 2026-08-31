@@ -1,0 +1,5 @@
+{
+  "collections": ["col-ci-demo"],
+  "environments": ["env-ci-demo"],
+  "oauthConfigs": ["ci-auth"]
+}

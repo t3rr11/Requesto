@@ -1,0 +1,11 @@
+{
+  "id": "ci-auth",
+  "name": "ci-auth",
+  "provider": "generic",
+  "authorizationUrl": "https://example.com/authorize",
+  "tokenUrl": "https://example.com/token",
+  "clientId": "ci-client",
+  "flowType": "authorization-code-pkce",
+  "usePKCE": true,
+  "scopes": []
+}

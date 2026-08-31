@@ -16,13 +16,20 @@ const workspaceController: FastifyPluginAsync<Options> = async (server, opts) =>
     return workspaceService.getActive();
   });
 
-  server.post<{ Body: { name: string } }>('/workspaces', async (request, reply) => {
-    const { name } = request.body;
+  server.post<{ Body: { name: string; copyFrom?: string } }>('/workspaces', async (request, reply) => {
+    const { name, copyFrom } = request.body;
     if (!name) {
       return reply.code(400).send({ error: 'Name is required' });
     }
-    const workspace = workspaceService.create(name);
-    return workspace;
+    if (copyFrom && !workspaceService.findById(copyFrom)) {
+      return reply.code(400).send({ error: `Source workspace not found: ${copyFrom}` });
+    }
+    try {
+      const workspace = workspaceService.create(name, copyFrom);
+      return workspace;
+    } catch (error) {
+      return reply.code(400).send({ error: error instanceof Error ? error.message : 'Failed to create workspace' });
+    }
   });
 
   server.post<{ Body: { name: string; repoUrl: string; authToken?: string } }>(

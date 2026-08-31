@@ -41,6 +41,19 @@ export function buildDisplayItems(collection: Collection, folderId?: string): Di
   return items;
 }
 
+/**
+ * Display items across multiple collections — each collection gets a group
+ * header followed by its full tree. Used by the workspace-wide runner.
+ */
+export function buildWorkspaceDisplayItems(collections: Collection[]): DisplayItem[] {
+  const items: DisplayItem[] = [];
+  for (const collection of collections) {
+    items.push({ kind: 'collection', collectionId: collection.id, name: collection.name });
+    items.push(...buildDisplayItems(collection));
+  }
+  return items;
+}
+
 export function buildProxyRequest(req: SavedRequest): ProxyRequest {
   if (req.requestType === 'graphql') {
     return buildSavedGraphQLRequest(req);
@@ -73,7 +86,21 @@ export function httpStatusColor(status: number): string {
   return 'text-red-600 dark:text-red-400';
 }
 
-export function isVisible(item: DisplayItem, collapsedFolders: Set<string>, allFolders: Folder[]): boolean {
+/**
+ * Whether a display item is visible given collapsed folders and (in
+ * multi-collection runs) collapsed collections. A collapsed collection hides
+ * all of its folders and requests but never its own header row.
+ */
+export function isVisible(
+  item: DisplayItem,
+  collapsedFolders: Set<string>,
+  collapsedCollections: Set<string>,
+  allFolders: Folder[],
+): boolean {
+  if (item.kind === 'collection') return true;
+  if (collapsedCollections.has(item.kind === 'folder' ? item.folder.collectionId : item.request.collectionId)) {
+    return false;
+  }
   if (item.kind === 'folder') {
     const parentId = item.folder.parentId;
     if (!parentId) return true;
