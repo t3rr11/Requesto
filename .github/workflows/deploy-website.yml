@@ -1,10 +1,9 @@
 name: Deploy Website
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/website/**'
+  # Called by the release workflow so the site and the release stay matched;
+  # manual runs stay available for fixes that need to go out immediately.
+  workflow_call:
   workflow_dispatch: # allows manual trigger
 
 jobs:

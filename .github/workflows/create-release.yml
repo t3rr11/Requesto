@@ -86,9 +86,12 @@ jobs:
           VERSION="${VERSION#v}"
           npm pkg set version="$VERSION" -w requesto-electron
 
-      - name: Build backend & frontend
+      - name: Build backend, engine & frontend
+        # The frontend imports the compiled engine, so the engine must be
+        # built before the frontend on a fresh checkout.
         run: |
           npm run build:backend
+          npm run build:engine
           npm run build:frontend
 
       - name: Build Electron (${{ matrix.os }})
@@ -205,3 +208,21 @@ jobs:
             ghcr.io/t3rr11/requesto-cli:${{ steps.version.outputs.tag }}
           cache-from: type=gha,scope=cli
           cache-to: type=gha,mode=max,scope=cli
+
+  publish-cli:
+    # Tag-push workflows never fire for tags pushed with GITHUB_TOKEN, so the
+    # npm publish is invoked here once the tag exists.
+    needs: create-release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/publish.yml
+    secrets: inherit
+
+  deploy-website:
+    # Runs only after every artifact (desktop, server image, CLI image) is
+    # built and pushed, so the docs always match the released version.
+    needs: [build, docker, docker-cli]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-website.yml
+    secrets: inherit
