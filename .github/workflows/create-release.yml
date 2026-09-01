@@ -216,6 +216,8 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/publish.yml
+    with:
+      version: ${{ inputs.version }}
     secrets: inherit
 
   deploy-website:
