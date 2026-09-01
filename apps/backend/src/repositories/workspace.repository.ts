@@ -82,7 +82,7 @@ export class WorkspaceRepository extends BaseRepository {
 
   // ── Workspace mutation ───────────────────────────────────────────────────
 
-  create(name: string): Workspace {
+  create(name: string, copyFromId?: string): Workspace {
     const id = generateId();
     const workspacePath = path.join(this.workspacesDir, id);
     const registry = this.getRegistry();
@@ -95,12 +95,42 @@ export class WorkspaceRepository extends BaseRepository {
 
     this.initializeWorkspaceFiles(workspacePath);
 
+    if (copyFromId) {
+      const source = registry.workspaces.find((w) => w.id === copyFromId);
+      if (!source) {
+        throw new Error(`Cannot copy workspace data: unknown workspace "${copyFromId}"`);
+      }
+      this.copyWorkspaceData(path.join(source.path, '.requesto'), path.join(workspacePath, '.requesto'));
+    }
+
     registry.workspaces.push(workspace);
     if (!registry.activeWorkspaceId) {
       registry.activeWorkspaceId = workspace.id;
     }
     this.saveRegistry(registry);
     return workspace;
+  }
+
+  /**
+   * Copy the request-execution context of a workspace: environments, OAuth
+   * configurations, and the local OAuth secrets/token cache plus environment
+   * "current values". Collections are deliberately not copied — the purpose
+   * is that requests in a fresh workspace resolve variables and authenticate
+   * exactly as they would in the source workspace.
+   */
+  private copyWorkspaceData(sourceRequestoDir: string, targetRequestoDir: string): void {
+    for (const dir of ['environments', 'oauth-configs']) {
+      const src = path.join(sourceRequestoDir, dir);
+      if (fs.existsSync(src)) {
+        fs.cpSync(src, path.join(targetRequestoDir, dir), { recursive: true });
+      }
+    }
+    for (const file of ['oauth-secrets.json', 'oauth-tokens.json', 'active-environment.json', 'environments.local.json']) {
+      const src = path.join(sourceRequestoDir, 'local', file);
+      if (fs.existsSync(src)) {
+        fs.cpSync(src, path.join(targetRequestoDir, 'local', file));
+      }
+    }
   }
 
   createAtPath(name: string, workspacePath: string): Workspace {

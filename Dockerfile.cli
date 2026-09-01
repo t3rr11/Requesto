@@ -1,0 +1,34 @@
+# Build stage: compile the backend and engine, then bundle the CLI into a
+# single file (dist/index.mjs + dist/sandbox-worker.js, no node_modules).
+FROM node:24-alpine AS build
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY apps/backend/package.json apps/backend/package.json
+COPY packages/engine/package.json packages/engine/package.json
+COPY apps/cli/package.json apps/cli/package.json
+RUN npm ci --workspace=requesto-backend --workspace=requesto-engine --workspace=@requesto/cli
+
+COPY apps/backend/ apps/backend/
+COPY packages/engine/ packages/engine/
+COPY apps/cli/ apps/cli/
+RUN npm run build -w requesto-backend \
+  && npm run build -w requesto-engine \
+  && npm run build -w @requesto/cli
+
+# Runtime stage: the bundle only, nothing else.
+FROM node:24-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=build /app/apps/cli/dist /app/dist
+
+RUN chmod +x /app/dist/index.mjs \
+  && ln -s /app/dist/index.mjs /usr/local/bin/requesto
+
+# Default workspace mount point
+RUN mkdir /work && chown node:node /work
+WORKDIR /work
+USER node
+
+ENTRYPOINT ["requesto"]

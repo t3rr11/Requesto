@@ -364,7 +364,7 @@ export function FolderItem({
       <CollectionRunnerDialog
         isOpen={runnerOpen}
         onClose={() => setRunnerOpen(false)}
-        collection={collection}
+        collections={[collection]}
         folderId={folder.id}
       />
     </div>

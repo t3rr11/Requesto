@@ -1,0 +1,86 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build backend and engine
+        # Engine and CLI tests run against the compiled backend; CLI and
+        # frontend tests import the compiled engine.
+        run: |
+          npm run build -w requesto-backend
+          npm run build -w requesto-engine
+
+      - name: Backend unit tests
+        run: npm run test -w requesto-backend
+
+      - name: Engine unit tests
+        run: npm run test -w requesto-engine
+
+      - name: CLI unit tests
+        run: npm run test -w @requesto/cli
+
+      - name: Frontend unit tests
+        run: npm run test:frontend
+
+  api-regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build backend, engine and CLI
+        run: |
+          npm run build:backend
+          npm run build -w requesto-engine
+          npm run build -w @requesto/cli
+
+      - name: Run regression suite with the Requesto CLI
+        # The CLI boots its own embedded scratch server (seeded from the
+        # repo's .requesto workspace), so no separate backend is started.
+        run: |
+          node apps/cli/dist/index.mjs run . \
+            --environment "Local Backend" \
+            --var "baseUrl={{requestoServerUrl}}" \
+            --bail \
+            --reporter junit:test-results/junit.xml
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: requesto-regression-junit
+          path: test-results/junit.xml
+
+      - name: Publish test report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Requesto regression
+          path: test-results/junit.xml
+          reporter: java-junit

@@ -6,9 +6,31 @@ import { EnvironmentService } from './environment.service';
 import { HistoryService } from './history.service';
 import { OAuthService } from './oauth.service';
 import { applyAuthentication, getAxiosAuthConfig, type OAuthTokenResolver } from '../utils/auth';
+import { substituteInAuth, substituteInRequest } from '../utils/variable-substitution';
 import { getHttpsAgent } from '../utils/httpsAgent';
 import { encodeResponseBody } from '../utils/responseEncoding';
+import type { Environment } from '../models/environment';
 import type { ProxyRequest, ProxyResponse, FormDataEntry, BodyType } from '../models/proxy';
+
+/**
+ * Optional per-call overrides for `executeRequest`. Used by the headless CLI
+ * to control substitution and token resolution; omit for the default
+ * behaviour (active workspace environment + service-level OAuth resolver).
+ */
+export interface ExecuteRequestOptions {
+  /**
+   * Environment used for `{{variable}}` substitution. Pass `null` to disable
+   * substitution (caller already substituted); omit to use the workspace's
+   * active environment.
+   */
+  environment?: Environment | null;
+  /** Overrides the service-level OAuth token resolver for this call. */
+  oauthResolver?: OAuthTokenResolver;
+  /** Request timeout in ms (default 30000). */
+  timeout?: number;
+  /** Set `false` to skip writing to request history (default true). */
+  saveHistory?: boolean;
+}
 
 function isValidUrl(urlString: string): boolean {
   try {
@@ -48,7 +70,7 @@ function buildUrlEncodedBody(entries: FormDataEntry[]): string {
 }
 
 /** Case-insensitive header existence check. */
-function hasHeaderCI(headers: Record<string, string>, name: string): boolean {
+function hasHeaderCI(headers: Record<string, string | null>, name: string): boolean {
   const target = name.toLowerCase();
   return Object.keys(headers).some((k) => k.toLowerCase() === target);
 }
@@ -72,8 +94,8 @@ function buildBodyAndHeaders(opts: {
   body?: string;
   formDataEntries?: FormDataEntry[];
   baseHeaders: Record<string, string>;
-}): { headers: Record<string, string>; data: unknown; bufferBody?: Buffer | string } {
-  const headers = { ...opts.baseHeaders };
+}): { headers: Record<string, string | null>; data: unknown; bufferBody?: Buffer | string } {
+  const headers: Record<string, string | null> = { ...opts.baseHeaders };
   if (!methodSupportsBody(opts.method)) {
     return { headers, data: undefined };
   }
@@ -108,6 +130,13 @@ function buildBodyAndHeaders(opts: {
     return { headers, data: opts.body, bufferBody: opts.body };
   }
 
+  // No body: axios would fabricate `Content-Type: application/x-www-form-urlencoded`,
+  // which strict servers (Fastify, and others) reject with 415 on empty POST/PUT/PATCH.
+  // Suppress it unless the user set one explicitly — a `null` header value is
+  // dropped by axios.
+  if (!userHasContentType) {
+    headers['Content-Type'] = null;
+  }
   return { headers, data: undefined };
 }
 
@@ -127,20 +156,29 @@ export class ProxyService {
     }
   }
 
-  async executeRequest(req: ProxyRequest): Promise<ProxyResponse> {
+  async executeRequest(req: ProxyRequest, opts: ExecuteRequestOptions = {}): Promise<ProxyResponse> {
     const { method, url, headers, body, bodyType, formDataEntries, auth, insecureTls } = req;
 
-    if (!isValidUrl(url)) {
-      throw new Error('Invalid URL format');
+    // When an explicit environment is provided via options (key present) use
+    // it for substitution; otherwise fall back to the workspace's active env.
+    const hasEnvOverride = Object.prototype.hasOwnProperty.call(opts, 'environment');
+    const effectiveEnv = hasEnvOverride ? (opts.environment ?? null) : this.environmentService.getActive();
+
+    const substituted = substituteInRequest({ url, headers, body, formDataEntries }, effectiveEnv);
+    const substitutedAuth = substituteInAuth(auth, effectiveEnv);
+
+    // Validate AFTER substitution: templated URLs ({{baseUrl}}/...) become
+    // valid once the environment is applied, and genuinely unresolved
+    // variables fail here with the URL that was actually received.
+    if (!isValidUrl(substituted.url)) {
+      throw new Error(`Invalid URL format: ${substituted.url}`);
     }
 
-    const substituted = this.environmentService.substituteInRequest({ url, headers, body, formDataEntries });
-    const substitutedAuth = this.environmentService.substituteInAuth(auth);
     const authenticated = await applyAuthentication(
       substitutedAuth,
       substituted.headers,
       substituted.url,
-      this.oauthResolver,
+      opts.oauthResolver ?? this.oauthResolver,
     );
 
     const startTime = Date.now();
@@ -160,7 +198,7 @@ export class ProxyService {
       url: authenticated.url,
       headers: built.headers,
       validateStatus: () => true,
-      timeout: 30000,
+      timeout: opts.timeout ?? 30000,
       responseType: 'arraybuffer',
       ...(httpsAgent && { httpsAgent }),
     };
@@ -207,16 +245,18 @@ export class ProxyService {
       duration,
     };
 
-    this.historyService.save({
-      method,
-      url,
-      headers,
-      body,
-      bodyType,
-      status: response.status,
-      statusText: response.statusText,
-      duration,
-    });
+    if (opts.saveHistory !== false) {
+      this.historyService.save({
+        method,
+        url,
+        headers,
+        body,
+        bodyType,
+        status: response.status,
+        statusText: response.statusText,
+        duration,
+      });
+    }
 
     return proxyResponse;
   }
@@ -245,8 +285,12 @@ export class ProxyService {
       baseHeaders: authenticated.headers || {},
     });
 
-    const fetchHeaders = built.headers;
-    const fetchBody = built.bufferBody;
+  // node-fetch stringifies header values; drop the null placeholders used to
+  // suppress axios's default Content-Type (node-fetch doesn't add one anyway).
+  const fetchHeaders = Object.fromEntries(
+    Object.entries(built.headers).filter(([, value]) => value !== null),
+  ) as Record<string, string>;
+  const fetchBody = built.bufferBody;
 
     const fetchOptions: Record<string, unknown> = {
       method: method.toUpperCase(),

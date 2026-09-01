@@ -1,60 +1,6 @@
 import { CheckCircle, XCircle, Minus, Loader2 } from 'lucide-react';
-import type { Collection, Folder, SavedRequest } from '../../store/collections/types';
-import type { ProxyRequest } from '../../store/request/types';
-import { buildSavedGraphQLRequest } from '../../helpers/request';
+import type { Folder } from '../../store/collections/types';
 import type { DisplayItem, RequestStatus } from './types';
-
-export function buildDisplayItems(collection: Collection, folderId?: string): DisplayItem[] {
-  const items: DisplayItem[] = [];
-
-  function addFolderContents(fId: string, depth: number) {
-    const reqs = collection.requests
-      .filter(r => r.folderId === fId)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    reqs.forEach(r => items.push({ kind: 'request', request: r, depth }));
-
-    const childFolders = (collection.folders || [])
-      .filter(f => f.parentId === fId)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    for (const cf of childFolders) {
-      items.push({ kind: 'folder', folder: cf, depth });
-      addFolderContents(cf.id, depth + 1);
-    }
-  }
-
-  if (folderId) {
-    addFolderContents(folderId, 0);
-  } else {
-    const rootFolders = (collection.folders || [])
-      .filter(f => !f.parentId)
-      .sort((a, b) => a.name.localeCompare(b.name));
-    for (const rf of rootFolders) {
-      items.push({ kind: 'folder', folder: rf, depth: 0 });
-      addFolderContents(rf.id, 1);
-    }
-    const rootReqs = collection.requests
-      .filter(r => !r.folderId)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-    rootReqs.forEach(r => items.push({ kind: 'request', request: r, depth: 0 }));
-  }
-
-  return items;
-}
-
-export function buildProxyRequest(req: SavedRequest): ProxyRequest {
-  if (req.requestType === 'graphql') {
-    return buildSavedGraphQLRequest(req);
-  }
-  return {
-    method: req.method,
-    url: req.url,
-    headers: req.headers,
-    body: req.body,
-    bodyType: req.bodyType,
-    formDataEntries: req.formDataEntries,
-    auth: req.auth,
-  };
-}
 
 export function statusIcon(status: RequestStatus): React.ReactElement {
   switch (status) {
@@ -73,7 +19,21 @@ export function httpStatusColor(status: number): string {
   return 'text-red-600 dark:text-red-400';
 }
 
-export function isVisible(item: DisplayItem, collapsedFolders: Set<string>, allFolders: Folder[]): boolean {
+/**
+ * Whether a display item is visible given collapsed folders and (in
+ * multi-collection runs) collapsed collections. A collapsed collection hides
+ * all of its folders and requests but never its own header row.
+ */
+export function isVisible(
+  item: DisplayItem,
+  collapsedFolders: Set<string>,
+  collapsedCollections: Set<string>,
+  allFolders: Folder[],
+): boolean {
+  if (item.kind === 'collection') return true;
+  if (collapsedCollections.has(item.kind === 'folder' ? item.folder.collectionId : item.request.collectionId)) {
+    return false;
+  }
   if (item.kind === 'folder') {
     const parentId = item.folder.parentId;
     if (!parentId) return true;

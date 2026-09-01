@@ -1,0 +1,9 @@
+{
+  "id": "env-ci-demo",
+  "name": "ci",
+  "variables": [
+    { "key": "baseUrl", "value": "http://localhost:1", "enabled": true },
+    { "key": "apiKey", "value": "from-env-file", "enabled": true, "isSecret": true },
+    { "key": "scratchBase", "value": "{{requestoServerUrl}}", "enabled": true }
+  ]
+}

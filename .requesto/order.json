@@ -1,5 +1,6 @@
 {
   "collections": [
+    "col-api-health",
     "col-api-collections",
     "col-api-environments",
     "col-api-workspaces"

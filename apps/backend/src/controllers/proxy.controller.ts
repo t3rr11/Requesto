@@ -48,7 +48,12 @@ const proxyController: FastifyPluginAsync<Options> = async (server, opts) => {
             duration,
           });
         }
-        throw error;
+        // Request-construction problems (unresolved variables, invalid URL,
+        // malformed auth config) — surface the real message instead of a
+        // generic 500 so the UI/CLI can show what is actually wrong.
+        return reply.code(400).send({
+          error: error instanceof Error ? error.message : 'Request failed',
+        });
       }
     },
   );

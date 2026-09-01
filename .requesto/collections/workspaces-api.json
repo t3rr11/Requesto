@@ -1,7 +1,7 @@
 {
   "id": "col-api-workspaces",
   "name": "Workspaces API",
-  "description": "Smoke tests for the workspace endpoints of Requesto's own backend. \"Activate Workspace\", \"Export Workspace\" and \"Delete Workspace\" operate on {{workspaceId}} — a scratch workspace created via \"Create Workspace\".",
+  "description": "Regression tests for the workspace endpoints of Requesto's own backend. The suite is self-contained: 'Create Workspace' captures the id and path, later requests operate on that scratch workspace, and 'Delete Workspace' cleans up. Note that 'Activate Workspace' temporarily switches the active workspace while the suite runs.",
   "folders": [],
   "requests": [
     {
@@ -17,7 +17,7 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('active workspace id is present', () => {\n  expect(response.json().activeWorkspaceId).toBeDefined();\n});\ntest('returns at least one workspace', () => {\n  expect(response.json().workspaces.length).toBeGreaterThan(0);\n});\ntest('remember the active workspace', () => {\n  environment.set('activeWorkspaceIdBefore', response.json().activeWorkspaceId);\n});"
     },
     {
       "id": "req-api-ws-active",
@@ -32,7 +32,7 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('active workspace matches the listing', () => {\n  expect(response.json().id).toBe(environment.get('activeWorkspaceIdBefore'));\n});\ntest('workspace has a name and path', () => {\n  expect(response.json().name).toBeDefined();\n  expect(response.json().path).toBeDefined();\n});"
     },
     {
       "id": "req-api-ws-create",
@@ -47,13 +47,13 @@
       "requestType": "http",
       "body": "{\n  \"name\": \"Test Workspace\"\n}",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('workspace gets a generated id', () => {\n  expect(response.json().id).toMatch(/^ws-/);\n});\ntest('workspace path points into the data dir', () => {\n  expect(response.json().path).toContain(response.json().id);\n  expect(response.json().path).toContain('workspaces');\n});\ntest('capture id and path for later requests', () => {\n  environment.set('createdWorkspaceId', response.json().id);\n  environment.set('workspacePath', response.json().path);\n  environment.set('workspacePathEncoded', encodeURIComponent(response.json().path));\n});"
     },
     {
       "id": "req-api-ws-activate",
       "name": "Activate Workspace",
       "method": "POST",
-      "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/activate",
+      "url": "{{baseUrl}}/api/workspaces/{{createdWorkspaceId}}/activate",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -62,13 +62,13 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('activated workspace is the created one', () => {\n  expect(response.json().id).toBe(environment.get('createdWorkspaceId'));\n});"
     },
     {
       "id": "req-api-ws-export",
       "name": "Export Workspace",
       "method": "GET",
-      "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}/export",
+      "url": "{{baseUrl}}/api/workspaces/{{createdWorkspaceId}}/export",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -77,13 +77,13 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('export carries the workspace name', () => {\n  expect(response.json().name).toBe('Test Workspace');\n});\ntest('export includes collection and environment bundles', () => {\n  expect(Array.isArray(response.json()['collections.json'])).toBeTruthy();\n  expect(response.json()['environments.json'].environments).toBeDefined();\n});"
     },
     {
       "id": "req-api-ws-inspect",
       "name": "Inspect Workspace Path",
       "method": "GET",
-      "url": "{{baseUrl}}/api/workspaces/inspect?path=/absolute/path/to/a/project/folder",
+      "url": "{{baseUrl}}/api/workspaces/inspect?path={{workspacePathEncoded}}",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -92,13 +92,13 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('created workspace path exists on disk', () => {\n  expect(response.json().exists).toBe(true);\n  expect(response.json().isDirectory).toBe(true);\n});"
     },
     {
       "id": "req-api-ws-delete",
       "name": "Delete Workspace",
       "method": "DELETE",
-      "url": "{{baseUrl}}/api/workspaces/{{workspaceId}}",
+      "url": "{{baseUrl}}/api/workspaces/{{createdWorkspaceId}}",
       "headers": {},
       "bodyType": "json",
       "auth": { "type": "none" },
@@ -107,7 +107,7 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": ""
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
     }
   ]
 }

@@ -119,6 +119,16 @@ export default defineConfig({
         ],
       },
       {
+        text: 'CLI & CI',
+        items: [
+          { text: 'CLI Overview', link: '/cli/' },
+          { text: 'Quickstart', link: '/cli/quickstart' },
+          { text: 'CI Authentication', link: '/cli/ci' },
+          { text: 'CLI Reference', link: '/cli/reference' },
+          { text: 'Docker Image', link: '/cli/docker' },
+        ],
+      },
+      {
         text: 'Features',
         items: [
           { text: 'Workspaces', link: '/features/workspaces' },

@@ -488,7 +488,7 @@ export function CollectionItem({
       <CollectionRunnerDialog
         isOpen={runnerOpen}
         onClose={() => setRunnerOpen(false)}
-        collection={collection}
+        collections={[collection]}
       />
     </div>
   );
