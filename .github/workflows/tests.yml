@@ -1,8 +1,8 @@
 name: Tests
 
 on:
-  push:
-    branches: [main]
+  # PR-only for now: a single committer validates via PRs, releases run
+  # their own full pipeline (create-release.yml).
   pull_request:
 
 jobs:

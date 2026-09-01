@@ -1,6 +1,9 @@
 name: Publish
 
 on:
+  # Called by the release workflow (a tag pushed with GITHUB_TOKEN does not
+  # trigger tag-push workflows); also runs for manually pushed tags.
+  workflow_call:
   push:
     tags: ['v*']
 
