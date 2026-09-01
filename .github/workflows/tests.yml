@@ -19,6 +19,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build backend and engine
+        # Engine and CLI tests run against the compiled backend; CLI and
+        # frontend tests import the compiled engine.
+        run: |
+          npm run build -w requesto-backend
+          npm run build -w requesto-engine
+
       - name: Backend unit tests
         run: npm run test -w requesto-backend
 

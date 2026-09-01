@@ -12,7 +12,7 @@ Two registries are published in lockstep on every release:
 - `ghcr.io/t3rr11/requesto-cli`
 - `terrii/requesto-cli` (Docker Hub)
 
-Tags: `latest` and the release version (e.g. `1.7.0`). Pin a version in pipelines for reproducible builds.
+Tags: `latest` and the release version (e.g. `1.8.0`). Pin a version in pipelines for reproducible builds.
 
 ## Basic usage
 

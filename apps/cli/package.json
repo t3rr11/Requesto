@@ -1,6 +1,6 @@
 {
   "name": "@requesto/cli",
-  "version": "1.0.0",
+  "version": "1.8.0",
   "description": "Run your Requesto collections from the terminal and CI pipelines",
   "type": "module",
   "main": "dist/index.mjs",
@@ -21,13 +21,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "commander": "^15.0.0",
-    "requesto-backend": "1.0.0",
-    "requesto-engine": "1.0.0"
+    "commander": "^15.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
     "esbuild": "^0.28.1",
+    "requesto-backend": "1.8.0",
+    "requesto-engine": "1.8.0",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
