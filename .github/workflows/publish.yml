@@ -2,8 +2,20 @@ name: Publish
 
 on:
   # Called by the release workflow (a tag pushed with GITHUB_TOKEN does not
-  # trigger tag-push workflows); also runs for manually pushed tags.
+  # trigger tag-push workflows); also runs for manually pushed tags and for
+  # manual CLI-only deployments.
   workflow_call:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. v1.8.0). Defaults to the version in apps/cli/package.json.'
+        type: string
+        required: false
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 1.8.0). Leave empty to publish the version already in apps/cli/package.json.'
+        type: string
+        required: false
   push:
     tags: ['v*']
 
@@ -28,8 +40,29 @@ jobs:
           npm run build -w requesto-engine
           npm run build -w @requesto/cli
 
-      - name: Sync package version with the tag
-        run: npm version "${GITHUB_REF_NAME#v}" --no-git-tag-version --workspace @requesto/cli
+      - name: Determine version
+        id: version
+        run: |
+          # Called from the release flow or a manual dispatch: an explicit
+          # version input wins. On a tag push, the tag is the version.
+          # Otherwise publish the version already in apps/cli/package.json.
+          if [ -n "$EXPLICIT_VERSION" ]; then
+            echo "set-version=true" >> "$GITHUB_OUTPUT"
+            echo "version=$EXPLICIT_VERSION" >> "$GITHUB_OUTPUT"
+          elif [[ "$GITHUB_REF_NAME" == v* ]]; then
+            echo "set-version=true" >> "$GITHUB_OUTPUT"
+            echo "version=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "set-version=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          EXPLICIT_VERSION: ${{ inputs.version }}
+
+      - name: Sync package version
+        if: steps.version.outputs.set-version == 'true'
+        run: npm version "${VERSION#v}" --no-git-tag-version --workspace @requesto/cli
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
 
       - name: Publish @requesto/cli
         run: npm publish --workspace @requesto/cli
