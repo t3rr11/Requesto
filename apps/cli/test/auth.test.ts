@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CliOAuthRepository, createTokenResolver } from '../src/auth';
+import { CliOAuthRepository } from '../src/auth/cli-oauth-repository.ts'
+import { createTokenResolver } from '../src/auth/token-resolver.ts';
 import { CliAuthError } from '../src/cli-error';
 import { OAuthService } from 'requesto-backend/services/oauth.service';
 

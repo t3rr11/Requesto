@@ -13,19 +13,22 @@
     "http"
   ],
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "concurrently \"npm run dev -w requesto-backend\" \"npm run dev -w requesto-frontend\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
     "dev:backend": "npm run dev -w requesto-backend",
     "dev:frontend": "npm run dev -w requesto-frontend",
     "dev:electron": "concurrently \"npm run dev -w requesto-backend\" \"npm run dev -w requesto-frontend\" \"npm run dev -w requesto-electron\" --names \"backend,frontend,electron\" --prefix-colors \"blue,green,magenta\"",
-    "build": "npm run build -w requesto-backend && npm run build -w requesto-frontend && npm run build -w requesto-electron",
+    "build": "npm run build -w requesto-backend && npm run build -w requesto-engine && npm run build -w requesto-frontend && npm run build -w requesto-electron",
     "build:backend": "npm run build -w requesto-backend",
+    "build:engine": "npm run build -w requesto-engine",
     "build:frontend": "npm run build -w requesto-frontend",
     "build:electron": "npm run build -w requesto-electron",
     "test:frontend": "npm run test -w requesto-frontend",
-    "test:cli": "npm run build:backend && npm run test -w requesto-cli",
+    "test:engine": "npm run test -w requesto-engine",
+    "test:cli": "npm run build:backend && npm run build:engine && npm run test -w @requesto/cli",
     "test:e2e": "npm run test -w requesto-playwright",
     "test:e2e:ui": "npm run test:ui -w requesto-playwright",
     "test:e2e:headed": "npm run test:headed -w requesto-playwright",
@@ -39,8 +42,8 @@
     "docs:dev": "npm run dev -w requesto-website",
     "docs:build": "npm run build -w requesto-website",
     "docs:preview": "npm run preview -w requesto-website",
-    "cli": "node apps/cli/dist/index.js run . --isolated http://localhost:4747",
-    "build:cli": "npm run build:backend && npm run build -w requesto-cli",
+    "cli": "node apps/cli/dist/index.mjs run . --environment \"Local Backend\" --var \"baseUrl={{requestoServerUrl}}\"",
+    "build:cli": "npm run build:backend && npm run build:engine && npm run build -w @requesto/cli",
     "dev:cli": "npm run build:cli && npm run cli",
     "version": "npm version %npm_package_version% --no-git-tag-version -w requesto-electron && git add apps/electron/package.json"
   },

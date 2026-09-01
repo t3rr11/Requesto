@@ -5,6 +5,10 @@
   "main": "dist/server.js",
   "exports": {
     ".": "./dist/server.js",
+    "./app": {
+      "types": "./dist/app.d.ts",
+      "default": "./dist/app.js"
+    },
     "./errors/*": {
       "types": "./dist/errors/*.d.ts",
       "default": "./dist/errors/*.js"

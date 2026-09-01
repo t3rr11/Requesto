@@ -1,11 +1,12 @@
 import fs from 'node:fs';
-import { createTokenResolver } from './auth.ts';
-import { CliError } from './cli-error.ts';
-import { runCollections } from './engine/runner.ts';
-import { WorkspaceIsolation } from './isolation.ts';
-import { collectEnvVars, applyVarOverrides, normalizeKey, parseEnvFile, parseKeyValuePairs } from './vars.ts';
-import { resolveWorkspacePath, CliWorkspace } from './workspace.ts';
-import type { RunSummary, RunnerEvent } from './types.ts';
+import { EmbeddedRequestoServer, ScratchWorkspaceIsolation, runCollections } from 'requesto-engine';
+import type { Environment, RunnerEvent, RunSummary } from 'requesto-engine';
+import { nodeScriptRunner } from 'requesto-engine/node-scripts';
+import { createTokenResolver } from '../auth/token-resolver.ts';
+import { CliError } from '../cli-error.ts';
+import { collectEnvVars, applyVarOverrides, normalizeKey, parseEnvFile, parseKeyValuePairs } from '../vars.ts';
+import { resolveWorkspacePath, CliWorkspace } from '../workspace/workspace.ts';
+import type { RunResult } from '../types.ts';
 
 export type RunOptions = {
   /** Path to the repository or the .requesto directory. Defaults to cwd. */
@@ -14,6 +15,8 @@ export type RunOptions = {
   collections?: string[];
   /** Folder name/id selectors within the selected collections (repeatable). */
   folders?: string[];
+  /** Collection name/id selectors to skip entirely (repeatable). */
+  excludeCollections?: string[];
   /** Environment name/id, or "none". Default: the workspace's active environment. */
   environment?: string;
   /** key=value variable overrides (repeatable). Highest precedence. */
@@ -35,29 +38,31 @@ export type RunOptions = {
   /** Persist OAuth tokens acquired during the run back to .requesto/local/. */
   persist?: boolean;
   /**
-   * Run in an isolated server-side workspace on the Requesto server at the
-   * given URL: a scratch workspace is created and activated for the run and
-   * removed afterwards, restoring the previously active workspace. Requires
-   * the target to be a running Requesto backend.
+   * Target an external Requesto server instead of the embedded scratch
+   * server. The server's active workspace is protected by a scratch
+   * workspace for the duration of the run and restored afterwards.
    */
-  isolated?: string;
+  server?: string;
   /** Progress callback for streaming reporters (see RunnerEvent). */
   onEvent?: (event: RunnerEvent) => void;
 };
 
-export type RunResult = {
-  summary: RunSummary;
-  workspacePath: string;
-  environmentName: string | null;
-};
+/**
+ * The built-in variable that resolves to the scratch server's base URL
+ * (embedded or external). Environments use it as
+ * `baseUrl = {{requestoServerUrl}}` so Requesto-API suites run anywhere.
+ */
+export const BUILTIN_SERVER_VAR = 'requestoServerUrl';
 
 /**
  * Execute the `requesto run` command. Resolves the workspace, merges
- * variable/auth overrides from flags and environment variables, runs the
- * collections through the backend engine and returns the summary.
+ * variable/auth overrides from flags and environment variables, starts a
+ * scratch server when the run needs one, runs the collections through the
+ * engine and returns the summary.
  *
- * Exit-code convention (implemented by the caller):
- *  0 = all passed · 1 = failures/errors · 2 = configuration error (CliError)
+ * The run never mutates the local workspace, and never touches a server's
+ * real data: local runs use an embedded ephemeral server, external servers
+ * are protected by a scratch workspace.
  */
 export async function runCommand(opts: RunOptions): Promise<RunResult> {
   const started = Date.now();
@@ -107,26 +112,58 @@ export async function runCommand(opts: RunOptions): Promise<RunResult> {
   );
   const oauthResolver = createTokenResolver(workspace.oauthService, tokenOverrides);
 
-  // 5. Run — inside an isolated server-side workspace when requested.
-  const isolation = opts.isolated ? new WorkspaceIsolation({ serverUrl: opts.isolated }) : null;
-  let summary: RunSummary;
-  if (isolation) {
+  // 5. Scratch server. The run targets a Requesto server only when something
+  //    actually references {{requestoServerUrl}} (or --server is given).
+  //    An explicit --var override of the built-in variable pins the URL and
+  //    disables the embedded server.
+  let serverUrl: string | null = null;
+  const externalServer = opts.server ?? null;
+  const pinnedUrl = varOverrides.get(BUILTIN_SERVER_VAR) ?? null;
+  let embedded: EmbeddedRequestoServer | null = null;
+  let isolation: ScratchWorkspaceIsolation | null = null;
+
+  if (externalServer) {
+    isolation = new ScratchWorkspaceIsolation({ serverUrl: externalServer });
     await isolation.setup();
-    process.stderr.write(`Isolated run: using scratch workspace on ${isolation.target}\n`);
+    serverUrl = externalServer;
+  } else if (!pinnedUrl && referencesBuiltin(effectiveEnv)) {
+    embedded = new EmbeddedRequestoServer({ requestoDir: workspacePath });
+    await embedded.start();
+    serverUrl = embedded.url;
   }
+
+  const runEnv = withBuiltinServerVar(effectiveEnv, serverUrl);
+
   try {
-    summary = await runCollections({
+    // 6. Run
+    const summary = await runCollections({
       collections,
-      environment: effectiveEnv,
+      environment: runEnv,
       oauthResolver,
       send: (request, ctx) => workspace.sendRequest(request, ctx),
+      scripts: nodeScriptRunner,
       folders: opts.folders,
+      excludeCollections: opts.excludeCollections,
       bail: opts.bail,
       insecure: opts.insecure,
       timeout: opts.timeout,
       onEvent: opts.onEvent,
     });
+
+    return {
+      summary: { ...summary, totalDuration: Date.now() - started },
+      workspacePath,
+      environmentName: runEnv?.name ?? null,
+      serverUrl,
+    };
   } finally {
+    if (embedded) {
+      try {
+        await embedded.stop();
+      } catch (err) {
+        process.stderr.write(`Warning: ${err instanceof Error ? err.message : String(err)}\n`);
+      }
+    }
     if (isolation) {
       try {
         await isolation.teardown();
@@ -135,11 +172,32 @@ export async function runCommand(opts: RunOptions): Promise<RunResult> {
       }
     }
   }
+}
 
+/** Compute the process exit code for a run summary. */
+export function computeExitCode(summary: RunSummary): number {
+  return summary.failed + summary.errored > 0 ? 1 : 0;
+}
+
+/** Whether any enabled variable references the built-in server variable. */
+function referencesBuiltin(env: Environment | null): boolean {
+  if (!env) return false;
+  const pattern = new RegExp(`{{\\s*${BUILTIN_SERVER_VAR}\\s*}}`);
+  return env.variables.some(
+    (v) => v.enabled && pattern.test(v.currentValue ?? v.value),
+  );
+}
+
+/**
+ * Expose the scratch server URL to the run as the built-in variable, unless
+ * the environment already defines it (the user pinned their own value).
+ */
+function withBuiltinServerVar(env: Environment | null, serverUrl: string | null): Environment | null {
+  if (!env || !serverUrl) return env;
+  if (env.variables.some((v) => v.key === BUILTIN_SERVER_VAR)) return env;
   return {
-    summary: { ...summary, totalDuration: Date.now() - started },
-    workspacePath,
-    environmentName: effectiveEnv?.name ?? null,
+    ...env,
+    variables: [...env.variables, { key: BUILTIN_SERVER_VAR, value: serverUrl, enabled: true }],
   };
 }
 
@@ -193,9 +251,4 @@ function mergeNormalised(...maps: Map<string, string>[]): Map<string, string> {
     for (const [k, v] of map) out.set(normalizeKey(k), v);
   }
   return out;
-}
-
-/** Compute the process exit code for a run summary. */
-export function computeExitCode(summary: RunSummary): number {
-  return summary.failed + summary.errored > 0 ? 1 : 0;
 }

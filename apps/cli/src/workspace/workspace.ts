@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
 import { CollectionRepository } from 'requesto-backend/repositories/collection.repository';
 import { EnvironmentRepository } from 'requesto-backend/repositories/environment.repository';
@@ -8,11 +8,10 @@ import { EnvironmentService } from 'requesto-backend/services/environment.servic
 import { HistoryService } from 'requesto-backend/services/history.service';
 import { OAuthService } from 'requesto-backend/services/oauth.service';
 import { ProxyService } from 'requesto-backend/services/proxy.service';
-import type { OAuthTokenResolver } from 'requesto-backend/utils/auth';
-import type { Collection } from './types.ts';
-import type { Environment, EnvironmentsData } from './types.ts';
-import { CliError } from './cli-error.ts';
-import { CliOAuthRepository, type CliRepoOptions } from './auth.ts';
+import type { OAuthTokenResolver, ProxyRequest } from 'requesto-engine';
+import type { Collection, Environment, EnvironmentsData } from 'requesto-engine';
+import { CliError } from '../cli-error.ts';
+import { CliOAuthRepository, type CliRepoOptions } from '../auth/cli-oauth-repository.ts';
 
 export type WorkspaceOptions = CliRepoOptions;
 
@@ -20,9 +19,9 @@ export type WorkspaceOptions = CliRepoOptions;
  * A loaded `.requesto` workspace wired to the backend engine
  * (repositories → services → ProxyService), ready to execute requests.
  *
- * The workspace is treated as read-only by default: OAuth tokens acquired
- * during the run are held in memory, request history is not written and
- * environment "current values" live only for the duration of the run.
+ * The workspace is treated as read-only: OAuth tokens acquired during the
+ * run are held in memory, request history is not written and environment
+ * "current values" live only for the duration of the run.
  */
 export class CliWorkspace {
   readonly dataDir: string;
@@ -86,13 +85,13 @@ export class CliWorkspace {
     throw new CliError(
       available
         ? `Environment "${selector}" not found. Available: ${available} (or "none").`
-        : `Environment "${selector}" not found — this workspace has no environments (use "none" or define one).`,
+        : `Environment "${selector}" not found: this workspace has no environments (use "none" or define one).`,
     );
   }
 
   /** Send a request through the backend engine with the given per-run options. */
   sendRequest(
-    request: Parameters<ProxyService['executeRequest']>[0],
+    request: ProxyRequest,
     opts: { oauthResolver: OAuthTokenResolver; timeout?: number },
   ): ReturnType<ProxyService['executeRequest']> {
     return this.proxyService.executeRequest(request, {
@@ -108,7 +107,7 @@ export class CliWorkspace {
 
 /**
  * Locate the `.requesto` directory. Accepts the workspace directory itself or
- * any directory inside a workspace tree — the search walks up parent
+ * any directory inside a workspace tree: the search walks up parent
  * directories until a `.requesto` folder is found (so running from a repo
  * subdirectory just works).
  */

@@ -1,4 +1,4 @@
-import type { Environment } from './types.ts';
+import type { Environment } from 'requesto-engine';
 import { CliError } from './cli-error.ts';
 
 /**

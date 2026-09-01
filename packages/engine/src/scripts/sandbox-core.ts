@@ -1,15 +1,13 @@
-/**
- * Script sandbox core — runs user scripts in an isolated scope.
+﻿/**
+ * Script sandbox core: runs user scripts in an isolated scope.
  *
- * This is a faithful port of the client's browser sandbox
- * (apps/frontend/src/helpers/scriptWorker.ts) so test scripts behave
- * identically in the client and headless runs. The only addition is
- * shadowing Node-specific globals (process, require, Buffer, ...) which
- * do not exist in the browser worker.
+ * This is the single implementation of the script API shared by the app
+ * (browser Web Worker wrapper) and headless runs (Node worker thread
+ * wrapper). Host-specific globals are shadowed via the preamble so user
+ * scripts cannot reach fetch, process, require, etc.
  *
  * All inputs arrive as plain JSON-serialisable objects and results are
- * returned the same way — the worker wrapper (sandbox-worker.ts) does the
- * thread plumbing.
+ * returned the same way: the host wrappers do the worker plumbing.
  */
 
 export type TestResult = { name: string; passed: boolean; error?: string };
@@ -35,8 +33,9 @@ export type PreRequestOutcome = { envOverrides: Record<string, string> };
 export type TestOutcome = { testResults: TestResult[]; envOverrides: Record<string, string> };
 
 // Shadowed globals prepended to every user script. These shadow the
-// thread-global equivalents so user scripts cannot reach fetch, process,
-// require, etc.
+// global equivalents so user scripts cannot reach fetch, process,
+// require, etc. Browser hosts have no process/require/Buffer: shadowing
+// them there is harmless.
 const SHADOWED_GLOBALS = `
 "use strict";
 const self = undefined;

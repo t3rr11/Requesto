@@ -4,6 +4,11 @@ import { AuthConfig, FormDataEntry } from '../models/proxy';
 /**
  * Replace all `{{variableName}}` placeholders in a string with values
  * from the active environment. Disabled variables are skipped.
+ *
+ * Variable values may themselves reference other variables (e.g. a
+ * `baseUrl` variable set to `{{requestoServerUrl}}`); references are
+ * resolved recursively and cycles are left unresolved rather than
+ * looping forever.
  */
 export function substituteVariables(
   text: string,
@@ -11,15 +16,49 @@ export function substituteVariables(
 ): string {
   if (!environment) return text;
 
+  const values = getResolvedValues(environment);
   let result = text;
-  for (const variable of environment.variables) {
-    if (variable.enabled) {
-      const pattern = new RegExp(`{{\\s*${escapeRegex(variable.key)}\\s*}}`, 'g');
-      // currentValue (set by pre-request scripts) takes precedence over value (initial)
-      result = result.replace(pattern, variable.currentValue ?? variable.value);
-    }
+  for (const [key, value] of values) {
+    const pattern = new RegExp(`{{\\s*${escapeRegex(key)}\\s*}}`, 'g');
+    result = result.replace(pattern, value);
   }
   return result;
+}
+
+/**
+ * Environment variables as a key → fully-resolved value map. Only enabled
+ * variables are included; `currentValue` (set by pre-request scripts) takes
+ * precedence over `value` (initial).
+ */
+function getResolvedValues(environment: Environment): Map<string, string> {
+  const raw = new Map<string, string>();
+  for (const variable of environment.variables) {
+    if (variable.enabled) {
+      raw.set(variable.key, variable.currentValue ?? variable.value);
+    }
+  }
+
+  const resolved = new Map<string, string>();
+  const visiting = new Set<string>();
+
+  const resolve = (key: string): string => {
+    const memo = resolved.get(key);
+    if (memo !== undefined) return memo;
+    // Cycle: return the raw value so resolution terminates.
+    if (visiting.has(key)) return raw.get(key) ?? '';
+    visiting.add(key);
+    const rawValue = raw.get(key) ?? '';
+    const value = rawValue.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (match, name: string) => {
+      const referenced = name.trim();
+      return raw.has(referenced) ? resolve(referenced) : match;
+    });
+    visiting.delete(key);
+    resolved.set(key, value);
+    return value;
+  };
+
+  for (const key of raw.keys()) resolve(key);
+  return resolved;
 }
 
 /** Escape special regex characters in a variable key. */

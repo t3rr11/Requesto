@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { computeExitCode, runCommand } from '../src/run-command';
+import { computeExitCode, runCommand } from '../src/commands/run.ts';
 
 const fixturePath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'demo');
 
@@ -130,7 +130,7 @@ describe('runCommand (end-to-end against the fixture workspace)', () => {
     expect(summary.results.every((r) => r.status === 'passed')).toBe(true);
   }, 30000);
 
-  it('runs inside an isolated server-side workspace when --isolated is set', async () => {
+  it('uses scratch-workspace protection when targeting an external server', async () => {
     const { summary } = await runCommand({
       path: fixturePath,
       environment: 'ci',
@@ -138,7 +138,7 @@ describe('runCommand (end-to-end against the fixture workspace)', () => {
       folders: ['Users'],
       vars: [`baseUrl=${baseUrl}`, 'apiKey=from-cli'],
       tokens: ['ci-auth=ci-token-123'],
-      isolated: baseUrl,
+      server: baseUrl,
     });
 
     // The suite itself ran fine...
@@ -151,5 +151,45 @@ describe('runCommand (end-to-end against the fixture workspace)', () => {
       'POST /api/workspaces/ws-original/activate',
       'DELETE /api/workspaces/ws-scratch',
     ]);
+  }, 30000);
+
+  it('boots an embedded scratch server when the run references requestoServerUrl', async () => {
+    const { summary, serverUrl } = await runCommand({
+      path: fixturePath,
+      environment: 'ci',
+      // No baseUrl override: the requests that use the scratch base variable
+      // resolve against the ephemeral server the CLI started itself.
+      vars: ['apiKey=from-cli'],
+      tokens: ['ci-auth=ci-token-123'],
+    });
+
+    expect(serverUrl).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+    const scratchHealth = summary.results.find((r) => r.request.name === 'Scratch Health');
+    expect(scratchHealth?.status).toBe('passed');
+  }, 60000);
+
+  it('does not boot a scratch server when nothing references it', async () => {
+    const { summary, serverUrl } = await runCommand({
+      path: fixturePath,
+      environment: 'none',
+      collections: ['CI Demo'],
+      folders: ['Users'],
+      vars: [`baseUrl=${baseUrl}`, 'apiKey=from-cli'],
+      tokens: ['ci-auth=ci-token-123'],
+    });
+
+    expect(serverUrl).toBeNull();
+    expect(summary.results.every((r) => r.status === 'passed')).toBe(true);
+  }, 30000);
+
+  it('skips collections matched by --exclude-collection', async () => {
+    const { summary } = await runCommand({
+      path: fixturePath,
+      excludeCollections: ['CI Demo'],
+    });
+
+    expect(summary.results).toHaveLength(0);
+    expect(summary.executed).toBe(0);
+    expect(computeExitCode(summary)).toBe(0);
   }, 30000);
 });

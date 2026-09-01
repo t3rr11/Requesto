@@ -31,7 +31,7 @@ Every run executes inside a temporary server-side workspace, so runs can never d
 
 1. Before the first request, a scratch workspace is created and activated. It **inherits your active workspace's environments and OAuth configurations** (including stored client secrets and cached tokens), so requests resolve variables and authenticate exactly as they would outside a run.
 2. The whole run happens inside it.
-3. Afterwards — even if the run fails or is stopped — your previous workspace is restored and the scratch workspace is deleted.
+3. Afterwards , even if the run fails or is stopped , your previous workspace is restored and the scratch workspace is deleted.
 
 Collections, environments and workspaces created or deleted by a run disappear with the scratch workspace. One consequence: environment "current values" set by scripts during a run chain forward through the run but are not persisted to your workspace afterwards.
 
@@ -72,6 +72,10 @@ This lets you chain requests: authenticate, capture a token, then use it in foll
 ## Folder Groups
 
 Requests are displayed under their folder headers. Click a folder header to collapse or expand that group. Collapsing a folder group only hides the display - the requests still run when you click **Run**.
+
+## Skipping Collections
+
+In the workspace-wide runner (Run: All Collections), each collection header has a checkbox. Unchecking a collection removes it from the run: its rows are greyed out, its requests are reported as skipped, and nothing is sent. Useful for leaving out slow or long-running collections (e.g. server-sent events) without moving them. The CLI equivalent is `--exclude-collection <name>` (see [CLI Reference](/cli/reference#selection)).
 
 ## Related Features
 

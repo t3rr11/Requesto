@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRunnerIsolation } from '../../../helpers/runner/isolation';
 
 const fetchMock = vi.fn();
@@ -80,6 +80,6 @@ describe('createRunnerIsolation', () => {
       .mockResolvedValueOnce(jsonResponse({ error: 'disk full' }, 500));
 
     const isolation = createRunnerIsolation();
-    await expect(isolation.setup()).rejects.toThrow(/failed \(500\)/);
+    await expect(isolation.setup()).rejects.toThrow(/failed with 500/);
   });
 });

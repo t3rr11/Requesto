@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { TestResult } from './sandbox-core.ts';
+import type { ScriptRunner } from '../runner/run.ts';
 
 const SCRIPT_TIMEOUT_MS = 5000;
 
@@ -104,3 +105,9 @@ export async function runTestScript(
   if ('testResults' in result) return { testResults: result.testResults, envOverrides: result.envOverrides };
   return { testResults: [], envOverrides: {} };
 }
+
+/** Script runner backed by Node worker threads; the default for headless runs. */
+export const nodeScriptRunner: ScriptRunner = {
+  runPreRequest: (script, env, request) => runPreRequestScript(script, env, request),
+  runTest: (script, response, request, env) => runTestScript(script, response, request, env),
+};

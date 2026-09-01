@@ -1,11 +1,11 @@
----
+﻿---
 title: Docker Image
-description: The official Requesto CLI Docker image — tags, volume mounts, users and pipeline usage patterns.
+description: The official Requesto CLI Docker image, tags, volume mounts, users and pipeline usage patterns.
 ---
 
 # Docker Image
 
-The official image bundles the CLI and the request engine. Nothing else is needed — mount your repository and run.
+The official image bundles the CLI and the request engine. Nothing else is needed, mount your repository and run.
 
 Two registries are published in lockstep on every release:
 
@@ -73,7 +73,7 @@ Because `--persist` writes into the mounted workspace, you can also simply keep 
 
 ## Networking
 
-The container reaches your APIs directly — for localhost APIs on the host, use `host.docker.internal` (Docker Desktop) or run the container on the host network (`--network host`, Linux). Example:
+The container reaches your APIs directly, for localhost APIs on the host, use `host.docker.internal` (Docker Desktop) or run the container on the host network (`--network host`, Linux). Example:
 
 ```bash
 docker run --rm \
@@ -85,5 +85,5 @@ docker run --rm \
 ## Image contents
 
 - Node 24 on Alpine, running as a non-root user.
-- Production dependencies only; no dev tooling, no shell utilities beyond the base image.
-- The image contains the request engine, variable substitution, script sandbox and OAuth client — it does **not** include the Requesto web UI or a server; no ports are exposed.
+- A single-file bundle of the CLI, the shared request engine and the backend internals it needs. There is no node_modules tree, no dev tooling, and no shell utilities beyond the base image.
+- The image contains the request engine, variable substitution, script sandbox and OAuth client. It does **not** include the Requesto web UI or a server; no ports are exposed.

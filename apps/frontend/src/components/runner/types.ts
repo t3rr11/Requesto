@@ -1,14 +1,12 @@
-import type { Collection, Folder, SavedRequest } from '../../store/collections/types';
+import type { Collection, SavedRequest } from '../../store/collections/types';
 import type { ProxyResponse } from '../../store/request/types';
 import type { TestResult } from '../../helpers/scriptRunner';
+import type { DisplayItem } from 'requesto-engine/runner';
+
+export type { DisplayItem };
 
 export type RequestStatus = 'pending' | 'running' | 'passed' | 'failed' | 'error' | 'skipped';
 export type ExpandedTab = 'tests' | 'response';
-
-export type DisplayItem =
-  | { kind: 'collection'; collectionId: string; name: string }
-  | { kind: 'folder'; folder: Folder; depth: number }
-  | { kind: 'request'; request: SavedRequest; depth: number };
 
 export type RequestRunResult = {
   request: SavedRequest;

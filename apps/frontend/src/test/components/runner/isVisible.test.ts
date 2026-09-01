@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { buildDisplayItems, buildWorkspaceDisplayItems, isVisible } from '../../../components/runner/helpers';
+﻿import { describe, expect, it } from 'vitest';
+import { isVisible } from '../../../components/runner/helpers';
+import { buildCollectionItems, buildWorkspaceItems } from 'requesto-engine/runner';
 import type { Collection } from '../../../store/collections/types';
 
 function makeCollections(): Collection[] {
@@ -25,7 +26,7 @@ function makeCollections(): Collection[] {
 describe('runner visibility with collapsible collections', () => {
   const collections = makeCollections();
   const allFolders = collections.flatMap(c => c.folders ?? []);
-  const items = buildWorkspaceDisplayItems(collections);
+  const items = buildWorkspaceItems(collections);
 
   it('shows everything when nothing is collapsed', () => {
     const visible = items.filter(i => isVisible(i, new Set(), new Set(), allFolders));
@@ -47,7 +48,7 @@ describe('runner visibility with collapsible collections', () => {
   });
 
   it('single-collection display items are unaffected by collection collapsing', () => {
-    const single = buildDisplayItems(collections[0]);
+    const single = buildCollectionItems(collections[0]);
     const visible = single.filter(i => isVisible(i, new Set(), new Set(['col-1']), allFolders));
     // No collection header item in single mode; requests/folders use their own
     // collectionId, so collapsing col-1 would hide them — but the dialog only

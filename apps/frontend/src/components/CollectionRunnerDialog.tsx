@@ -2,16 +2,21 @@ import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Dialog } from './Dialog';
 import { useEnvironmentStore } from '../store/environments/store';
 import { useRequestStore } from '../store/request/store';
-import { substituteInRequest } from '../helpers/environment';
-import { runPreRequestScript, runTestScript, type TestResult } from '../helpers/scriptRunner';
+import { runCollections, buildCollectionItems, buildWorkspaceItems } from 'requesto-engine/runner';
+import type { RunnerEvent } from 'requesto-engine/runner';
+import { browserScriptRunner } from '../helpers/scriptRunner';
 import { createRunnerIsolation, type RunnerIsolation } from '../helpers/runner/isolation';
-import { buildDisplayItems, buildWorkspaceDisplayItems, buildProxyRequest, isVisible } from './runner/helpers';
+import { isVisible } from './runner/helpers';
 import { RunnerToolbar } from './runner/RunnerToolbar';
 import { RunnerCollectionRow } from './runner/RunnerCollectionRow';
 import { RunnerFolderRow } from './runner/RunnerFolderRow';
 import { RunnerRequestRow } from './runner/RunnerRequestRow';
 import type { CollectionRunnerDialogProps, RequestRunResult, ExpandedTab, RequestStatus } from './runner/types';
 import type { Environment } from '../store/environments/types';
+
+// The engine resolves OAuth server-side for the app (the proxy endpoint
+// handles auth configs), so the run itself never needs a token.
+const noopOAuthResolver = async () => ({ accessToken: '', tokenType: 'Bearer' });
 
 export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId }: CollectionRunnerDialogProps) {
   const { environmentsData } = useEnvironmentStore();
@@ -27,8 +32,8 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       !first
         ? []
         : multi
-          ? buildWorkspaceDisplayItems(collections)
-          : buildDisplayItems(first, folderId),
+          ? buildWorkspaceItems(collections)
+          : buildCollectionItems(first, folderId ? new Set([folderId]) : undefined),
     [first, multi, collections, folderId],
   );
   const allFolders = useMemo(() => collections.flatMap(c => c.folders || []), [collections]);
@@ -59,6 +64,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
   const [expandedTabs, setExpandedTabs] = useState<Map<string, ExpandedTab>>(new Map());
   const [collapsedFolders, setCollapsedFolders] = useState<Set<string>>(new Set());
   const [collapsedCollections, setCollapsedCollections] = useState<Set<string>>(new Set());
+  const [excludedCollections, setExcludedCollections] = useState<Set<string>>(new Set());
   const [isolationError, setIsolationError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isolationRef = useRef<RunnerIsolation | null>(null);
@@ -90,29 +96,48 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       return next;
     });
 
+  const handleToggleCollectionCheck = (id: string) =>
+    setExcludedCollections(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const includedCollections = useMemo(
+    () => collections.filter(c => !excludedCollections.has(c.id)),
+    [collections, excludedCollections],
+  );
+  const includedRequests = useMemo(
+    () => requests.filter(r => !excludedCollections.has(r.collectionId)),
+    [requests, excludedCollections],
+  );
+
   const handleReset = useCallback(() => {
     setResults(requests.map(r => ({ request: r, status: 'pending', response: null, testResults: [] })));
     setExpandedRows(new Set());
     setExpandedTabs(new Map());
     setCollapsedFolders(new Set());
     setCollapsedCollections(new Set());
+    setExcludedCollections(new Set());
   }, [requests]);
 
   const handleRun = useCallback(async () => {
+    if (includedCollections.length === 0) return;
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
     setRunning(true);
     setIsolationError(null);
 
-    // Reset to pending
-    setResults(requests.map(r => ({ request: r, status: 'pending', response: null, testResults: [] })));
-
-    // Track the live env state through the run so scripts can chain
-    let liveEnv = activeEnv;
+    // Excluded collections never emit events, so mark them skipped up front.
+    setResults(requests.map(r =>
+      excludedCollections.has(r.collectionId)
+        ? { request: r, status: 'skipped', response: null, testResults: [] }
+        : { request: r, status: 'pending', response: null, testResults: [] },
+    ));
 
     // Every run operates in a scratch server-side workspace; whatever the
-    // run creates or deletes is cleaned up in the finally block below and
-    // the previous workspace is restored — the app's own data is untouched.
+    // run creates or deletes is cleaned up when the engine finishes and the
+    // previous workspace is restored — the app's own data is untouched.
     try {
       const isolation = createRunnerIsolation();
       await isolation.setup();
@@ -123,88 +148,39 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       return;
     }
 
-    try {
-      for (let i = 0; i < requests.length; i++) {
-        if (abortController.signal.aborted) {
-          // Mark everything still pending as skipped
-          setResults(prev => prev.map(r => (r.status === 'pending' ? { ...r, status: 'skipped' } : r)));
-          break;
-        }
+    const handleEvent = (event: RunnerEvent) => {
+      if (event.type === 'request-start') {
+        setResults(prev => prev.map(r => (r.request.id === event.request.id ? { ...r, status: 'running' } : r)));
+        return;
+      }
+      if (event.type !== 'request-end') return;
+      const result = event.result;
+      const status: RequestStatus = result.status;
+      setResults(prev => prev.map(r =>
+        r.request.id === result.request.id
+          ? { ...r, status, response: result.response, testResults: result.testResults, duration: result.duration, error: result.error }
+          : r,
+      ));
 
-        const req = requests[i];
-
-        // Mark as running (by id — results may be re-keyed at any time)
-        setResults(prev => prev.map(r => (r.request.id === req.id ? { ...r, status: 'running' } : r)));
-
-        try {
-          // Pre-request script
-          let proxyReq = buildProxyRequest(req);
-          if (req.preRequestScript?.trim()) {
-            const envOverrides = await runPreRequestScript(req.preRequestScript, liveEnv, proxyReq);
-            if (Object.keys(envOverrides).length > 0 && liveEnv) {
-              // Current values are NOT persisted during runs: the server's
-              // active workspace is the run's scratch workspace, which does
-              // not contain this environment. Chaining happens through the
-              // local liveEnv either way.
-              liveEnv = {
-                ...liveEnv,
-                variables: liveEnv.variables.map(v =>
-                  Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-                    ? { ...v, currentValue: envOverrides[v.key] }
-                    : v,
-                ),
-              };
-            }
-          }
-
-          // Variable substitution
-          const substituted = substituteInRequest(proxyReq, liveEnv);
-          proxyReq = { ...proxyReq, ...substituted };
-
-          const start = Date.now();
-          const response = await sendRequest(proxyReq, abortController.signal);
-          const duration = Date.now() - start;
-
-          // Test script
-          let testResults: TestResult[] = [];
-          let envOverrides: Record<string, string> = {};
-          if (req.testScript?.trim()) {
-            ({ testResults, envOverrides } = await runTestScript(req.testScript, response, proxyReq, liveEnv));
-            if (Object.keys(envOverrides).length > 0 && liveEnv) {
-              liveEnv = {
-                ...liveEnv,
-                variables: liveEnv.variables.map(v =>
-                  Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-                    ? { ...v, currentValue: envOverrides[v.key] }
-                    : v,
-                ),
-              };
-            }
-          }
-
-          const allPassed = testResults.length === 0 || testResults.every(t => t.passed);
-          const status: RequestStatus = testResults.length > 0
-            ? (allPassed ? 'passed' : 'failed')
-            : 'passed';
-
-          setResults(prev => prev.map(r =>
-            r.request.id === req.id ? { ...r, status, response, testResults, duration } : r,
-          ));
-
-          // Auto-expand rows that have test results
-          if (testResults.length > 0) {
-            setExpandedRows(prev => new Set([...prev, req.id]));
-            setExpandedTabs(prev => new Map([...prev, [req.id, 'tests']]));
-          }
-        } catch (err) {
-          setResults(prev => prev.map(r =>
-            r.request.id === req.id
-              ? { ...r, status: 'error', response: null, testResults: [], error: err instanceof Error ? err.message : String(err) }
-              : r,
-          ));
-          setExpandedRows(prev => new Set([...prev, req.id]));
+      // Auto-expand rows that have test results or errors
+      if (result.testResults.length > 0 || result.status === 'error') {
+        setExpandedRows(prev => new Set([...prev, result.request.id]));
+        if (result.testResults.length > 0) {
+          setExpandedTabs(prev => new Map([...prev, [result.request.id, 'tests']]));
         }
       }
+    };
+
+    try {
+      await runCollections({
+        collections: includedCollections,
+        environment: activeEnv,
+        oauthResolver: noopOAuthResolver,
+        send: (request, ctx) => sendRequest(request, ctx.signal),
+        scripts: browserScriptRunner,
+        signal: abortController.signal,
+        onEvent: handleEvent,
+      });
     } finally {
       if (isolationRef.current) {
         try {
@@ -214,9 +190,10 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
         }
         isolationRef.current = null;
       }
+      abortControllerRef.current = null;
       setRunning(false);
     }
-  }, [requests, activeEnv, sendRequest]);
+  }, [collections, includedCollections, excludedCollections, requests, activeEnv, sendRequest]);
 
   const handleStop = () => {
     abortControllerRef.current?.abort();
@@ -249,7 +226,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     <Dialog isOpen={isOpen} onClose={handleClose} title={title} size="xl">
       <RunnerToolbar
         running={running}
-        requestCount={requests.length}
+        requestCount={includedRequests.length}
         finishedCount={finished.length}
         passedCount={passedCount}
         failedCount={failedCount}
@@ -274,6 +251,14 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       ) : (
         <div className="mt-4 space-y-1 overflow-y-auto max-h-[55vh]">
           {displayItems.map(item => {
+            const collectionId = item.kind === 'collection'
+              ? item.collectionId
+              : item.kind === 'folder'
+                ? item.folder.collectionId
+                : item.request.collectionId;
+            const isExcluded = excludedCollections.has(collectionId);
+            const dimmed = isExcluded ? 'opacity-40 pointer-events-none' : undefined;
+
             if (item.kind === 'collection') {
               return (
                 <RunnerCollectionRow
@@ -282,6 +267,10 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
                   collectionId={item.collectionId}
                   isCollapsed={collapsedCollections.has(item.collectionId)}
                   onToggle={handleToggleCollection}
+                  {...(multi && {
+                    isChecked: !isExcluded,
+                    onToggleCheck: handleToggleCollectionCheck,
+                  })}
                 />
               );
             }
@@ -289,13 +278,14 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
 
             if (item.kind === 'folder') {
               return (
-                <RunnerFolderRow
-                  key={`folder-${item.folder.id}`}
-                  folder={item.folder}
-                  depth={item.depth}
-                  isCollapsed={collapsedFolders.has(item.folder.id)}
-                  onToggle={handleToggleFolder}
-                />
+                <div key={`folder-${item.folder.id}`} className={dimmed}>
+                  <RunnerFolderRow
+                    folder={item.folder}
+                    depth={item.depth}
+                    isCollapsed={collapsedFolders.has(item.folder.id)}
+                    onToggle={handleToggleFolder}
+                  />
+                </div>
               );
             }
 
@@ -303,16 +293,17 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
               ?? { request: item.request, status: 'pending' as RequestStatus, response: null, testResults: [] };
 
             return (
-              <RunnerRequestRow
-                key={item.request.id}
-                result={result}
-                idx={requestIndices.get(item.request.id) ?? 0}
-                depth={item.depth}
-                isExpanded={expandedRows.has(item.request.id)}
-                activeTab={expandedTabs.get(item.request.id) ?? 'tests'}
-                onToggleExpand={handleToggleExpand}
-                onSetTab={handleSetTab}
-              />
+              <div key={item.request.id} className={dimmed}>
+                <RunnerRequestRow
+                  result={result}
+                  idx={requestIndices.get(item.request.id) ?? 0}
+                  depth={item.depth}
+                  isExpanded={expandedRows.has(item.request.id)}
+                  activeTab={expandedTabs.get(item.request.id) ?? 'tests'}
+                  onToggleExpand={handleToggleExpand}
+                  onSetTab={handleSetTab}
+                />
+              </div>
             );
           })}
         </div>

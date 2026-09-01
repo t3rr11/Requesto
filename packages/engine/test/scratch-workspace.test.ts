@@ -1,8 +1,7 @@
 import http from 'node:http';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
-import { WorkspaceIsolation } from '../src/isolation';
-import { CliError } from '../src/cli-error';
+import { ScratchWorkspaceIsolation } from '../src/isolation/scratch-workspace.ts';
 
 type Call = { method: string; url: string; body?: unknown };
 
@@ -55,10 +54,10 @@ afterAll(() => {
   server?.close();
 });
 
-describe('WorkspaceIsolation', () => {
+describe('ScratchWorkspaceIsolation', () => {
   it('captures the active workspace, creates and activates a scratch one, then restores and deletes', async () => {
     calls = [];
-    const isolation = new WorkspaceIsolation({ serverUrl: baseUrl });
+    const isolation = new ScratchWorkspaceIsolation({ serverUrl: baseUrl });
 
     await isolation.setup();
     await isolation.teardown();
@@ -89,7 +88,7 @@ describe('WorkspaceIsolation', () => {
     await new Promise<void>((resolve) => fresh.listen(0, '127.0.0.1', resolve));
     const freshUrl = `http://127.0.0.1:${(fresh.address() as AddressInfo).port}`;
 
-    const isolation = new WorkspaceIsolation({ serverUrl: freshUrl });
+    const isolation = new ScratchWorkspaceIsolation({ serverUrl: freshUrl });
     await isolation.setup();
     await isolation.teardown();
 
@@ -111,7 +110,7 @@ describe('WorkspaceIsolation', () => {
     await new Promise<void>((resolve) => flaky.listen(0, '127.0.0.1', resolve));
     const flakyUrl = `http://127.0.0.1:${(flaky.address() as AddressInfo).port}`;
 
-    const isolation = new WorkspaceIsolation({ serverUrl: flakyUrl });
+    const isolation = new ScratchWorkspaceIsolation({ serverUrl: flakyUrl });
     await isolation.setup();
 
     // Both teardown steps fail; the error mentions both, not just the first.
@@ -121,17 +120,17 @@ describe('WorkspaceIsolation', () => {
   });
 
   it('normalises trailing slashes in the server URL', () => {
-    const isolation = new WorkspaceIsolation({ serverUrl: 'http://localhost:4747/' });
+    const isolation = new ScratchWorkspaceIsolation({ serverUrl: 'http://localhost:4747/' });
     expect(isolation.target).toBe('http://localhost:4747');
   });
 
   it('fails with actionable guidance when the server is unreachable', async () => {
     // Nothing is listening on this port — fetch fails at the network level.
-    const isolation = new WorkspaceIsolation({ serverUrl: 'http://127.0.0.1:9' });
+    const isolation = new ScratchWorkspaceIsolation({ serverUrl: 'http://127.0.0.1:9' });
 
     const err = await isolation.setup().catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(CliError);
-    expect((err as CliError).message).toContain('could not reach the Requesto server at http://127.0.0.1:9');
-    expect((err as CliError).message).toContain('Is it running?');
+    expect(err).toBeInstanceOf(Error);
+    expect((err as Error).message).toContain('could not reach the Requesto server at http://127.0.0.1:9');
+    expect((err as Error).message).toContain('Is it running?');
   });
 });

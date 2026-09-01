@@ -1,12 +1,6 @@
 import { parse, Kind } from 'graphql';
 import type { ProxyRequest, SavedRequest } from '../types.ts';
 
-/**
- * Port of the client's `buildSavedGraphQLRequest`
- * (apps/frontend/src/helpers/request.ts) so GraphQL requests execute
- * identically in headless runs.
- */
-
 type GraphQLOperation = { operation: 'query' | 'mutation' | 'subscription' };
 
 function getGraphQLOperation(document: string): GraphQLOperation {

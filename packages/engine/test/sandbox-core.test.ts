@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { executePreRequestScript, executeTestScript } from '../src/engine/sandbox-core';
+import { executePreRequestScript, executeTestScript } from '../src/scripts/sandbox-core.ts';
 
 const baseRequest = { method: 'GET', url: 'http://test.local/x', headers: {}, body: undefined };
 

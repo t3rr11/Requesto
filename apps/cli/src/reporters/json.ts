@@ -1,8 +1,8 @@
-import type { RunSummary } from '../types.js';
+﻿import type { RunSummary } from '../types.ts';
 
 /**
  * Machine-readable run report for pipelines that want to post-process
- * results (Slack summaries, dashboards, custom gates) — JUnit XML covers
+ * results (Slack summaries, dashboards, custom gates): JUnit XML covers
  * the native CI test-report integrations.
  *
  * Contains the substituted request URL, so treat the file as sensitive

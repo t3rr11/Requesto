@@ -1,10 +1,10 @@
-/**
- * Worker thread entry — thin wrapper around the sandbox core.
+﻿/**
+ * Worker thread entry: thin wrapper around the sandbox core.
  *
  * Receives `{ type, script, context }` messages, executes the script and
  * posts the result back. Any script error is reported as `{ error }`.
  *
- * Must use only erasable TypeScript syntax — this file is executed directly
+ * Must use only erasable TypeScript syntax: this file is executed directly
  * by Node's type stripping in dev/test (Node >= 24) and via tsc output in
  * production builds.
  */

@@ -1,11 +1,11 @@
----
+﻿---
 title: CI Authentication
-description: How the Requesto CLI handles OAuth, Entra ID and secrets in pipelines — token substitution, client credentials and env var injection.
+description: How the Requesto CLI handles OAuth, Entra ID and secrets in pipelines, token substitution, client credentials and env var injection.
 ---
 
 # Authentication in CI
 
-The desktop app signs you in with a browser. A pipeline has no browser and no user session — so the CLI resolves authentication differently, without changing anything about your requests.
+The desktop app signs you in with a browser. A pipeline has no browser and no user session, so the CLI resolves authentication differently, without changing anything about your requests.
 
 The key idea: **your requests never change**. A request saved with `auth: { type: "oauth", configId: "my-entra" }` works identically in the app and in the CLI. What changes is *where the token comes from*.
 
@@ -13,9 +13,9 @@ The key idea: **your requests never change**. A request saved with `auth: { type
 
 For every request that needs a token, the CLI tries, in order:
 
-1. **Explicit override** — a token passed with `--token <configId>=<token>` or the `REQUESTO_TOKEN_*` environment variable. Used as-is, applied exactly as the app would apply it.
-2. **Non-interactive flows** — for OAuth configs using *client credentials* or *password* grants (or with a usable refresh token), the CLI fetches/refreshes the token itself, using the client secret you inject.
-3. **Fail fast with guidance** — interactive flows (authorization code + PKCE, implicit) can't open a browser. The CLI fails that request with instructions instead of hanging or silently skipping.
+1. **Explicit override**: a token passed with `--token <configId>=<token>` or the `REQUESTO_TOKEN_*` environment variable. Used as-is, applied exactly as the app would apply it.
+2. **Non-interactive flows**: for OAuth configs using *client credentials* or *password* grants (or with a usable refresh token), the CLI fetches/refreshes the token itself, using the client secret you inject.
+3. **Fail fast with guidance**: interactive flows (authorization code + PKCE, implicit) can't open a browser. The CLI fails that request with instructions instead of hanging or silently skipping.
 
 ## Which option do I need?
 
@@ -32,11 +32,11 @@ Does your request use OAuth?
 
 ## Option 1: Pass a ready token (`--token`)
 
-The most robust pattern. Your pipeline is often *already authenticated* to your identity provider — let it fetch the token, and hand it to Requesto.
+The most robust pattern. Your pipeline is often *already authenticated* to your identity provider, let it fetch the token, and hand it to Requesto.
 
 ### Microsoft Entra ID + Azure DevOps
 
-Entra app registrations created as *SPA / public client* platforms only support PKCE — a browser flow — which is exactly what pipelines can't do. Instead, fetch a token for your API's service principal and inject it:
+Entra app registrations created as *SPA / public client* platforms only support PKCE, a browser flow, which is exactly what pipelines can't do. Instead, fetch a token for your API's service principal and inject it:
 
 ```yaml
 - task: AzureCLI@2
@@ -86,7 +86,7 @@ Or skip the indirection and mount a `.env` file: `--var-file` (see [CLI Referenc
 
 ## Option 2: Non-interactive OAuth flows
 
-If your OAuth config uses the **client credentials** grant (a confidential client with a secret) the CLI can fetch and refresh tokens by itself. Provide the secret, which the app stores in the gitignored `local/oauth-secrets.json` — in CI, inject it instead:
+If your OAuth config uses the **client credentials** grant (a confidential client with a secret) the CLI can fetch and refresh tokens by itself. Provide the secret, which the app stores in the gitignored `local/oauth-secrets.json`, in CI, inject it instead:
 
 ```bash
 docker run --rm \
@@ -119,7 +119,7 @@ The run continues with the remaining requests, the report marks the failure, and
 
 ## Secrets checklist
 
-- Never commit `local/` — it's gitignored and contains secrets and token caches.
+- Never commit `local/`, it's gitignored and contains secrets and token caches.
 - Inject secrets via your CI's secret store (`REQUESTO_*` env vars or `--var-file` from a secret file).
 - Mask tokens in build logs (e.g. `echo "::add-mask::$TOKEN"` in GitHub Actions).
 - Prefer short-lived, per-run tokens fetched by the pipeline over long-lived static secrets.

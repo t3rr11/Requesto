@@ -86,6 +86,19 @@
       "folderId": "fld-demo-users",
       "order": 2,
       "testScript": "test('override applied', () => {\n  expect(response.json().key).toBe('from-cli');\n});"
+    },
+    {
+      "id": "req-demo-scratch",
+      "name": "Scratch Health",
+      "method": "GET",
+      "url": "{{scratchBase}}/health",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-ci-demo",
+      "order": 3,
+      "testScript": "test('scratch server is up', () => {\n  expect(response.status).toBe(200);\n});"
     }
   ]
 }

@@ -1,7 +1,8 @@
-import { CliError } from './cli-error.js';
+﻿/** Minimal shapes of the workspace API responses used here. */
+type WorkspaceRef = { id?: string } | null;
 
 /** HTTP failure with the status code attached, for precise handling upstream. */
-class IsolationHttpError extends CliError {
+class IsolationHttpError extends Error {
   constructor(
     readonly status: number,
     method: string,
@@ -13,17 +14,18 @@ class IsolationHttpError extends CliError {
 }
 
 /**
- * Runs a suite in an isolated server-side workspace: a scratch workspace is
- * created and activated on the target Requesto server for the duration of
- * the run, and the original workspace is restored and the scratch removed
- * afterwards — so collections, environments and workspaces created or
- * deleted by the suite never touch the workspace the application is using.
+ * Runs a suite in an isolated server-side workspace on a *shared* Requesto
+ * server: a scratch workspace is created and activated on the target server
+ * for the duration of the run, and the original workspace is restored and
+ * the scratch removed afterwards. Used when `--server <url>` points at a
+ * deployed server that real people are also using. Local runs never need
+ * this: they boot their own embedded scratch server instead.
  */
-export class WorkspaceIsolation {
+export class ScratchWorkspaceIsolation {
   private readonly serverUrl: string;
   private originalWorkspaceId: string | null = null;
   private scratchWorkspaceId: string | null = null;
-  private scratchWorkspaceName: string;
+  private readonly scratchWorkspaceName: string;
 
   constructor(opts: { serverUrl: string }) {
     this.serverUrl = opts.serverUrl.replace(/\/+$/, '');
@@ -32,10 +34,10 @@ export class WorkspaceIsolation {
 
   /** Capture the active workspace, create and activate a scratch workspace. */
   async setup(): Promise<void> {
-    let active: { id?: string } | null;
-    let created: { id?: string } | null;
+    let active: WorkspaceRef;
+    let created: WorkspaceRef;
     try {
-      // The server may have no active workspace (404) — isolation still
+      // The server may have no active workspace (404): isolation still
       // works, there is just nothing to restore afterwards.
       active = await this.tryRequest('GET', '/api/workspaces/active');
       this.originalWorkspaceId = active?.id ?? null;
@@ -49,13 +51,12 @@ export class WorkspaceIsolation {
       });
     } catch (err) {
       if (err instanceof IsolationHttpError) throw err;
-      throw new CliError(
-        `Isolation failed: could not reach the Requesto server at ${this.serverUrl}. Is it running? ` +
-          `(Run without --isolated to execute against the active workspace without scratch-workspace protection.)`,
+      throw new Error(
+        `Isolation failed: could not reach the Requesto server at ${this.serverUrl || '(same origin)'}. Is it running?`,
       );
     }
     if (!created?.id) {
-      throw new CliError(`Isolation failed: server did not return a workspace id (POST ${this.serverUrl}/api/workspaces)`);
+      throw new Error(`Isolation failed: server did not return a workspace id (POST ${this.serverUrl}/api/workspaces)`);
     }
     this.scratchWorkspaceId = created.id;
 
@@ -95,7 +96,7 @@ export class WorkspaceIsolation {
     return this.serverUrl;
   }
 
-  private async request(method: string, path: string, body?: unknown): Promise<any> {
+  private async request(method: string, path: string, body?: unknown): Promise<WorkspaceRef> {
     const res = await fetch(`${this.serverUrl}${path}`, {
       method,
       headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
@@ -106,11 +107,11 @@ export class WorkspaceIsolation {
       throw new IsolationHttpError(res.status, method, path, detail.slice(0, 300));
     }
     const text = await res.text();
-    return text ? JSON.parse(text) : null;
+    return text ? (JSON.parse(text) as WorkspaceRef) : null;
   }
 
   /** Like request, but returns null instead of throwing on 404. */
-  private async tryRequest(method: string, path: string): Promise<any> {
+  private async tryRequest(method: string, path: string): Promise<WorkspaceRef> {
     try {
       return await this.request(method, path);
     } catch (err) {

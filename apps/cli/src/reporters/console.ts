@@ -1,27 +1,77 @@
-import type { RunRequestResult, RunSummary } from '../types.ts';
-import type { RunnerEvent } from '../types.ts';
+import type { RunRequestResult, RunSummary, RunnerEvent } from 'requesto-engine';
+import type { ReporterMode } from '../types.ts';
 
 type Stream = { write: (chunk: string) => void };
 
-const useColor = (): boolean => process.stdout.isTTY && !process.env.NO_COLOR;
+export type ReporterMeta = {
+  workspacePath: string;
+  environmentName: string | null;
+  /** Scratch server URL when the run used one. */
+  serverUrl: string | null;
+};
 
-function c(enabled: boolean): (code: string, text: string) => string {
-  return enabled
-    ? (code, text) => `\u001b[${code}m${text}\u001b[0m`
-    : (_code, text) => text;
+type Painter = {
+  bold: (t: string) => string;
+  dim: (t: string) => string;
+  green: (t: string) => string;
+  red: (t: string) => string;
+  yellow: (t: string) => string;
+};
+
+function createPainter(stream: Stream): Painter {
+  const enabled = 'isTTY' in stream ? Boolean((stream as { isTTY?: boolean }).isTTY) && !process.env.NO_COLOR : false;
+  const wrap = (code: string) => (t: string) => (enabled ? `\u001b[${code}m${t}\u001b[0m` : t);
+  return {
+    bold: wrap('1'),
+    dim: wrap('90'),
+    green: wrap('32'),
+    red: wrap('31'),
+    yellow: wrap('33'),
+  };
 }
 
-/** Every test listed under its request — passed ones included, so nothing is hidden. */
-function testLines(result: RunRequestResult, color: (code: string, text: string) => string): string[] {
+function statusIcon(result: RunRequestResult, paint: Painter): string {
+  switch (result.status) {
+    case 'passed': return paint.green('✓');
+    case 'failed': return paint.red('✗');
+    case 'error': return paint.yellow('✗');
+    case 'skipped': return paint.dim('○');
+  }
+}
+
+function dotChar(result: RunRequestResult, paint: Painter): string {
+  switch (result.status) {
+    case 'passed': return paint.green('·');
+    case 'failed': return paint.red('×');
+    case 'error': return paint.yellow('×');
+    case 'skipped': return paint.dim('-');
+  }
+}
+
+function durationTail(result: RunRequestResult): string {
+  return result.duration !== undefined ? ` (${result.duration}ms)` : '';
+}
+
+/** Failing test lines shown under the request in the default reporter. */
+function failingTestLines(result: RunRequestResult, paint: Painter): string[] {
+  const lines: string[] = [];
+  for (const test of result.testResults.filter((t) => !t.passed)) {
+    lines.push(paint.red(`    ✗ ${test.name}`) + (test.error ? paint.dim(`: ${test.error.split('\n')[0]}`) : ''));
+  }
+  return lines;
+}
+
+/** All test lines (passed and failed) for the verbose reporter. */
+function allTestLines(result: RunRequestResult, paint: Painter): string[] {
   const lines: string[] = [];
   for (const test of result.testResults) {
     if (test.passed) {
-      lines.push(color('32', `      ✓ ${test.name}`));
+      lines.push(paint.green(`    ✓ ${test.name}`));
     } else {
-      lines.push(color('31', `      ✗ ${test.name}`));
+      lines.push(paint.red(`    ✗ ${test.name}`));
       if (test.error) {
-        for (const line of test.error.split('\n')) {
-          lines.push(color('90', `        ${line}`));
+        for (const errLine of test.error.split('\n')) {
+          lines.push(paint.dim(`      ${errLine}`));
         }
       }
     }
@@ -29,122 +79,117 @@ function testLines(result: RunRequestResult, color: (code: string, text: string)
   return lines;
 }
 
-/** Completion appended to the in-flight line once the request finishes. */
-function resultTail(result: RunRequestResult, color: (code: string, text: string) => string): string {
-  if (result.status === 'error') {
-    return color('31', `✗ error — ${result.error ?? 'unknown error'}`);
-  }
-  const status = result.response ? `${result.response.status} ${result.response.statusText}`.trim() : '';
-  const duration = result.duration !== undefined ? `${result.duration}ms` : '';
-  const meta = [status, duration].filter(Boolean).join('  ');
-  const tests = result.testResults.length > 0 ? `  (${result.testResults.length} test${result.testResults.length === 1 ? '' : 's'})` : '';
-  const icon = result.status === 'passed' ? color('32', '✓') : color('31', '✗');
-  return `${icon} ${meta}${tests}`.trimEnd();
-}
-
-/** Full line for requests that finish without having been announced (skipped). */
-function skippedLine(result: RunRequestResult): string {
-  return `  ○ ${result.request.name} (skipped)`;
-}
-
 export type ConsoleReporter = {
   /** Feed runner events; output streams as the run unfolds. */
   onEvent: (event: RunnerEvent) => void;
   /** Print the summary block once the run has finished. */
-  finish: (summary: RunSummary) => void;
+  finish: (summary: RunSummary, meta: ReporterMeta) => void;
 };
 
 /**
- * Streaming console reporter, styled after the client's collection runner.
- * Each request prints while it is in flight (`⋯ name …`) and completes with
- * its status, duration and the full list of tests — so a slow or hung
- * request is visible immediately. Colours are disabled automatically when
- * not attached to a TTY or when `NO_COLOR` is set.
+ * Vitest-style streaming reporter. Each request prints when it completes
+ * with its icon and duration; failing tests print inline; a failures-only
+ * summary and run totals close the output. Colours are disabled when not
+ * attached to a TTY or when NO_COLOR is set.
  */
-export function createConsoleReporter(stream: Stream = process.stdout): ConsoleReporter {
-  const color = c(useColor());
-  const bold = (t: string) => color('1', t);
-  const dim = (t: string) => color('90', t);
-  const red = (t: string) => color('31', t);
-
-  let pending = false;
+export function createConsoleReporter(mode: ReporterMode, stream: Stream = process.stdout): ConsoleReporter {
+  const paint = createPainter(stream);
   let lastCollection = '';
+
+  const writeCollectionHeader = (name: string): void => {
+    if (lastCollection !== '') stream.write('\n');
+    stream.write(paint.bold(`${name}\n`));
+    lastCollection = name;
+  };
+
+  const writeRequestLine = (result: RunRequestResult): void => {
+    stream.write(` ${statusIcon(result, paint)} ${result.request.name}${paint.dim(durationTail(result))}\n`);
+  };
+
+  const failureEntries = (summary: RunSummary): { label: string; lines: string[] }[] =>
+    summary.results
+      .filter((r) => r.status === 'failed' || r.status === 'error')
+      .map((r) => ({
+        label: `${r.collectionName} > ${r.request.name}`,
+        lines:
+          r.status === 'error'
+            ? [paint.yellow(`    Error: ${r.error ?? 'unknown error'}`)]
+            : failingTestLines(r, paint).concat(
+                r.testResults.length === 0 ? [paint.dim('    (no assertions ran)')] : [],
+              ),
+      }));
+
+  const writeFailuresSection = (summary: RunSummary): void => {
+    const entries = failureEntries(summary);
+    if (entries.length === 0) return;
+    stream.write('\n' + paint.red(` Failed Requests (${entries.length})\n\n`));
+    for (const entry of entries) {
+      stream.write(paint.bold(`  ${entry.label}\n`));
+      for (const line of entry.lines) stream.write(line + '\n');
+      stream.write('\n');
+    }
+  };
+
+  const writeSummary = (summary: RunSummary, meta: ReporterMeta): void => {
+    const failed = summary.failed + summary.errored;
+    const counts = [
+      summary.passed > 0 ? paint.green(`${summary.passed} passed`) : null,
+      failed > 0 ? paint.red(`${failed} failed`) : null,
+      summary.skipped > 0 ? paint.dim(`${summary.skipped} skipped`) : null,
+    ].filter(Boolean);
+
+    stream.write('\n');
+    stream.write(
+      paint.bold(` Requests  ${counts.join(', ') || '0'} `) +
+        paint.dim(`(${summary.executed} executed)\n`),
+    );
+    stream.write(
+      ` Tests     ${summary.passedTests}/${summary.totalTests} passed\n`,
+    );
+    stream.write(paint.dim(` Duration  ${(summary.totalDuration / 1000).toFixed(2)}s\n`));
+    stream.write(paint.dim(` Workspace ${meta.workspacePath}\n`));
+    if (meta.environmentName) stream.write(paint.dim(` Env       ${meta.environmentName}\n`));
+    if (meta.serverUrl) {
+      stream.write(paint.dim(` Server    ${meta.serverUrl} (scratch, torn down after the run)\n`));
+    }
+    if (summary.bailTriggered) {
+      stream.write(paint.dim('\n Run stopped early (--bail): a request failed or errored.\n'));
+    }
+  };
 
   return {
     onEvent(event) {
       switch (event.type) {
-        case 'collection-start': {
-          if (lastCollection !== '') stream.write('\n');
-          stream.write(bold(`Collection: ${event.collectionName}\n`));
-          lastCollection = event.collectionName;
+        case 'collection-start':
+          writeCollectionHeader(event.collectionName);
           break;
-        }
-        case 'request-start': {
-          stream.write(`  ${dim('⋯')} ${event.request.name} ${dim('…')} `);
-          pending = true;
-          break;
-        }
         case 'request-end': {
-          if (event.result.status === 'skipped' && !pending) {
-            stream.write(skippedLine(event.result) + '\n');
-          } else {
-            stream.write(resultTail(event.result, color) + '\n');
+          const result = event.result;
+          if (mode === 'dot') {
+            stream.write(dotChar(result, paint));
+            break;
           }
-          pending = false;
-          for (const line of testLines(event.result, color)) {
-            stream.write(line + '\n');
+          writeRequestLine(result);
+          if (result.status === 'failed') {
+            for (const line of failingTestLines(result, paint)) stream.write(line + '\n');
+          } else if (mode === 'verbose') {
+            for (const line of allTestLines(result, paint)) stream.write(line + '\n');
+          }
+          if (result.status === 'error' && result.error) {
+            stream.write(paint.dim(`    Error: ${result.error.split('\n')[0]}\n`));
           }
           break;
         }
+        case 'request-start':
+          // Output happens on completion, matching how vitest reports.
+          break;
       }
     },
 
-    finish(summary) {
-      stream.write('\n');
-      stream.write(
-        bold(
-          `Summary: ${summary.passed}/${summary.executed} requests passed` +
-            ` · ${summary.passedTests}/${summary.totalTests} tests passed` +
-            (summary.errored > 0 ? ` · ${red(`${summary.errored} error${summary.errored === 1 ? '' : 's'}`)}` : '') +
-            (summary.skipped > 0 ? ` · ${summary.skipped} skipped` : '') +
-            dim(` (${(summary.totalDuration / 1000).toFixed(2)}s)`),
-        ) + '\n',
-      );
-      if (summary.bailTriggered) {
-        stream.write(dim('Run stopped early (--bail): a request failed or errored.\n') + '\n');
-      }
+    finish(summary, meta) {
+      if (mode === 'dot') stream.write('\n');
+      writeFailuresSection(summary);
+      writeSummary(summary, meta);
     },
   };
-}
-
-/**
- * Full-report variant of the streaming reporter — replays a finished
- * `RunSummary` through the same line builders, producing identical output.
- * Used programmatically and by tests; the CLI streams live instead.
- */
-export function printConsoleReport(summary: RunSummary, stream: Stream = process.stdout): void {
-  const reporter = createConsoleReporter(stream);
-  let lastCollection = '';
-  for (const result of summary.results) {
-    if (result.collectionName !== lastCollection) {
-      reporter.onEvent({
-        type: 'collection-start',
-        collectionId: result.collectionId,
-        collectionName: result.collectionName,
-      });
-      lastCollection = result.collectionName;
-    }
-    if (result.status === 'skipped') {
-      reporter.onEvent({ type: 'request-end', result });
-    } else {
-      reporter.onEvent({
-        type: 'request-start',
-        collectionId: result.collectionId,
-        collectionName: result.collectionName,
-        request: result.request,
-      });
-      reporter.onEvent({ type: 'request-end', result });
-    }
-  }
-  reporter.finish(summary);
 }

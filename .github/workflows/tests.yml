@@ -22,8 +22,11 @@ jobs:
       - name: Backend unit tests
         run: npm run test -w requesto-backend
 
+      - name: Engine unit tests
+        run: npm run test -w requesto-engine
+
       - name: CLI unit tests
-        run: npm run test -w requesto-cli
+        run: npm run test -w @requesto/cli
 
       - name: Frontend unit tests
         run: npm run test:frontend
@@ -44,33 +47,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build backend and CLI
+      - name: Build backend, engine and CLI
         run: |
           npm run build:backend
-          npm run build -w requesto-cli
-
-      - name: Start backend with a fresh data dir
-        run: |
-          DATA_DIR=$(mktemp -d) PORT=4899 node apps/backend/dist/server.js > server.log 2>&1 &
-          echo $! > server.pid
-          for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:4899/health > /dev/null; then break; fi
-            sleep 1
-          done
-          curl -sf http://127.0.0.1:4899/health
+          npm run build -w requesto-engine
+          npm run build -w @requesto/cli
 
       - name: Run regression suite with the Requesto CLI
+        # The CLI boots its own embedded scratch server (seeded from the
+        # repo's .requesto workspace), so no separate backend is started.
         run: |
-          node apps/cli/dist/index.js run . \
+          node apps/cli/dist/index.mjs run . \
             --environment "Local Backend" \
-            --var "baseUrl=http://127.0.0.1:4899" \
-            --isolated http://127.0.0.1:4899 \
+            --var "baseUrl={{requestoServerUrl}}" \
             --bail \
             --reporter junit:test-results/junit.xml
-
-      - name: Stop backend
-        if: always()
-        run: kill $(cat server.pid) || true
 
       - name: Upload test report
         if: always()

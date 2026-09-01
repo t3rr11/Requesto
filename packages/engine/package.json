@@ -1,0 +1,49 @@
+{
+  "name": "requesto-engine",
+  "version": "1.0.0",
+  "description": "Shared request-run engine for Requesto: collection runner, script sandbox, scratch workspaces",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./runner": {
+      "types": "./dist/runner/index.d.ts",
+      "default": "./dist/runner/index.js"
+    },
+    "./sandbox-core": {
+      "types": "./dist/scripts/sandbox-core.d.ts",
+      "default": "./dist/scripts/sandbox-core.js"
+    },
+    "./node-scripts": {
+      "types": "./dist/scripts/node-scripts.d.ts",
+      "default": "./dist/scripts/node-scripts.js"
+    },
+    "./sandbox-worker": {
+      "default": "./dist/scripts/sandbox-worker.js"
+    },
+    "./embedded": {
+      "types": "./dist/server/embedded.d.ts",
+      "default": "./dist/server/embedded.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "fastify": "^5.12.1",
+    "graphql": "^17.0.2",
+    "requesto-backend": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

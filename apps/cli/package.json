@@ -1,28 +1,38 @@
 {
-  "name": "requesto-cli",
+  "name": "@requesto/cli",
   "version": "1.0.0",
-  "description": "Headless CLI for running Requesto collections in CI pipelines",
+  "description": "Run your Requesto collections from the terminal and CI pipelines",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.mjs",
   "bin": {
-    "requesto": "./dist/index.js"
+    "requesto": "./dist/index.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
+    "dev": "tsx src/bin.ts",
+    "build": "node scripts/bundle.mjs",
+    "start": "node dist/index.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
     "commander": "^15.0.0",
-    "graphql": "^17.0.2",
-    "requesto-backend": "1.0.0"
+    "requesto-backend": "1.0.0",
+    "requesto-engine": "1.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",
+    "esbuild": "^0.28.1",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
