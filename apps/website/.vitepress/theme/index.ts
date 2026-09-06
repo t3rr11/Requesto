@@ -4,6 +4,7 @@ import mediumZoom from 'medium-zoom';
 import { onMounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vitepress';
 import ThemeImage from './ThemeImage.vue';
+import { initOpenObserve } from './openobserve';
 import './custom.css';
 
 export default {
@@ -12,6 +13,7 @@ export default {
     app.component('ThemeImage', ThemeImage);
   },
   setup() {
+    initOpenObserve();
     const route = useRoute();
 
     const initZoom = () => {
