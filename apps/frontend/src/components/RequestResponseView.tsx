@@ -344,6 +344,9 @@ export function RequestResponseView() {
           testResults={activeTab.testResults}
           requestUrl={activeTab.request.url}
           isGraphQL={activeTab.request.requestType === 'graphql'}
+          oauthConfigId={
+            activeTab.request.auth?.type === 'oauth' ? activeTab.request.auth.oauth?.configId : null
+          }
         />
       </div>
 

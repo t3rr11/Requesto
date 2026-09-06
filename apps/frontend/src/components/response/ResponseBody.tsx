@@ -8,7 +8,7 @@ interface ResponseBodyProps {
   isDarkMode: boolean;
 }
 
-export function ResponseBody({ response, isDarkMode }: ResponseBodyProps) {
+export function ResponseBody({ response, isDarkMode }: Readonly<ResponseBodyProps>) {
   const isStreaming = 'isStreaming' in response && response.isStreaming;
 
   if (isStreaming) {
@@ -33,7 +33,7 @@ export function ResponseBody({ response, isDarkMode }: ResponseBodyProps) {
   }
 
   return (
-    <div className="h-full p-6">
+    <div className="h-full py-4 px-5">
       <div className="border border-gray-300 dark:border-gray-700 rounded overflow-hidden h-full">
         <Editor
           height="100%"

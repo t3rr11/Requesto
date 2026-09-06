@@ -10,7 +10,7 @@ interface SettingsFormProps {
   onCancel: () => void;
 }
 
-export function SettingsForm({ onSuccess, onCancel }: SettingsFormProps) {
+export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFormProps>) {
   const insecureTls = useSettingsStore(s => s.insecureTls);
   const setInsecureTls = useSettingsStore(s => s.setInsecureTls);
 
@@ -34,8 +34,8 @@ export function SettingsForm({ onSuccess, onCancel }: SettingsFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <section>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col space-y-6 h-full">
+      <section className="flex-1 overflow-y-auto">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Network</h3>
 
         <label className="flex items-start gap-3 cursor-pointer select-none">

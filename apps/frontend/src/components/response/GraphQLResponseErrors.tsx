@@ -7,7 +7,7 @@ interface GraphQLResponseErrorsProps {
 
 export function GraphQLResponseErrors({ errors }: Readonly<GraphQLResponseErrorsProps>) {
   return (
-    <div className="h-full overflow-y-auto p-6">
+    <div className="h-full overflow-y-auto py-4 px-5">
       <div className="divide-y divide-gray-200 dark:divide-gray-700">
         {errors.map((error, index) => (
           <div key={`${error.message}-${index}`} className="py-4 first:pt-0">

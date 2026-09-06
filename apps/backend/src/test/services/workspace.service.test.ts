@@ -107,7 +107,7 @@ describe('WorkspaceService.open', () => {
     });
     const service = new WorkspaceService(repo);
 
-    expect(service.open('Test', '/nope')).rejects.toMatchObject({
+    await expect(service.open('Test', '/nope')).rejects.toMatchObject({
       statusCode: 400,
       message: 'Directory does not exist: /nope',
     });

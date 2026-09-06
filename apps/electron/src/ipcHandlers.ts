@@ -16,6 +16,7 @@ function simulateDownload(): void {
     });
     if (percent >= 100) {
       clearInterval(interval);
+      state.updateDownloading = false;
       state.mainWindow?.webContents.send('update:downloaded');
     }
   }, 400);
@@ -34,9 +35,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('update:download', () => {
     if (SIMULATE_UPDATE_AVAILABLE) {
+      state.updateDownloading = true;
       simulateDownload();
       return;
     }
+    state.updateDownloading = true;
     return autoUpdater.downloadUpdate();
   });
 

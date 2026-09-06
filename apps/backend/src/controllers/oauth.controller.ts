@@ -92,6 +92,11 @@ const oauthController: FastifyPluginAsync<Options> = async (server, opts) => {
     return oauthService.getTokenStatus(request.params.id);
   });
 
+  // Reveal endpoint — never log the response of this route.
+  server.get<{ Params: { id: string } }>('/oauth/configs/:id/tokens/full', async (request) => {
+    return oauthService.getFullTokens(request.params.id);
+  });
+
   server.delete<{ Params: { id: string } }>('/oauth/configs/:id/tokens', async (request, reply) => {
     oauthService.clearTokens(request.params.id);
     return reply.code(204).send();

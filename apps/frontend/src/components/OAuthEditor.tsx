@@ -4,10 +4,10 @@ import type { OAuthConfig, OAuthAuth } from '../store/oauth/types';
 import { useOAuthStore } from '../store/oauth/store';
 import { useOAuthFlow } from '../hooks/useOAuthFlow';
 import { OAuthConfigForm } from '../forms/OAuthConfigForm';
-import { OAuthManagerDialog } from '../forms/OAuthManagerDialog';
 import { Button } from './Button';
 import { formatTimeUntilExpiry, getSecondsUntil } from '../helpers/oauth/expiry';
 import { revokeOAuthToken } from '../helpers/oauth/oauthFlowHandler';
+import { useUIStore } from '../store/ui/store';
 
 interface OAuthEditorProps {
   auth: OAuthAuth | undefined;
@@ -17,8 +17,8 @@ interface OAuthEditorProps {
 
 export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEditorProps) {
   const [showConfigForm, setShowConfigForm] = useState(false);
-  const [showManagerDialog, setShowManagerDialog] = useState(false);
   const [editingConfig, setEditingConfig] = useState<OAuthConfig | undefined>(undefined);
+  const openSettings = useUIStore(s => s.openSettings);
   const selectedConfigId = auth?.configId ?? '';
 
   const {
@@ -146,7 +146,7 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
                 New
               </Button>
             )}
-            <Button type="button" onClick={() => setShowManagerDialog(true)} variant="ghost" size="sm" disabled={disabled || isAuthenticating} className="gap-1" title="Manage OAuth Configurations">
+            <Button type="button" onClick={() => openSettings('oauth-configs')} variant="ghost" size="sm" disabled={disabled || isAuthenticating} className="gap-1" title="Manage OAuth Configurations">
               <Settings size={14} />
               Manage
             </Button>
@@ -291,8 +291,6 @@ export function OAuthEditor({ auth, onAuthChange, disabled = false }: OAuthEdito
         onDelete={handleDeleteConfig}
         editConfig={editingConfig}
       />
-
-      <OAuthManagerDialog isOpen={showManagerDialog} onClose={() => setShowManagerDialog(false)} />
     </div>
   );
 }

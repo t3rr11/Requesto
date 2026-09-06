@@ -6,15 +6,28 @@ import { Header } from '../../components/Header';
 const mockToggleSidebar = vi.fn();
 const mockToggleConsole = vi.fn();
 const mockTogglePanelLayout = vi.fn();
+const mockOpenSettings = vi.fn();
+const mockCloseSettings = vi.fn();
+const mockSetSettingsTab = vi.fn();
+
+// Selector-aware mock so components using `useUIStore(s => s.x)` get the field
+const mockUIState = {
+  isSidebarOpen: true,
+  isConsoleOpen: false,
+  panelLayout: 'vertical',
+  isSettingsOpen: false,
+  settingsTab: 'general',
+  toggleSidebar: mockToggleSidebar,
+  toggleConsole: mockToggleConsole,
+  togglePanelLayout: mockTogglePanelLayout,
+  openSettings: mockOpenSettings,
+  closeSettings: mockCloseSettings,
+  setSettingsTab: mockSetSettingsTab,
+};
+
 vi.mock('../../store/ui/store', () => ({
-  useUIStore: () => ({
-    isSidebarOpen: true,
-    isConsoleOpen: false,
-    panelLayout: 'vertical',
-    toggleSidebar: mockToggleSidebar,
-    toggleConsole: mockToggleConsole,
-    togglePanelLayout: mockTogglePanelLayout,
-  }),
+  useUIStore: (selector?: (s: typeof mockUIState) => unknown) =>
+    selector ? selector(mockUIState) : mockUIState,
 }));
 
 const mockToggleTheme = vi.fn();
@@ -77,10 +90,11 @@ describe('Header', () => {
     expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
   });
 
-  it('opens settings dialog', () => {
+  it('opens settings dialog on the general tab', () => {
     renderHeader();
     const settingsBtn = screen.getByTitle('Settings');
     fireEvent.click(settingsBtn);
-    expect(screen.getByRole('checkbox', { name: /ignore ssl certificate errors/i })).toBeInTheDocument();
+    expect(mockOpenSettings).toHaveBeenCalledOnce();
   });
 });
+

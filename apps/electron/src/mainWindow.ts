@@ -4,6 +4,7 @@ import { isDev } from './constants';
 import { state } from './state';
 import { createAppMenu } from './appMenu';
 import { getInitialWindowState, attachWindowStateHandler } from './windowStateManager';
+import { maybeCheckForUpdatesOnFocus } from './updateChecker';
 
 export function createWindow(): void {
   const windowState = getInitialWindowState();
@@ -72,5 +73,6 @@ export function createWindow(): void {
 
   state.mainWindow.on('focus', () => {
     state.mainWindow?.webContents.send('window:focus');
+    maybeCheckForUpdatesOnFocus();
   });
 }

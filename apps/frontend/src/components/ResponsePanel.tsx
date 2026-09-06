@@ -1,3 +1,4 @@
+import { Button } from './Button';
 import { useState, type ReactElement } from 'react';
 import { Loader2, AlertTriangle, Send, Download } from 'lucide-react';
 import { getStatusBadgeColor, formatBytes, downloadResponseBody, getGraphQLResponseInfo } from '../helpers/response';
@@ -5,11 +6,11 @@ import { ResponseBody } from './response/ResponseBody';
 import { ResponseHeaders } from './response/ResponseHeaders';
 import { ResponseTests } from './response/ResponseTests';
 import { GraphQLResponseErrors } from './response/GraphQLResponseErrors';
-import { Button } from './Button';
+import { ResponseOAuthToken } from './response/ResponseOAuthToken';
 import type { ProxyResponse, StreamingResponse } from '../store/request/types';
 import type { TestResult } from '../helpers/scriptRunner';
 
-type ResponseTab = 'body' | 'graphql-errors' | 'headers' | 'test-results';
+type ResponseTab = 'body' | 'graphql-errors' | 'headers' | 'test-results' | 'token';
 
 interface ResponsePanelProps {
   response: ProxyResponse | StreamingResponse | null;
@@ -19,6 +20,8 @@ interface ResponsePanelProps {
   testResults?: TestResult[];
   requestUrl?: string;
   isGraphQL?: boolean;
+  /** OAuth config attached to the request (enables the Token tab). */
+  oauthConfigId?: string | null;
 }
 
 function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined): string | ReactElement {
@@ -35,7 +38,7 @@ function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined)
 
   return (
     <span className="flex items-center gap-1.5">
-      Test Results
+      <span>Test Results</span>
       <span
         className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-xs font-medium ${
           allPassed
@@ -49,16 +52,19 @@ function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined)
   );
 }
 
-export function ResponsePanel({ response, loading, error, isDarkMode, testResults, requestUrl, isGraphQL = false }: Readonly<ResponsePanelProps>) {
+export function ResponsePanel({ response, loading, error, isDarkMode, testResults, requestUrl, isGraphQL = false, oauthConfigId }: Readonly<ResponsePanelProps>) {
   const [activeResponseTab, setActiveResponseTab] = useState<ResponseTab>('body');
 
   const isStreaming = response && 'isStreaming' in response && response.isStreaming;
   const streamingResponse = isStreaming ? (response as StreamingResponse) : null;
-  const responseSize = isStreaming
-    ? new Blob([JSON.stringify(streamingResponse!.events)]).size
-    : response && 'body' in response && response.body
-      ? new Blob([response.body]).size
-      : 0;
+  let responseSize = 0;
+  
+  if (isStreaming) {
+    responseSize = new Blob([JSON.stringify(streamingResponse!.events)]).size;
+  } else if (response && 'body' in response && response.body) {
+    responseSize = new Blob([response.body]).size;
+  }
+
   const graphqlInfo = isGraphQL && response && !isStreaming
     ? getGraphQLResponseInfo(response as ProxyResponse)
     : null;
@@ -125,22 +131,22 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
     ...(graphqlInfo?.errors.length ? ['graphql-errors' as const] : []),
     'headers',
     'test-results',
+    ...(oauthConfigId ? ['token' as const] : []),
   ];
 
   return (
     <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 min-h-0">
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 bg-gray-50 dark:bg-gray-800 flex items-center h-12 shrink-0">
-        <div className="flex items-center justify-between w-full">
-          <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-4 bg-gray-50 dark:bg-gray-800 flex items-center min-h-12 py-2 shrink-0">
+        <div className="flex flex-wrap items-center w-full gap-x-3 gap-y-2">
+          <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 shrink-0 mr-auto">
             Response{' '}
             {isStreaming && (
-              <span className="text-blue-600 dark:text-blue-400">(SSE Stream)</span>
+              <span className="text-blue-600 dark:text-blue-400">(SSE)</span>
             )}
           </h3>
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-x-2 gap-y-2 text-sm flex-wrap">
             {graphqlInfo?.errors.length ? (
               <span
-                role="status"
                 aria-label={graphqlInfo.isPartial ? 'GraphQL response contains partial data' : 'GraphQL response contains errors'}
                 className={`px-2 py-1 rounded font-medium text-xs ${
                 graphqlInfo.isPartial
@@ -148,22 +154,22 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
                   : 'bg-red-200 text-red-950 dark:bg-red-900 dark:text-red-100'
               }`}
               >
-                {graphqlInfo.isPartial ? 'Partial data' : 'GraphQL errors'}
+                {graphqlInfo.isPartial ? 'Partial' : 'Errors'}
               </span>
             ) : null}
-            <span className={`px-2 py-1 rounded font-medium text-xs ${getStatusBadgeColor(response.status)}`}>
+            <span className={`px-2 py-1 rounded font-medium text-xs whitespace-nowrap ${getStatusBadgeColor(response.status)}`}>
               {response.status} {response.statusText}
             </span>
-            <span className="text-gray-600 dark:text-gray-400">
-              <span className="font-medium">Time:</span> {response.duration}ms
+            <span className="text-gray-600 dark:text-gray-400 whitespace-nowrap" title={`Response time: ${response.duration}ms`}>
+              {response.duration}ms
             </span>
             {isStreaming ? (
-              <span className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Events:</span> {streamingResponse!.events.length}
+              <span className="text-gray-600 dark:text-gray-400 whitespace-nowrap" title={`Events: ${streamingResponse!.events.length}`}>
+                {streamingResponse!.events.length} events
               </span>
             ) : (
-              <span className="text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Size:</span> {formatBytes(responseSize)}
+              <span className="text-gray-600 dark:text-gray-400 whitespace-nowrap" title={`Size: ${formatBytes(responseSize)}`}>
+                {formatBytes(responseSize)}
               </span>
             )}
             {!isStreaming && (response as ProxyResponse).body && (
@@ -172,10 +178,9 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
                 variant="ghost"
                 size="sm"
                 title="Download response body"
-                className="flex items-center gap-1.5"
               >
                 <Download className="w-4 h-4" />
-                Download
+                <span>Download</span>
               </Button>
             )}
           </div>
@@ -183,7 +188,7 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
       </div>
 
       <div className="border-b border-gray-200 dark:border-gray-700 shrink-0">
-        <div className="flex px-6">
+        <div className="flex px-3 h-11">
           {tabs.map(tab => (
             <Button
               key={tab}
@@ -211,6 +216,7 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
         )}
         {activeResponseTab === 'headers' && <ResponseHeaders headers={response.headers} />}
         {activeResponseTab === 'test-results' && <ResponseTests testResults={testResults} />}
+        {activeResponseTab === 'token' && oauthConfigId && <ResponseOAuthToken configId={oauthConfigId} />}
       </div>
     </div>
   );

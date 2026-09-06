@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Folder as FolderIcon, FolderPlus, Import, Play, Search, X, FileText, Braces } from 'lucide-react';
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import type { DragStartEvent, DragEndEvent, CollisionDetection } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useUIStore } from '../store/ui/store';
 import { useGitStore } from '../store/git/store';
@@ -31,7 +31,6 @@ import {
   useSensors,
   closestCenter,
 } from '@dnd-kit/core';
-import type { CollisionDetection } from '@dnd-kit/core';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -358,7 +357,7 @@ export function CollectionsSidebar() {
       className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col relative flex-none min-h-0"
       style={{ width: `${sidebarWidth}px` }}
     >
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-4 pb-4 pt-2 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
           <div className="flex gap-2">

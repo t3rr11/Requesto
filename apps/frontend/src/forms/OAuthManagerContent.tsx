@@ -20,23 +20,22 @@ import {
 } from 'lucide-react';
 import { useOAuthStore } from '../store/oauth/store';
 import { useAlertStore } from '../store/alert/store';
-import { Dialog } from '../components/Dialog';
-import { OAuthConfigList } from '../components/OAuthConfigList';
 import { OAuthConfigForm } from './OAuthConfigForm';
 import { EmptyState } from '../components/EmptyState';
 import { Button } from '../components/Button';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { TokenDetails } from '../components/oauth/TokenDetails';
 import { useConfirmDialog, useDialog } from '../hooks/useDialog';
 import { useOAuthFlow } from '../hooks/useOAuthFlow';
 import { formatTimeUntilExpiry, getSecondsUntil } from '../helpers/oauth/expiry';
 import type { OAuthConfig, OAuthFlowType } from '../store/oauth/types';
 
-interface OAuthManagerDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface OAuthManagerContentProps {
+  /** True while the manager is visible (dialog open / settings tab shown). */
+  active: boolean;
 }
 
-export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps) {
+export function OAuthManagerContent({ active }: OAuthManagerContentProps) {
   const {
     configs,
     tokenStatuses,
@@ -59,17 +58,17 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
   const { authenticate, refresh, isAuthenticating, error: authError } = useOAuthFlow(selectedConfigId || undefined);
 
   useEffect(() => {
-    if (isOpen) {
+    if (active) {
       loadConfigs();
     }
-  }, [isOpen, loadConfigs]);
+  }, [active, loadConfigs]);
 
   // Pre-select the first config when configs load and nothing is selected
   useEffect(() => {
-    if (isOpen && configs.length > 0 && !selectedConfigId) {
+    if (active && configs.length > 0 && !selectedConfigId) {
       setSelectedConfigId(configs[0].id);
     }
-  }, [isOpen, configs, selectedConfigId]);
+  }, [active, configs, selectedConfigId]);
 
   useEffect(() => {
     if (selectedConfigId) {
@@ -77,13 +76,13 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
     }
   }, [selectedConfigId, loadTokenStatus]);
 
-  // Reset state when dialog closes
+  // Reset state when the manager is hidden
   useEffect(() => {
-    if (!isOpen) {
+    if (!active) {
       setSelectedConfigId(null);
       setEditingConfig(undefined);
     }
-  }, [isOpen]);
+  }, [active]);
 
   const handleAddConfig = () => {
     setEditingConfig(undefined);
@@ -163,6 +162,14 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
     password: 'Password',
   };
 
+  const flowTypeShortLabels: Record<string, string> = {
+    'authorization-code': 'Auth Code',
+    'authorization-code-pkce': 'Auth Code (PKCE)',
+    'client-credentials': 'Client Credentials',
+    implicit: 'Implicit',
+    password: 'Password',
+  };
+
   const storageLabels: Record<string, string> = {
     memory: 'In-Memory',
     session: 'Session Storage',
@@ -183,22 +190,58 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
   })();
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title="OAuth 2.0 Configurations" size="full">
-      <div className="flex h-[70vh] -m-6">
-        <div className="shrink-0">
-          <OAuthConfigList
-            configs={configs}
-            selectedConfigId={selectedConfigId}
-            isLoadingConfigs={isLoadingConfigs}
-            onConfigSelect={config => setSelectedConfigId(config.id)}
-            onAdd={handleAddConfig}
-          />
+    <>
+      <div className="flex h-full min-h-0">
+        {/* Config list — styled like the settings navigation */}
+        <div className="w-64 shrink-0 border-r border-gray-200 dark:border-gray-700 flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-3 py-2 shrink-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+              Configurations
+            </p>
+            <Button variant="icon" size="sm" title="New Config" onClick={handleAddConfig}>
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-1">
+            {isLoadingConfigs ? (
+              <div className="px-3 py-8 text-sm text-gray-500 dark:text-gray-400 text-center">Loading...</div>
+            ) : configs.length === 0 ? (
+              <div className="px-3 py-8 text-sm text-gray-400 dark:text-gray-500 text-center">
+                No configurations yet
+              </div>
+            ) : (
+              configs.map(config => {
+                const selected = config.id === selectedConfigId;
+                return (
+                  <button
+                    key={config.id}
+                    onClick={() => setSelectedConfigId(config.id)}
+                    className={`w-full text-left px-3 py-2 rounded-md transition-colors cursor-pointer ${
+                      selected
+                        ? 'bg-blue-50 dark:bg-blue-900/30'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <div className={`text-sm font-medium truncate ${selected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-gray-100'}`}>
+                      {config.name}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                      {config.provider === 'custom' ? 'Custom Provider' : config.provider}
+                    </div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 truncate">
+                      {flowTypeShortLabels[config.flowType] || config.flowType}
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
-        <div className="flex-1 overflow-hidden flex flex-col min-w-0 bg-gray-50 dark:bg-gray-900">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {selectedConfig ? (
             <div className="flex-1 overflow-y-auto">
               {/* Header */}
-              <div className="sticky top-0 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+              <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 shrink-0">
@@ -323,35 +366,12 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
                       <p className="text-sm text-red-700 dark:text-red-400">{authError}</p>
                     </div>
                   )}
-
-                  {/* Token details when authenticated. The backend is the sole
-                      owner of token material; here we only show non-secret
-                      metadata plus a redacted preview of the access token. */}
-                  {isAuthenticated && currentStatus && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600/30 space-y-2">
-                      {currentStatus.accessTokenPreview && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Access Token</span>
-                          <code className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate flex-1 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                            {currentStatus.accessTokenPreview}
-                          </code>
-                        </div>
-                      )}
-                      {currentStatus.hasRefreshToken && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Refresh Token</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 italic">Stored on backend</span>
-                        </div>
-                      )}
-                      {currentStatus.scope && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400 w-24 shrink-0">Token Scope</span>
-                          <span className="text-xs text-gray-700 dark:text-gray-300">{currentStatus.scope}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
+
+                {/* Token Details */}
+                {isAuthenticated && selectedConfig && (
+                  <TokenDetails configId={selectedConfig.id} collapsible />
+                )}
 
                 {/* Endpoints Section */}
                 <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
@@ -595,6 +615,6 @@ export function OAuthManagerDialog({ isOpen, onClose }: OAuthManagerDialogProps)
       />
 
       <ConfirmDialog {...confirmDialog.props} />
-    </Dialog>
+    </>
   );
 }

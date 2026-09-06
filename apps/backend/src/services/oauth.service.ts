@@ -6,6 +6,7 @@ import { getHttpsAgent } from '../utils/httpsAgent';
 import type {
   OAuthConfigServer,
   OAuthConfigPublic,
+  OAuthFullTokens,
   OAuthTokenStatus,
   StoredOAuthToken,
   TokenExchangeResponse,
@@ -132,6 +133,15 @@ export class OAuthService {
   /** Public: non-secret token status for display in the frontend. */
   getTokenStatus(configId: string): OAuthTokenStatus {
     return buildTokenStatus(this.repo.getTokens(configId));
+  }
+
+  /** Full token material for the debug/reveal UI. Callers must not log it. */
+  getFullTokens(configId: string): OAuthFullTokens {
+    const token = this.repo.getTokens(configId);
+    if (!token) {
+      throw AppError.notFound('No token stored for this OAuth configuration');
+    }
+    return token;
   }
 
   /** Public: clear stored tokens for a config (logout). */

@@ -8,6 +8,8 @@ export const state: {
   isQuitting: boolean;
   backendReady: boolean;
   downloadedUpdatePath: string | null;
+  updateDownloading: boolean;
+  backgroundUpdateCheck: boolean;
 } = {
   mainWindow: null,
   splashWindow: null,
@@ -15,4 +17,6 @@ export const state: {
   isQuitting: false,
   backendReady: false,
   downloadedUpdatePath: null,
+  updateDownloading: false,
+  backgroundUpdateCheck: false,
 };

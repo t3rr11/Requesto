@@ -42,6 +42,9 @@ export interface OAuthTokensData {
   tokens: Record<string, StoredOAuthToken>;
 }
 
+/** Full token material for a config — only exposed by the reveal endpoint. */
+export type OAuthFullTokens = StoredOAuthToken;
+
 export interface OAuthTokenStatus {
   hasToken: boolean;
   tokenType?: string;

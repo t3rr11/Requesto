@@ -1,7 +1,6 @@
 import './appIdentity';
 import { app, BrowserWindow } from 'electron';
-import { autoUpdater } from 'electron-updater';
-import { isDev, SIMULATE_BACKEND_FAILURE, SIMULATE_UPDATE_AVAILABLE } from './constants';
+import { isDev, SIMULATE_BACKEND_FAILURE, SIMULATE_UPDATE_AVAILABLE, UPDATE_CHECKS_ENABLED } from './constants';
 import { state } from './state';
 import { clearCacheOnVersionChange } from './cacheManager';
 import { registerIpcHandlers } from './ipcHandlers';
@@ -9,36 +8,7 @@ import { createSplashScreen, closeSplashScreen } from './splashWindow';
 import { startBackend, stopBackend, waitForBackend } from './backendManager';
 import { createWindow } from './mainWindow';
 import { showErrorWindow } from './errorWindow';
-
-function setupAutoUpdater(): void {
-  autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = false;
-
-  autoUpdater.on('update-available', info => {
-    state.mainWindow?.webContents.send('update:available', {
-      version: info.version,
-      releaseNotes: info.releaseNotes ?? null,
-    });
-  });
-
-  autoUpdater.on('download-progress', progress => {
-    state.mainWindow?.webContents.send('update:progress', {
-      percent: progress.percent,
-      bytesPerSecond: progress.bytesPerSecond,
-      transferred: progress.transferred,
-      total: progress.total,
-    });
-  });
-
-  autoUpdater.on('update-downloaded', info => {
-    state.downloadedUpdatePath = info.downloadedFile ?? null;
-    state.mainWindow?.webContents.send('update:downloaded');
-  });
-
-  autoUpdater.on('error', err => {
-    state.mainWindow?.webContents.send('update:error', err.message);
-  });
-}
+import { runUpdateCheck, setupAutoUpdater } from './updateChecker';
 
 // App lifecycle
 app.whenReady().then(async () => {
@@ -47,7 +17,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers();
   createSplashScreen();
 
-  if (!isDev || SIMULATE_UPDATE_AVAILABLE) {
+  if (UPDATE_CHECKS_ENABLED) {
     setupAutoUpdater();
   }
 
@@ -81,7 +51,7 @@ app.whenReady().then(async () => {
   }, 500);
 
   // Check for updates after the window is ready (production only)
-  if (!isDev || SIMULATE_UPDATE_AVAILABLE) {
+  if (UPDATE_CHECKS_ENABLED) {
     if (SIMULATE_UPDATE_AVAILABLE) {
       // Simulate an available update after a short delay so the window is ready
       setTimeout(() => {
@@ -91,9 +61,7 @@ app.whenReady().then(async () => {
         });
       }, 2000);
     } else {
-      autoUpdater.checkForUpdates().catch(err => {
-        console.error('Update check failed:', err);
-      });
+      runUpdateCheck(false);
     }
   }
 

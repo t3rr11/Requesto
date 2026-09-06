@@ -103,7 +103,7 @@ describe('ResponsePanel', () => {
       />,
     );
 
-    expect(screen.getByText('Partial data')).toBeInTheDocument();
+    expect(screen.getByText('Partial')).toBeInTheDocument();
     await user.click(screen.getByText('Errors (1)'));
     expect(screen.getByText('User is unavailable')).toBeInTheDocument();
     expect(screen.getByText('Path: user')).toBeInTheDocument();
