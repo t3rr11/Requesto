@@ -60,7 +60,9 @@ jobs:
 
       - name: Sync package version
         if: steps.version.outputs.set-version == 'true'
-        run: npm version "${VERSION#v}" --no-git-tag-version --workspace @requesto/cli
+        # --allow-same-version keeps this idempotent when the version was
+        # already bumped manually before the release was dispatched.
+        run: npm version "${VERSION#v}" --no-git-tag-version --allow-same-version --workspace @requesto/cli
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
