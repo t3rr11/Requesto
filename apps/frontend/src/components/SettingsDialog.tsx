@@ -41,7 +41,7 @@ export function SettingsDialog() {
                 <button
                   key={section.id}
                   onClick={() => setSettingsTab(section.id)}
-                  aria-current={activeTab === section.id}
+                  aria-current={activeTab === section.id || undefined}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                     activeTab === section.id
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -63,7 +63,7 @@ export function SettingsDialog() {
                 <button
                   key={section.id}
                   onClick={() => setSettingsTab(section.id)}
-                  aria-current={activeTab === section.id}
+                  aria-current={activeTab === section.id || undefined}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${
                     activeTab === section.id
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'

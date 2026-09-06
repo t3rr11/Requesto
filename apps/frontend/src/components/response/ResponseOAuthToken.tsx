@@ -6,7 +6,7 @@ interface ResponseOAuthTokenProps {
 
 export function ResponseOAuthToken({ configId }: Readonly<ResponseOAuthTokenProps>) {
   return (
-    <div className="h-full overflow-y-auto p-4" data-testid="response-oauth-token">
+    <div className="h-full overflow-y-auto py-4 px-5" data-testid="response-oauth-token">
       <TokenDetails configId={configId} />
     </div>
   );

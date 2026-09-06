@@ -61,6 +61,9 @@ export function setupAutoUpdater(): void {
   });
 
   autoUpdater.on('error', err => {
+    // A failed download must clear this flag, otherwise runUpdateCheck is
+    // blocked for the rest of the session.
+    state.updateDownloading = false;
     // Background re-checks (e.g. while offline) fail silently — only surface
     // errors from startup or user-initiated checks/downloads.
     if (state.backgroundUpdateCheck) {
