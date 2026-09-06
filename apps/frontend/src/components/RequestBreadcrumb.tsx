@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useCollectionsStore } from '../store/collections/store';
 import { RenameForm } from '../forms/RenameForm';
-import { Pencil } from 'lucide-react';
+import { ChevronRight, Pencil } from 'lucide-react';
 
 interface RequestBreadcrumbProps {
   savedRequestId: string | undefined;
 }
 
-export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
+export function RequestBreadcrumb({ savedRequestId }: Readonly<RequestBreadcrumbProps>) {
   const { collections, updateRequest } = useCollectionsStore();
   const [isRenameOpen, setIsRenameOpen] = useState(false);
 
@@ -32,15 +32,15 @@ export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
 
   return (
     <>
-      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-        <span>Collections</span>
+      <div className="flex items-center gap-2 truncate text-sm text-gray-600 dark:text-gray-400 min-w-0 flex-1 @container">
+        <span className="truncate @max-[260px]:hidden">Collections</span>
         {collectionName && (
           <>
-            <span>›</span>
-            <span>{collectionName}</span>
+            <span className="@max-[260px]:hidden"><ChevronRight size={12} /></span>
+            <span className="truncate @max-[200px]:hidden">{collectionName}</span>
           </>
         )}
-        <span>›</span>
+        <span className="@max-[200px]:hidden"><ChevronRight size={12} /></span>
         {canRename ? (
           <button
             type="button"
@@ -48,7 +48,7 @@ export function RequestBreadcrumb({ savedRequestId }: RequestBreadcrumbProps) {
             title="Click to rename"
             className="group inline-flex items-center gap-1 text-gray-900 dark:text-gray-100 font-medium hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none cursor-pointer"
           >
-            <span className="group-hover:underline group-focus:underline">{requestName}</span>
+            <span className="group-hover:underline group-focus:underline truncate">{requestName}</span>
             <Pencil className="h-3 w-3 text-gray-500 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
           </button>
         ) : (

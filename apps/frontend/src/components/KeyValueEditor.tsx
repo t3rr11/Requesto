@@ -34,7 +34,7 @@ export function KeyValueEditor({
   addLabel = '+ Add Row',
   bulkPlaceholder,
   disabled = false,
-}: KeyValueEditorProps) {
+}: Readonly<KeyValueEditorProps>) {
   const [viewMode, setViewMode] = useState<'table' | 'bulk'>('table');
   const [bulkText, setBulkText] = useState('');
 
@@ -133,7 +133,7 @@ export function KeyValueEditor({
               <th className="text-left text-xs font-medium text-gray-600 dark:text-gray-400 py-2 px-3">
                 {valuePlaceholder}
               </th>
-              <th className="w-32 text-right py-2 px-3">
+              <th className="w-32 text-right py-0.5">
                 <Button
                   onClick={handleSwitchToBulk}
                   variant="ghost"
@@ -149,16 +149,16 @@ export function KeyValueEditor({
           <tbody>
             {items.map(item => (
               <tr key={item.id} className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-                <td className="py-2 px-3 text-center">
+                <td className="py-1 px-3 text-center">
                   <input
                     type="checkbox"
                     checked={item.enabled}
                     onChange={e => handleUpdate(item.id, 'enabled', e.target.checked)}
-                    className="w-4 h-4"
+                    className="w-4 h-4 mt-1.5 cursor-pointer"
                     disabled={disabled}
                   />
                 </td>
-                <td className="py-2 px-1">
+                <td className="py-1 px-1">
                   <input
                     type="text"
                     value={item.key}
@@ -168,7 +168,7 @@ export function KeyValueEditor({
                     disabled={disabled}
                   />
                 </td>
-                <td className="py-2 px-1">
+                <td className="py-1 px-1">
                   <VariableAwareInput
                     value={item.value}
                     onChange={value => handleUpdate(item.id, 'value', value)}
@@ -177,7 +177,7 @@ export function KeyValueEditor({
                     disabled={disabled}
                   />
                 </td>
-                <td className="py-2 px-3 text-right">
+                <td className="py-1 px-3 text-right">
                   <Button
                     onClick={() => handleRemove(item.id)}
                     variant="icon"

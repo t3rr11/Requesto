@@ -107,10 +107,10 @@ function GraphQLSchemaActions({
         <Button
           onClick={onFetch}
           variant="icon"
-          size="md"
+          size="sm"
           loading={schemaLoading}
           disabled={requestLoading || !url.trim() || !canFetch}
-          className="h-10 w-10 shrink-0"
+          className="h-8 w-8 shrink-0"
           aria-label={schema ? 'Refresh GraphQL schema' : 'Fetch GraphQL schema'}
         >
           {!schemaLoading && <RefreshCw className="h-4 w-4" />}
@@ -120,9 +120,9 @@ function GraphQLSchemaActions({
         <Button
           onClick={onOpen}
           variant="icon"
-          size="md"
+          size="sm"
           disabled={!schema && !error}
-          className={`h-10 w-10 shrink-0 ${schema ? 'text-blue-600 dark:text-blue-400' : ''}`}
+          className={`h-8 w-8 shrink-0 ${schema ? 'text-blue-600 dark:text-blue-400' : ''}`}
           aria-label="View GraphQL schema"
         >
           <BookOpen className="h-4 w-4" />
@@ -402,13 +402,13 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex gap-3 items-center">
+      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-3.5">
+        <div className="flex gap-2 items-center">
           <select
             aria-label="Request method or type"
             value={requestType === 'graphql' ? `graphql:${watch('graphqlTransport') ?? 'post'}` : watch('method')}
             onChange={event => handleRequestKindChange(event.target.value)}
-            className="px-3 py-2.5 min-w-25 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 cursor-pointer"
+            className="px-3 py-1.5 min-w-25 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 font-medium bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 cursor-pointer"
             disabled={loading}
           >
             <optgroup label="HTTP">
@@ -432,7 +432,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
                   onChange={handleUrlChange}
                   placeholder="Enter Request URL"
                   disabled={loading}
-                  className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-blue-500 bg-transparent text-black dark:text-gray-200"
+                  className="w-full px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-blue-500 bg-transparent text-black dark:text-gray-200"
                 />
               )}
             />
@@ -454,7 +454,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
             onClick={loading ? onCancel : () => onSend(getValues())}
             disabled={!loading && !urlValue.trim()}
             loading={false}
-            size="md"
+            size="sm"
             variant={loading ? 'danger' : 'primary'}
           >
             {loading ? 'Cancel' : 'Send'}
@@ -462,13 +462,13 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         </div>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-12">
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-10">
         {showLeftScroll && (
           <Button
             onClick={() => scrollTabs('left')}
             variant="ghost"
             size="sm"
-            className="absolute left-0 top-0 z-10 h-full px-3 rounded-none border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_8px_rgba(0,0,0,0.3)]"
+            className="absolute left-0 top-0 z-10 h-full px-3 rounded-none bg-gray-100 dark:bg-gray-700 border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_8px_rgba(0,0,0,0.3)]"
             aria-label="Scroll left"
           >
             <ChevronLeft size={16} />
@@ -477,7 +477,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
 
         <div
           ref={tabsContainerRef}
-          className="flex px-6 h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
+          className="flex px-3 h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
           style={{
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
@@ -489,7 +489,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
               onClick={() => setActiveTab(tab)}
               variant="ghost"
               size="sm"
-              className={`shrink-0 px-4 py-3 rounded-none border-b-2 transition-colors ${
+              className={`shrink-0 rounded-none border-b-2 transition-colors ${
                 activeTab === tab
                   ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
                   : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -505,7 +505,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
             onClick={() => scrollTabs('right')}
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-0 z-10 h-full px-3 rounded-none border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_rgba(0,0,0,0.3)]"
+            className="absolute right-0 top-0 z-10 h-full px-3 rounded-none bg-gray-100 dark:bg-gray-700 border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_rgba(0,0,0,0.3)]"
             aria-label="Scroll right"
           >
             <ChevronRight size={16} />
@@ -513,7 +513,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-6 bg-white dark:bg-gray-900">
+      <div className="flex-1 min-h-0 overflow-y-auto py-4 px-5 bg-white dark:bg-gray-900">
         {activeTab === 'params' && (
           <KeyValueEditor
             items={params}

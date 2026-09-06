@@ -2,11 +2,11 @@ interface ResponseHeadersProps {
   headers: Record<string, string>;
 }
 
-export function ResponseHeaders({ headers }: ResponseHeadersProps) {
+export function ResponseHeaders({ headers }: Readonly<ResponseHeadersProps>) {
   const entries = Object.entries(headers);
 
   return (
-    <div className="p-6 overflow-y-auto h-full">
+    <div className="py-4 px-5 overflow-y-auto h-full">
       {entries.length > 0 ? (
         <div className="space-y-2">
           {entries.map(([key, value]) => (
