@@ -1,6 +1,6 @@
 {
   "name": "requesto-engine",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Shared request-run engine for Requesto: collection runner, script sandbox, scratch workspaces",
   "type": "module",
   "main": "dist/index.js",
@@ -38,12 +38,12 @@
   "dependencies": {
     "fastify": "^5.12.1",
     "graphql": "^17.0.2",
-    "requesto-backend": "1.8.0"
+    "requesto-backend": "1.9.0"
   },
   "devDependencies": {
-    "@types/node": "^26.4.0",
-    "tsx": "^4.23.1",
+    "@types/node": "^26.4.1",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.0"
   }
 }
