@@ -23,6 +23,11 @@ jobs:
       - name: Build
         working-directory: apps/website
         run: npm run build
+        env:
+          OO_SITE: ${{ secrets.OO_SITE }}
+          OO_CLIENT_TOKEN: ${{ secrets.OO_CLIENT_TOKEN }}
+          OO_ORGANIZATION_ID: ${{ secrets.OO_ORGANIZATION_ID }}
+          OO_ENVIRONMENT: ${{ secrets.OO_ENVIRONMENT }}
 
       - name: Deploy to server
         run: |

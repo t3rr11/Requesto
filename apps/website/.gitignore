@@ -3,3 +3,8 @@
 
 # VitePress dist
 .vitepress/dist
+
+# Local env files (OpenObserve RUM config etc.)
+.env
+.env.local
+.env.*.local

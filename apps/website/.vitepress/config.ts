@@ -1,6 +1,17 @@
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { defineConfig, type PageData } from 'vitepress';
 import llmstxt from 'vitepress-plugin-llms';
 import { version } from '../../../package.json';
+
+try {
+  const rootEnv = parseEnv(readFileSync(new URL('../../../.env', import.meta.url), 'utf8'));
+  for (const [key, value] of Object.entries(rootEnv)) {
+    if (key.startsWith('OO_') && !(key in process.env)) process.env[key] = value;
+  }
+} catch {
+  // No root .env
+}
 
 const SITE_URL = 'https://requesto.com.au';
 
@@ -18,6 +29,7 @@ export default defineConfig({
   vite: {
     // @ts-expect-error - monorepo Vite version mismatch: plugin resolves root Vite 8 types, VitePress bundles Vite 5
     plugins: [llmstxt()],
+    envPrefix: ['VITE_', 'OO_'],
   },
 
   head: [

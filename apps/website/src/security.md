@@ -15,6 +15,12 @@ How Requesto handles your data and what to be aware of when deploying it.
 - Sends no telemetry or analytics
 - Is fully open source (MIT) - you can audit the code
 
+## Website Analytics
+
+This documentation site (requesto.com.au) is separate from the Requesto app you run. To understand how the docs are used, the website collects anonymous, sampled usage data (page views, performance, JavaScript errors) via [OpenObserve](https://openobserve.ai) RUM.
+
+The Requesto application itself still sends no telemetry or analytics and will never collect telemetry or analytics.
+
 ## Data Storage
 
 All data lives in plain JSON files on disk, organized by workspace. Each workspace keeps its data inside a `.requesto/` folder:
