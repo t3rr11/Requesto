@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import * as actions from './actions';
-import type { LayoutMode } from './types';
+import type { LayoutMode, SettingsTab } from './types';
 
 type UIState = {
   isSidebarOpen: boolean;
@@ -17,6 +17,8 @@ type UIState = {
   expandedFolders: Set<string>;
   selectedRequestIds: Set<string>;
   lastSelectedRequestId: string | null;
+  isSettingsOpen: boolean;
+  settingsTab: SettingsTab;
 
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
@@ -37,6 +39,9 @@ type UIState = {
   expandFolder: (id: string) => void;
   toggleRequestSelection: (requestId: string, ctrlKey: boolean, shiftKey: boolean, allRequestIds?: string[]) => void;
   clearSelection: () => void;
+  openSettings: (tab?: SettingsTab) => void;
+  closeSettings: () => void;
+  setSettingsTab: (tab: SettingsTab) => void;
 };
 
 export const useUIStore = create<UIState>()(
@@ -55,6 +60,8 @@ export const useUIStore = create<UIState>()(
       expandedFolders: new Set<string>(),
       selectedRequestIds: new Set<string>(),
       lastSelectedRequestId: null,
+      isSettingsOpen: false,
+      settingsTab: 'general' as SettingsTab,
 
       toggleSidebar: () => actions.toggleSidebar(set),
       setSidebarOpen: (isOpen) => actions.setSidebarOpen(set, isOpen),
@@ -76,6 +83,9 @@ export const useUIStore = create<UIState>()(
       toggleRequestSelection: (requestId, ctrlKey, shiftKey, allRequestIds) =>
         actions.toggleRequestSelection(set, requestId, ctrlKey, shiftKey, allRequestIds),
       clearSelection: () => actions.clearSelection(set),
+      openSettings: (tab) => actions.openSettings(set, tab),
+      closeSettings: () => actions.closeSettings(set),
+      setSettingsTab: (tab) => actions.setSettingsTab(set, tab),
     }),
     {
       name: 'requesto-ui-storage',

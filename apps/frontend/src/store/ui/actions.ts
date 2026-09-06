@@ -1,4 +1,4 @@
-import type { LayoutMode } from './types';
+import type { LayoutMode, SettingsTab } from './types';
 
 type UISetState = (partial: Record<string, unknown> | ((state: Record<string, unknown>) => Record<string, unknown>)) => void;
 
@@ -134,4 +134,18 @@ export function toggleRequestSelection(
 
 export function clearSelection(set: UISetState): void {
   set({ selectedRequestIds: new Set<string>(), lastSelectedRequestId: null });
+}
+
+// ── Settings dialog ──────────────────────────────────────────────────────────
+
+export function openSettings(set: UISetState, tab: SettingsTab = 'general'): void {
+  set({ isSettingsOpen: true, settingsTab: tab });
+}
+
+export function closeSettings(set: UISetState): void {
+  set({ isSettingsOpen: false });
+}
+
+export function setSettingsTab(set: UISetState, tab: SettingsTab): void {
+  set({ settingsTab: tab });
 }

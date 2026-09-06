@@ -15,6 +15,8 @@ describe('ui store', () => {
       expandedFolders: new Set(),
       selectedRequestIds: new Set(),
       lastSelectedRequestId: null,
+      isSettingsOpen: false,
+      settingsTab: 'general',
     });
   });
 
@@ -109,6 +111,32 @@ describe('ui store', () => {
       useUIStore.getState().toggleRequestSelection('r1', false, false);
       useUIStore.getState().clearSelection();
       expect(useUIStore.getState().selectedRequestIds.size).toBe(0);
+    });
+  });
+
+  describe('settings dialog', () => {
+    it('opens on the general tab by default', () => {
+      useUIStore.getState().openSettings();
+      expect(useUIStore.getState().isSettingsOpen).toBe(true);
+      expect(useUIStore.getState().settingsTab).toBe('general');
+    });
+
+    it('opens on a specific tab', () => {
+      useUIStore.getState().openSettings('oauth-configs');
+      expect(useUIStore.getState().isSettingsOpen).toBe(true);
+      expect(useUIStore.getState().settingsTab).toBe('oauth-configs');
+    });
+
+    it('closes', () => {
+      useUIStore.getState().openSettings('graphql-schemas');
+      useUIStore.getState().closeSettings();
+      expect(useUIStore.getState().isSettingsOpen).toBe(false);
+    });
+
+    it('sets the tab while open', () => {
+      useUIStore.getState().openSettings();
+      useUIStore.getState().setSettingsTab('graphql-schemas');
+      expect(useUIStore.getState().settingsTab).toBe('graphql-schemas');
     });
   });
 });

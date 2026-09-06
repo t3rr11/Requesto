@@ -6,10 +6,11 @@ import { ResponseBody } from './response/ResponseBody';
 import { ResponseHeaders } from './response/ResponseHeaders';
 import { ResponseTests } from './response/ResponseTests';
 import { GraphQLResponseErrors } from './response/GraphQLResponseErrors';
+import { ResponseOAuthToken } from './response/ResponseOAuthToken';
 import type { ProxyResponse, StreamingResponse } from '../store/request/types';
 import type { TestResult } from '../helpers/scriptRunner';
 
-type ResponseTab = 'body' | 'graphql-errors' | 'headers' | 'test-results';
+type ResponseTab = 'body' | 'graphql-errors' | 'headers' | 'test-results' | 'token';
 
 interface ResponsePanelProps {
   response: ProxyResponse | StreamingResponse | null;
@@ -19,6 +20,8 @@ interface ResponsePanelProps {
   testResults?: TestResult[];
   requestUrl?: string;
   isGraphQL?: boolean;
+  /** OAuth config attached to the request (enables the Token tab). */
+  oauthConfigId?: string | null;
 }
 
 function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined): string | ReactElement {
@@ -49,7 +52,7 @@ function renderTabLabel(tab: ResponseTab, testResults: TestResult[] | undefined)
   );
 }
 
-export function ResponsePanel({ response, loading, error, isDarkMode, testResults, requestUrl, isGraphQL = false }: Readonly<ResponsePanelProps>) {
+export function ResponsePanel({ response, loading, error, isDarkMode, testResults, requestUrl, isGraphQL = false, oauthConfigId }: Readonly<ResponsePanelProps>) {
   const [activeResponseTab, setActiveResponseTab] = useState<ResponseTab>('body');
 
   const isStreaming = response && 'isStreaming' in response && response.isStreaming;
@@ -128,6 +131,7 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
     ...(graphqlInfo?.errors.length ? ['graphql-errors' as const] : []),
     'headers',
     'test-results',
+    ...(oauthConfigId ? ['token' as const] : []),
   ];
 
   return (
@@ -184,7 +188,7 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
       </div>
 
       <div className="border-b border-gray-200 dark:border-gray-700 shrink-0">
-        <div className="flex px-3 h-10">
+        <div className="flex px-3 h-11">
           {tabs.map(tab => (
             <Button
               key={tab}
@@ -212,6 +216,7 @@ export function ResponsePanel({ response, loading, error, isDarkMode, testResult
         )}
         {activeResponseTab === 'headers' && <ResponseHeaders headers={response.headers} />}
         {activeResponseTab === 'test-results' && <ResponseTests testResults={testResults} />}
+        {activeResponseTab === 'token' && oauthConfigId && <ResponseOAuthToken configId={oauthConfigId} />}
       </div>
     </div>
   );

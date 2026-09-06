@@ -57,6 +57,10 @@ function App() {
     const api = window.electronAPI?.update;
     if (!api) return;
     const unsubAvailable = api.onAvailable(info => {
+      // Periodic re-checks re-notify for updates the user already knows about.
+      // Don't reset progress if this version is already downloading/downloaded.
+      const { status, version } = useUpdateStore.getState();
+      if (info.version === version && (status === 'downloading' || status === 'downloaded')) return;
       setAvailable(info);
     });
     const unsubProgress = api.onProgress(p => {

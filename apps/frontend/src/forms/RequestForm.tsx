@@ -462,7 +462,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         </div>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-10">
+      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-11">
         {showLeftScroll && (
           <Button
             onClick={() => scrollTabs('left')}

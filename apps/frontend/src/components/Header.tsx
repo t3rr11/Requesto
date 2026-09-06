@@ -16,9 +16,9 @@ export function Header() {
   const { isDarkMode, toggleTheme } = useThemeStore();
   const { status: updateStatus, setDialogOpen: setUpdateDialogOpen } = useUpdateStore();
   const helpDialog = useDialog();
-  const settingsDialog = useDialog();
   const workspaceManagerDialog = useDialog();
   const addWorkspaceDialog = useDialogWithData<AddWorkspaceMode | undefined>();
+  const openSettings = useUIStore(s => s.openSettings);
 
   const openAddWorkspace = (mode?: AddWorkspaceMode) => addWorkspaceDialog.open(mode);
 
@@ -100,7 +100,7 @@ export function Header() {
             <Terminal className="w-5 h-5" />
           </Button>
           <Button
-            onClick={settingsDialog.open}
+            onClick={() => openSettings()}
             variant="icon"
             size="sm"
             title="Settings"
@@ -114,7 +114,7 @@ export function Header() {
       <Dialog isOpen={helpDialog.isOpen} onClose={helpDialog.close} title="Help">
         <HelpContent onClose={helpDialog.close} />
       </Dialog>
-      <SettingsDialog isOpen={settingsDialog.isOpen} onClose={settingsDialog.close} />
+      <SettingsDialog />
       <WorkspaceManagerDialog
         isOpen={workspaceManagerDialog.isOpen}
         onClose={workspaceManagerDialog.close}

@@ -1,4 +1,4 @@
-import type { OAuthConfig, OAuthTokenStatus } from './types';
+import type { OAuthConfig, OAuthFullTokens, OAuthTokenStatus } from './types';
 import { API_BASE } from '../../helpers/api/config';
 
 type SetState = (partial: Record<string, unknown> | ((state: Record<string, unknown>) => Record<string, unknown>)) => void;
@@ -48,6 +48,14 @@ async function getTokenStatusApi(id: string): Promise<OAuthTokenStatus> {
 async function clearTokensApi(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/oauth/configs/${id}/tokens`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to clear OAuth tokens');
+}
+
+/** Fetches full token material for display. Kept out of store state — never persisted or logged. */
+export async function fetchFullTokens(id: string): Promise<OAuthFullTokens> {
+  const res = await fetch(`${API_BASE}/oauth/configs/${id}/tokens/full`);
+  if (res.status === 404) throw new Error('No token stored for this OAuth configuration');
+  if (!res.ok) throw new Error('Failed to load OAuth tokens');
+  return res.json();
 }
 
 // ── Config actions ───────────────────────────────────────────────────────────

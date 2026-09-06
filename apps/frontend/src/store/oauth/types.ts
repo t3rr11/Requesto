@@ -58,3 +58,17 @@ export type OAuthTokenStatus = {
   accessTokenPreview?: string;
   isExpired: boolean;
 };
+
+/**
+ * Full token material from the reveal endpoint. Display-only: never
+ * persisted to stores or included in console logs.
+ */
+export type OAuthFullTokens = {
+  accessToken: string;
+  tokenType: string;
+  refreshToken?: string;
+  idToken?: string;
+  expiresAt?: number;
+  scope?: string;
+  obtainedAt: number;
+};
