@@ -24,7 +24,7 @@
     "commander": "^15.0.0"
   },
   "devDependencies": {
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.5.1",
     "esbuild": "^0.28.2",
     "requesto-backend": "1.9.0",
     "requesto-engine": "1.9.0",
