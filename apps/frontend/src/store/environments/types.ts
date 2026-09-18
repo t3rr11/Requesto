@@ -1,8 +1,4 @@
-/**
- * Declared type of a variable's value. Substitution uses it to emit unquoted
- * literals for `number`/`boolean` variables inside JSON bodies and GraphQL
- * variables. An undefined type is treated as `string`.
- */
+/** Declared type of a variable's value; undefined is treated as 'string'. */
 export type EnvironmentVariableType = 'string' | 'number' | 'boolean';
 
 export type EnvironmentVariable = {

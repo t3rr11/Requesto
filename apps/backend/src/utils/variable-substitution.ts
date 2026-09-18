@@ -26,16 +26,11 @@ export function substituteVariables(
 }
 
 /**
- * JSON-aware substitution for JSON request bodies and GraphQL variables.
- *
- * Behaves like `substituteVariables`, except that a *quoted* placeholder
- * (`"{{var}}"`) whose variable is typed as `number` or `boolean` is replaced
- * by the raw unquoted literal, so typed values can be passed through
- * templates that stay valid JSON before substitution. A `number`-typed
- * variable whose current value is not a valid JSON number falls back to the
- * quoted string form. String values inserted inside quotes are JSON-escaped
- * so values containing quotes/backslashes cannot corrupt the document.
- * Unquoted placeholders are inserted raw (Postman-style), unchanged.
+ * JSON-aware substitution for JSON bodies and GraphQL variables. A quoted
+ * placeholder `"{{var}}"` whose variable is typed `number` or `boolean` is
+ * replaced by the raw unquoted literal (falling back to the quoted string
+ * when the value cannot represent the type); other quoted placeholders get a
+ * JSON-escaped string. Unquoted placeholders are inserted raw, unchanged.
  */
 export function substituteJsonVariables(
   text: string,
@@ -49,26 +44,13 @@ export function substituteJsonVariables(
     const keyPattern = escapeRegex(key);
     const quoted = new RegExp(`"{{\\s*${keyPattern}\\s*}}"`, 'g');
     const literal = typedJsonLiteral(entry.value, entry.type);
-    if (literal !== null) {
-      // Quoted placeholder around a typed value: strip the quotes.
-      result = result.replace(quoted, literal);
-    } else {
-      // Placeholder sits inside a JSON string: replace the whole quoted
-      // token with a JSON-escaped string so values containing quotes,
-      // backslashes or newlines cannot corrupt the surrounding JSON.
-      result = result.replace(quoted, JSON.stringify(entry.value));
-    }
+    result = result.replace(quoted, literal ?? JSON.stringify(entry.value));
     const plain = new RegExp(`{{\\s*${keyPattern}\\s*}}`, 'g');
     result = result.replace(plain, entry.value);
   }
   return result;
 }
 
-/**
- * The raw JSON literal to insert for a typed variable, or `null` when the
- * value cannot represent the declared type (caller falls back to string
- * substitution rather than emitting invalid JSON).
- */
 function typedJsonLiteral(
   value: string,
   type: EnvironmentVariableType | undefined,
@@ -127,21 +109,12 @@ function getResolvedValues(
   return resolved;
 }
 
-/**
- * Strict JSON number literal check. Unlike `Number(...)`, rejects `NaN`,
- * `Infinity`, hex notation, leading zeros and other forms `JSON.parse`
- * rejects — a value passing this test is safe to splice into JSON unquoted.
- */
+/** Strict JSON number literal check; unlike Number(), rejects NaN, Infinity, hex and leading zeros. */
 export function isNumericLiteral(value: string): boolean {
   return /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(value.trim());
 }
 
-/**
- * Infer a variable's type from a value. Numbers and booleans are detected
- * from their runtime type; strings are additionally recognized when they
- * are exact boolean/numeric literals so stringly sources (CLI vars, `.env`,
- * `environment.set('count', '42')`) inherit a useful type too.
- */
+/** Infer a variable type from a runtime or literal-string value. */
 export function inferType(value: unknown): EnvironmentVariableType {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? 'number' : 'string';
@@ -171,12 +144,10 @@ interface RequestData {
  * Apply variable substitution to all substitutable fields in a request:
  * URL, header values, body, and form-data text values.
  *
- * When the body is JSON (`bodyType: 'json'`, or a body present with no
- * explicit type — the proxy's default), JSON-aware substitution runs on the
- * body so typed variables are emitted as unquoted literals; the URL also
- * gets JSON-aware handling for the GraphQL `variables` query parameter,
- * whose `{{ }}` placeholders are percent-encoded and therefore invisible to
- * the plain string pass.
+ * JSON bodies (`bodyType: 'json'`, or a body present with no explicit type —
+ * the proxy's default) get JSON-aware substitution; the URL gets JSON-aware
+ * handling for the GraphQL `variables` query parameter (see
+ * `substituteUrlVariables`).
  */
 export function substituteInRequest(
   request: RequestData,
@@ -214,12 +185,10 @@ export function substituteInRequest(
 }
 
 /**
- * Substitute variables in a URL. The plain pass covers everything except
- * GraphQL GET requests, whose `variables` query parameter carries a
- * JSON.stringify'd variables object — `new URL(...).searchParams` encoded
- * the braces as `%7B`/`%7D`, so the placeholders only exist in decoded
- * form. For that parameter we decode, run JSON-aware substitution (typed
- * variables must end up unquoted in the JSON), and re-encode.
+ * Substitute variables in a URL. The plain pass misses the GraphQL GET
+ * `variables` query parameter: `URLSearchParams` percent-encodes the braces,
+ * so its placeholders only exist in decoded form, where they need the
+ * JSON-aware pass (typed values must end up unquoted in the JSON).
  */
 function substituteUrlVariables(url: string, environment: Environment | null): string {
   const substituted = substituteVariables(url, environment);
@@ -233,7 +202,7 @@ function substituteUrlVariables(url: string, environment: Environment | null): s
       return parsed.toString();
     }
   } catch {
-    // Not an absolute URL — return the plainly substituted string.
+    // Not an absolute URL — the plain pass already did everything.
   }
   return substituted;
 }

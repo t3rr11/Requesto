@@ -34,13 +34,13 @@ export type TestContext = {
 
 export type PreRequestOutcome = {
   envOverrides: Record<string, string>;
-  /** Declared type per key in `envOverrides` (inferred from the script value). */
+  /** Inferred type per key in `envOverrides`. */
   envTypes: Record<string, EnvironmentVariableType>;
 };
 export type TestOutcome = {
   testResults: TestResult[];
   envOverrides: Record<string, string>;
-  /** Declared type per key in `envOverrides` (inferred from the script value). */
+  /** Inferred type per key in `envOverrides`. */
   envTypes: Record<string, EnvironmentVariableType>;
 };
 
@@ -147,8 +147,7 @@ function createExpect(actual: unknown, inverted = false): Expectation {
 
 function createEnvironment(env: Record<string, string>) {
   const envStore: Record<string, string> = { ...env };
-  // Types are recorded per key set during this script run so callers can
-  // (re)type variables from the script value.
+  // Types recorded per key set during this run, so callers can re-type variables.
   const typeStore: Record<string, EnvironmentVariableType> = {};
   return {
     store: envStore,

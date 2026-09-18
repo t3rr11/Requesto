@@ -41,8 +41,7 @@ export function VariableEditor<T extends FieldValues>({
   const { fields, append, remove } = useFieldArray({ control, name: fieldArrayName });
   const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
-  // Rows whose type the user picked manually keep their declared type even
-  // when the value would auto-suggest a different one.
+  // Rows where the user picked a type manually; value changes won't re-suggest.
   const [manualTypeRows, setManualTypeRows] = useState<Set<unknown>>(new Set());
   const watchedRows = useWatch({ control, name: fieldArrayName as unknown as FieldPath<T> }) as Array<Record<string, unknown>>;
 
@@ -217,8 +216,6 @@ export function VariableEditor<T extends FieldValues>({
                                       newInitial as PathValue<T, FieldPath<T>>,
                                     );
                                   }
-                                  // Auto-suggest the type from the value unless
-                                  // the user picked one manually.
                                   if (!manualTypeRows.has(field.id)) {
                                     setValue(
                                       `${fieldArrayName}.${index}.type` as FieldPath<T>,
@@ -277,8 +274,7 @@ export function VariableEditor<T extends FieldValues>({
                   />
                 </div>
 
-                {/* Type selector: determines JSON substitution (quoted placeholders
-                    for number/boolean variables are emitted unquoted) */}
+                {/* Type selector */}
                 <div className="py-1 px-1">
                   <Controller
                     name={`${fieldArrayName}.${index}.type` as FieldPath<T>}

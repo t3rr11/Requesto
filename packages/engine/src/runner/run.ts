@@ -18,7 +18,7 @@ export type ScriptResponseContext = {
 /** Env variable overrides set by a script, with the type inferred per key. */
 export type ScriptEnvOverrides = {
   envOverrides: Record<string, string>;
-  /** Declared type per key in `envOverrides`. Keys without an entry keep their existing type. */
+  /** Type per key in `envOverrides`; keys without an entry keep their existing type. */
   envTypes?: Record<string, EnvironmentVariableType>;
 };
 
@@ -87,7 +87,7 @@ function isExcluded(collection: Collection, selectors: string[]): boolean {
 /** Merge script-set overrides into the live environment (in memory only).
  *  Keys not present in the environment are appended as new variables so
  *  `environment.set()` on a fresh key works in chained requests. Types are
- *  re-typed from the script value when the script provides one. */
+ *  re-typed from the script value when provided. */
 function applyEnvOverrides(
   env: Environment | null,
   overrides: ScriptEnvOverrides,
