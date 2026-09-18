@@ -95,6 +95,76 @@ describe('runCollections', () => {
     expect(summary.passedTests).toBe(1);
   });
 
+  it('unquotes number-typed variables in JSON bodies (script-created variables inherit type)', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [],
+      requests: [
+        {
+          id: 'r1',
+          name: 'Typed',
+          method: 'POST',
+          url: 'http://x.local',
+          body: '{"userId": "{{userId}}", "name": "{{name}}"}',
+          bodyType: 'json',
+          collectionId: 'c1',
+          preRequestScript: `environment.set('userId', 42); environment.set('name', 'alice');`,
+        },
+      ],
+    };
+    const sent: string[] = [];
+    await runCollections({
+      collections: [col],
+      environment: { id: 'e', name: 'env', variables: [] },
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.body ?? '');
+        return okResponse;
+      },
+    });
+    expect(sent).toEqual(['{"userId": 42, "name": "alice"}']);
+  });
+
+  it('unquotes number/boolean variables declared with a type in the environment', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [],
+      requests: [
+        {
+          id: 'r1',
+          name: 'Typed env',
+          method: 'POST',
+          url: 'http://x.local',
+          body: '{"count": "{{count}}", "flag": "{{flag}}"}',
+          bodyType: 'json',
+          collectionId: 'c1',
+        },
+      ],
+    };
+    const sent: string[] = [];
+    await runCollections({
+      collections: [col],
+      environment: {
+        id: 'e',
+        name: 'env',
+        variables: [
+          { key: 'count', value: '7', enabled: true, type: 'number' },
+          { key: 'flag', value: 'true', enabled: true, type: 'boolean' },
+        ],
+      },
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.body ?? '');
+        return okResponse;
+      },
+    });
+    expect(sent).toEqual(['{"count": 7, "flag": true}']);
+  });
+
   it('resolves nested variable references (value pointing at another variable)', async () => {
     const col: Collection = {
       id: 'c1',

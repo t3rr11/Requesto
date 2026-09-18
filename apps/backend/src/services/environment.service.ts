@@ -96,7 +96,7 @@ export class EnvironmentService {
     this.localRepo?.resetVariable(envId, key);
   }
 
-  substituteInRequest(partialRequest: Pick<ProxyRequest, 'url' | 'headers' | 'body' | 'formDataEntries'>): Pick<ProxyRequest, 'url' | 'headers' | 'body' | 'formDataEntries'> {
+  substituteInRequest(partialRequest: Pick<ProxyRequest, 'url' | 'headers' | 'body' | 'bodyType' | 'formDataEntries'>): Pick<ProxyRequest, 'url' | 'headers' | 'body' | 'bodyType' | 'formDataEntries'> {
     const active = this.getActive();
     return substituteInRequest(partialRequest, active);
   }

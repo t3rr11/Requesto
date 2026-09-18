@@ -1,14 +1,11 @@
 import type { ProxyResponse, ProxyRequest } from '../store/request/types';
-import type { Environment } from '../store/environments/types';
-import type { TestResult } from 'requesto-engine/sandbox-core';
-import type { ScriptRunner } from 'requesto-engine/runner';
+import type { Environment, EnvironmentVariableType } from '../store/environments/types';
+import type { PreRequestOutcome, TestOutcome, TestResult } from 'requesto-engine/sandbox-core';
+import type { ScriptRunner, ScriptEnvOverrides } from 'requesto-engine/runner';
 
-export type { TestResult };
+export type { TestResult, ScriptEnvOverrides };
 
-type WorkerResponse =
-  | { envOverrides: Record<string, string> }
-  | { testResults: TestResult[]; envOverrides: Record<string, string> }
-  | { error: string };
+type WorkerResponse = PreRequestOutcome | TestOutcome | { error: string };
 
 const SCRIPT_TIMEOUT_MS = 5000;
 
@@ -46,14 +43,15 @@ function buildEnvRecord(env: Environment | null): Record<string, string> {
 
 /**
  * Run the pre-request script in an isolated Worker.
- * Returns the env variable overrides set by the script (key/value pairs).
+ * Returns the env variable overrides set by the script (key/value pairs
+ * plus inferred types).
  * Throws if the script errors or times out.
  */
 export async function runPreRequestScript(
   script: string,
   env: Environment | null,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
-): Promise<Record<string, string>> {
+): Promise<PreRequestOutcome> {
   return runPreRequestWithRecord(script, buildEnvRecord(env), request);
 }
 
@@ -61,8 +59,8 @@ async function runPreRequestWithRecord(
   script: string,
   env: Record<string, string>,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
-): Promise<Record<string, string>> {
-  if (!script.trim()) return {};
+): Promise<PreRequestOutcome> {
+  if (!script.trim()) return { envOverrides: {}, envTypes: {} };
 
   const result = await runInWorker({
     type: 'pre-request',
@@ -74,8 +72,8 @@ async function runPreRequestWithRecord(
   });
 
   if ('error' in result) throw new Error(result.error);
-  if ('envOverrides' in result) return result.envOverrides;
-  return {};
+  if ('envOverrides' in result) return { envOverrides: result.envOverrides, envTypes: result.envTypes ?? {} };
+  return { envOverrides: {}, envTypes: {} };
 }
 
 /**
@@ -88,7 +86,7 @@ export async function runTestScript(
   response: ProxyResponse,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
   env: Environment | null,
-): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string> }> {
+): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
   return runTestWithRecord(script, response, request, buildEnvRecord(env));
 }
 
@@ -97,8 +95,8 @@ async function runTestWithRecord(
   response: Pick<ProxyResponse, 'status' | 'statusText' | 'headers' | 'body' | 'duration'>,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
   env: Record<string, string>,
-): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string> }> {
-  if (!script.trim()) return { testResults: [], envOverrides: {} };
+): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
+  if (!script.trim()) return { testResults: [], envOverrides: {}, envTypes: {} };
 
   const result = await runInWorker({
     type: 'test',
@@ -117,8 +115,10 @@ async function runTestWithRecord(
   });
 
   if ('error' in result) throw new Error(result.error);
-  if ('testResults' in result) return { testResults: result.testResults, envOverrides: result.envOverrides };
-  return { testResults: [], envOverrides: {} };
+  if ('testResults' in result) {
+    return { testResults: result.testResults, envOverrides: result.envOverrides, envTypes: result.envTypes ?? {} };
+  }
+  return { testResults: [], envOverrides: {}, envTypes: {} };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   substituteVariables,
+  substituteJsonVariables,
   substituteInAuth,
   substituteInRequest,
   extractVariableNames,
@@ -11,6 +12,8 @@ import {
   validateEnvironment,
   filterValidVariables,
   createEmptyVariable,
+  isNumericLiteral,
+  inferType,
 } from '../../helpers/environment';
 import type { Environment } from '../../store/environments/types';
 
@@ -41,6 +44,107 @@ describe('substituteVariables', () => {
 
   it('returns original if environment is null', () => {
     expect(substituteVariables('https://{{host}}', null)).toBe('https://{{host}}');
+  });
+});
+
+const makeTypedEnv = (vars: { key: string; value: string; enabled?: boolean; type?: 'string' | 'number' | 'boolean'; currentValue?: string }[]): Environment => ({
+  id: 'env-typed',
+  name: 'Typed',
+  variables: vars.map(v => ({ enabled: true, ...v })),
+});
+
+describe('substituteJsonVariables', () => {
+  it('emits number-typed values unquoted inside a quoted placeholder', () => {
+    const env = makeTypedEnv([{ key: 'userId', value: '42', type: 'number' }]);
+    expect(substituteJsonVariables('{"userId": "{{userId}}"}', env)).toBe('{"userId": 42}');
+  });
+
+  it('emits boolean-typed values unquoted', () => {
+    const env = makeTypedEnv([
+      { key: 'active', value: 'true', type: 'boolean' },
+      { key: 'inactive', value: 'false', type: 'boolean' },
+    ]);
+    expect(substituteJsonVariables('{"active": "{{active}}"}', env)).toBe('{"active": true}');
+    expect(substituteJsonVariables('{"inactive": "{{inactive}}"}', env)).toBe('{"inactive": false}');
+  });
+
+  it('keeps string-typed variables quoted', () => {
+    const env = makeTypedEnv([{ key: 'name', value: 'alice', type: 'string' }]);
+    expect(substituteJsonVariables('{"name": "{{name}}"}', env)).toBe('{"name": "alice"}');
+  });
+
+  it('falls back to a quoted string when a number-typed value is not numeric', () => {
+    const env = makeTypedEnv([{ key: 'v', value: 'abc', type: 'number' }]);
+    expect(substituteJsonVariables('{"v": "{{v}}"}', env)).toBe('{"v": "abc"}');
+  });
+
+  it('falls back to a quoted string for leading-zero numbers (invalid JSON literals)', () => {
+    const env = makeTypedEnv([{ key: 'zip', value: '02134', type: 'number' }]);
+    expect(substituteJsonVariables('{"zip": "{{zip}}"}', env)).toBe('{"zip": "02134"}');
+  });
+
+  it('JSON-escapes string values so quotes cannot corrupt the body', () => {
+    const env = makeTypedEnv([{ key: 'msg', value: 'say "hi"', type: 'string' }]);
+    expect(substituteJsonVariables('{"msg": "{{msg}}"}', env)).toBe('{"msg": "say \\"hi\\""}');
+  });
+
+  it('inserts unquoted placeholders raw (Postman-style)', () => {
+    const env = makeTypedEnv([
+      { key: 'userId', value: '42', type: 'number' },
+      { key: 'name', value: 'alice', type: 'string' },
+    ]);
+    expect(substituteJsonVariables('{"userId": {{userId}}}', env)).toBe('{"userId": 42}');
+    expect(substituteJsonVariables('{"name": {{name}}}', env)).toBe('{"name": alice}');
+  });
+
+  it('uses currentValue over value', () => {
+    const env = makeTypedEnv([{ key: 'userId', value: '1', currentValue: '7', type: 'number' }]);
+    expect(substituteJsonVariables('{"userId": "{{userId}}"}', env)).toBe('{"userId": 7}');
+  });
+
+  it('skips disabled variables', () => {
+    const env = makeTypedEnv([{ key: 'd', value: '99', type: 'number', enabled: false }]);
+    expect(substituteJsonVariables('{"d": "{{d}}"}', env)).toBe('{"d": "{{d}}"}');
+  });
+
+  it('returns the text unchanged when environment is null', () => {
+    expect(substituteJsonVariables('{"a": "{{b}}"}', null)).toBe('{"a": "{{b}}"}');
+  });
+
+  it('treats variables without a declared type as strings', () => {
+    const env = makeTypedEnv([{ key: 'n', value: '42' }]);
+    expect(substituteJsonVariables('{"n": "{{n}}"}', env)).toBe('{"n": "42"}');
+  });
+});
+
+describe('isNumericLiteral', () => {
+  it('accepts valid JSON number literals', () => {
+    expect(isNumericLiteral('42')).toBe(true);
+    expect(isNumericLiteral('-3.14')).toBe(true);
+    expect(isNumericLiteral('1e10')).toBe(true);
+  });
+
+  it('rejects values JSON.parse would reject', () => {
+    expect(isNumericLiteral('')).toBe(false);
+    expect(isNumericLiteral('NaN')).toBe(false);
+    expect(isNumericLiteral('Infinity')).toBe(false);
+    expect(isNumericLiteral('0x10')).toBe(false);
+    expect(isNumericLiteral('02134')).toBe(false);
+  });
+});
+
+describe('inferType', () => {
+  it('infers from runtime values', () => {
+    expect(inferType(42)).toBe('number');
+    expect(inferType(true)).toBe('boolean');
+    expect(inferType('hello')).toBe('string');
+  });
+
+  it('infers from literal strings', () => {
+    expect(inferType('42')).toBe('number');
+    expect(inferType('true')).toBe('boolean');
+    expect(inferType('02134')).toBe('string');
+    expect(inferType('True')).toBe('string');
   });
 });
 
@@ -138,6 +242,7 @@ describe('createEmptyVariable', () => {
     expect(v.key).toBe('');
     expect(v.value).toBe('');
     expect(v.enabled).toBe(true);
+    expect(v.type).toBe('string');
   });
 });
 
@@ -216,6 +321,48 @@ describe('substituteInRequest', () => {
       env,
     );
     expect(result.auth?.bearer?.token).toBe('sekret');
+  });
+
+  it('uses JSON-aware substitution for JSON bodies (typed unquote)', () => {
+    const env = makeTypedEnv([{ key: 'userId', value: '42', type: 'number' }]);
+    const result = substituteInRequest(
+      {
+        method: 'POST',
+        url: 'https://example.com',
+        body: '{"userId": "{{userId}}"}',
+        bodyType: 'json',
+      },
+      env,
+    );
+    expect(result.body).toBe('{"userId": 42}');
+  });
+
+  it('keeps string substitution for non-JSON bodies', () => {
+    const env = makeTypedEnv([{ key: 'userId', value: '42', type: 'number' }]);
+    const result = substituteInRequest(
+      {
+        method: 'POST',
+        url: 'https://example.com',
+        body: '{"userId": "{{userId}}"}',
+        bodyType: 'form-data',
+      },
+      env,
+    );
+    expect(result.body).toBe('{"userId": "42"}');
+  });
+
+  it('substitutes the GraphQL GET variables query parameter', () => {
+    const env = makeTypedEnv([
+      { key: 'userId', value: '42', type: 'number' },
+      { key: 'name', value: 'alice', type: 'string' },
+    ]);
+    const variablesJson = encodeURIComponent('{"userId":"{{userId}}","name":"{{name}}"}');
+    const result = substituteInRequest(
+      { method: 'GET', url: `https://example.com/graphql?query={user}&variables=${variablesJson}` },
+      env,
+    );
+    const parsed = new URL(result.url!);
+    expect(JSON.parse(parsed.searchParams.get('variables')!)).toEqual({ userId: 42, name: 'alice' });
   });
 });
 

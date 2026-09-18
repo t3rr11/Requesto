@@ -28,6 +28,8 @@ Read and write variables in the active environment.
 
 `environment.set()` writes to the variable's **current value**, which is a local override stored separately from the committed environment files under `.requesto/environments/`. This means scripts never cause unintended git changes. See [Environments: Initial Value and Current Value](/features/environments#initial-value-and-current-value) for details.
 
+The type of the value is inherited too: `environment.set('count', 42)` marks `count` as a Number and `environment.set('flag', true)` as a Boolean, so they are sent unquoted in JSON bodies and GraphQL variables. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
+
 ### `request`
 
 Read-only view of the outgoing request.

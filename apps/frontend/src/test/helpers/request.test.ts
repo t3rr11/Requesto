@@ -8,6 +8,8 @@ import {
   getGraphQLOperations,
   parseGraphQLIntrospectionResponse,
 } from '../../helpers/request';
+import { substituteInRequest } from '../../helpers/environment';
+import type { Environment } from '../../store/environments/types';
 import type { SavedRequest } from '../../store/collections/types';
 import { graphql, getIntrospectionQuery, GraphQLObjectType, GraphQLSchema, GraphQLString } from 'graphql';
 
@@ -109,6 +111,41 @@ describe('GraphQL request helpers', () => {
     expect(() => buildRequestFromFormData(createFormData({
       graphqlDocument: 'query Users { users { id } } mutation Create { createUser { id } }',
     }))).toThrow('Multiple GraphQL operations are not supported. Keep one operation in the query.');
+  });
+
+  it('substitutes typed variables unquoted in the serialized GraphQL body', () => {
+    const raw = buildRequestFromFormData(createFormData({
+      graphqlVariables: '{"userId":"{{userId}}","active":"{{active}}","name":"{{name}}"}',
+    }));
+    const env: Environment = {
+      id: 'env-1',
+      name: 'Test',
+      variables: [
+        { key: 'userId', value: '42', enabled: true, type: 'number' },
+        { key: 'active', value: 'true', enabled: true, type: 'boolean' },
+        { key: 'name', value: 'alice', enabled: true, type: 'string' },
+      ],
+    };
+    const substituted = substituteInRequest(raw, env);
+    expect(JSON.parse(substituted.body ?? '')).toEqual({
+      query: 'query GetUser($id: ID!) { user(id: $id) { name } }',
+      variables: { userId: 42, active: true, name: 'alice' },
+    });
+  });
+
+  it('substitutes typed variables in the GraphQL GET variables parameter', () => {
+    const raw = buildRequestFromFormData(createFormData({
+      graphqlTransport: 'get',
+      graphqlVariables: '{"userId":"{{userId}}"}',
+    }));
+    const env: Environment = {
+      id: 'env-1',
+      name: 'Test',
+      variables: [{ key: 'userId', value: '42', enabled: true, type: 'number' }],
+    };
+    const substituted = substituteInRequest(raw, env);
+    const url = new URL(substituted.url);
+    expect(JSON.parse(url.searchParams.get('variables')!)).toEqual({ userId: 42 });
   });
 
   it('builds introspection independently of an empty GraphQL draft', () => {

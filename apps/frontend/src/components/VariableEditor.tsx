@@ -12,6 +12,14 @@ import {
 } from 'react-hook-form';
 import { Plus, Trash2, Eye, EyeOff, AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from './Button';
+import { inferType } from '../helpers/environment';
+import type { EnvironmentVariableType } from '../store/environments/types';
+
+const VARIABLE_TYPES: { value: EnvironmentVariableType; label: string }[] = [
+  { value: 'string', label: 'String' },
+  { value: 'number', label: 'Number' },
+  { value: 'boolean', label: 'Boolean' },
+];
 
 interface VariableEditorProps<T extends FieldValues> {
   control: Control<T>;
@@ -33,6 +41,9 @@ export function VariableEditor<T extends FieldValues>({
   const { fields, append, remove } = useFieldArray({ control, name: fieldArrayName });
   const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  // Rows whose type the user picked manually keep their declared type even
+  // when the value would auto-suggest a different one.
+  const [manualTypeRows, setManualTypeRows] = useState<Set<unknown>>(new Set());
   const watchedRows = useWatch({ control, name: fieldArrayName as unknown as FieldPath<T> }) as Array<Record<string, unknown>>;
 
   const handleToggleSecret = (index: number) => {
@@ -46,6 +57,7 @@ export function VariableEditor<T extends FieldValues>({
       currentValue: '',
       enabled: true,
       isSecret: false,
+      type: 'string',
     } as never);
 
     // Focus the new row's name input after React renders it
@@ -112,7 +124,7 @@ export function VariableEditor<T extends FieldValues>({
         ) : (
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[36px_1fr_1fr_1fr_36px_36px_36px] bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="grid grid-cols-[36px_1fr_1fr_1fr_80px_36px_36px_36px] bg-gray-50 dark:bg-gray-800/60 border-b border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
               <div className="px-2 py-2 flex items-center justify-center" title="Enabled" />
               <div className="px-3 py-2">Name</div>
               <div className="px-3 py-2">Initial Value</div>
@@ -125,6 +137,7 @@ export function VariableEditor<T extends FieldValues>({
                   (local)
                 </span>
               </div>
+              <div className="px-2 py-2">Type</div>
               <div className="px-1 py-2 flex items-center justify-center" title="Secret" />
               <div className="px-1 py-2" />
               <div className="px-1 py-2" />
@@ -134,7 +147,7 @@ export function VariableEditor<T extends FieldValues>({
             {fields.map((field, index) => (
               <div
                 key={field.id}
-                className={`grid grid-cols-[36px_1fr_1fr_1fr_36px_36px_36px] items-center border-b border-gray-100 dark:border-gray-800 last:border-b-0 group transition-colors ${
+                className={`grid grid-cols-[36px_1fr_1fr_1fr_80px_36px_36px_36px] items-center border-b border-gray-100 dark:border-gray-800 last:border-b-0 group transition-colors ${
                   hoveredRow === index ? 'bg-gray-50 dark:bg-gray-800/40' : 'bg-white dark:bg-gray-900'
                 }`}
                 onMouseEnter={() => setHoveredRow(index)}
@@ -204,6 +217,14 @@ export function VariableEditor<T extends FieldValues>({
                                       newInitial as PathValue<T, FieldPath<T>>,
                                     );
                                   }
+                                  // Auto-suggest the type from the value unless
+                                  // the user picked one manually.
+                                  if (!manualTypeRows.has(field.id)) {
+                                    setValue(
+                                      `${fieldArrayName}.${index}.type` as FieldPath<T>,
+                                      inferType(newInitial) as PathValue<T, FieldPath<T>>,
+                                    );
+                                  }
                                 }
                               }}
                               className="w-full px-3 py-1.5 pr-8 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 font-mono text-gray-900 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-600"
@@ -252,6 +273,31 @@ export function VariableEditor<T extends FieldValues>({
                           />
                         )}
                       />
+                    )}
+                  />
+                </div>
+
+                {/* Type selector: determines JSON substitution (quoted placeholders
+                    for number/boolean variables are emitted unquoted) */}
+                <div className="py-1 px-1">
+                  <Controller
+                    name={`${fieldArrayName}.${index}.type` as FieldPath<T>}
+                    control={control}
+                    render={({ field: typeField }) => (
+                      <select
+                        {...typeField}
+                        value={typeField.value ?? 'string'}
+                        onChange={e => {
+                          setManualTypeRows(prev => new Set(prev).add(field.id));
+                          typeField.onChange(e);
+                        }}
+                        className="w-full px-1 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                        title="Variable type — number/boolean variables are sent unquoted in JSON bodies and GraphQL variables"
+                      >
+                        {VARIABLE_TYPES.map(t => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
                     )}
                   />
                 </div>

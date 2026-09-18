@@ -30,5 +30,6 @@ export {
   type TestOutcome,
 } from './scripts/sandbox-core.ts';
 export { nodeScriptRunner, runPreRequestScript, runTestScript } from './scripts/node-scripts.ts';
+export { inferType, isNumericLiteral } from 'requesto-backend/utils/variable-substitution';
 export { ScratchWorkspaceIsolation } from './isolation/scratch-workspace.ts';
 export { EmbeddedRequestoServer, type EmbeddedServerOptions } from './server/embedded.ts';

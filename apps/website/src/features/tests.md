@@ -34,6 +34,8 @@ test('response has an id field', () => {
 
 All tests in the script are run. A test passes if it throws no errors; it fails if an assertion throws.
 
+> More examples — status checks, body inspection, timing, and saving values for later requests — are in the [Examples](#examples) section below, after the API reference.
+
 ## `test(name, fn)`
 
 | Parameter | Type | Description |
@@ -92,7 +94,7 @@ Read and write variables in the active environment. The same API as in pre-reque
 | `environment.get(key)` | Returns the current value of `key`, or an empty string |
 | `environment.set(key, value)` | Sets the current value of `key` |
 
-`environment.set()` in a test script writes to the variable's current value, so you can pass a value extracted from a response (like a token or ID) to later requests.
+`environment.set()` in a test script writes to the variable's current value, so you can pass a value extracted from a response (like a token or ID) to later requests. The value's type is inherited as well - `environment.set('count', 42)` marks `count` as a Number so it is sent unquoted in JSON bodies. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
 
 ## Examples
 

@@ -1,6 +1,6 @@
 import { ScratchWorkspaceIsolation } from '../isolation/scratch-workspace.ts';
 export { ScratchWorkspaceIsolation };
-export { runCollections, type RunnerOptions, type SendFn, type ScriptRunner } from './run.ts';
+export { runCollections, type RunnerOptions, type SendFn, type ScriptEnvOverrides, type ScriptRunner } from './run.ts';
 export {
   buildCollectionItems,
   buildWorkspaceItems,

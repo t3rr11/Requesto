@@ -1,4 +1,4 @@
-import type { Environment, EnvironmentVariable } from '../store/environments/types';
+import type { Environment, EnvironmentVariable, EnvironmentVariableType } from '../store/environments/types';
 import type { AuthConfig, ProxyRequest } from '../store/request/types';
 
 function escapeRegExp(str: string): string {
@@ -20,6 +20,110 @@ export function substituteVariables(text: string, environment: Environment | nul
     }
   }
   return result;
+}
+
+/**
+ * Strict JSON number literal check. Unlike `Number(...)`, rejects `NaN`,
+ * `Infinity`, hex notation, leading zeros and other forms `JSON.parse`
+ * rejects — a value passing this test is safe to splice into JSON unquoted.
+ */
+export function isNumericLiteral(value: string): boolean {
+  return /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(value.trim());
+}
+
+/**
+ * Infer a variable's type from a value. Numbers and booleans are detected
+ * from their runtime type; strings are additionally recognized when they
+ * are exact boolean/numeric literals so stringly sources (CLI vars, `.env`,
+ * `environment.set('count', '42')`) inherit a useful type too.
+ */
+export function inferType(value: unknown): EnvironmentVariableType {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? 'number' : 'string';
+  }
+  if (typeof value === 'boolean') return 'boolean';
+  if (typeof value === 'string') {
+    if (value === 'true' || value === 'false') return 'boolean';
+    if (isNumericLiteral(value)) return 'number';
+  }
+  return 'string';
+}
+
+/**
+ * The raw JSON literal to insert for a typed variable, or `null` when the
+ * value cannot represent the declared type (caller falls back to string
+ * substitution rather than emitting invalid JSON).
+ */
+function typedJsonLiteral(
+  value: string,
+  type: EnvironmentVariableType | undefined,
+): string | null {
+  if (type === 'boolean') {
+    return value === 'true' || value === 'false' ? value : null;
+  }
+  if (type === 'number') {
+    return isNumericLiteral(value) ? value : null;
+  }
+  return null;
+}
+
+/**
+ * JSON-aware substitution for JSON request bodies and GraphQL variables.
+ *
+ * Behaves like `substituteVariables`, except that a *quoted* placeholder
+ * (`"{{variableName}}"`) whose variable is typed as `number` or `boolean` is
+ * replaced by the raw unquoted literal, so typed values can be passed through
+ * templates that stay valid JSON before substitution. A `number`-typed
+ * variable whose current value is not a valid JSON number falls back to the
+ * quoted string form. String values inserted inside quotes are JSON-escaped
+ * so values containing quotes/backslashes cannot corrupt the document.
+ * Unquoted placeholders are inserted raw (Postman-style), unchanged.
+ */
+export function substituteJsonVariables(text: string, environment: Environment | null): string {
+  if (!environment || !text) return text;
+
+  let result = text;
+  for (const variable of environment.variables) {
+    if (!variable.enabled || !variable.key) continue;
+    const keyPattern = escapeRegExp(variable.key);
+    // currentValue (set by pre-request scripts) takes precedence over value (initial)
+    const value = variable.currentValue ?? variable.value ?? '';
+    const quoted = new RegExp(`"{{\\s*${keyPattern}\\s*}}"`, 'g');
+    const literal = typedJsonLiteral(value, variable.type);
+    if (literal !== null) {
+      // Quoted placeholder around a typed value: strip the quotes.
+      result = result.replace(quoted, literal);
+    } else {
+      // Placeholder sits inside a JSON string: replace the whole quoted
+      // token with a JSON-escaped string.
+      result = result.replace(quoted, JSON.stringify(value));
+    }
+    const plain = new RegExp(`{{\\s*${keyPattern}\\s*}}`, 'g');
+    result = result.replace(plain, value);
+  }
+  return result;
+}
+
+/**
+ * Substitute variables in a URL, including the GraphQL GET `variables`
+ * query parameter, whose `{{ }}` placeholders are percent-encoded by
+ * `URLSearchParams` and therefore invisible to the plain string pass.
+ */
+function substituteUrlVariables(url: string, environment: Environment | null): string {
+  const substituted = substituteVariables(url, environment);
+  if (!environment || !substituted.includes('=')) return substituted;
+
+  try {
+    const parsed = new URL(substituted);
+    const variables = parsed.searchParams.get('variables');
+    if (variables && variables.includes('{{')) {
+      parsed.searchParams.set('variables', substituteJsonVariables(variables, environment));
+      return parsed.toString();
+    }
+  } catch {
+    // Not an absolute URL — return the plainly substituted string.
+  }
+  return substituted;
 }
 
 /**
@@ -58,17 +162,22 @@ export function substituteInAuth(auth: AuthConfig | undefined, environment: Envi
 
 /**
  * Substitute variables in all request fields (URL, headers, body, auth).
+ * JSON bodies get JSON-aware substitution so typed variables are emitted
+ * as unquoted numbers/booleans.
  */
 export function substituteInRequest(request: ProxyRequest, environment: Environment | null): typeof request {
   if (!environment) return request;
 
+  const jsonMode = request.bodyType === 'json' || (!request.bodyType && !!request.body);
+  const bodySub = jsonMode ? substituteJsonVariables : substituteVariables;
+
   return {
     method: request.method,
-    url: substituteVariables(request.url, environment),
+    url: substituteUrlVariables(request.url, environment),
     headers: request.headers
       ? Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, environment)]))
       : undefined,
-    body: request.body ? substituteVariables(request.body, environment) : undefined,
+    body: request.body ? bodySub(request.body, environment) : undefined,
     bodyType: request.bodyType,
     formDataEntries: request.formDataEntries
       ? request.formDataEntries.map(entry => ({
@@ -159,5 +268,5 @@ export function prepareEnvironmentForSave(env: Environment): Environment {
 }
 
 export function createEmptyVariable(): EnvironmentVariable {
-  return { key: '', value: '', enabled: true, isSecret: false };
+  return { key: '', value: '', enabled: true, isSecret: false, type: 'string' };
 }
