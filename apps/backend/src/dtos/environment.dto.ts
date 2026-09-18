@@ -5,6 +5,7 @@ const environmentVariableSchema = z.object({
   value: z.string(),
   enabled: z.boolean(),
   isSecret: z.boolean().optional(),
+  type: z.enum(['string', 'number', 'boolean']).optional(),
 });
 
 export const saveEnvironmentSchema = z.object({

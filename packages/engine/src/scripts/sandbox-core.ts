@@ -10,6 +10,9 @@
  * returned the same way: the host wrappers do the worker plumbing.
  */
 
+import { inferType } from 'requesto-backend/utils/variable-substitution';
+import type { EnvironmentVariableType } from 'requesto-backend/models/environment';
+
 export type TestResult = { name: string; passed: boolean; error?: string };
 
 export type PreRequestContext = {
@@ -29,8 +32,17 @@ export type TestContext = {
   env: Record<string, string>;
 };
 
-export type PreRequestOutcome = { envOverrides: Record<string, string> };
-export type TestOutcome = { testResults: TestResult[]; envOverrides: Record<string, string> };
+export type PreRequestOutcome = {
+  envOverrides: Record<string, string>;
+  /** Inferred type per key in `envOverrides`. */
+  envTypes: Record<string, EnvironmentVariableType>;
+};
+export type TestOutcome = {
+  testResults: TestResult[];
+  envOverrides: Record<string, string>;
+  /** Inferred type per key in `envOverrides`. */
+  envTypes: Record<string, EnvironmentVariableType>;
+};
 
 // Shadowed globals prepended to every user script. These shadow the
 // global equivalents so user scripts cannot reach fetch, process,
@@ -135,12 +147,16 @@ function createExpect(actual: unknown, inverted = false): Expectation {
 
 function createEnvironment(env: Record<string, string>) {
   const envStore: Record<string, string> = { ...env };
+  // Types recorded per key set during this run, so callers can re-type variables.
+  const typeStore: Record<string, EnvironmentVariableType> = {};
   return {
     store: envStore,
+    types: typeStore,
     api: {
       get: (key: string): string => envStore[key] ?? '',
-      set: (key: string, value: string): void => {
+      set: (key: string, value: unknown): void => {
         envStore[key] = String(value);
+        typeStore[key] = inferType(value);
       },
     },
   };
@@ -148,21 +164,21 @@ function createEnvironment(env: Record<string, string>) {
 
 /** Execute a pre-request script. Throws on script errors. */
 export function executePreRequestScript(script: string, context: PreRequestContext): PreRequestOutcome {
-  const { store, api } = createEnvironment(context.env);
+  const { store, types, api } = createEnvironment(context.env);
   const request = { ...context.request };
 
   // eslint-disable-next-line no-new-func
   const fn = new Function('environment', 'request', `${SHADOWED_GLOBALS}\n${script}`);
   fn(api, request);
 
-  return { envOverrides: store };
+  return { envOverrides: store, envTypes: types };
 }
 
 /** Execute a test script. Throws on script errors (outside test() blocks). */
 export function executeTestScript(script: string, context: TestContext): TestOutcome {
   const results: TestResult[] = [];
   const { response: responseCtx, request } = context;
-  const { store, api } = createEnvironment(context.env);
+  const { store, types, api } = createEnvironment(context.env);
 
   const response = {
     status: responseCtx.status,
@@ -192,5 +208,5 @@ export function executeTestScript(script: string, context: TestContext): TestOut
   const fn = new Function('test', 'expect', 'response', 'request', 'environment', `${SHADOWED_GLOBALS}\n${script}`);
   fn(test, expect, response, request, api);
 
-  return { testResults: results, envOverrides: store };
+  return { testResults: results, envOverrides: store, envTypes: types };
 }

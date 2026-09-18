@@ -1,4 +1,4 @@
-﻿import type { OAuthTokenResolver, ProxyRequest, ProxyResponse, Collection, Environment, RunRequestResult, RunSummary, RunnerEvent, TestResult } from '../types.ts';
+﻿import type { OAuthTokenResolver, ProxyRequest, ProxyResponse, Collection, Environment, EnvironmentVariableType, RunRequestResult, RunSummary, RunnerEvent, TestResult } from '../types.ts';
 import { substituteInRequest, substituteInAuth } from 'requesto-backend/utils/variable-substitution';
 import { buildProxyRequest } from '../request/build-proxy-request.ts';
 import { buildCollectionItems, resolveFolderIds } from './display.ts';
@@ -15,19 +15,26 @@ export type ScriptResponseContext = {
   duration: number;
 };
 
+/** Env variable overrides set by a script, with the type inferred per key. */
+export type ScriptEnvOverrides = {
+  envOverrides: Record<string, string>;
+  /** Type per key in `envOverrides`; keys without an entry keep their existing type. */
+  envTypes?: Record<string, EnvironmentVariableType>;
+};
+
 /**
  * Executes pre-request and test scripts for a run. Hosts provide their own
  * implementation: a Node worker-thread runner for headless runs and a
  * browser Web Worker runner for the app.
  */
 export type ScriptRunner = {
-  runPreRequest(script: string, env: Record<string, string>, request: ScriptRequestContext): Promise<Record<string, string>>;
+  runPreRequest(script: string, env: Record<string, string>, request: ScriptRequestContext): Promise<ScriptEnvOverrides>;
   runTest(
     script: string,
     response: ScriptResponseContext,
     request: ScriptRequestContext,
     env: Record<string, string>,
-  ): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string> }>;
+  ): Promise<{ testResults: TestResult[] } & ScriptEnvOverrides>;
 };
 
 export type RunnerOptions = {
@@ -79,15 +86,22 @@ function isExcluded(collection: Collection, selectors: string[]): boolean {
 
 /** Merge script-set overrides into the live environment (in memory only).
  *  Keys not present in the environment are appended as new variables so
- *  `environment.set()` on a fresh key works in chained requests. */
-function applyEnvOverrides(env: Environment | null, overrides: Record<string, string>): Environment | null {
-  if (!env || Object.keys(overrides).length === 0) return env;
+ *  `environment.set()` on a fresh key works in chained requests. Types are
+ *  re-typed from the script value when provided. */
+function applyEnvOverrides(
+  env: Environment | null,
+  overrides: ScriptEnvOverrides,
+): Environment | null {
+  const { envOverrides, envTypes } = overrides;
+  if (!env || Object.keys(envOverrides).length === 0) return env;
   const variables = env.variables.map((v) =>
-    Object.prototype.hasOwnProperty.call(overrides, v.key) ? { ...v, currentValue: overrides[v.key] } : v,
+    Object.prototype.hasOwnProperty.call(envOverrides, v.key)
+      ? { ...v, currentValue: envOverrides[v.key], type: envTypes?.[v.key] ?? v.type }
+      : v,
   );
-  for (const [key, value] of Object.entries(overrides)) {
+  for (const [key, value] of Object.entries(envOverrides)) {
     if (!variables.some((v) => v.key === key)) {
-      variables.push({ key, value, currentValue: value, enabled: true });
+      variables.push({ key, value, currentValue: value, enabled: true, type: envTypes?.[key] ?? 'string' });
     }
   }
   return { ...env, variables };
@@ -169,6 +183,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             url: proxyReq.url,
             headers: proxyReq.headers,
             body: proxyReq.body,
+            bodyType: proxyReq.bodyType,
             formDataEntries: proxyReq.formDataEntries,
           },
           liveEnv,
@@ -199,7 +214,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             envRecord(liveEnv),
           );
           testResults = outcome.testResults;
-          liveEnv = applyEnvOverrides(liveEnv, outcome.envOverrides);
+          liveEnv = applyEnvOverrides(liveEnv, outcome);
         }
 
         const allPassed = testResults.every((t) => t.passed);

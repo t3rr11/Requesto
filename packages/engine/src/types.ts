@@ -3,7 +3,7 @@ import type { ProxyResponse } from 'requesto-backend/models/proxy';
 import type { TestResult } from './scripts/sandbox-core.ts';
 
 export type { Collection, Folder, SavedRequest } from 'requesto-backend/models/collection';
-export type { Environment, EnvironmentsData } from 'requesto-backend/models/environment';
+export type { Environment, EnvironmentVariable, EnvironmentVariableType, EnvironmentsData } from 'requesto-backend/models/environment';
 export type { ProxyRequest, ProxyResponse } from 'requesto-backend/models/proxy';
 export type { OAuthTokenResolver } from 'requesto-backend/utils/auth';
 export type { TestResult } from './scripts/sandbox-core.ts';

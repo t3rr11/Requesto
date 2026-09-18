@@ -45,6 +45,14 @@ describe('executePreRequestScript', () => {
     expect(result.envOverrides.n).toBe('42');
   });
 
+  it('infers the variable type from the set() value', () => {
+    const result = executePreRequestScript(
+      `environment.set('n', 42); environment.set('flag', true); environment.set('s', 'hello'); environment.set('strNum', '123');`,
+      { env: {}, request: baseRequest },
+    );
+    expect(result.envTypes).toEqual({ n: 'number', flag: 'boolean', s: 'string', strNum: 'number' });
+  });
+
   it('cannot reach Node or browser globals', () => {
     expect(() =>
       executePreRequestScript(`process.exit(1);`, { env: {}, request: baseRequest }),

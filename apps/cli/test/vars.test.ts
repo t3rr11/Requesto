@@ -75,16 +75,36 @@ describe('applyVarOverrides', () => {
   it('appends unknown keys as new variables', () => {
     const merged = applyVarOverrides(env, new Map([['extra', 'x']]));
     expect(merged?.variables).toHaveLength(3);
-    expect(merged?.variables[2]).toEqual({ key: 'extra', value: 'x', currentValue: 'x', enabled: true });
+    expect(merged?.variables[2]).toEqual({ key: 'extra', value: 'x', currentValue: 'x', enabled: true, type: 'string' });
   });
 
   it('creates a synthetic environment when none exists', () => {
     const merged = applyVarOverrides(null, new Map([['a', 'b']]));
-    expect(merged?.variables).toEqual([{ key: 'a', value: 'b', currentValue: 'b', enabled: true }]);
+    expect(merged?.variables).toEqual([{ key: 'a', value: 'b', currentValue: 'b', enabled: true, type: 'string' }]);
   });
 
   it('returns the original environment when there are no overrides', () => {
     expect(applyVarOverrides(env, new Map())).toBe(env);
     expect(applyVarOverrides(null, new Map())).toBeNull();
+  });
+
+  it('infers types from override values', () => {
+    const merged = applyVarOverrides(env, new Map([
+      ['count', '42'],
+      ['flag', 'true'],
+      ['extra', 'x'],
+    ]));
+    expect(merged?.variables.find(v => v.key === 'count')?.type).toBe('number');
+    expect(merged?.variables.find(v => v.key === 'flag')?.type).toBe('boolean');
+    expect(merged?.variables.find(v => v.key === 'extra')?.type).toBe('string');
+  });
+
+  it('re-types an existing variable from the override value', () => {
+    const envWithType = {
+      ...env,
+      variables: [{ key: 'baseUrl', value: 'http://default', enabled: true, type: 'string' as const }],
+    };
+    const merged = applyVarOverrides(envWithType, new Map([['baseUrl', '7']]));
+    expect(merged?.variables[0].type).toBe('number');
   });
 });

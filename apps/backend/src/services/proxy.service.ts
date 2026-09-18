@@ -164,7 +164,7 @@ export class ProxyService {
     const hasEnvOverride = Object.prototype.hasOwnProperty.call(opts, 'environment');
     const effectiveEnv = hasEnvOverride ? (opts.environment ?? null) : this.environmentService.getActive();
 
-    const substituted = substituteInRequest({ url, headers, body, formDataEntries }, effectiveEnv);
+    const substituted = substituteInRequest({ url, headers, body, bodyType, formDataEntries }, effectiveEnv);
     const substitutedAuth = substituteInAuth(auth, effectiveEnv);
 
     // Validate AFTER substitution: templated URLs ({{baseUrl}}/...) become
@@ -268,7 +268,7 @@ export class ProxyService {
       throw new Error('Invalid URL format');
     }
 
-    const substituted = this.environmentService.substituteInRequest({ url, headers, body, formDataEntries });
+    const substituted = this.environmentService.substituteInRequest({ url, headers, body, bodyType, formDataEntries });
     const substitutedAuth = this.environmentService.substituteInAuth(auth);
     const authenticated = await applyAuthentication(
       substitutedAuth,

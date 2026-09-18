@@ -1,4 +1,4 @@
-import type { Environment, EnvironmentVariable } from '../store/environments/types';
+import type { Environment, EnvironmentVariable, EnvironmentVariableType } from '../store/environments/types';
 import type { AuthConfig, ProxyRequest } from '../store/request/types';
 
 function escapeRegExp(str: string): string {
@@ -20,6 +20,84 @@ export function substituteVariables(text: string, environment: Environment | nul
     }
   }
   return result;
+}
+
+/** Strict JSON number literal check; unlike Number(), rejects NaN, Infinity, hex and leading zeros. */
+export function isNumericLiteral(value: string): boolean {
+  return /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(value.trim());
+}
+
+/** Infer a variable type from a runtime or literal-string value. */
+export function inferType(value: unknown): EnvironmentVariableType {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? 'number' : 'string';
+  }
+  if (typeof value === 'boolean') return 'boolean';
+  if (typeof value === 'string') {
+    if (value === 'true' || value === 'false') return 'boolean';
+    if (isNumericLiteral(value)) return 'number';
+  }
+  return 'string';
+}
+
+function typedJsonLiteral(
+  value: string,
+  type: EnvironmentVariableType | undefined,
+): string | null {
+  if (type === 'boolean') {
+    return value === 'true' || value === 'false' ? value : null;
+  }
+  if (type === 'number') {
+    return isNumericLiteral(value) ? value : null;
+  }
+  return null;
+}
+
+/**
+ * JSON-aware substitution for JSON bodies and GraphQL variables. A quoted
+ * placeholder `"{{var}}"` whose variable is typed `number` or `boolean` is
+ * replaced by the raw unquoted literal (falling back to the quoted string
+ * when the value cannot represent the type); other quoted placeholders get a
+ * JSON-escaped string. Unquoted placeholders are inserted raw, unchanged.
+ */
+export function substituteJsonVariables(text: string, environment: Environment | null): string {
+  if (!environment || !text) return text;
+
+  let result = text;
+  for (const variable of environment.variables) {
+    if (!variable.enabled || !variable.key) continue;
+    const keyPattern = escapeRegExp(variable.key);
+    const value = variable.currentValue ?? variable.value ?? '';
+    const quoted = new RegExp(`"{{\\s*${keyPattern}\\s*}}"`, 'g');
+    const literal = typedJsonLiteral(value, variable.type);
+    result = result.replace(quoted, literal ?? JSON.stringify(value));
+    const plain = new RegExp(`{{\\s*${keyPattern}\\s*}}`, 'g');
+    result = result.replace(plain, value);
+  }
+  return result;
+}
+
+/**
+ * Substitute variables in a URL. The plain pass misses the GraphQL GET
+ * `variables` query parameter: `URLSearchParams` percent-encodes the braces,
+ * so its placeholders only exist in decoded form, where they need the
+ * JSON-aware pass (typed values must end up unquoted in the JSON).
+ */
+function substituteUrlVariables(url: string, environment: Environment | null): string {
+  const substituted = substituteVariables(url, environment);
+  if (!environment || !substituted.includes('=')) return substituted;
+
+  try {
+    const parsed = new URL(substituted);
+    const variables = parsed.searchParams.get('variables');
+    if (variables && variables.includes('{{')) {
+      parsed.searchParams.set('variables', substituteJsonVariables(variables, environment));
+      return parsed.toString();
+    }
+  } catch {
+    // Not an absolute URL — the plain pass already did everything.
+  }
+  return substituted;
 }
 
 /**
@@ -58,17 +136,22 @@ export function substituteInAuth(auth: AuthConfig | undefined, environment: Envi
 
 /**
  * Substitute variables in all request fields (URL, headers, body, auth).
+ * JSON bodies get JSON-aware substitution so typed variables are emitted
+ * as unquoted numbers/booleans.
  */
 export function substituteInRequest(request: ProxyRequest, environment: Environment | null): typeof request {
   if (!environment) return request;
 
+  const jsonMode = request.bodyType === 'json' || (!request.bodyType && !!request.body);
+  const bodySub = jsonMode ? substituteJsonVariables : substituteVariables;
+
   return {
     method: request.method,
-    url: substituteVariables(request.url, environment),
+    url: substituteUrlVariables(request.url, environment),
     headers: request.headers
       ? Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, environment)]))
       : undefined,
-    body: request.body ? substituteVariables(request.body, environment) : undefined,
+    body: request.body ? bodySub(request.body, environment) : undefined,
     bodyType: request.bodyType,
     formDataEntries: request.formDataEntries
       ? request.formDataEntries.map(entry => ({
@@ -159,5 +242,5 @@ export function prepareEnvironmentForSave(env: Environment): Environment {
 }
 
 export function createEmptyVariable(): EnvironmentVariable {
-  return { key: '', value: '', enabled: true, isSecret: false };
+  return { key: '', value: '', enabled: true, isSecret: false, type: 'string' };
 }

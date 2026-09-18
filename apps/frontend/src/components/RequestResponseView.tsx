@@ -84,17 +84,17 @@ export function RequestResponseView() {
     let effectiveEnv = activeEnv;
     if (formData.preRequestScript?.trim()) {
       try {
-        const envOverrides = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest);
+        const { envOverrides, envTypes } = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest);
         if (activeEnv && Object.keys(envOverrides).length > 0) {
           const updatedVariables = activeEnv.variables.map(v =>
             Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-              ? { ...v, currentValue: envOverrides[v.key] }
+              ? { ...v, currentValue: envOverrides[v.key], type: envTypes[v.key] ?? v.type }
               : v,
           );
           // Also add any newly-introduced keys
           Object.entries(envOverrides).forEach(([key, value]) => {
             if (!updatedVariables.some(v => v.key === key)) {
-              updatedVariables.push({ key, value: '', currentValue: value, enabled: true });
+              updatedVariables.push({ key, value: '', currentValue: value, enabled: true, type: envTypes[key] ?? 'string' });
             }
           });
           const updatedEnv = { ...activeEnv, variables: updatedVariables };

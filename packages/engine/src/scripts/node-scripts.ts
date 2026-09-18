@@ -2,15 +2,13 @@ import { Worker } from 'node:worker_threads';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { TestResult } from './sandbox-core.ts';
+import type { PreRequestOutcome, TestOutcome, TestResult } from './sandbox-core.ts';
+import type { EnvironmentVariableType } from 'requesto-backend/models/environment';
 import type { ScriptRunner } from '../runner/run.ts';
 
 const SCRIPT_TIMEOUT_MS = 5000;
 
-type WorkerResponse =
-  | { envOverrides: Record<string, string> }
-  | { testResults: TestResult[]; envOverrides: Record<string, string> }
-  | { error: string };
+type WorkerResponse = PreRequestOutcome | TestOutcome | { error: string };
 
 type WorkerMessage =
   | { type: 'pre-request'; script: string; context: Record<string, unknown> }
@@ -61,15 +59,15 @@ function runInWorker(message: WorkerMessage): Promise<WorkerResponse> {
 
 /**
  * Run the pre-request script in an isolated worker thread.
- * Returns the env variable overrides set by the script (key/value pairs).
- * Throws if the script errors or times out.
+ * Returns the env variable overrides set by the script (key/value pairs
+ * plus inferred types). Throws if the script errors or times out.
  */
 export async function runPreRequestScript(
   script: string,
   env: Record<string, string>,
   request: { method: string; url: string; headers?: Record<string, string>; body?: string },
-): Promise<Record<string, string>> {
-  if (!script.trim()) return {};
+): Promise<PreRequestOutcome> {
+  if (!script.trim()) return { envOverrides: {}, envTypes: {} };
 
   const result = await runInWorker({
     type: 'pre-request',
@@ -78,8 +76,8 @@ export async function runPreRequestScript(
   });
 
   if ('error' in result) throw new Error(result.error);
-  if ('envOverrides' in result) return result.envOverrides;
-  return {};
+  if ('envOverrides' in result) return { envOverrides: result.envOverrides, envTypes: result.envTypes };
+  return { envOverrides: {}, envTypes: {} };
 }
 
 /**
@@ -92,8 +90,8 @@ export async function runTestScript(
   response: { status: number; statusText: string; headers: Record<string, string>; body: string; duration: number },
   request: { method: string; url: string; headers?: Record<string, string>; body?: string },
   env: Record<string, string>,
-): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string> }> {
-  if (!script.trim()) return { testResults: [], envOverrides: {} };
+): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
+  if (!script.trim()) return { testResults: [], envOverrides: {}, envTypes: {} };
 
   const result = await runInWorker({
     type: 'test',
@@ -102,8 +100,10 @@ export async function runTestScript(
   });
 
   if ('error' in result) throw new Error(result.error);
-  if ('testResults' in result) return { testResults: result.testResults, envOverrides: result.envOverrides };
-  return { testResults: [], envOverrides: {} };
+  if ('testResults' in result) {
+    return { testResults: result.testResults, envOverrides: result.envOverrides, envTypes: result.envTypes ?? {} };
+  }
+  return { testResults: [], envOverrides: {}, envTypes: {} };
 }
 
 /** Script runner backed by Node worker threads; the default for headless runs. */

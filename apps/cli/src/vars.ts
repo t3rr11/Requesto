@@ -1,4 +1,5 @@
 import type { Environment } from 'requesto-engine';
+import { inferType } from 'requesto-engine';
 import { CliError } from './cli-error.ts';
 
 /**
@@ -76,7 +77,8 @@ export function toNormalisedMap(map: Map<string, string>): Map<string, string> {
 /**
  * Merge variable overrides onto an environment. Existing variables get their
  * `currentValue` replaced (exact key match wins, then case-insensitive
- * normalised match); unknown keys are appended as new enabled variables.
+ * normalised match) and re-typed from the override value; unknown keys are
+ * appended as new enabled variables with an inferred type.
  * Returns the original reference when there is nothing to override.
  */
 export function applyVarOverrides(
@@ -92,19 +94,19 @@ export function applyVarOverrides(
   const variables = base.variables.map((v) => {
     if (overrides.has(v.key)) {
       used.add(v.key);
-      return { ...v, currentValue: overrides.get(v.key) };
+      return { ...v, currentValue: overrides.get(v.key), type: inferType(overrides.get(v.key)) };
     }
     const normalisedMatch = [...normalised.entries()].find(([key]) => normalizeKey(v.key) === key);
     if (normalisedMatch) {
       used.add(normalisedMatch[0]);
-      return { ...v, currentValue: normalisedMatch[1] };
+      return { ...v, currentValue: normalisedMatch[1], type: inferType(normalisedMatch[1]) };
     }
     return v;
   });
 
   for (const [key, value] of overrides) {
     if (used.has(key) || used.has(normalizeKey(key))) continue;
-    variables.push({ key, value, currentValue: value, enabled: true });
+    variables.push({ key, value, currentValue: value, enabled: true, type: inferType(value) });
   }
 
   return { ...base, variables };

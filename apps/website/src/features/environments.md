@@ -48,12 +48,35 @@ Each variable has:
 |-------|-------------|
 | Key | The name you reference with <code v-pre>{{key}}</code> |
 | Value | The substituted value |
+| Type | String, Number, or Boolean - controls how the value is emitted in JSON bodies and GraphQL variables (see [Variable Types and JSON Bodies](#variable-types-and-json-bodies)) |
 | Enabled | Toggle - disabled variables are skipped during substitution |
 | Secret | Toggle - masks the value in the UI (eye icon to reveal) |
 
 Add variables in the editor table. Click the **+** row to add a new one, or remove with the trash icon.
 
 <ThemeImage src="/environments/variable-editor.png" alt="Variable editor table" />
+
+## Variable Types and JSON Bodies
+
+Every variable has a type: **String** (default), **Number**, or **Boolean**. The editor's type dropdown auto-suggests as you type the value (e.g. `42` suggests Number, `true` suggests Boolean), and you can override it at any time. Scripts and CLI variables infer the type automatically - `environment.set('count', 42)` makes `count` a Number, and `--var flag=true` a Boolean.
+
+The type only affects **JSON request bodies and GraphQL variables**. Because a JSON body must be valid *before* substitution, number and boolean variables are still written inside quotes - and the quotes are removed automatically when the request is sent:
+
+| Template | Variable | Type | Sent as |
+|----------|----------|------|---------|
+| `"count": "{{count}}"` | `count = 42` | Number | `"count": 42` |
+| `"active": "{{active}}"` | `active = true` | Boolean | `"active": true` |
+| `"name": "{{name}}"` | `name = alice` | String | `"name": "alice"` |
+
+Without the quotes the body would not be valid JSON in the editor - <code v-pre>"count": {{count}}</code> cannot be parsed - so wrapping the placeholder in quotes is what keeps the template valid. During substitution the surrounding quotes are stripped for Number and Boolean variables so the value arrives with the correct JSON type, while String variables stay quoted.
+
+The type is a hint, not a guarantee: if a Number variable's value is not a valid JSON number (e.g. `zip = 02134`, where leading zeros are not a JSON number literal), it falls back to being sent as a quoted string rather than corrupting the body.
+
+A few additional rules:
+
+- Placeholders that are only part of a value (e.g. `"user-{{id}}"`) are always substituted as plain text inside the string
+- Unquoted placeholders (<code v-pre>"count": {{count}}</code>) are inserted verbatim with no type handling
+- Outside JSON bodies - URLs, headers, form-data values, auth fields - values are substituted as plain text regardless of type
 
 ## Variable Autocomplete
 
@@ -100,6 +123,6 @@ The backend replaces <code v-pre>{{variable}}</code> placeholders in:
 - Form-data entries (text keys and values)
 - Auth credential fields (basic, bearer, API key, digest)
 
-Substitution is a single pass - variables cannot reference other variables (no nesting).
+Variable values may themselves reference other variables (e.g. a `baseUrl` variable set to <code v-pre>{{requestoServerUrl}}</code>); references are resolved before substitution.
 
 Variable names are **case-sensitive**: <code v-pre>{{api_key}}</code> and <code v-pre>{{API_KEY}}</code> are different variables.

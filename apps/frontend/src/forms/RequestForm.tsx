@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { KeyValueEditor } from '../components/KeyValueEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
-import { AlertTriangle, BookOpen, ChevronLeft, ChevronRight, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { AlertTriangle, BookOpen, ChevronLeft, ChevronRight, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { AuthConfig, FormDataEntry } from '../store/request/types';
 import { useThemeStore } from '../store/theme/store';
 import { useTabsStore } from '../store/tabs/store';
@@ -729,7 +729,18 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
 
         {activeTab === 'tests' && (
           <div className="h-full flex flex-col gap-3 min-h-50">
-            <p className="text-xs text-gray-500 dark:text-gray-400">Runs after the response is received.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+              Runs after the response is received.
+              <a
+                href="https://requesto.com.au/features/tests.html#writing-tests"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Test docs
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </p>
             <div className="flex-1 border border-gray-300 dark:border-gray-600 rounded overflow-hidden min-h-50">
               <Controller
                 name="testScript"
