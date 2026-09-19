@@ -867,6 +867,32 @@ test.describe('GraphQL', () => {
     await takeDocScreenshot('graphql', 'schema-explorer');
   });
 
+  test('add fields to the query from schema docs', async ({ appPage, takeDocScreenshot }) => {
+    await openGraphQLDocsRequest(appPage);
+    await appPage.getByLabel('View GraphQL schema').click();
+    const schemaDialog = appPage.locator('div.fixed.inset-0.z-50', {
+      has: appPage.getByRole('heading', { name: 'GraphQL Schema' }),
+    });
+    await expect(appPage.getByRole('heading', { name: 'GraphQL Schema' })).toBeVisible();
+    await schemaDialog.getByRole('button', { name: 'Add users to query' }).waitFor({ state: 'visible', timeout: 15_000 });
+
+    // Show the mutation root type so the "Add to mutation" buttons are visible
+    await schemaDialog.getByRole('button', { name: 'Mutation', exact: true }).first().click();
+    await schemaDialog.getByRole('button', { name: 'Add updateUserName to mutation' }).waitFor({ state: 'visible', timeout: 5_000 });
+    await appPage.waitForTimeout(500);
+
+    await takeDocScreenshot('graphql', 'add-to-query');
+
+    // Adding a query field keeps the request a single valid operation
+    await schemaDialog.getByRole('button', { name: 'Query', exact: true }).first().click();
+    await schemaDialog.getByRole('button', { name: 'Add users to query' }).click();
+    await expect(appPage.getByRole('heading', { name: 'GraphQL Schema' })).not.toBeVisible({ timeout: 5_000 });
+    await expect(appPage.locator('.monaco-editor').first()).toContainText('users {', { timeout: 10_000 });
+    await appPage.waitForTimeout(800);
+
+    await takeDocScreenshot('graphql', 'add-to-query-result');
+  });
+
   test('query response', async ({ appPage, takeDocScreenshot }) => {
     await openGraphQLDocsRequest(appPage);
     await appPage.getByRole('button', { name: 'Send' }).click();
