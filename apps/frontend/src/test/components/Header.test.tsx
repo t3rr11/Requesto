@@ -93,7 +93,7 @@ describe('Header', () => {
   it('renders docs link next to help button', () => {
     renderHeader();
     const docsLink = screen.getByTitle('Documentation');
-    expect(docsLink).toHaveAttribute('href', 'https://requesto.com.au/');
+    expect(docsLink).toHaveAttribute('href', 'https://requesto.com.au/search');
     expect(docsLink).toHaveAttribute('target', '_blank');
     expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer');
     expect(docsLink).toHaveTextContent('Docs');
