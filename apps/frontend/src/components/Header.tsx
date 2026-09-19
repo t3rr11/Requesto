@@ -9,7 +9,9 @@ import { SettingsDialog } from './SettingsDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { WorkspaceManagerDialog } from './WorkspaceManagerDialog';
 import { AddWorkspaceDialog, type AddWorkspaceMode } from './AddWorkspaceDialog';
-import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose, ArrowDownToLine, Settings as SettingsIcon } from 'lucide-react';
+import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose, ArrowDownToLine, Settings as SettingsIcon, BookOpen } from 'lucide-react';
+
+const DOCS_URL = 'https://requesto.com.au/search';
 
 export function Header() {
   const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, panelLayout, togglePanelLayout } = useUIStore();
@@ -63,6 +65,17 @@ export function Header() {
               <span className="text-xs font-medium">Update available</span>
             </Button>
           )}
+          <a
+            href={DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Documentation"
+            aria-label="Documentation"
+            className="inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer text-white hover:bg-blue-500! dark:text-gray-400 dark:hover:bg-gray-700! dark:hover:text-white! focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          >
+            <BookOpen className="w-4 h-4 shrink-0" />
+            Docs
+          </a>
           <Button
             onClick={helpDialog.open}
             variant="icon"

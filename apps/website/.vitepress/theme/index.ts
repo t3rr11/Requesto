@@ -4,6 +4,7 @@ import mediumZoom from 'medium-zoom';
 import { onMounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vitepress';
 import ThemeImage from './ThemeImage.vue';
+import SearchPage from './SearchPage.vue';
 import { initOpenObserve } from './openobserve';
 import './custom.css';
 
@@ -11,6 +12,7 @@ export default {
   extends: DefaultTheme,
   enhanceApp({ app }) {
     app.component('ThemeImage', ThemeImage);
+    app.component('SearchPage', SearchPage);
   },
   setup() {
     initOpenObserve();

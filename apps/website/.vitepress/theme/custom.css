@@ -95,3 +95,218 @@
 .medium-zoom-image--opened {
   z-index: 31;
 }
+
+/**
+ * Component: Docs Search Page (/search)
+ * -------------------------------------------------------------------------- */
+
+html.docs-search-page-root {
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+}
+
+.docs-search-page .VPFooter {
+  display: none;
+}
+
+.docs-search-page .VPPage {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: calc(100vh - var(--vp-nav-height));
+}
+
+/* Center in the full viewport, not just the strip below the fixed nav */
+@media (min-width: 960px) {
+  .docs-search {
+    transform: translateY(calc(-1 * var(--vp-nav-height) / 2));
+  }
+}
+
+.docs-search {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.docs-search-logo {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 16px;
+}
+
+.docs-search-heading {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.docs-search-tagline {
+  margin: 8px 0 32px;
+  font-size: 17px;
+  color: var(--vp-c-text-2);
+}
+
+.docs-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 560px;
+  padding: 7px 8px 7px 16px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 999px;
+  background: var(--vp-c-bg-soft);
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.docs-search-box:focus-within {
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 0 0 3px var(--vp-c-brand-soft);
+  background: var(--vp-c-bg);
+}
+
+.docs-search-icon {
+  flex-shrink: 0;
+  color: var(--vp-c-text-3);
+}
+
+.docs-search-box input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--vp-c-text-1);
+  font-size: 15px;
+}
+
+.docs-search-box input::placeholder {
+  color: var(--vp-c-text-3);
+}
+
+.docs-search-box button {
+  flex-shrink: 0;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--vp-c-brand-3);
+  color: var(--vp-button-brand-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.25s, opacity 0.25s;
+}
+
+.docs-search-box button:hover {
+  background: var(--vp-c-brand-2);
+}
+
+.docs-search-box button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.docs-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-width: 560px;
+  margin-top: 20px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.docs-search-result {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 14px;
+  line-height: 1.4;
+  transition: border-color 0.25s, background-color 0.25s;
+}
+
+.docs-search-result.selected,
+.docs-search-result:hover {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-bg);
+}
+
+.docs-search-result-icon {
+  flex-shrink: 0;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+}
+
+.docs-search-result.selected .docs-search-result-icon,
+.docs-search-result:hover .docs-search-result-icon {
+  color: var(--vp-c-brand-1);
+}
+
+.docs-search-result-titles {
+  display: block;
+  color: var(--vp-c-text-3);
+  font-size: 12px;
+}
+
+.docs-search-result-title {
+  display: block;
+  font-weight: 500;
+}
+
+.docs-search-empty {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--vp-c-text-2);
+}
+
+.docs-search-popular {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+
+.docs-search-popular button {
+  padding: 4px 12px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 999px;
+  background: var(--vp-c-bg-soft);
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.25s, color 0.25s;
+}
+
+.docs-search-popular button:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.docs-search-hint {
+  margin-top: 32px;
+  font-size: 13px;
+  color: var(--vp-c-text-3);
+}
+
+.docs-search-hint kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
+  background: var(--vp-c-bg-soft);
+  font-size: 11px;
+}
