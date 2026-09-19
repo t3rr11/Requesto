@@ -16,6 +16,7 @@ import { ImportOpenApiForm } from '../forms/ImportOpenApiForm';
 import { CollectionRunnerDialog } from './CollectionRunnerDialog';
 import { CollectionItem } from './sidebar/CollectionItem';
 import { MethodBadge } from './sidebar/MethodBadge';
+import { getGraphQLBadgeOperation } from '../helpers/request';
 import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { GitStatusBar } from './GitStatusBar';
@@ -476,7 +477,13 @@ export function CollectionsSidebar() {
                           className="bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700 rounded py-2 px-3 flex items-center gap-2 opacity-90"
                           style={{ transform: `translateY(${i * 2}px)`, zIndex: draggedRequests.length - i }}
                         >
-                          <MethodBadge method={r.method} />
+                          <MethodBadge
+                            method={
+                              r.requestType === 'graphql'
+                                ? getGraphQLBadgeOperation(r.graphql?.document ?? '')
+                                : r.method
+                            }
+                          />
                           <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{r.name}</span>
                         </div>
                       ))}

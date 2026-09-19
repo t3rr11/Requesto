@@ -90,6 +90,15 @@ describe('Header', () => {
     expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument();
   });
 
+  it('renders docs link next to help button', () => {
+    renderHeader();
+    const docsLink = screen.getByTitle('Documentation');
+    expect(docsLink).toHaveAttribute('href', 'https://requesto.com.au/search');
+    expect(docsLink).toHaveAttribute('target', '_blank');
+    expect(docsLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(docsLink).toHaveTextContent('Docs');
+  });
+
   it('opens settings dialog on the general tab', () => {
     renderHeader();
     const settingsBtn = screen.getByTitle('Settings');

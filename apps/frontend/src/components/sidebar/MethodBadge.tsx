@@ -10,7 +10,12 @@ const METHOD_CLASSES: Record<string, string> = {
   DELETE: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
   HEAD: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400',
   OPTIONS: 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400',
+  QUERY: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400',
+  MUTATION: 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-400',
 };
+
+// Query/Mutation render title case; HTTP methods render uppercase.
+const TITLE_CASE_METHODS = new Set(['QUERY', 'MUTATION']);
 
 export function MethodBadge({ method }: MethodBadgeProps) {
   const upper = method.toUpperCase();
@@ -19,7 +24,7 @@ export function MethodBadge({ method }: MethodBadgeProps) {
     <span
       className={`inline-flex items-center text-[10px] font-semibold rounded px-1.5 py-0.5 leading-none shrink-0 ${classes}`}
     >
-      {upper}
+      {TITLE_CASE_METHODS.has(upper) ? upper.charAt(0) + upper.slice(1).toLowerCase() : upper}
     </span>
   );
 }

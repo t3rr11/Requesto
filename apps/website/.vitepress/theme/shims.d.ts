@@ -6,6 +6,11 @@ declare module '*.vue' {
 
 declare module '*.css' {}
 
+declare module '@localSearchIndex' {
+  const index: Record<string, () => Promise<{ default: string }>>
+  export default index
+}
+
 interface ImportMetaEnv {
   readonly OO_SITE?: string;
   readonly OO_CLIENT_TOKEN?: string;

@@ -106,6 +106,7 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Documentation', link: '/guide/introduction' },
+      { text: 'Search', link: '/search' },
       { text: 'Download', link: '/guide/download' },
       {
         text: `v${version}`,

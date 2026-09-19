@@ -57,6 +57,34 @@ Use the same pattern for queries and mutations:
 
 The variables value must be a JSON object. Arrays and other top-level JSON values are rejected before the request is sent.
 
+## Writing a Mutation
+
+Mutations follow the same pattern as queries — declare an operation, pass data through variables, and select the fields to get back. This example updates a user's name:
+
+```graphql
+mutation UpdateUserName($id: ID!, $name: String!) {
+  updateUserName(id: $id, name: $name) {
+    id
+    name
+    email
+    role
+  }
+}
+```
+
+```json
+{
+  "id": "1",
+  "name": "Grace Hopper"
+}
+```
+
+Mutations have side effects and must be sent with **GQL POST**. Switching the picker to **GQL GET** disables mutations because GET requests cannot execute them.
+
+::: tip Build mutations from the schema
+Open the schema explorer, select the **Mutation** root type, and use **Add to mutation** to insert a mutation field with its arguments pre-filled as placeholders — see [Adding Fields from the Documentation](#adding-fields-from-the-documentation).
+:::
+
 ## Fetching a Schema
 
 Select the refresh icon beside the endpoint to run GraphQL introspection. Requesto uses the request's headers and authentication settings, including OAuth, API keys, bearer tokens, and active [environment variables](/features/environments).
@@ -74,7 +102,17 @@ Use the book icon beside the endpoint to open the schema explorer.
 
 <ThemeImage src="/graphql/schema-explorer.png" alt="GraphQL schema explorer showing operations and object types" />
 
-The explorer includes query, mutation, and subscription root types when present, plus object fields, arguments, enums, unions, descriptions, and deprecation information. Search by type name or follow a return type to navigate through the schema.
+The explorer includes query, mutation, and subscription root types when present, plus object fields, arguments, enums, unions, descriptions, and deprecation information. Search by type name, follow a return type, or toggle the **Types** list between a flat list and an expandable tree that follows type references.
+
+### Adding Fields from the Documentation
+
+Root fields on the query, mutation, and subscription types show an **Add to query** or **Add to mutation** button. Clicking it appends the field to the document and closes the dialog, so you can build a request entirely from the schema documentation.
+
+<ThemeImage src="/graphql/add-to-query.png" alt="Schema explorer showing the Add to mutation button on a mutation root field" />
+
+Inserted fields come with their subfields expanded down to leaf values, so the document is valid immediately, and you can delete the ones you don't need. Required arguments are filled with placeholder values, such as `id: ""` or `input: { title: "" }`, for you to replace with real data.
+
+<ThemeImage src="/graphql/add-to-query-result.png" alt="Query editor with a field appended from the schema explorer" />
 
 ## Schema Profiles
 

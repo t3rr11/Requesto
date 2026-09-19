@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Trash2, Check } from 'lucide-react';
 import type { SavedRequest } from '../../store/collections/types';
+import { getGraphQLBadgeOperation } from '../../helpers/request';
 import { MethodBadge } from './MethodBadge';
 import { SiGraphql } from 'react-icons/si';
 
@@ -68,7 +69,13 @@ export function RequestItem({
             aria-label="GraphQL request"
           />
         )}
-        <MethodBadge method={request.method} />
+        <MethodBadge
+          method={
+            request.requestType === 'graphql'
+              ? getGraphQLBadgeOperation(request.graphql?.document ?? '')
+              : request.method
+          }
+        />
         <span
           className={`text-sm truncate ${
             isHighlighted

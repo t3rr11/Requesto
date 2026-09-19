@@ -78,4 +78,41 @@ describe('GraphQLSchemaExplorer', () => {
     )).not.toThrow();
     expect(screen.getAllByText('Query').length).toBeGreaterThan(0);
   });
+
+  it('offers add-to-query buttons on root operation fields only', async () => {
+    const onAddField = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <GraphQLSchemaExplorer
+        schema={createSchema()}
+        loading={false}
+        error={null}
+        onRefresh={vi.fn()}
+        onAddField={onAddField}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Add user to query' }));
+    expect(onAddField).toHaveBeenCalledWith('query', 'user');
+
+    await user.click(screen.getAllByRole('button', { name: 'User' })[0]);
+    expect(screen.queryByRole('button', { name: /Add name to/ })).not.toBeInTheDocument();
+  });
+
+  it('renders an expandable tree of types in tree view', async () => {
+    const user = userEvent.setup();
+    render(
+      <GraphQLSchemaExplorer schema={createSchema()} loading={false} error={null} onRefresh={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Tree view' }));
+
+    await user.click(screen.getByRole('button', { name: 'Expand Query' }));
+    expect(screen.getAllByText('user').length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('button', { name: 'Expand user' }));
+    expect(screen.getByText('name')).toBeInTheDocument();
+
+    expect(screen.queryByRole('button', { name: 'Expand name' })).not.toBeInTheDocument();
+  });
 });
