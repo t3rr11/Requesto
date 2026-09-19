@@ -44,11 +44,29 @@ function renderRequest(request: SavedRequest) {
 }
 
 describe('RequestItem', () => {
-  it('shows GraphQL identity alongside the HTTP transport method', () => {
+  it('shows GraphQL identity alongside the operation badge for GraphQL requests', () => {
     renderRequest(createRequest({ requestType: 'graphql' }));
 
     expect(screen.getByLabelText('GraphQL request')).toBeInTheDocument();
-    expect(screen.getByText('POST')).toBeInTheDocument();
+    expect(screen.getByText('Query')).toBeInTheDocument();
+    expect(screen.queryByText('POST')).not.toBeInTheDocument();
+  });
+
+  it('shows the Mutation badge when the saved document declares a mutation', () => {
+    renderRequest(
+      createRequest({
+        requestType: 'graphql',
+        graphql: { document: 'mutation CreateUser { createUser { id } }', variables: '', transport: 'post' },
+      }),
+    );
+
+    expect(screen.getByText('Mutation')).toBeInTheDocument();
+  });
+
+  it('defaults to Query when the saved document is empty or unparseable', () => {
+    renderRequest(createRequest({ requestType: 'graphql', graphql: { document: '{ user {', variables: '', transport: 'post' } }));
+
+    expect(screen.getByText('Query')).toBeInTheDocument();
   });
 
   it('does not show the GraphQL icon for HTTP requests', () => {

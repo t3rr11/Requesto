@@ -94,6 +94,12 @@ export function getGraphQLOperations(document: string): GraphQLOperationOption[]
   }
 }
 
+/** Sidebar badge label: "Mutation" when the document declares one, otherwise "Query" (empty/invalid defaults to "Query"). */
+export function getGraphQLBadgeOperation(document: string): 'Query' | 'Mutation' {
+  const operations = getGraphQLOperations(document);
+  return operations[0]?.operation === 'mutation' ? 'Mutation' : 'Query';
+}
+
 function getGraphQLOperation(document: string) {
   const operations = parse(document).definitions.filter(
     definition => definition.kind === Kind.OPERATION_DEFINITION,

@@ -17,6 +17,7 @@ import { useAlertStore } from '../store/alert/store';
 import { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
 import { TEST_SCRIPT_TYPES, PRE_REQUEST_SCRIPT_TYPES } from '../helpers/scriptTypes';
 import { GraphQLSchemaExplorer } from '../components/GraphQLSchemaExplorer';
+import { addFieldToGraphQLDocument, type GraphQLRootOperationKind } from '../helpers/graphqlDocument';
 import { GraphQLQueryEditor } from '../components/GraphQLQueryEditor';
 import type { GraphQLSchema } from 'graphql';
 import { Dialog } from '../components/Dialog';
@@ -253,6 +254,21 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
     return () => subscription.unsubscribe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTab?.id, updateTabRequest]);
+
+  const handleAddFieldToDocument = (kind: GraphQLRootOperationKind, fieldName: string) => {
+    try {
+      const updatedDocument = addFieldToGraphQLDocument(
+        getValues('graphqlDocument') ?? '',
+        kind,
+        fieldName,
+        graphqlSchema,
+      );
+      setValue('graphqlDocument', updatedDocument, { shouldDirty: true });
+      schemaDialog.close();
+    } catch (error) {
+      showAlert(error instanceof Error ? error.message : 'Could not add field to query', 'error');
+    }
+  };
 
   const handleUrlChange = (newUrl: string) => {
     const lower = newUrl.trimStart().toLowerCase();
@@ -830,6 +846,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
             error={schemaError}
             onRefresh={handleFetchGraphQLSchema}
             disabled={loading || !urlValue.trim() || !onFetchGraphQLSchema}
+            onAddField={handleAddFieldToDocument}
           />
           </div>
         </div>
