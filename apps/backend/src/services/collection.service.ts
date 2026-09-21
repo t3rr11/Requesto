@@ -22,6 +22,18 @@ export interface MoveFolderParams {
 export class CollectionService {
   constructor(private readonly repo: CollectionRepository) {}
 
+  private isEmpty(collection: Collection): boolean {
+    return collection.requests.length === 0 && (collection.folders ?? []).length === 0;
+  }
+
+  private async pruneUncategorizedIfEmpty(collectionId: string): Promise<void> {
+    if (collectionId !== UNCATEGORIZED_COLLECTION_ID) return;
+    const collection = await this.repo.getById(UNCATEGORIZED_COLLECTION_ID);
+    if (collection && this.isEmpty(collection)) {
+      await this.repo.delete(UNCATEGORIZED_COLLECTION_ID);
+    }
+  }
+
   /**
    * Idempotently ensure the system-managed "Uncategorized" collection exists.
    * Used as a catch-all when users save a request without picking a collection.
@@ -42,7 +54,13 @@ export class CollectionService {
   }
 
   async getAll(): Promise<Collection[]> {
-    return this.repo.getAll();
+    const all = await this.repo.getAll();
+    const uncategorized = all.find((c) => c.id === UNCATEGORIZED_COLLECTION_ID);
+    if (uncategorized && this.isEmpty(uncategorized)) {
+      await this.repo.delete(UNCATEGORIZED_COLLECTION_ID);
+      return all.filter((c) => c.id !== UNCATEGORIZED_COLLECTION_ID);
+    }
+    return all;
   }
 
   async getById(id: string): Promise<Collection> {
@@ -149,6 +167,7 @@ export class CollectionService {
     if (!deleted) {
       throw AppError.notFound('Collection or request not found');
     }
+    await this.pruneUncategorizedIfEmpty(collectionId);
   }
 
   async duplicateRequest(collectionId: string, requestId: string): Promise<SavedRequest> {
@@ -262,6 +281,7 @@ export class CollectionService {
     ];
 
     await this.repo.saveAll(allCollections);
+    await this.pruneUncategorizedIfEmpty(sourceCollectionId);
     return movedRequest;
   }
 

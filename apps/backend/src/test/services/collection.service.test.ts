@@ -273,6 +273,116 @@ describe('CollectionService', () => {
     });
   });
 
+  describe('empty Uncategorized cleanup', () => {
+    const emptyUncategorized = (): Collection =>
+      makeCollection({ id: 'uncategorized', name: 'Uncategorized', isSystem: true });
+
+    it('deletes the Uncategorized collection when its last request is deleted', async () => {
+      const deleteSpy = vi.fn().mockResolvedValue(true);
+      const repo = mockRepo({
+        deleteRequest: vi.fn().mockResolvedValue(true),
+        getById: vi.fn().mockResolvedValue(emptyUncategorized()),
+        delete: deleteSpy,
+      });
+      const service = new CollectionService(repo);
+
+      await service.deleteRequest('uncategorized', 'req-1');
+
+      expect(deleteSpy).toHaveBeenCalledWith('uncategorized');
+    });
+
+    it('keeps the Uncategorized collection when other requests remain', async () => {
+      const deleteSpy = vi.fn().mockResolvedValue(true);
+      const col = makeCollection({
+        id: 'uncategorized',
+        name: 'Uncategorized',
+        isSystem: true,
+        requests: [makeRequest({ id: 'req-2', collectionId: 'uncategorized' })],
+      });
+      const repo = mockRepo({
+        deleteRequest: vi.fn().mockResolvedValue(true),
+        getById: vi.fn().mockResolvedValue(col),
+        delete: deleteSpy,
+      });
+      const service = new CollectionService(repo);
+
+      await service.deleteRequest('uncategorized', 'req-1');
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not prune normal collections after deleting requests', async () => {
+      const deleteSpy = vi.fn().mockResolvedValue(true);
+      const repo = mockRepo({
+        deleteRequest: vi.fn().mockResolvedValue(true),
+        getById: vi.fn().mockResolvedValue(makeCollection({ id: 'col-1', requests: [] })),
+        delete: deleteSpy,
+      });
+      const service = new CollectionService(repo);
+
+      await service.deleteRequest('col-1', 'req-1');
+
+      expect(repo.getById).not.toHaveBeenCalled();
+      expect(deleteSpy).not.toHaveBeenCalled();
+    });
+
+    it('removes a pre-existing empty Uncategorized collection when listing collections', async () => {
+      const other = makeCollection({ id: 'col-1' });
+      const repo = mockRepo({
+        getAll: vi.fn().mockResolvedValue([emptyUncategorized(), other]),
+        delete: vi.fn().mockResolvedValue(true),
+      });
+      const service = new CollectionService(repo);
+
+      const result = await service.getAll();
+
+      expect(result.map((c) => c.id)).toEqual(['col-1']);
+      expect(repo.delete).toHaveBeenCalledWith('uncategorized');
+    });
+
+    it('keeps a non-empty Uncategorized collection when listing collections', async () => {
+      const col = makeCollection({
+        id: 'uncategorized',
+        name: 'Uncategorized',
+        isSystem: true,
+        requests: [makeRequest({ id: 'req-1', collectionId: 'uncategorized' })],
+      });
+      const repo = mockRepo({
+        getAll: vi.fn().mockResolvedValue([col]),
+        delete: vi.fn().mockResolvedValue(true),
+      });
+      const service = new CollectionService(repo);
+
+      const result = await service.getAll();
+
+      expect(result).toHaveLength(1);
+      expect(repo.delete).not.toHaveBeenCalled();
+    });
+
+    it('deletes the Uncategorized collection when its last request is moved out', async () => {
+      const req = makeRequest({ id: 'req-1', collectionId: 'uncategorized' });
+      const sourceCol = emptyUncategorized();
+      sourceCol.requests = [req];
+      const targetCol = makeCollection({ id: 'col-2', requests: [] });
+
+      const repo = mockRepo({
+        getAll: vi.fn().mockResolvedValue([sourceCol, targetCol]),
+        saveAll: vi.fn().mockResolvedValue(undefined),
+        getById: vi.fn().mockResolvedValue(sourceCol),
+        delete: vi.fn().mockResolvedValue(true),
+      });
+      const service = new CollectionService(repo);
+
+      await service.moveRequest({
+        sourceCollectionId: 'uncategorized',
+        requestId: 'req-1',
+        targetCollectionId: 'col-2',
+      });
+
+      expect(repo.delete).toHaveBeenCalledWith('uncategorized');
+    });
+  });
+
   describe('moveRequest', () => {
     it('throws notFound when source collection not found', async () => {
       const repo = mockRepo({ getAll: vi.fn().mockResolvedValue([]) });
