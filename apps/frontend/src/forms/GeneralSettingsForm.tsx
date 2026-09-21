@@ -13,6 +13,8 @@ interface SettingsFormProps {
 export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFormProps>) {
   const insecureTls = useSettingsStore(s => s.insecureTls);
   const setInsecureTls = useSettingsStore(s => s.setInsecureTls);
+  const saveRequestOnSend = useSettingsStore(s => s.saveRequestOnSend);
+  const setSaveRequestOnSend = useSettingsStore(s => s.setSaveRequestOnSend);
 
   const {
     register,
@@ -23,6 +25,7 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
     resolver: zodResolver(settingsSchema),
     defaultValues: {
       insecureTls,
+      saveRequestOnSend,
     },
   });
 
@@ -30,6 +33,7 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
 
   const onSubmit = (data: SettingsFormData) => {
     setInsecureTls(data.insecureTls);
+    setSaveRequestOnSend(data.saveRequestOnSend);
     onSuccess();
   };
 
@@ -64,6 +68,23 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
             </span>
           </div>
         )}
+
+        <label className="flex items-start mt-4 gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            {...register('saveRequestOnSend')}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="flex-1">
+            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              Save requests when sent
+            </span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Automatically save a request to its collection when you send it, if it has unsaved changes.
+              Only applies to requests that are already saved to a collection.
+            </span>
+          </span>
+        </label>
       </section>
 
       <div className="flex justify-end gap-2 pt-2">

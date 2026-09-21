@@ -26,15 +26,18 @@ function createNewTab(overrides?: Partial<Tab>): Tab {
   };
 }
 
-export function openNewTab(set: SetState, get: GetState): string {
-  const tab = createNewTab({ isTouched: true });
-
-  // Check if there is a non-touched tab, if so close that request before opening the new one.
+// Closes the first non-touched tab so the new one can reuse its slot.
+function closeNonTouchedTab(set: SetState, get: GetState): void {
   const tabs = get().tabs as Record<string, Tab>;
   const nonTouchedTabId = Object.values(tabs).find((t) => !t.isTouched)?.id;
   if (nonTouchedTabId) {
     closeTab(set, get, nonTouchedTabId);
   }
+}
+
+export function openNewTab(set: SetState, get: GetState): string {
+  const tab = createNewTab({ isTouched: true });
+  closeNonTouchedTab(set, get);
 
   set((state) => ({
     tabs: { ...(state.tabs as Record<string, Tab>), [tab.id]: tab },
@@ -50,7 +53,6 @@ export function openRequestTab(
   get: GetState,
   params: { savedRequestId: string; collectionId: string; request: TabRequest; label: string },
 ): string {
-  const tabs = get().tabs as Record<string, Tab>;
   const existing = getTabBySavedRequestId(get, params.savedRequestId);
   if (existing) {
     activateTab(set, get, existing.id);
@@ -62,11 +64,7 @@ export function openRequestTab(
     auth: params.request.auth || { type: 'none' as const },
   };
 
-  // Check if there is a non-touched tab, if so close that request before opening the new one.
-  const nonTouchedTabId = Object.values(tabs).find((t) => !t.isTouched)?.id;
-  if (nonTouchedTabId) {
-    closeTab(set, get, nonTouchedTabId);
-  }
+  closeNonTouchedTab(set, get);
 
   const tab = createNewTab({
     label: params.label,
@@ -149,6 +147,7 @@ export function updateTabRequest(
   const updatedRequest = { ...tab.request, ...requestUpdate };
   const updatedTab: Tab = { ...tab, request: updatedRequest };
   updatedTab.isDirty = isTabDirty(updatedTab);
+  if (updatedTab.isDirty) updatedTab.isTouched = true;
 
   set((state) => ({
     tabs: { ...(state.tabs as Record<string, Tab>), [tabId]: updatedTab },
