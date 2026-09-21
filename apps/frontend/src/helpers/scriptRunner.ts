@@ -1,6 +1,6 @@
 import type { ProxyResponse, ProxyRequest } from '../store/request/types';
 import type { Environment, EnvironmentVariableType } from '../store/environments/types';
-import type { PreRequestOutcome, TestOutcome, TestResult } from 'requesto-engine/sandbox-core';
+import type { PreRequestOutcome, TestOutcome, TestResult, ScriptFormEntry } from 'requesto-engine/sandbox-core';
 import type { ScriptRunner, ScriptEnvOverrides } from 'requesto-engine/runner';
 
 export type { TestResult, ScriptEnvOverrides };
@@ -84,7 +84,7 @@ async function runPreRequestWithRecord(
 export async function runTestScript(
   script: string,
   response: ProxyResponse,
-  request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
+  request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body' | 'formDataEntries'>,
   env: Environment | null,
 ): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
   return runTestWithRecord(script, response, request, buildEnvRecord(env));
@@ -93,7 +93,7 @@ export async function runTestScript(
 async function runTestWithRecord(
   script: string,
   response: Pick<ProxyResponse, 'status' | 'statusText' | 'headers' | 'body' | 'duration'>,
-  request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
+  request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'> & { formDataEntries?: ScriptFormEntry[] },
   env: Record<string, string>,
 ): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
   if (!script.trim()) return { testResults: [], envOverrides: {}, envTypes: {} };
@@ -110,7 +110,13 @@ async function runTestWithRecord(
         body: response.body,
         duration: response.duration,
       },
-      request: { method: request.method, url: request.url, headers: request.headers, body: request.body },
+      request: {
+        method: request.method,
+        url: request.url,
+        headers: request.headers,
+        body: request.body,
+        formDataEntries: request.formDataEntries?.map(({ key, value, type, fileName }) => ({ key, value, type, fileName })),
+      },
     },
   });
 

@@ -20,6 +20,8 @@ export type PreRequestContext = {
   env: Record<string, string>;
 };
 
+export type ScriptFormEntry = { key: string; value: string; type?: 'text' | 'file'; fileName?: string };
+
 export type TestContext = {
   response: {
     status: number;
@@ -28,7 +30,13 @@ export type TestContext = {
     body: string;
     duration: number;
   };
-  request: { method: string; url: string; headers?: Record<string, string>; body?: string };
+  request: {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    body?: string;
+    formDataEntries?: ScriptFormEntry[];
+  };
   env: Record<string, string>;
 };
 
@@ -177,7 +185,7 @@ export function executePreRequestScript(script: string, context: PreRequestConte
 /** Execute a test script. Throws on script errors (outside test() blocks). */
 export function executeTestScript(script: string, context: TestContext): TestOutcome {
   const results: TestResult[] = [];
-  const { response: responseCtx, request } = context;
+  const { response: responseCtx, request: requestCtx } = context;
   const { store, types, api } = createEnvironment(context.env);
 
   const response = {
@@ -187,6 +195,27 @@ export function executeTestScript(script: string, context: TestContext): TestOut
     body: responseCtx.body,
     duration: responseCtx.duration,
     json: (): unknown => JSON.parse(responseCtx.body),
+  };
+
+  let params: Record<string, string> = {};
+  try {
+    params = Object.fromEntries(new URL(requestCtx.url).searchParams);
+  } catch {
+    // Not an absolute URL — no query params can be parsed.
+  }
+
+  const form: Record<string, string> = {};
+  for (const entry of requestCtx.formDataEntries ?? []) {
+    form[entry.key] = entry.type === 'file' ? (entry.fileName ?? '') : entry.value;
+  }
+
+  const request = {
+    method: requestCtx.method,
+    url: requestCtx.url,
+    headers: requestCtx.headers ? { ...requestCtx.headers } : undefined,
+    body: requestCtx.body,
+    params,
+    form,
   };
 
   const test = (name: string, fn: () => void): void => {

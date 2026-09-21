@@ -78,12 +78,16 @@ All tests in the script are run. A test passes if it throws no errors; it fails 
 
 ### `request`
 
+Read-only view of the request that was sent. The same properties as in pre-request scripts, plus parsed `params` and `form`.
+
 | Property | Type | Description |
 |----------|------|-------------|
 | `request.method` | `string` | HTTP method that was sent |
 | `request.url` | `string` | URL that was sent (after variable substitution) |
 | `request.headers` | `Record<string, string> \| undefined` | Headers that were sent |
 | `request.body` | `string \| undefined` | Body that was sent |
+| `request.params` | `Record<string, string>` | Query parameters parsed from the URL |
+| `request.form` | `Record<string, string>` | Form fields for form-data / x-www-form-urlencoded bodies; file entries map to their file name |
 
 ### `environment`
 
@@ -120,6 +124,23 @@ test('response is fast', () => {
 test('extract token', () => {
   const data = response.json();
   environment.set('authToken', data.token);
+});
+
+// Assert a value sent with the request comes back in the response
+test('echoes the sent value', () => {
+  const data = response.json();
+  expect(data.name).toBe(request.form.name);
+});
+
+// Assert a value from the JSON request body comes back in the response
+test('echoes the sent JSON body value', () => {
+  const sent = JSON.parse(request.body);
+  expect(response.json().name).toBe(sent.name);
+});
+
+// Check the request was built as expected
+test('sends the expected query parameter', () => {
+  expect(request.params.version).toBe('v2');
 });
 ```
 

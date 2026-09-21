@@ -1,10 +1,11 @@
 ﻿import type { OAuthTokenResolver, ProxyRequest, ProxyResponse, Collection, Environment, EnvironmentVariableType, RunRequestResult, RunSummary, RunnerEvent, TestResult } from '../types.ts';
+import type { ScriptFormEntry } from '../scripts/sandbox-core.ts';
 import { substituteInRequest, substituteInAuth } from 'requesto-backend/utils/variable-substitution';
 import { buildProxyRequest } from '../request/build-proxy-request.ts';
 import { buildCollectionItems, resolveFolderIds } from './display.ts';
 
 /** Request context passed to script runners. */
-export type ScriptRequestContext = { method: string; url: string; headers?: Record<string, string>; body?: string };
+export type ScriptRequestContext = { method: string; url: string; headers?: Record<string, string>; body?: string; formDataEntries?: ScriptFormEntry[] };
 
 /** Response context passed to test-script runners. */
 export type ScriptResponseContext = {
@@ -210,7 +211,13 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
               body: response.body,
               duration: response.duration,
             },
-            { method: proxyReq.method, url: proxyReq.url, headers: proxyReq.headers, body: proxyReq.body },
+            {
+              method: proxyReq.method,
+              url: proxyReq.url,
+              headers: proxyReq.headers,
+              body: proxyReq.body,
+              formDataEntries: proxyReq.formDataEntries?.map(({ key, value, type, fileName }) => ({ key, value, type, fileName })),
+            },
             envRecord(liveEnv),
           );
           testResults = outcome.testResults;
