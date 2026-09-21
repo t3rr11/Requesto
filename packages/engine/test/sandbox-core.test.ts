@@ -109,6 +109,50 @@ describe('executeTestScript', () => {
     expect(result.testResults[0].passed).toBe(true);
   });
 
+  it('exposes query params parsed from the request url', () => {
+    const result = executeTestScript(
+      `test('params', () => {
+        expect(request.params.id).toBe('7');
+        expect(request.params.q).toBe('hello world');
+        expect(request.params.missing).toBeUndefined();
+      });`,
+      { env: {}, response: baseResponse, request: { ...baseRequest, url: 'http://test.local/x?id=7&q=hello%20world' } },
+    );
+    expect(result.testResults[0].passed).toBe(true);
+  });
+
+  it('exposes form entries with file entries mapped to their file name', () => {
+    const result = executeTestScript(
+      `test('form', () => {
+        expect(request.form.name).toBe('requesto');
+        expect(request.form.attachment).toBe('a.txt');
+      });`,
+      {
+        env: {},
+        response: baseResponse,
+        request: {
+          ...baseRequest,
+          formDataEntries: [
+            { key: 'name', value: 'requesto', type: 'text' },
+            { key: 'attachment', value: 'data:text/plain;base64,aGk=', type: 'file', fileName: 'a.txt' },
+          ],
+        },
+      },
+    );
+    expect(result.testResults[0].passed).toBe(true);
+  });
+
+  it('request params and form default to empty objects', () => {
+    const result = executeTestScript(
+      `test('empty', () => {
+        expect(request.params).toEqual({});
+        expect(request.form).toEqual({});
+      });`,
+      { env: {}, response: baseResponse, request: baseRequest },
+    );
+    expect(result.testResults[0].passed).toBe(true);
+  });
+
   it('supports matchers with .not inversion', () => {
     const result = executeTestScript(
       `test('m1', () => { expect('abc').toContain('b'); });

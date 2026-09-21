@@ -2,7 +2,7 @@ import { Worker } from 'node:worker_threads';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { PreRequestOutcome, TestOutcome, TestResult } from './sandbox-core.ts';
+import type { PreRequestOutcome, TestOutcome, TestResult, ScriptFormEntry } from './sandbox-core.ts';
 import type { EnvironmentVariableType } from 'requesto-backend/models/environment';
 import type { ScriptRunner } from '../runner/run.ts';
 
@@ -88,7 +88,7 @@ export async function runPreRequestScript(
 export async function runTestScript(
   script: string,
   response: { status: number; statusText: string; headers: Record<string, string>; body: string; duration: number },
-  request: { method: string; url: string; headers?: Record<string, string>; body?: string },
+  request: { method: string; url: string; headers?: Record<string, string>; body?: string; formDataEntries?: ScriptFormEntry[] },
   env: Record<string, string>,
 ): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
   if (!script.trim()) return { testResults: [], envOverrides: {}, envTypes: {} };

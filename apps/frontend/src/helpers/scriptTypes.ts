@@ -273,12 +273,16 @@ declare const response: {
 declare const request: {
   /** HTTP method, e.g. "GET", "POST" */
   method: string;
-  /** Full request URL */
+  /** Full request URL (after variable substitution) */
   url: string;
   /** Request headers */
   headers?: Record<string, string>;
   /** Request body (JSON string or undefined) */
   body?: string;
+  /** Query parameters parsed from the request URL */
+  params: Record<string, string>;
+  /** Form fields for form-data / x-www-form-urlencoded bodies; file entries map to their file name */
+  form: Record<string, string>;
 };
 `;
 

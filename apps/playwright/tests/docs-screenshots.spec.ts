@@ -54,10 +54,16 @@ async function widenSidebar(page: Page, width = 350) {
 }
 
 /** Wait for the response body Monaco editor to fully render */
-async function waitForResponseBody(page: Page) {
+async function waitForResponseBody(page: Page, expectedText?: string) {
   const responseEditor = page.locator('.monaco-editor').last();
   await responseEditor.waitFor({ state: 'visible', timeout: 10_000 });
-  await page.waitForTimeout(1000);
+  if (expectedText) {
+    // The last editor may still be the request form's script editor while the
+    // response body renders, so require the expected content to be visible.
+    await expect(responseEditor).toContainText(expectedText, { timeout: 10_000 });
+  } else {
+    await page.waitForTimeout(1000);
+  }
 }
 
 async function openGraphQLDocsRequest(page: Page) {
@@ -86,11 +92,11 @@ test.describe('Home & Introduction', () => {
 
     // Send request to populate the response panel
     await appPage.getByRole('button', { name: 'Send' }).click();
-    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    const statusBadge = appPage.getByText('200 OK').first();
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
     await expect(appPage.getByText('octocat').first()).toBeVisible({ timeout: 5_000 });
 
-    await waitForResponseBody(appPage);
+    await waitForResponseBody(appPage, 'octocat');
 
     await takeDocScreenshot('introduction', 'app-overview');
     await takeDocScreenshot('home', 'hero-screenshot');
@@ -122,11 +128,11 @@ test.describe('Getting Started', () => {
 
     await appPage.getByRole('button', { name: 'Send' }).click();
 
-    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    const statusBadge = appPage.getByText('200 OK').first();
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
     await expect(appPage.getByText('octocat').first()).toBeVisible({ timeout: 5_000 });
 
-    await waitForResponseBody(appPage);
+    await waitForResponseBody(appPage, 'octocat');
 
     await takeDocScreenshot('getting-started', 'first-request');
   });
@@ -165,10 +171,10 @@ test.describe('Getting Started', () => {
 
     // Send a request so response panel is filled
     await appPage.getByRole('button', { name: 'Send' }).click();
-    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    const statusBadge = appPage.getByText('200 OK').first();
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
 
-    await waitForResponseBody(appPage);
+    await waitForResponseBody(appPage, 'Leanne Graham');
 
     // Open console
     const showConsole = appPage.getByTitle('Show Console');
@@ -446,8 +452,11 @@ test.describe('Console', () => {
     await appPage.getByText('Get User').click();
     await appPage.getByRole('button', { name: 'Send' }).click();
 
-    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    const statusBadge = appPage.getByText('200 OK').first();
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
+
+    // Wait for the response body to render, not just the status badge
+    await waitForResponseBody(appPage, 'octocat');
 
     // Open console
     const showConsole = appPage.getByTitle('Show Console');
@@ -465,8 +474,11 @@ test.describe('Console', () => {
     await appPage.getByText('Get User').click();
     await appPage.getByRole('button', { name: 'Send' }).click();
 
-    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    const statusBadge = appPage.getByText('200 OK').first();
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
+
+    // Wait for the response body to render, not just the status badge
+    await waitForResponseBody(appPage, 'octocat');
 
     // Open console
     const showConsole = appPage.getByTitle('Show Console');
@@ -537,10 +549,10 @@ test.describe('UI Variants', () => {
 
     // Send request to show response
     await appPage.getByRole('button', { name: 'Send' }).click();
-    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    const statusBadge = appPage.getByText('200 OK').first();
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
 
-    await waitForResponseBody(appPage);
+    await waitForResponseBody(appPage, 'octocat');
 
     await takeDocScreenshot('ui', 'horizontal-layout');
   });
@@ -810,7 +822,7 @@ test.describe('Tests', () => {
 
     await appPage.getByRole('button', { name: 'Send' }).click();
 
-    const statusBadge = appPage.locator('text=/^2\\d{2}/').first();
+    const statusBadge = appPage.getByText('200 OK').first();
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
 
     // Wait for test results tab to show a pass/fail badge
