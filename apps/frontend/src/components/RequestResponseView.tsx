@@ -5,6 +5,7 @@ import { useCollectionsStore } from '../store/collections/store';
 import { useEnvironmentStore } from '../store/environments/store';
 import { useRequestStore } from '../store/request/store';
 import { useUIStore } from '../store/ui/store';
+import { useSettingsStore } from '../store/settings/store';
 import { useAlertStore } from '../store/alert/store';
 import { useThemeStore } from '../store/theme/store';
 import { RequestForm } from '../forms/RequestForm';
@@ -133,6 +134,19 @@ export function RequestResponseView() {
     // Mark the tab as touched to prevent automatic closing of the tab when opening another request
     touchTab(tab.id);
 
+    if (useSettingsStore.getState().saveRequestOnSend && tab.savedRequestId && tab.collectionId && tab.isDirty && formDataRef.current) {
+      try {
+        await updateRequest(
+          tab.collectionId,
+          tab.savedRequestId,
+          buildSavePayloadFromFormData(formDataRef.current),
+        );
+        markTabAsSaved(tab.id, tab.savedRequestId, tab.collectionId);
+      } catch {
+        showAlert('Failed to save request', 'error');
+      }
+    }
+
     setTabLoading(tab.id, true);
     setTabError(tab.id, null);
 
@@ -215,6 +229,8 @@ export function RequestResponseView() {
     addConsoleLog,
     showAlert,
     updateCurrentValues,
+    updateRequest,
+    markTabAsSaved,
   ]);
 
   const handleCancel = useCallback(() => {

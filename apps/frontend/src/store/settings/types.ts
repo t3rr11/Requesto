@@ -5,4 +5,11 @@ export type Settings = {
    * Off by default — opt-in only.
    */
   insecureTls: boolean;
+
+  /**
+   * When true, requests that already exist in a collection are automatically
+   * saved when they are sent (if they have unsaved changes). Requests that
+   * have never been saved are skipped. Off by default — opt-in only.
+   */
+  saveRequestOnSend: boolean;
 };
