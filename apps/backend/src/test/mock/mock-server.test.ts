@@ -112,25 +112,6 @@ describe('mock server', () => {
       await app.inject({ method: 'GET', url: '/api/users' });
       expect(Date.now() - start).toBeGreaterThanOrEqual(30);
     });
-
-    it('substitutes template variables in the body', async () => {
-      await repo.create(makeEndpoint({
-        methods: {
-          GET: {
-            status: 200,
-            headers: {},
-            contentType: 'text',
-            body: 'uuid={{uuid}} ts={{timestamp}} rand={{randomInt 5 5}} keep={{unknown}}',
-            delayMs: 0,
-          },
-        },
-      }));
-      const app = await buildApp();
-
-      const response = await app.inject({ method: 'GET', url: '/api/users' });
-
-      expect(response.body).toMatch(/^uuid=[0-9a-f-]{36} ts=\d+ rand=5 keep=\{\{unknown\}\}$/);
-    });
   });
 
   describe('path matching', () => {

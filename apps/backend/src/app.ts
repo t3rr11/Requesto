@@ -56,6 +56,8 @@ export type AppOptions = {
    * entry; embedded instances leave it unset.
    */
   staticRoot?: string;
+  /** Start the standalone mock server alongside the API. Defaults to true. */
+  mockServer?: boolean;
 };
 
 /**
@@ -148,7 +150,12 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   workspaceService.bootstrap();
 
   // Mock server runs alongside the API so its endpoints are always reachable
-  await mockService.autoStart();
+  if (options.mockServer !== false) {
+    await mockService.autoStart();
+    server.addHook('onClose', async () => {
+      await mockService.shutdown();
+    });
+  }
 
   server.get('/health', () => {
     return { status: 'ok' };

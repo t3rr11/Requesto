@@ -58,6 +58,11 @@ export class MockServerManager {
     return this.getStatus();
   }
 
+  /** Release the listener on app shutdown; keeps the persisted state so the last port is reused next boot. */
+  async shutdown(): Promise<void> {
+    await this.stopInternal();
+  }
+
   getStatus(): MockServerStatus {
     if (!this.server) {
       return { running: false, port: 0, url: null };

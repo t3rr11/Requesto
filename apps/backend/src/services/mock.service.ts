@@ -36,6 +36,10 @@ export class MockService {
     }
   }
 
+  shutdown(): Promise<void> {
+    return this.manager.shutdown();
+  }
+
   start(port?: number): Promise<MockServerStatus> {
     return this.manager.start(port);
   }

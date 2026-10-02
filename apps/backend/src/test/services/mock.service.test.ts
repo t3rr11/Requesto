@@ -1,7 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'os';
+import { describe, it, expect, vi } from 'vitest';
 import net from 'node:net';
 import { MockService } from '../../services/mock.service';
 import { MockEndpointRepository } from '../../repositories/mock-endpoint.repository';
@@ -40,12 +37,12 @@ function makeEndpoint(overrides: Partial<MockEndpoint> = {}): MockEndpoint {
 
 function mockRepo(overrides: Partial<MockEndpointRepository> = {}): MockEndpointRepository {
   return {
-    getAll: vi.fn().mockResolvedValue([]),
-    getById: vi.fn().mockResolvedValue(undefined),
-    create: vi.fn().mockImplementation(async (e: MockEndpoint) => e),
-    update: vi.fn().mockResolvedValue(null),
-    delete: vi.fn().mockResolvedValue(false),
-    reorder: vi.fn().mockResolvedValue(undefined),
+    getAll: vi.fn().mockReturnValue([]),
+    getById: vi.fn().mockReturnValue(undefined),
+    create: vi.fn().mockImplementation((e: MockEndpoint) => e),
+    update: vi.fn().mockReturnValue(null),
+    delete: vi.fn().mockReturnValue(false),
+    reorder: vi.fn(),
     readDataset: vi.fn().mockReturnValue([]),
     writeDataset: vi.fn(),
     deleteDataset: vi.fn(),
@@ -57,23 +54,23 @@ function mockRepo(overrides: Partial<MockEndpointRepository> = {}): MockEndpoint
 
 describe('MockService', () => {
   describe('getById', () => {
-    it('throws notFound when endpoint does not exist', async () => {
+    it('throws notFound when endpoint does not exist', () => {
       const service = new MockService(mockRepo());
-      await expect(service.getById('missing')).rejects.toMatchObject({ statusCode: 404 });
+      expect(() => service.getById('missing')).toThrow(expect.objectContaining({ statusCode: 404 }));
     });
 
-    it('returns the endpoint when found', async () => {
+    it('returns the endpoint when found', () => {
       const endpoint = makeEndpoint();
-      const service = new MockService(mockRepo({ getById: vi.fn().mockResolvedValue(endpoint) }));
-      expect(await service.getById('mep-1')).toBe(endpoint);
+      const service = new MockService(mockRepo({ getById: vi.fn().mockReturnValue(endpoint) }));
+      expect(service.getById('mep-1')).toBe(endpoint);
     });
   });
 
   describe('create', () => {
-    it('generates an mep- prefixed id', async () => {
+    it('generates an mep- prefixed id', () => {
       const repo = mockRepo();
       const service = new MockService(repo);
-      const created = await service.create({
+      const created = service.create({
         name: 'Users',
         path: '/api/users',
         enabled: true,
@@ -85,11 +82,11 @@ describe('MockService', () => {
       expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Users' }));
     });
 
-    it('keeps static responses on dynamic endpoints (switch-back support)', async () => {
+    it('keeps static responses on dynamic endpoints (switch-back support)', () => {
       const repo = mockRepo();
       const service = new MockService(repo);
       const staticResponse = { status: 200, headers: {}, contentType: 'json' as const, body: '[]', delayMs: 0 };
-      await service.create({
+      service.create({
         name: 'Users',
         path: '/api/users',
         enabled: true,
@@ -104,59 +101,59 @@ describe('MockService', () => {
   });
 
   describe('update', () => {
-    it('throws notFound when the repository reports the endpoint missing', async () => {
+    it('throws notFound when the repository reports the endpoint missing', () => {
       const service = new MockService(mockRepo());
-      await expect(service.update('missing', { name: 'X' })).rejects.toMatchObject({ statusCode: 404 });
+      expect(() => service.update('missing', { name: 'X' })).toThrow(expect.objectContaining({ statusCode: 404 }));
     });
 
-    it('rejects updates that would leave a static endpoint with no methods', async () => {
+    it('rejects updates that would leave a static endpoint with no methods', () => {
       const repo = mockRepo({
-        getById: vi.fn().mockResolvedValue(makeEndpoint()),
-        update: vi.fn().mockResolvedValue(makeEndpoint()),
+        getById: vi.fn().mockReturnValue(makeEndpoint()),
+        update: vi.fn().mockReturnValue(makeEndpoint()),
       });
       const service = new MockService(repo);
-      await expect(service.update('mep-1', { methods: {} })).rejects.toMatchObject({ statusCode: 400 });
+      expect(() => service.update('mep-1', { methods: {} })).toThrow(expect.objectContaining({ statusCode: 400 }));
       expect(repo.update).not.toHaveBeenCalled();
     });
 
-    it('rejects switching an endpoint to static mode without methods', async () => {
+    it('rejects switching an endpoint to static mode without methods', () => {
       const repo = mockRepo({
-        getById: vi.fn().mockResolvedValue(makeEndpoint({ mode: 'dynamic', methods: {} })),
+        getById: vi.fn().mockReturnValue(makeEndpoint({ mode: 'dynamic', methods: {} })),
       });
       const service = new MockService(repo);
-      await expect(service.update('mep-1', { mode: 'static' })).rejects.toMatchObject({ statusCode: 400 });
+      expect(() => service.update('mep-1', { mode: 'static' })).toThrow(expect.objectContaining({ statusCode: 400 }));
     });
 
-    it('allows clearing methods on a dynamic endpoint', async () => {
+    it('allows clearing methods on a dynamic endpoint', () => {
       const dynamic = makeEndpoint({ mode: 'dynamic', methods: {} });
       const repo = mockRepo({
-        getById: vi.fn().mockResolvedValue(dynamic),
-        update: vi.fn().mockResolvedValue(dynamic),
+        getById: vi.fn().mockReturnValue(dynamic),
+        update: vi.fn().mockReturnValue(dynamic),
       });
       const service = new MockService(repo);
-      await expect(service.update('mep-1', { methods: {} })).resolves.toBe(dynamic);
+      expect(service.update('mep-1', { methods: {} })).toBe(dynamic);
     });
   });
 
   describe('delete', () => {
-    it('throws notFound when the endpoint does not exist', async () => {
+    it('throws notFound when the endpoint does not exist', () => {
       const service = new MockService(mockRepo());
-      await expect(service.delete('missing')).rejects.toMatchObject({ statusCode: 404 });
+      expect(() => service.delete('missing')).toThrow(expect.objectContaining({ statusCode: 404 }));
     });
   });
 
   describe('reorder', () => {
-    it('rejects ids that do not exist', async () => {
+    it('rejects ids that do not exist', () => {
       const service = new MockService(
-        mockRepo({ getAll: vi.fn().mockResolvedValue([makeEndpoint()]) }),
+        mockRepo({ getAll: vi.fn().mockReturnValue([makeEndpoint()]) }),
       );
-      await expect(service.reorder(['mep-1', 'mep-ghost'])).rejects.toMatchObject({ statusCode: 400 });
+      expect(() => service.reorder(['mep-1', 'mep-ghost'])).toThrow(expect.objectContaining({ statusCode: 400 }));
     });
 
-    it('persists the new order', async () => {
-      const repo = mockRepo({ getAll: vi.fn().mockResolvedValue([makeEndpoint()]) });
+    it('persists the new order', () => {
+      const repo = mockRepo({ getAll: vi.fn().mockReturnValue([makeEndpoint()]) });
       const service = new MockService(repo);
-      await service.reorder(['mep-1']);
+      service.reorder(['mep-1']);
       expect(repo.reorder).toHaveBeenCalledWith(['mep-1']);
     });
   });
@@ -168,51 +165,51 @@ describe('MockService', () => {
       expect(service.getDataset('mep-1')).toBe(records);
     });
 
-    it('updateDataset writes through the repository', async () => {
-      const repo = mockRepo({ getById: vi.fn().mockResolvedValue(makeEndpoint()) });
+    it('updateDataset writes through the repository', () => {
+      const repo = mockRepo({ getById: vi.fn().mockReturnValue(makeEndpoint()) });
       const service = new MockService(repo);
-      await service.updateDataset('mep-1', [{ id: '1' }]);
+      service.updateDataset('mep-1', [{ id: '1' }]);
       expect(repo.writeDataset).toHaveBeenCalledWith('mep-1', [{ id: '1' }]);
     });
 
-    it('updateDataset throws notFound for unknown endpoints', async () => {
+    it('updateDataset throws notFound for unknown endpoints', () => {
       const service = new MockService(mockRepo());
-      await expect(service.updateDataset('missing', [])).rejects.toMatchObject({ statusCode: 404 });
+      expect(() => service.updateDataset('missing', [])).toThrow(expect.objectContaining({ statusCode: 404 }));
     });
 
-    it('clearDataset deletes the persisted dataset', async () => {
-      const repo = mockRepo({ getById: vi.fn().mockResolvedValue(makeEndpoint()) });
+    it('clearDataset deletes the persisted dataset', () => {
+      const repo = mockRepo({ getById: vi.fn().mockReturnValue(makeEndpoint()) });
       const service = new MockService(repo);
-      await service.clearDataset('mep-1');
+      service.clearDataset('mep-1');
       expect(repo.deleteDataset).toHaveBeenCalledWith('mep-1');
       expect(repo.writeDataset).not.toHaveBeenCalled();
     });
 
-    it('clearDataset throws notFound for unknown endpoints', async () => {
+    it('clearDataset throws notFound for unknown endpoints', () => {
       const service = new MockService(mockRepo());
-      await expect(service.clearDataset('missing')).rejects.toMatchObject({ statusCode: 404 });
+      expect(() => service.clearDataset('missing')).toThrow(expect.objectContaining({ statusCode: 404 }));
     });
   });
 
   describe('duplicate', () => {
-    it('creates a copy with a new id and " Copy" name', async () => {
+    it('creates a copy with a new id and " Copy" name', () => {
       const source = makeEndpoint();
       const repo = mockRepo({
-        getById: vi.fn().mockResolvedValue(source),
-        create: vi.fn().mockImplementation(async (e: MockEndpoint) => e),
+        getById: vi.fn().mockReturnValue(source),
+        create: vi.fn().mockImplementation((e: MockEndpoint) => e),
       });
       const service = new MockService(repo);
 
-      const duplicate = await service.duplicate('mep-1');
+      const duplicate = service.duplicate('mep-1');
 
       expect(duplicate.id).not.toBe(source.id);
       expect(duplicate.name).toBe('Users API Copy');
       expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ id: duplicate.id }));
     });
 
-    it('throws notFound for unknown endpoints', async () => {
+    it('throws notFound for unknown endpoints', () => {
       const service = new MockService(mockRepo());
-      await expect(service.duplicate('missing')).rejects.toMatchObject({ statusCode: 404 });
+      expect(() => service.duplicate('missing')).toThrow(expect.objectContaining({ statusCode: 404 }));
     });
   });
 
@@ -242,18 +239,5 @@ describe('MockService', () => {
       await service.stop();
       expect(service.getStatus().running).toBe(false);
     });
-  });
-});
-
-describe('MockEndpointRepository server state integration', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'requesto-test-'));
-    fs.mkdirSync(path.join(tmpDir, 'local'), { recursive: true });
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });
