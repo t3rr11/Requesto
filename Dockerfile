@@ -42,7 +42,7 @@ RUN addgroup -g 1001 requesto && adduser -D -u 1001 -G requesto requesto && \
     mkdir -p /app/data && chown -R requesto:requesto /app
 
 # Expose port
-EXPOSE 4747
+EXPOSE 4747 4748
 
 # Environment variables
 ENV NODE_ENV=production

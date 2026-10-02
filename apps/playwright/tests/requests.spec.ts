@@ -47,7 +47,7 @@ test.describe('Request Execution', () => {
     await urlInput.fill('https://jsonplaceholder.typicode.com/posts/1');
 
     // Switch to headers tab and add a header
-    await appPage.getByRole('button', { name: 'Headers' }).click();
+    await appPage.getByRole('tab', { name: 'Headers' }).click();
 
     // The key-value editor should be visible - fill first row
     const headerKeyInputs = appPage.locator('input[placeholder="Header"]');
@@ -83,7 +83,7 @@ test.describe('Request Execution', () => {
     await urlInput.fill('https://jsonplaceholder.typicode.com/posts');
 
     // Switch to body tab
-    await appPage.getByRole('button', { name: 'Body' }).click();
+    await appPage.getByRole('tab', { name: 'Body' }).click();
 
     // The Monaco editor should be visible — type JSON body
     const monacoEditor = appPage.locator('.monaco-editor').first();

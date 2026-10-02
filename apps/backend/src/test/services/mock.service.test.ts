@@ -2,9 +2,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'os';
+import net from 'node:net';
 import { MockService } from '../../services/mock.service';
 import { MockEndpointRepository } from '../../repositories/mock-endpoint.repository';
 import type { MockEndpoint } from '../../models/mock';
+
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once('error', reject);
+    probe.listen(0, () => {
+      const { port } = probe.address() as net.AddressInfo;
+      probe.close(() => resolve(port));
+    });
+  });
+}
 
 function makeEndpoint(overrides: Partial<MockEndpoint> = {}): MockEndpoint {
   return {
@@ -212,10 +224,23 @@ describe('MockService', () => {
   });
 
   describe('autoStart', () => {
-    it('does not start when the persisted state says not running', async () => {
-      const service = new MockService(mockRepo({ readServerState: vi.fn().mockReturnValue({ running: false, port: 0 }) }));
-      await service.autoStart();
-      expect((await service.getStatus()).running).toBe(false);
+    it('starts the server even when no state was persisted', async () => {
+      const port = await getFreePort();
+      const service = new MockService(mockRepo({ readServerState: vi.fn().mockReturnValue({ running: false, port }) }));
+      try {
+        await service.autoStart();
+        expect(service.getStatus()).toEqual({ running: true, port, url: `http://localhost:${port}` });
+      } finally {
+        await service.stop();
+      }
+    });
+
+    it('stops the server on request', async () => {
+      const port = await getFreePort();
+      const service = new MockService(mockRepo());
+      await service.start(port);
+      await service.stop();
+      expect(service.getStatus().running).toBe(false);
     });
   });
 });

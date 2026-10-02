@@ -16,6 +16,7 @@ A self-hostable API client. No accounts, no cloud, no telemetry.
 - **Workspaces**: Isolate projects into separate workspaces, each with their own collections, environments, and OAuth configs
 - **Git integration**: Built-in git support with commit, push, pull, conflict resolution, and branch tracking
 - **OpenAPI import & sync**: Import OpenAPI v2/v3 specs to generate collections, then keep them in sync as the spec changes
+- **Mock server**: Create mock APIs with static responses or dynamic CRUD endpoints backed by a dataset, with a live request log
 - **Postman compatibility**: Import and export collections and environments in Postman v2.1.0 format
 - **Console logging**: Request/response logs with status codes, timing, and full payloads
 - **Dark/Light themes**: Dark-mode-first UI with a light mode toggle
@@ -42,7 +43,7 @@ docker run -d \
   terrii/requesto:latest
 ```
 
-Open [http://localhost:4747](http://localhost:4747).
+Open [http://localhost:4747](http://localhost:4747). To use the mock server from outside the container, also publish port 4748 (`-p 4748:4748`).
 
 Or with Docker Compose:
 
@@ -59,7 +60,7 @@ npm install
 npm run dev
 ```
 
-Backend runs on port 4747, frontend dev server on port 5173.
+Backend runs on port 4747, frontend dev server on port 5173, and the mock server on port 4748.
 
 ## Development
 
@@ -119,6 +120,7 @@ Full documentation is available at [requesto.com.au](https://requesto.com.au).
 - **[Workspaces](https://requesto.com.au/features/workspaces)** - Isolate projects into separate workspaces
 - **[Git Integration](https://requesto.com.au/features/git)** - Built-in version control for workspaces
 - **[OpenAPI Import & Sync](https://requesto.com.au/features/openapi)** - Import and sync OpenAPI specs
+- **[Mock Server](https://requesto.com.au/mock-server/)** - Static and dynamic mock endpoints with a request log
 - **[Docker Deployment](https://requesto.com.au/deployment/docker)** - Compose files, environment variables, reverse proxy
 - **[Building from Source](https://requesto.com.au/deployment/building)** - Development setup and packaging
 - **[Security](SECURITY.md)** - Security policy and vulnerability reporting

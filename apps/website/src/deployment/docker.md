@@ -11,11 +11,14 @@ description: Deploy Requesto with Docker using a single docker run command or Do
 docker run -d \
   --name requesto \
   -p 4747:4747 \
+  -p 4748:4748 \
   -v requesto-data:/app/data \
   terrii/requesto:latest
 ```
 
 Open [http://localhost:4747](http://localhost:4747).
+
+_Port 4748 is used for the Mock Server to allow you to create Mock APIs. If you don't plan on using this feature, there is no reason to expose the port._
 
 ## Docker Compose
 
@@ -26,7 +29,8 @@ services:
     container_name: requesto
     restart: unless-stopped
     ports:
-      - "4747:4747"
+      - "4747:4747" # Required
+      - "4748:4748" # Mock Server
     volumes:
       - requesto-data:/app/data
     environment:
@@ -48,6 +52,7 @@ docker-compose up -d
 |----------|---------|-------------|
 | `NODE_ENV` | `production` | Set to `production` to serve the frontend as static files |
 | `PORT` | `4747` | Port the server listens on |
+| `MOCK_PORT` | `4748` | Port the [Mock Server](/mock-server/) listens on |
 | `HOST` | `0.0.0.0` | Address to bind to |
 | `DATA_DIR` | `/app/data` | Directory for JSON data files |
 
@@ -64,9 +69,11 @@ data/
 │       ├── collections/   # One JSON file per collection
 │       ├── environments/  # One JSON file per environment and its initial variables
 │       ├── oauth-configs/ # One JSON file per OAuth configuration (no client secrets)
+│       ├── mock-endpoints/ # One JSON file per mock server endpoint
 │       └── local/         # Local-only data (excluded from git)
 │           ├── history.json  # Request/response history (last 100)
-│           └── oauth-secrets.json
+│           ├── oauth-secrets.json
+│           └── mock-data/    # Dynamic mock server datasets
 └── workspaces/            # Additional workspaces (created or git-cloned)
 ```
 
@@ -89,7 +96,7 @@ docker restart requesto
 git clone https://github.com/t3rr11/Requesto.git
 cd Requesto
 docker build -t requesto:custom .
-docker run -d -p 4747:4747 -v requesto-data:/app/data requesto:custom
+docker run -d -p 4747:4747 -p 4748:4748 -v requesto-data:/app/data requesto:custom
 ```
 
 The Dockerfile uses a multi-stage build: backend and frontend are built in separate stages, then combined into a Node.js Alpine production image.
@@ -141,7 +148,7 @@ Or without Compose:
 ```bash
 docker pull terrii/requesto:latest
 docker stop requesto && docker rm requesto
-docker run -d --name requesto -p 4747:4747 -v requesto-data:/app/data terrii/requesto:latest
+docker run -d --name requesto -p 4747:4747 -p 4748:4748 -v requesto-data:/app/data terrii/requesto:latest
 ```
 
 ## Troubleshooting

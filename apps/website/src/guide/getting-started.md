@@ -74,7 +74,7 @@ See [OAuth 2.0](/features/oauth) for the full guide.
 
 <ThemeImage src="/getting-started/interface-overview.png" alt="Full interface overview" />
 
-**Header**: Workspace switcher, settings (gear icon), theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, update badge, and help. Requesto is a single-page app - there's no page navigation.
+**Header**: Workspace switcher, a **Collections / Mock Server** switch, settings (gear icon), theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, update badge, and help. Collections and the [Mock Server](/mock-server/) are the two main views.
 
 **Sidebar** (left): Your collections, folders, and saved requests, plus an environments panel. Search box filters by name and URL.
 
@@ -93,5 +93,6 @@ See [OAuth 2.0](/features/oauth) for the full guide.
 - [Environments](/features/environments)
 - [Git Integration](/features/git)
 - [OpenAPI Import & Sync](/features/openapi)
+- [Mock Server](/mock-server/)
 - [OAuth 2.0](/features/oauth)
 - [Docker Deployment](/deployment/docker)

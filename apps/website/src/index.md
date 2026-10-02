@@ -37,6 +37,9 @@ features:
   - title: GraphQL
     details: Send GraphQL queries and mutations with a built-in schema explorer, introspection, and saved schema profiles.
 
+  - title: Mock Server
+    details: Spin up mock APIs in seconds. Write static responses by hand or serve a full CRUD API from a dataset, so your frontend never has to wait on a backend.
+
   - title: OpenAPI Import & Sync
     details: Import OpenAPI v2/v3 specs to auto-generate collections. Link a spec and sync changes as the API evolves.
 

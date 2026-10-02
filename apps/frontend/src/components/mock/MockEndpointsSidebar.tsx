@@ -23,7 +23,7 @@ interface MockEndpointItemProps {
 function MockEndpointItem({ endpoint, isActive, onSelect, onContextMenu, onDelete }: Readonly<MockEndpointItemProps>) {
   return (
     <button
-      className={`py-1.5 pl-4 pr-3 cursor-pointer flex items-center justify-between group transition-colors border-l-2 w-full ${
+      className={`py-1.5 pl-4 pr-3 cursor-pointer flex items-center justify-between group transition-colors border-l-2 w-full text-left ${
         isActive
           ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400'
           : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-800/60'

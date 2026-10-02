@@ -11,6 +11,7 @@ description: Install Requesto via Docker, download the desktop app for Windows, 
 docker run -d \
   --name requesto \
   -p 4747:4747 \
+  -p 4748:4748 \
   -v requesto-data:/app/data \
   terrii/requesto:latest
 ```

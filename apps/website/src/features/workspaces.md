@@ -22,6 +22,7 @@ data/
 │       ├── collections/  # One JSON file per collection
 │       ├── environments/ # One JSON file per environment
 │       ├── oauth-configs/ # One JSON file per OAuth configuration
+│       ├── mock-endpoints/ # One JSON file per mock server endpoint
 │       ├── .gitignore    # Ignores the local/ subdirectory
 │       └── local/        # Local-only data (excluded from git)
 │           ├── history.json
@@ -102,6 +103,8 @@ Each workspace stores its data inside a `.requesto/` subdirectory, with one file
 | `environments/<environment>.json` | `.requesto/` | Yes (one file per environment) |
 | `oauth-configs/<config>.json` | `.requesto/` (no secrets) | Yes (one file per config) |
 | `graphql-schemas/<profile>.json` | `.requesto/` | Yes (one file per profile) |
+| `mock-endpoints/<endpoint>.json` | `.requesto/` | Yes (one file per [mock endpoint](/mock-server/)) |
+| `mock-data/<endpoint-id>.json` | `.requesto/local/` | No |
 | `active-environment.json` | `.requesto/local/` | No |
 | `history.json` | `.requesto/local/` | No |
 | `environments.local.json` | `.requesto/local/` | No |

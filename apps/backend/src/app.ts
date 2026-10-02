@@ -147,7 +147,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   // Bootstrap workspace system before accepting requests
   workspaceService.bootstrap();
 
-  // Restore the mock server if it was running when the backend last stopped
+  // Mock server runs alongside the API so its endpoints are always reachable
   await mockService.autoStart();
 
   server.get('/health', () => {

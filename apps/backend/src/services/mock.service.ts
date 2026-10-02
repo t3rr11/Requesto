@@ -26,15 +26,22 @@ export class MockService {
     this.manager = new MockServerManager(repo, (hit) => this.recordHit(hit));
   }
 
-  /** Bootstrap the persisted auto-start state for the active workspace. */
+  /** The mock server is always on: bring it up when the backend boots, on the last used port if known. */
   async autoStart(): Promise<void> {
-    const state = this.repo.readServerState();
-    if (!state.running) return;
+    const { port } = this.repo.readServerState();
     try {
-      await this.manager.start(state.port || undefined);
+      await this.manager.start(port || undefined);
     } catch {
-      // A stale port or occupied port must not prevent the app from booting
+      // An occupied port must not prevent the app from booting
     }
+  }
+
+  start(port?: number): Promise<MockServerStatus> {
+    return this.manager.start(port);
+  }
+
+  stop(): Promise<MockServerStatus> {
+    return this.manager.stop();
   }
 
   getStatus(): MockServerStatus {

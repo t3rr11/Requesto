@@ -108,6 +108,7 @@ export async function buildMockApp(options: MockAppOptions): Promise<FastifyInst
               await new Promise((resolve) => setTimeout(resolve, staticResponse.delayMs));
             }
             status = staticResponse.status;
+            responseBody = staticResponse.body;
             for (const [name, value] of Object.entries(staticResponse.headers)) {
               reply.header(name, value);
             }
