@@ -18,12 +18,12 @@ test.describe('GraphQL requests', () => {
 
     await expect(appPage.getByLabel('Refresh GraphQL schema')).toBeVisible({ timeout: 15_000 });
 
-    await appPage.getByRole('button', { name: 'Variables' }).click();
+    await appPage.getByRole('tab', { name: 'Variables' }).click();
     const variablesEditor = appPage.locator('.monaco-editor').first();
     await expect(variablesEditor).toBeVisible();
     await expect(variablesEditor).toContainText('"id": "1"');
 
-    await appPage.getByRole('button', { name: 'Query' }).click();
+    await appPage.getByRole('tab', { name: 'Query' }).click();
     await appPage.getByRole('button', { name: 'Send' }).click();
     await expect(appPage.getByText('200 OK')).toBeVisible({ timeout: 15_000 });
     await expect(appPage.locator('.monaco-editor').last()).toContainText('Ada Lovelace');

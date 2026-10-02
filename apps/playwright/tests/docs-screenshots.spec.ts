@@ -1,5 +1,5 @@
-import { test as baseTest, expect, resetData } from '../helpers/test-fixtures';
-import { type Page } from '@playwright/test';
+import { test as baseTest, expect, resetData, openMockServer, MOCK_URL, BACKEND_URL } from '../helpers/test-fixtures';
+import { type APIRequestContext, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'child_process';
@@ -380,7 +380,7 @@ test.describe('OAuth', () => {
     await appPage.getByLabel('New tab').click();
 
     // Navigate to Auth tab
-    await appPage.getByRole('button', { name: 'Auth' }).click();
+    await appPage.getByRole('tab', { name: 'Auth' }).click();
 
     await takeDocScreenshot('oauth', 'auth-tab');
   });
@@ -780,7 +780,7 @@ test.describe('Pre-request Scripts', () => {
     await appPage.getByText('Get User').click();
 
     // Click the Pre-request tab in the request form
-    await appPage.getByRole('button', { name: /Pre-request/ }).click();
+    await appPage.getByRole('tab', { name: /Pre-request/ }).click();
 
     // Wait for Monaco editor to be visible
     const editor = appPage.locator('.monaco-editor').first();
@@ -805,7 +805,7 @@ test.describe('Tests', () => {
     await appPage.getByText('Get User').click();
 
     // Click the Tests tab in the request form
-    await appPage.getByRole('button', { name: /^Tests/ }).click();
+    await appPage.getByRole('tab', { name: /^Tests/ }).click();
 
     // Wait for Monaco editor to be visible
     const editor = appPage.locator('.monaco-editor').first();
@@ -854,7 +854,7 @@ test.describe('GraphQL', () => {
 
   test('variables editor', async ({ appPage, takeDocScreenshot }) => {
     await openGraphQLDocsRequest(appPage);
-    await appPage.getByRole('button', { name: 'Variables' }).click();
+    await appPage.getByRole('tab', { name: 'Variables' }).click();
     const editor = appPage.locator('.monaco-editor').first();
     await editor.waitFor({ state: 'visible', timeout: 10_000 });
     await editor.click();
@@ -863,7 +863,7 @@ test.describe('GraphQL', () => {
     await appPage.keyboard.insertText('{\n"id": "{{userId}}"');
     await expect(editor).toContainText('{{userId}}');
     await expect(editor.locator('.view-line')).toHaveCount(3);
-    await appPage.getByRole('button', { name: 'Variables' }).click();
+    await appPage.getByRole('tab', { name: 'Variables' }).click();
     await appPage.waitForTimeout(500);
 
     await takeDocScreenshot('graphql', 'variables');
@@ -1035,3 +1035,169 @@ gitTest.describe('Git Panel', () => {
   });
 });
 
+
+
+// ---------------------------------------------------------------------------
+// Mock Server
+// ---------------------------------------------------------------------------
+
+const DEFAULT_MOCK_URL = 'http://localhost:4748';
+
+async function selectMockEndpoint(page: Page, name: string) {
+  await page.locator('button', { hasText: name }).first().click();
+  await expect(page.getByPlaceholder('Untitled Endpoint')).toHaveValue(name);
+
+  // The test backend uses its own mock port; show the default one users will see in the docs
+  const baseUrl = page.getByTitle('Mock server base URL');
+  await expect(baseUrl).toHaveText(MOCK_URL);
+  await baseUrl.evaluate((el, url) => {
+    el.textContent = url;
+  }, DEFAULT_MOCK_URL);
+}
+
+/** Send a realistic mix of requests so the mock request log has something to show */
+async function sendMockTraffic(request: APIRequestContext) {
+  await request.delete(`${BACKEND_URL}/api/mock/logs`);
+  await request.get(`${MOCK_URL}/api/users`);
+  await request.get(`${MOCK_URL}/api/users/2`);
+  await request.get(`${MOCK_URL}/health`);
+  await request.post(`${MOCK_URL}/api/orders`, { data: { item: 'Keyboard', quantity: 1 } });
+  await request.get(`${MOCK_URL}/api/users/99`);
+  await request.get(`${MOCK_URL}/api/unknown`);
+}
+
+/** Make the log panel taller so expanded entries fit in the screenshot */
+async function growMockLog(page: Page, height = 560) {
+  await page.evaluate((h) => {
+    const panel = document.querySelector('.fixed.bottom-0') as HTMLElement;
+    if (panel) panel.style.height = `${h}px`;
+  }, height);
+  await page.waitForTimeout(300);
+}
+
+test.describe('Mock Server (empty workspace)', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('empty state', async ({ appPage, takeDocScreenshot }) => {
+    await openMockServer(appPage);
+    await expect(appPage.getByText('Create your first mock endpoint')).toBeVisible();
+
+    await takeDocScreenshot('mock-server', 'empty-state');
+  });
+
+  test('new static endpoint dialog', async ({ appPage, takeDocScreenshot }) => {
+    await openMockServer(appPage);
+    await appPage.getByRole('button', { name: 'Create Endpoint' }).click();
+
+    const dialogHeading = appPage.locator('h2', { hasText: 'New Mock Endpoint' });
+    await expect(dialogHeading).toBeVisible();
+
+    await appPage.locator('#mock-endpoint-name').fill('Health Check');
+    await appPage.locator('#mock-endpoint-path').fill('/health');
+    await appPage.waitForTimeout(300);
+
+    await takeDocScreenshot('mock-server', 'new-endpoint-static');
+
+    await appPage.keyboard.press('Escape');
+  });
+
+  test('new dynamic endpoint dialog', async ({ appPage, takeDocScreenshot }) => {
+    await openMockServer(appPage);
+    await appPage.getByRole('button', { name: 'Create Endpoint' }).click();
+
+    const dialogHeading = appPage.locator('h2', { hasText: 'New Mock Endpoint' });
+    await expect(dialogHeading).toBeVisible();
+    const dialog = dialogHeading.locator('xpath=ancestor::div[contains(@class, "rounded-xl")]');
+
+    await dialog.getByRole('button', { name: 'Dynamic' }).click();
+    await appPage.locator('#mock-endpoint-name').fill('Users API');
+    await appPage.locator('#mock-endpoint-path').fill('/api/users');
+    await expect(dialog.getByText('Dynamic: Full CRUD routes backed by a dataset of records.')).toBeVisible();
+    await appPage.waitForTimeout(300);
+
+    await takeDocScreenshot('mock-server', 'new-endpoint-dynamic');
+
+    await appPage.keyboard.press('Escape');
+  });
+});
+
+test.describe('Mock Server', () => {
+  test.beforeAll(() => {
+    resetData({ mock: true });
+  });
+
+  test('overview with request log', async ({ appPage, request, takeDocScreenshot }) => {
+    await sendMockTraffic(request);
+    await openMockServer(appPage);
+    await selectMockEndpoint(appPage, 'Users API');
+
+    await waitForResponseBody(appPage, 'Ada Lovelace');
+    await expect(appPage.locator('.fixed.bottom-0')).toContainText('/api/unknown', { timeout: 10_000 });
+
+    await takeDocScreenshot('mock-server', 'overview');
+  });
+
+  test('static endpoint editor', async ({ appPage, takeDocScreenshot }) => {
+    await openMockServer(appPage);
+    await selectMockEndpoint(appPage, 'Orders');
+
+    await expect(appPage.getByRole('tab', { name: 'GET' })).toHaveAttribute('aria-selected', 'true');
+    await waitForResponseBody(appPage, 'shipped');
+
+    await takeDocScreenshot('mock-server', 'static-editor');
+  });
+
+  test('static response options and headers', async ({ appPage, takeDocScreenshot }) => {
+    await openMockServer(appPage);
+    await selectMockEndpoint(appPage, 'Orders');
+
+    await appPage.getByRole('tab', { name: 'POST' }).click();
+    await expect(appPage.getByRole('tab', { name: 'POST' })).toHaveAttribute('aria-selected', 'true');
+    await expect(appPage.locator('input[value="Location"]')).toBeVisible();
+    await waitForResponseBody(appPage, '1003');
+
+    await takeDocScreenshot('mock-server', 'static-response-options');
+  });
+
+  test('dynamic endpoint editor', async ({ appPage, takeDocScreenshot }) => {
+    await openMockServer(appPage);
+    await selectMockEndpoint(appPage, 'Users API');
+
+    await expect(appPage.getByText('Routes are handled automatically')).toBeVisible();
+    await expect(appPage.getByText('4 records')).toBeVisible();
+    await waitForResponseBody(appPage, 'Ada Lovelace');
+
+    await takeDocScreenshot('mock-server', 'dynamic-editor');
+  });
+
+  test('endpoint context menu', async ({ appPage, takeDocScreenshot }) => {
+    await openMockServer(appPage);
+    await selectMockEndpoint(appPage, 'Users API');
+    await waitForResponseBody(appPage, 'Ada Lovelace');
+
+    await appPage.locator('button', { hasText: 'Users API' }).first().click({ button: 'right' });
+    await expect(appPage.getByText('Clear Data')).toBeVisible();
+
+    await takeDocScreenshot('mock-server', 'context-menu');
+
+    await appPage.keyboard.press('Escape');
+  });
+
+  test('request log with expanded entry', async ({ appPage, request, takeDocScreenshot }) => {
+    await sendMockTraffic(request);
+    await openMockServer(appPage);
+    await selectMockEndpoint(appPage, 'Users API');
+
+    const logPanel = appPage.locator('.fixed.bottom-0');
+    await expect(logPanel).toContainText('/api/users/2', { timeout: 10_000 });
+    await growMockLog(appPage);
+
+    await logPanel.locator('.cursor-pointer').filter({ hasText: '/api/users/2' }).first().click();
+    await expect(logPanel.getByText('Grace Hopper')).toBeVisible();
+    await appPage.waitForTimeout(300);
+
+    await takeDocScreenshot('mock-server', 'request-log');
+  });
+});

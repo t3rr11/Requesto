@@ -11,6 +11,8 @@ type UIState = {
   panelLayout: LayoutMode;
   isConsoleOpen: boolean;
   consoleHeight: number;
+  isMockLogOpen: boolean;
+  mockLogHeight: number;
   isGitPanelOpen: boolean;
   gitPanelHeight: number;
   expandedCollections: Set<string>;
@@ -30,6 +32,9 @@ type UIState = {
   toggleConsole: () => void;
   setConsoleOpen: (isOpen: boolean) => void;
   setConsoleHeight: (height: number) => void;
+  toggleMockLog: () => void;
+  setMockLogOpen: (isOpen: boolean) => void;
+  setMockLogHeight: (height: number) => void;
   toggleGitPanel: () => void;
   setGitPanelOpen: (isOpen: boolean) => void;
   setGitPanelHeight: (height: number) => void;
@@ -54,6 +59,8 @@ export const useUIStore = create<UIState>()(
       panelLayout: 'horizontal' as LayoutMode,
       isConsoleOpen: false,
       consoleHeight: 250,
+      isMockLogOpen: true,
+      mockLogHeight: 200,
       isGitPanelOpen: false,
       gitPanelHeight: 350,
       expandedCollections: new Set<string>(),
@@ -73,6 +80,9 @@ export const useUIStore = create<UIState>()(
       toggleConsole: () => actions.toggleConsole(set),
       setConsoleOpen: (isOpen) => actions.setConsoleOpen(set, isOpen),
       setConsoleHeight: (height) => actions.setConsoleHeight(set, height),
+      toggleMockLog: () => actions.toggleMockLog(set),
+      setMockLogOpen: (isOpen) => actions.setMockLogOpen(set, isOpen),
+      setMockLogHeight: (height) => actions.setMockLogHeight(set, height),
       toggleGitPanel: () => actions.toggleGitPanel(set),
       setGitPanelOpen: (isOpen) => actions.setGitPanelOpen(set, isOpen),
       setGitPanelHeight: (height) => actions.setGitPanelHeight(set, height),
@@ -117,6 +127,8 @@ export const useUIStore = create<UIState>()(
                 panelLayout: state.panelLayout,
                 isConsoleOpen: state.isConsoleOpen,
                 consoleHeight: state.consoleHeight,
+                isMockLogOpen: state.isMockLogOpen,
+                mockLogHeight: state.mockLogHeight,
                 isGitPanelOpen: state.isGitPanelOpen,
                 gitPanelHeight: state.gitPanelHeight,
                 expandedCollections: Array.from(state.expandedCollections),

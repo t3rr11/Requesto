@@ -1,7 +1,8 @@
 import path from 'node:path';
 
 export const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
-export const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4747;
+export const PORT = process.env.PORT ? Number.parseInt(process.env.PORT, 10) : 4747;
+export const MOCK_PORT = process.env.MOCK_PORT ? Number.parseInt(process.env.MOCK_PORT, 10) : 4748;
 export const HOST = process.env.HOST || '0.0.0.0';
 export const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 export const NODE_ENV = process.env.NODE_ENV || 'development';

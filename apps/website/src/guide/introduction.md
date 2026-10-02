@@ -15,6 +15,7 @@ You can run it as a desktop app (Electron), in Docker, or straight from source.
 
 - Send HTTP requests (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS)
 - Query GraphQL APIs with a schema explorer, introspection, and saved schema profiles
+- Mock APIs with a built-in mock server, using static responses or dynamic CRUD endpoints backed by a dataset
 - Organize requests into collections and folders with drag-and-drop
 - Define environment variables and swap between them (dev, staging, prod)
 - Authenticate with Basic, Bearer, API Key, Digest, or OAuth 2.0
@@ -52,9 +53,11 @@ data/
 │       ├── collections/   # One JSON file per collection (folders and requests included)
 │       ├── environments/  # One JSON file per environment and its initial variables
 │       ├── oauth-configs/ # One JSON file per OAuth configuration (no client secrets)
+│       ├── mock-endpoints/ # One JSON file per mock server endpoint
 │       └── local/         # Local-only data (excluded from git)
 │           ├── history.json
-│           └── oauth-secrets.json
+│           ├── oauth-secrets.json
+│           └── mock-data/ # Dynamic mock server datasets
 └── workspaces/            # Additional workspaces (created or git-cloned)
 ```
 

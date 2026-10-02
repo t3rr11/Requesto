@@ -142,6 +142,16 @@ export default defineConfig({
         ],
       },
       {
+        text: 'Mock Server',
+        items: [
+          { text: 'Mock Server Overview', link: '/mock-server/' },
+          { text: 'Creating & Managing Endpoints', link: '/mock-server/endpoints' },
+          { text: 'Static Endpoints', link: '/mock-server/static' },
+          { text: 'Dynamic Endpoints', link: '/mock-server/dynamic' },
+          { text: 'Calling & Debugging', link: '/mock-server/using' },
+        ],
+      },
+      {
         text: 'Features',
         items: [
           { text: 'Workspaces', link: '/features/workspaces' },

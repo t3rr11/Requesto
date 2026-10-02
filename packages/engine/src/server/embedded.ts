@@ -55,7 +55,7 @@ export class EmbeddedRequestoServer {
       'utf8',
     );
 
-    const server = await buildApp({ dataDir, logLevel: 'warn' });
+    const server = await buildApp({ dataDir, logLevel: 'warn', mockServer: false });
     await server.listen({ port: 0, host: '127.0.0.1' });
 
     const address = server.server.address();

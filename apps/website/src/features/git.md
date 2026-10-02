@@ -83,6 +83,8 @@ The git panel lists configured remotes. You can add a new remote by providing a 
 | `.requesto/collections/` | Yes | Shared API definitions (one file per collection) |
 | `.requesto/environments/` | Yes | Shared environment configs (one file per environment) |
 | `.requesto/oauth-configs/` | Yes | OAuth configs without secrets |
+| `.requesto/mock-endpoints/` | Yes | Shared [mock server](/mock-server/) endpoints (one file per endpoint) |
+| `.requesto/local/mock-data/` | No | Dynamic mock datasets changed by test traffic |
 | `.requesto/local/active-environment.json` | No | Your active environment selection |
 | `.requesto/local/history.json` | No | Local request history |
 | `.requesto/local/oauth-secrets.json` | No | Contains client secrets |

@@ -80,9 +80,11 @@ data/
 │       ├── collections/   # One JSON file per collection
 │       ├── environments/  # One JSON file per environment and its initial variables
 │       ├── oauth-configs/ # One JSON file per OAuth configuration (no client secrets)
+│       ├── mock-endpoints/ # One JSON file per mock server endpoint
 │       └── local/         # Local-only data (excluded from git)
 │           ├── history.json
-│           └── oauth-secrets.json
+│           ├── oauth-secrets.json
+│           └── mock-data/ # Dynamic mock server datasets
 └── workspaces/            # Additional workspaces (created or git-cloned)
 ```
 

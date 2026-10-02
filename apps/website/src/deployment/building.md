@@ -72,7 +72,7 @@ Output goes to `dist/` at the repository root.
 
 ```bash
 docker build -t requesto:custom .
-docker run -d -p 4747:4747 -v requesto-data:/app/data requesto:custom
+docker run -d -p 4747:4747 -p 4748:4748 -v requesto-data:/app/data requesto:custom
 ```
 
 Or with Compose:

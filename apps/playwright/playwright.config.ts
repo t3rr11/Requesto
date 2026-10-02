@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import path from 'node:path';
 
 const TEST_BACKEND_PORT = 5747;
+const TEST_MOCK_PORT = Number(process.env.MOCK_PORT ?? 5748);
 const TEST_FRONTEND_PORT = 5174;
 const testDataDir = path.resolve(__dirname, 'test-data');
 
@@ -36,6 +37,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       env: {
         PORT: String(TEST_BACKEND_PORT),
+        MOCK_PORT: String(TEST_MOCK_PORT),
         DATA_DIR: testDataDir,
         LOG_LEVEL: 'warn',
       },

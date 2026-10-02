@@ -7,7 +7,7 @@ import { atomicWrite } from './file';
  * Each section lists item ids in display order for one data type
  * (collections, environments, oauth configs, GraphQL schema profiles).
  */
-export type OrderSection = 'collections' | 'environments' | 'oauthConfigs' | 'graphqlSchemas';
+export type OrderSection = 'collections' | 'environments' | 'oauthConfigs' | 'graphqlSchemas' | 'mockEndpoints';
 
 export type OrderManifest = Partial<Record<OrderSection, string[]>>;
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import Editor, { type Monaco } from '@monaco-editor/react';
@@ -6,7 +6,8 @@ import { Button } from '../components/Button';
 import { KeyValueEditor } from '../components/KeyValueEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
-import { AlertTriangle, BookOpen, ChevronLeft, ChevronRight, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { TabStrip } from '../components/TabStrip';
+import { AlertTriangle, BookOpen, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { AuthConfig, FormDataEntry } from '../store/request/types';
 import { useThemeStore } from '../store/theme/store';
 import { useTabsStore } from '../store/tabs/store';
@@ -135,9 +136,6 @@ function GraphQLSchemaActions({
 
 export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, loading }: Readonly<RequestFormProps>) {
   const [activeTab, setActiveTab] = useState<RequestTab>('params');
-  const tabsContainerRef = useRef<HTMLDivElement>(null);
-  const [showLeftScroll, setShowLeftScroll] = useState(false);
-  const [showRightScroll, setShowRightScroll] = useState(false);
   const { isDarkMode } = useThemeStore();
   const { getActiveTab, updateTabRequest } = useTabsStore();
   const { showAlert } = useAlertStore();
@@ -261,7 +259,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         getValues('graphqlDocument') ?? '',
         kind,
         fieldName,
-        graphqlSchema,
+        graphqlSchema
       );
       setValue('graphqlDocument', updatedDocument, { shouldDirty: true });
       schemaDialog.close();
@@ -363,59 +361,6 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
     }
   }, [activeTab, requestTabs, requestType]);
 
-  const checkScrollButtons = () => {
-    const container = tabsContainerRef.current;
-    if (!container) return;
-
-    const { scrollLeft, scrollWidth, clientWidth } = container;
-    setShowLeftScroll(scrollLeft > 0);
-    setShowRightScroll(scrollLeft + clientWidth < scrollWidth - 1);
-  };
-
-  useEffect(() => {
-    checkScrollButtons();
-    const container = tabsContainerRef.current;
-    if (!container) return;
-
-    container.addEventListener('scroll', checkScrollButtons);
-    window.addEventListener('resize', checkScrollButtons);
-
-    const resizeObserver = new ResizeObserver(checkScrollButtons);
-    resizeObserver.observe(container);
-
-    return () => {
-      container.removeEventListener('scroll', checkScrollButtons);
-      window.removeEventListener('resize', checkScrollButtons);
-      resizeObserver.disconnect();
-    };
-  }, []);
-
-  const scrollTabs = (direction: 'left' | 'right') => {
-    const container = tabsContainerRef.current;
-    if (!container) return;
-
-    const scrollAmount = 100;
-    const newScrollLeft =
-      direction === 'left' ? container.scrollLeft - scrollAmount : container.scrollLeft + scrollAmount;
-
-    container.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    const container = tabsContainerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (container.scrollWidth > container.clientWidth) {
-        e.preventDefault();
-        container.scrollLeft += e.deltaY;
-      }
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
-
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-gray-900">
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-3 py-3.5">
@@ -429,7 +374,9 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
           >
             <optgroup label="HTTP">
               {HTTP_METHODS.map(method => (
-                <option key={method} value={method}>{method}</option>
+                <option key={method} value={method}>
+                  {method}
+                </option>
               ))}
             </optgroup>
             <optgroup label="GraphQL">
@@ -478,56 +425,15 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         </div>
       </div>
 
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 relative h-11">
-        {showLeftScroll && (
-          <Button
-            onClick={() => scrollTabs('left')}
-            variant="ghost"
-            size="sm"
-            className="absolute left-0 top-0 z-10 h-full px-3 rounded-none bg-gray-100 dark:bg-gray-700 border-r border-gray-300 dark:border-gray-600 shadow-[4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_8px_rgba(0,0,0,0.3)]"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft size={16} />
-          </Button>
-        )}
-
-        <div
-          ref={tabsContainerRef}
-          className="flex px-3 h-full overflow-x-auto overflow-y-hidden scrollbar-hide"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-        >
-          {requestTabs.map(tab => (
-            <Button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              variant="ghost"
-              size="sm"
-              className={`shrink-0 rounded-none border-b-2 transition-colors ${
-                activeTab === tab
-                  ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              {getTabLabel(tab, hasPreRequestScript, hasTestScript, paramsCount, headersCount)}
-            </Button>
-          ))}
-        </div>
-
-        {showRightScroll && (
-          <Button
-            onClick={() => scrollTabs('right')}
-            variant="ghost"
-            size="sm"
-            className="absolute right-0 top-0 z-10 h-full px-3 rounded-none bg-gray-100 dark:bg-gray-700 border-l border-gray-300 dark:border-gray-600 shadow-[-4px_0_8px_rgba(0,0,0,0.1)] dark:shadow-[-4px_0_8px_rgba(0,0,0,0.3)]"
-            aria-label="Scroll right"
-          >
-            <ChevronRight size={16} />
-          </Button>
-        )}
-      </div>
+      <TabStrip
+        ariaLabel="Request sections"
+        tabs={requestTabs.map(tab => ({
+          key: tab,
+          label: getTabLabel(tab, hasPreRequestScript, hasTestScript, paramsCount, headersCount),
+        }))}
+        activeKey={activeTab}
+        onSelect={key => setActiveTab(key as RequestTab)}
+      />
 
       <div className="flex-1 min-h-0 overflow-y-auto py-4 px-5 bg-white dark:bg-gray-900">
         {activeTab === 'params' && (
@@ -544,12 +450,11 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         {activeTab === 'query' && (
           <div className="h-full min-h-50 flex flex-col gap-3">
             {graphqlOperations.length > 1 && (
-              <div
-                role="alert"
-                className="flex min-w-0 items-center gap-2 text-sm text-amber-700 dark:text-amber-300"
-              >
+              <div role="alert" className="flex min-w-0 items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span className="truncate">Multiple operations are not supported. Keep one operation in the query.</span>
+                <span className="truncate">
+                  Multiple operations are not supported. Keep one operation in the query.
+                </span>
               </div>
             )}
             <div className="flex-1 min-h-0 border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
@@ -786,12 +691,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         )}
       </div>
 
-      <Dialog
-        isOpen={schemaDialog.isOpen}
-        onClose={schemaDialog.close}
-        title="GraphQL Schema"
-        size="full"
-      >
+      <Dialog isOpen={schemaDialog.isOpen} onClose={schemaDialog.close} title="GraphQL Schema" size="full">
         <div className="flex h-[calc(90vh-5rem)] min-h-96 flex-col gap-4 p-6">
           <div className="flex shrink-0 items-center gap-2">
             <select
@@ -803,7 +703,9 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
             >
               <option value="">Current request endpoint</option>
               {profiles.map(profile => (
-                <option key={profile.id} value={profile.id}>{profile.name}</option>
+                <option key={profile.id} value={profile.id}>
+                  {profile.name}
+                </option>
               ))}
             </select>
             <Button
@@ -840,14 +742,14 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
             </Button>
           </div>
           <div className="min-h-0 flex-1">
-          <GraphQLSchemaExplorer
-            schema={graphqlSchema}
-            loading={schemaLoading}
-            error={schemaError}
-            onRefresh={handleFetchGraphQLSchema}
-            disabled={loading || !urlValue.trim() || !onFetchGraphQLSchema}
-            onAddField={handleAddFieldToDocument}
-          />
+            <GraphQLSchemaExplorer
+              schema={graphqlSchema}
+              loading={schemaLoading}
+              error={schemaError}
+              onRefresh={handleFetchGraphQLSchema}
+              disabled={loading || !urlValue.trim() || !onFetchGraphQLSchema}
+              onAddField={handleAddFieldToDocument}
+            />
           </div>
         </div>
       </Dialog>
@@ -879,7 +781,7 @@ function getTabLabel(
   hasPreRequestScript: boolean,
   hasTestScript: boolean,
   paramsCount: number,
-  headersCount: number,
+  headersCount: number
 ): ReactNode {
   let label: ReactNode;
 
@@ -907,10 +809,18 @@ function getTabLabel(
   }
 
   if (tab === 'params' && paramsCount > 0) {
-    return <>{label} ({paramsCount})</>;
+    return (
+      <>
+        {label} ({paramsCount})
+      </>
+    );
   }
   if (tab === 'headers' && headersCount > 0) {
-    return <>{label} ({headersCount})</>;
+    return (
+      <>
+        {label} ({headersCount})
+      </>
+    );
   }
   return label;
 }

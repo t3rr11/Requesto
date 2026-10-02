@@ -1,0 +1,87 @@
+{
+  "endpoints": [
+    {
+      "id": "mep-users",
+      "name": "Users API",
+      "path": "/api/users",
+      "enabled": true,
+      "mode": "dynamic",
+      "methods": {}
+    },
+    {
+      "id": "mep-products",
+      "name": "Products API",
+      "path": "/api/products",
+      "enabled": true,
+      "mode": "dynamic",
+      "methods": {}
+    },
+    {
+      "id": "mep-health",
+      "name": "Health Check",
+      "path": "/health",
+      "enabled": true,
+      "mode": "static",
+      "methods": {
+        "GET": {
+          "status": 200,
+          "headers": { "Cache-Control": "no-store" },
+          "contentType": "json",
+          "body": "{\n  \"status\": \"ok\",\n  \"version\": \"1.4.2\",\n  \"uptime\": 86400\n}",
+          "delayMs": 0
+        }
+      }
+    },
+    {
+      "id": "mep-orders",
+      "name": "Orders",
+      "path": "/api/orders",
+      "enabled": true,
+      "mode": "static",
+      "methods": {
+        "GET": {
+          "status": 200,
+          "headers": { "X-Total-Count": "2" },
+          "contentType": "json",
+          "body": "[\n  { \"id\": 1001, \"total\": 59.9, \"status\": \"shipped\" },\n  { \"id\": 1002, \"total\": 120, \"status\": \"pending\" }\n]",
+          "delayMs": 0
+        },
+        "POST": {
+          "status": 201,
+          "headers": { "Location": "/api/orders/1003" },
+          "contentType": "json",
+          "body": "{\n  \"id\": 1003,\n  \"status\": \"pending\"\n}",
+          "delayMs": 750
+        }
+      }
+    },
+    {
+      "id": "mep-legacy",
+      "name": "Legacy Report",
+      "path": "/api/reports/legacy",
+      "enabled": false,
+      "mode": "static",
+      "methods": {
+        "GET": {
+          "status": 200,
+          "headers": {},
+          "contentType": "xml",
+          "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <name>Quarterly</name>\n</report>",
+          "delayMs": 0
+        }
+      }
+    }
+  ],
+  "datasets": {
+    "mep-users": [
+      { "id": 1, "name": "Ada Lovelace", "email": "ada@example.com", "role": "admin" },
+      { "id": 2, "name": "Grace Hopper", "email": "grace@example.com", "role": "editor" },
+      { "id": 3, "name": "Alan Turing", "email": "alan@example.com", "role": "viewer" },
+      { "id": 4, "name": "Linus Torvalds", "email": "linus@example.com", "role": "editor" }
+    ],
+    "mep-products": [
+      { "id": 1, "name": "Keyboard", "price": 89.5, "inStock": true },
+      { "id": 2, "name": "Monitor", "price": 249, "inStock": false }
+    ]
+  }
+}

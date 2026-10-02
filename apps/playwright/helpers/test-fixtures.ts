@@ -8,6 +8,12 @@ const SCREENSHOTS_DIR = path.resolve(__dirname, '..', 'screenshots');
 const DOC_SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'website', 'src', 'public', 'screenshots');
 const README_IMAGES_DIR = path.resolve(__dirname, '..', '..', '..', 'images');
 
+export const TEST_BACKEND_PORT = 5747;
+/** Separate from the default 4748 so tests can run while a dev instance is up. */
+export const TEST_MOCK_PORT = Number(process.env.MOCK_PORT ?? 5748);
+export const BACKEND_URL = `http://localhost:${TEST_BACKEND_PORT}`;
+export const MOCK_URL = `http://localhost:${TEST_MOCK_PORT}`;
+
 /** Local-only files that live in .requesto/ */
 const LOCAL_FILES = [
   'history.json',
@@ -25,6 +31,34 @@ interface OrderManifest {
   environments?: string[];
   oauthConfigs?: string[];
   graphqlSchemas?: string[];
+  mockEndpoints?: string[];
+}
+
+export type ResetDataOptions = {
+  /** Seed the mock server fixtures (endpoints plus dynamic datasets). */
+  mock?: boolean;
+};
+
+/** Write mock endpoints one file per endpoint and dynamic datasets into the gitignored local dir. */
+function writeMockData(requestoDir: string, localDir: string, order: OrderManifest) {
+  const mockFile = path.join(FIXTURES_DIR, 'mock-endpoints.json');
+  const mockData: { endpoints: { id: string; name: string }[]; datasets: Record<string, unknown[]> } = JSON.parse(
+    fs.readFileSync(mockFile, 'utf-8'),
+  );
+
+  const endpointsDir = path.join(requestoDir, 'mock-endpoints');
+  fs.mkdirSync(endpointsDir, { recursive: true });
+  for (const endpoint of mockData.endpoints) {
+    const fileName = `${slugify(endpoint.name) || endpoint.id}.json`;
+    fs.writeFileSync(path.join(endpointsDir, fileName), JSON.stringify(endpoint, null, 2), 'utf-8');
+  }
+  order.mockEndpoints = mockData.endpoints.map((e) => e.id);
+
+  const datasetsDir = path.join(localDir, 'mock-data');
+  fs.mkdirSync(datasetsDir, { recursive: true });
+  for (const [id, records] of Object.entries(mockData.datasets)) {
+    fs.writeFileSync(path.join(datasetsDir, `${id}.json`), JSON.stringify(records, null, 2), 'utf-8');
+  }
 }
 
 /**
@@ -32,7 +66,7 @@ interface OrderManifest {
  * one JSON file per collection/environment/oauth config/graphql schema,
  * plus an order.json manifest preserving display order.
  */
-function writeSplitData(requestoDir: string, localDir: string) {
+function writeSplitData(requestoDir: string, localDir: string, options: ResetDataOptions) {
   const order: OrderManifest = {};
 
   // Collections: one file per collection
@@ -92,11 +126,15 @@ function writeSplitData(requestoDir: string, localDir: string) {
   }
   order.graphqlSchemas = schemas.map((s) => s.id);
 
+  if (options.mock) {
+    writeMockData(requestoDir, localDir, order);
+  }
+
   fs.writeFileSync(path.join(requestoDir, 'order.json'), JSON.stringify(order, null, 2), 'utf-8');
 }
 
 /** Copy fresh fixture data into test-data directory (workspace-aware layout) */
-function resetTestData() {
+function resetTestData(options: ResetDataOptions) {
   // Create workspace directory (test-data IS the workspace directory)
   if (!fs.existsSync(TEST_DATA_DIR)) {
     fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
@@ -114,7 +152,7 @@ function resetTestData() {
   }
 
   // Split the monolithic fixtures into per-item data files
-  writeSplitData(requestoDir, localDir);
+  writeSplitData(requestoDir, localDir, options);
 
   // Copy local-only files to .requesto/local/
   for (const file of LOCAL_FILES) {
@@ -285,8 +323,14 @@ export const test = base.extend<TestFixtures>({
 });
 
 /** Reset test data before a test file runs */
-export function resetData() {
-  resetTestData();
+export function resetData(options: ResetDataOptions = {}) {
+  resetTestData(options);
+}
+
+/** Switch to the Mock Server view using the header navigation */
+export async function openMockServer(page: Page) {
+  await page.locator('header button', { hasText: 'Mock Server' }).click();
+  await page.waitForURL(/#\/mock$/);
 }
 
 export { expect } from '@playwright/test';
