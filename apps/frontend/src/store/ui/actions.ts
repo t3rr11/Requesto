@@ -50,6 +50,20 @@ export function setConsoleHeight(set: UISetState, height: number): void {
   set({ consoleHeight: height });
 }
 
+// ── Mock server page ─────────────────────────────────────────────────────────
+
+export function toggleMockLog(set: UISetState): void {
+  set((state) => ({ isMockLogOpen: !state.isMockLogOpen }));
+}
+
+export function setMockLogOpen(set: UISetState, isOpen: boolean): void {
+  set({ isMockLogOpen: isOpen });
+}
+
+export function setMockLogHeight(set: UISetState, height: number): void {
+  set({ mockLogHeight: height });
+}
+
 // ── Git panel ────────────────────────────────────────────────────────────────
 
 export function toggleGitPanel(set: UISetState): void {

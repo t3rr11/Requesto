@@ -11,6 +11,7 @@ import { Header } from './components/Header';
 import { ToastContainer } from './components/ToastContainer';
 import { UpdateDialog } from './components/UpdateDialog';
 import { RequestsPage } from './pages/RequestsPage';
+import { MockServerPage } from './pages/MockServerPage';
 import { OAuthCallback } from './components/OAuthCallback';
 
 function App() {
@@ -30,18 +31,18 @@ function App() {
   } = useUpdateStore();
 
   useEffect(() => {
-    loadWorkspaces().then(() => {
-      loadCollections();
-      loadEnvironments();
-      checkGit();
+    void loadWorkspaces().then(() => {
+      void loadCollections();
+      void loadEnvironments();
+      void checkGit();
     });
   }, [loadWorkspaces, loadCollections, loadEnvironments, checkGit]);
 
   // Reload data stores when git operations change files on disk (e.g. after pull)
   useEffect(() => {
     const onFilesChanged = () => {
-      loadCollections();
-      loadEnvironments();
+      void loadCollections();
+      void loadEnvironments();
     };
     window.addEventListener('requesto:files-changed', onFilesChanged);
     return () => window.removeEventListener('requesto:files-changed', onFilesChanged);
@@ -84,6 +85,7 @@ function App() {
         <div className="flex-1 overflow-hidden flex flex-col">
           <Routes>
             <Route path="/" element={<RequestsPage />} />
+            <Route path="/mock" element={<MockServerPage />} />
             <Route path="/oauth/callback" element={<OAuthCallback />} />
           </Routes>
         </div>

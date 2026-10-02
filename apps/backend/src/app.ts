@@ -16,6 +16,7 @@ import { WorkspaceRepository } from './repositories/workspace.repository';
 import { HistoryRepository } from './repositories/history.repository';
 import { GraphQLSchemaProfileRepository } from './repositories/graphql-schema-profile.repository';
 import { GraphQLSchemaCacheRepository } from './repositories/graphql-schema-cache.repository';
+import { MockEndpointRepository } from './repositories/mock-endpoint.repository';
 
 // Services
 import { CollectionService } from './services/collection.service';
@@ -27,6 +28,7 @@ import { WorkspaceService } from './services/workspace.service';
 import { GitService } from './services/git.service';
 import { OpenApiService } from './services/openapi.service';
 import { GraphQLSchemaProfileService } from './services/graphql-schema-profile.service';
+import { MockService } from './services/mock.service';
 
 // Controllers
 import collectionController from './controllers/collection.controller';
@@ -36,6 +38,7 @@ import oauthController from './controllers/oauth.controller';
 import workspaceController from './controllers/workspace.controller';
 import gitController from './controllers/git.controller';
 import graphqlSchemaProfileController from './controllers/graphql-schema-profile.controller';
+import mockController from './controllers/mock.controller';
 
 export type AppOptions = {
   /**
@@ -87,6 +90,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const historyRepo = new HistoryRepository(getLocalDir);
   const graphqlSchemaProfileRepo = new GraphQLSchemaProfileRepository(getDataDir);
   const graphqlSchemaCacheRepo = new GraphQLSchemaCacheRepository(getLocalDir);
+  const mockEndpointRepo = new MockEndpointRepository(getDataDir, getLocalDir);
 
   // Instantiate service layer
   const collectionService = new CollectionService(collectionRepo);
@@ -100,6 +104,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     graphqlSchemaProfileRepo,
     graphqlSchemaCacheRepo,
   );
+  const mockService = new MockService(mockEndpointRepo);
 
   const server = Fastify({
     logger: {
@@ -135,13 +140,17 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   await server.register(workspaceController, { prefix: '/api', workspaceService });
   await server.register(gitController, { prefix: '/api', gitService });
   await server.register(graphqlSchemaProfileController, { prefix: '/api', graphqlSchemaProfileService });
+  await server.register(mockController, { prefix: '/api', mockService });
   await server.register(sseTestRoutes, { prefix: '/api' });
   await server.register(graphqlTestRoutes, { prefix: '/api' });
 
   // Bootstrap workspace system before accepting requests
   workspaceService.bootstrap();
 
-  server.get('/health', async () => {
+  // Restore the mock server if it was running when the backend last stopped
+  await mockService.autoStart();
+
+  server.get('/health', () => {
     return { status: 'ok' };
   });
 

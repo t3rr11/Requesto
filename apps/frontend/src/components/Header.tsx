@@ -9,7 +9,21 @@ import { SettingsDialog } from './SettingsDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { WorkspaceManagerDialog } from './WorkspaceManagerDialog';
 import { AddWorkspaceDialog, type AddWorkspaceMode } from './AddWorkspaceDialog';
-import { Moon, Sun, Columns2, Rows2, Terminal, HelpCircle, PanelLeftClose, ArrowDownToLine, Settings as SettingsIcon, BookOpen } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router';
+import {
+  Moon,
+  Sun,
+  Columns2,
+  Rows2,
+  Terminal,
+  HelpCircle,
+  PanelLeftClose,
+  ArrowDownToLine,
+  Settings as SettingsIcon,
+  BookOpen,
+  Server,
+  FolderOpen,
+} from 'lucide-react';
 
 const DOCS_URL = 'https://requesto.com.au/search';
 
@@ -21,10 +35,14 @@ export function Header() {
   const workspaceManagerDialog = useDialog();
   const addWorkspaceDialog = useDialogWithData<AddWorkspaceMode | undefined>();
   const openSettings = useUIStore(s => s.openSettings);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const mockViewOpen = location.pathname === '/mock';
 
   const openAddWorkspace = (mode?: AddWorkspaceMode) => addWorkspaceDialog.open(mode);
 
-  const showUpdateBadge = updateStatus === 'available' || updateStatus === 'downloading' || updateStatus === 'downloaded';
+  const showUpdateBadge =
+    updateStatus === 'available' || updateStatus === 'downloading' || updateStatus === 'downloaded';
 
   return (
     <header className="bg-linear-to-r from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-800 text-white shadow-lg border-b border-gray-300 dark:border-gray-700">
@@ -50,6 +68,29 @@ export function Header() {
             onAddWorkspace={openAddWorkspace}
             variant="header"
           />
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            onClick={() => navigate(mockViewOpen ? '/' : '/mock')}
+            variant="ghost"
+            size="sm"
+            title={mockViewOpen ? 'Back to Collections' : 'Mock Server'}
+            className={`flex items-center gap-1.5 text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white! px-3 ${!mockViewOpen ? 'bg-gray-700!' : ''}`}
+          >
+            <FolderOpen className="w-4 h-4 shrink-0" />
+            <span className="text-sm font-medium">Collections</span>
+          </Button>
+          <Button
+            onClick={() => navigate(mockViewOpen ? '/' : '/mock')}
+            variant="ghost"
+            size="sm"
+            title={mockViewOpen ? 'Back to Collections' : 'Mock Server'}
+            className={`flex items-center gap-1.5 text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white! px-3 ${mockViewOpen ? 'bg-gray-700!' : ''}`}
+          >
+            <Server className="w-4 h-4 shrink-0" />
+            <span className="text-sm font-medium">Mock Server</span>
+          </Button>
         </div>
 
         <div className="flex items-center gap-3">
