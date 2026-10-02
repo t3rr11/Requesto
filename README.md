@@ -38,12 +38,16 @@ Download for Windows, macOS, or Linux from the [releases page](https://github.co
 
 ```bash
 docker run -d \
+  --name requesto \
   -p 4747:4747 \
+  -p 4748:4748 \
   -v requesto-data:/app/data \
   terrii/requesto:latest
 ```
 
-Open [http://localhost:4747](http://localhost:4747). To use the mock server from outside the container, also publish port 4748 (`-p 4748:4748`).
+Open [http://localhost:4747](http://localhost:4747).
+
+_Port 4748 is used for the Mock Server to allow you to create Mock APIs. If you don't plan on using this feature, there is no reason to expose the port._
 
 Or with Docker Compose:
 
