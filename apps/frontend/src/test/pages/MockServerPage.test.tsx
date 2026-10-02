@@ -63,13 +63,24 @@ describe('MockServerPage', () => {
     mockFetch.mockReset();
   });
 
-  it('shows an empty state initially', () => {
+  it('features a create action when there are no endpoints', async () => {
     mockApiByUrl(url => (url.includes('/status') ? { running: false, port: 0, url: null } : []));
 
     renderPage();
 
-    expect(screen.getByText('No endpoint selected')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Start Server' })).not.toBeInTheDocument();
+    expect(await screen.findByText('Create your first mock endpoint')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create Endpoint' })).toBeInTheDocument();
+    expect(screen.queryByText('No endpoints yet')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Search endpoints...')).not.toBeInTheDocument();
+  });
+
+  it('pre-selects the first endpoint after loading', async () => {
+    const endpoint = makeEndpoint();
+    mockApiByUrl(url => (url.includes('/status') ? { running: false, port: 0, url: null } : [endpoint]));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByDisplayValue('Users API')).toBeInTheDocument());
   });
 
   it('shows the endpoint URL with a copy button in the editor while running', () => {

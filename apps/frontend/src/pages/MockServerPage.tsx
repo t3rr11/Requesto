@@ -1,9 +1,11 @@
-import { useEffect, useMemo } from 'react';
-import { Server } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Server } from 'lucide-react';
 import { EmptyState } from '../components/EmptyState';
+import { Dialog } from '../components/Dialog';
 import { ConsolePanel } from '../components/ConsolePanel';
 import { MockEndpointsSidebar } from '../components/mock/MockEndpointsSidebar';
 import { MockEndpointEditor } from '../components/mock/MockEndpointEditor';
+import { NewMockEndpointForm } from '../forms/NewMockEndpointForm';
 import { useMockStore } from '../store/mock/store';
 import { useUIStore } from '../store/ui/store';
 import { useAlertStore } from '../store/alert/store';
@@ -39,6 +41,7 @@ export function MockServerPage() {
   const {
     endpoints,
     selectedEndpointId,
+    loading,
     status,
     error,
     logs,
@@ -50,8 +53,10 @@ export function MockServerPage() {
   const { isMockLogOpen, toggleMockLog, mockLogHeight, setMockLogHeight } = useUIStore();
   const { showAlert } = useAlertStore();
   const consoleLogs = useMemo(() => toConsoleLogs(logs), [logs]);
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
 
   const selectedEndpoint = endpoints.find((e) => e.id === selectedEndpointId) ?? null;
+  const hasNoEndpoints = !loading && endpoints.length === 0;
 
   useEffect(() => {
     void loadEndpoints();
@@ -83,18 +88,26 @@ export function MockServerPage() {
         >
           <MockEndpointsSidebar />
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-            {selectedEndpoint ? (
-              <MockEndpointEditor key={selectedEndpoint.id} endpoint={selectedEndpoint} />
-            ) : (
+            {selectedEndpoint && <MockEndpointEditor key={selectedEndpoint.id} endpoint={selectedEndpoint} />}
+            {!selectedEndpoint && hasNoEndpoints && (
               <EmptyState
                 icon={<Server className="w-12 h-12" />}
-                title="No endpoint selected"
-                description="Create an endpoint in the sidebar to start defining mock responses, then point your frontend at the mock server URL."
+                title="Create your first mock endpoint"
+                description="Mock endpoints return static responses or a full CRUD API, so your frontend can run without a real backend."
+                action={{
+                  label: 'Create Endpoint',
+                  icon: <Plus className="w-4 h-4" />,
+                  onClick: () => setIsNewDialogOpen(true),
+                }}
               />
             )}
           </div>
         </div>
       </div>
+
+      <Dialog isOpen={isNewDialogOpen} onClose={() => setIsNewDialogOpen(false)} title="New Mock Endpoint">
+        <NewMockEndpointForm onSuccess={() => setIsNewDialogOpen(false)} onCancel={() => setIsNewDialogOpen(false)} />
+      </Dialog>
 
       <ConsolePanel
         isOpen={isMockLogOpen}

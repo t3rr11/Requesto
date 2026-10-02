@@ -10,6 +10,7 @@ import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
 
 type MockStateLike = {
   endpoints: MockEndpoint[];
+  loading: boolean;
   selectedEndpointId: string | null;
   status: MockServerStatus;
   logs: MockRequestLogEntry[];
@@ -118,23 +119,63 @@ async function getDatasetApi(endpointId: string): Promise<unknown[]> {
   return res.json();
 }
 
+// ── Last-selected endpoint persistence ───────────────────────────────────────
+
+const LAST_ENDPOINT_KEY = 'requesto-mock-last-endpoint';
+
+function readLastEndpointId(): string | null {
+  try {
+    return localStorage.getItem(LAST_ENDPOINT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeLastEndpointId(id: string | null): void {
+  try {
+    if (id) localStorage.setItem(LAST_ENDPOINT_KEY, id);
+    else localStorage.removeItem(LAST_ENDPOINT_KEY);
+  } catch {
+    // Storage unavailable; selection just won't persist
+  }
+}
+
+/** Keep the current selection if still valid, else the last-used endpoint, else the first one. */
+function resolveSelection(endpoints: MockEndpoint[], current: string | null): string | null {
+  const exists = (id: string | null) => id !== null && endpoints.some((e) => e.id === id);
+  if (exists(current)) return current;
+  const last = readLastEndpointId();
+  if (exists(last)) return last;
+  return endpoints[0]?.id ?? null;
+}
+
 // ── Store action implementations ─────────────────────────────────────────────
 
 export async function loadEndpoints(set: SetState): Promise<void> {
   try {
     const endpoints = await getEndpointsApi();
-    set({ endpoints, error: null });
+    set((state) => ({
+      endpoints,
+      selectedEndpointId: resolveSelection(endpoints, state.selectedEndpointId),
+      loading: false,
+      error: null,
+    }));
   } catch (error) {
-    set({ error: error instanceof Error ? error.message : 'Failed to load mock endpoints' });
+    set({
+      loading: false,
+      error: error instanceof Error ? error.message : 'Failed to load mock endpoints',
+    });
   }
 }
 
 export function selectEndpoint(set: SetState, id: string | null): void {
+  writeLastEndpointId(id);
   set({ selectedEndpointId: id });
 }
 
 export async function createEndpoint(set: SetState, data: NewMockEndpointInput): Promise<MockEndpoint> {
   const created = await createEndpointApi(data);
+  writeLastEndpointId(created.id);
   set((state) => ({
     endpoints: [...state.endpoints, created],
     selectedEndpointId: created.id,
@@ -165,10 +206,13 @@ export async function updateEndpoint(
 export async function deleteEndpoint(set: SetState, id: string): Promise<boolean> {
   try {
     await deleteEndpointApi(id);
-    set((state) => ({
-      endpoints: state.endpoints.filter((e) => e.id !== id),
-      selectedEndpointId: state.selectedEndpointId === id ? null : state.selectedEndpointId,
-    }));
+    set((state) => {
+      const endpoints = state.endpoints.filter((e) => e.id !== id);
+      const selectedEndpointId =
+        state.selectedEndpointId === id ? (endpoints[0]?.id ?? null) : state.selectedEndpointId;
+      writeLastEndpointId(selectedEndpointId);
+      return { endpoints, selectedEndpointId };
+    });
     notifyDataMutated();
     return true;
   } catch (error) {

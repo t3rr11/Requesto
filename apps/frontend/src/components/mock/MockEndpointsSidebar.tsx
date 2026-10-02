@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Search, X, Plus, Server, Trash2, Copy, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Search, X, Plus, Trash2, Copy, Pencil, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../Button';
 import { Dialog } from '../Dialog';
 import { ConfirmDialog } from '../ConfirmDialog';
@@ -172,7 +172,7 @@ export function MockEndpointsSidebar() {
       ]
     : [];
 
-  if (!isSidebarOpen) return null;
+  if (!isSidebarOpen || endpoints.length === 0) return null;
 
   return (
     <div
@@ -208,13 +208,6 @@ export function MockEndpointsSidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {endpoints.length === 0 && (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            <Server className="w-12 h-12 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-            <p className="text-sm">No endpoints yet</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Create one to start mocking your API</p>
-          </div>
-        )}
         {endpoints.length > 0 && filteredEndpoints.length === 0 && (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400">
             <Search className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />

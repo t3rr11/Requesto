@@ -36,7 +36,7 @@ type MockState = {
 
 export const useMockStore = create<MockState>((set) => ({
   endpoints: [],
-  loading: false,
+  loading: true,
   status: { running: false, port: 0, url: null },
   selectedEndpointId: null,
   logs: [],
