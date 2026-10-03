@@ -76,7 +76,7 @@ export function Header() {
             variant="ghost"
             size="sm"
             title={mockViewOpen ? 'Back to Collections' : 'Mock Server'}
-            className={`flex items-center gap-1.5 text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white! px-3 ${!mockViewOpen ? 'bg-gray-700!' : ''}`}
+            className={`flex items-center gap-1.5 text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white! px-3 ${!mockViewOpen ? 'bg-blue-500! dark:bg-gray-700!' : ''}`}
           >
             <FolderOpen className="w-4 h-4 shrink-0" />
             <span className="text-sm font-medium">Collections</span>
@@ -86,7 +86,7 @@ export function Header() {
             variant="ghost"
             size="sm"
             title={mockViewOpen ? 'Back to Collections' : 'Mock Server'}
-            className={`flex items-center gap-1.5 text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white! px-3 ${mockViewOpen ? 'bg-gray-700!' : ''}`}
+            className={`flex items-center gap-1.5 text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white! px-3 ${mockViewOpen ? 'bg-blue-500! dark:bg-gray-700!' : ''}`}
           >
             <Server className="w-4 h-4 shrink-0" />
             <span className="text-sm font-medium">Mock Server</span>
