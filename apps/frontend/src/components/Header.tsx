@@ -4,6 +4,7 @@ import { useUpdateStore } from '../store/update/store';
 import { useDialog, useDialogWithData } from '../hooks/useDialog';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
+import { EventHeaderDecoration } from './EventHeaderDecoration';
 import { HelpContent } from './HelpContent';
 import { SettingsDialog } from './SettingsDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -45,8 +46,9 @@ export function Header() {
     updateStatus === 'available' || updateStatus === 'downloading' || updateStatus === 'downloaded';
 
   return (
-    <header className="bg-linear-to-r from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-800 text-white shadow-lg border-b border-gray-300 dark:border-gray-700">
-      <div className="flex items-center justify-between px-4 py-3">
+    <header className="relative bg-linear-to-r from-blue-600 to-blue-700 dark:from-gray-800 dark:to-gray-800 text-white shadow-lg border-b border-gray-300 dark:border-gray-700">
+      <EventHeaderDecoration />
+      <div className="relative flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-4">
           <Button
             onClick={toggleSidebar}

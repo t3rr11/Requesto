@@ -9,3 +9,7 @@ export function setInsecureTls(set: SettingsSetState, value: boolean): void {
 export function setSaveRequestOnSend(set: SettingsSetState, value: boolean): void {
   set({ saveRequestOnSend: value });
 }
+
+export function setDisableEventThemes(set: SettingsSetState, value: boolean): void {
+  set({ disableEventThemes: value });
+}

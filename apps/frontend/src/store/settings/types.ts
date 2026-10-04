@@ -12,4 +12,11 @@ export type Settings = {
    * have never been saved are skipped. Off by default — opt-in only.
    */
   saveRequestOnSend: boolean;
+
+  /**
+   * When true, holiday & event themes (e.g. seasonal background decorations
+   * shown automatically during calendar periods) are disabled and the app
+   * uses the standard look regardless of the date. Off by default — opt-out.
+   */
+  disableEventThemes: boolean;
 };
