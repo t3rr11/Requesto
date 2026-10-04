@@ -34,6 +34,19 @@ const test = baseTest.extend<{ appPage: Page }>({
         },
       };
       localStorage.setItem('requesto-ui-storage', JSON.stringify(uiState));
+      // Disable holiday & event themes so docs/README screenshots never
+      // capture a seasonal decoration (e.g. the Halloween cobweb header).
+      localStorage.setItem(
+        'requesto-settings-storage',
+        JSON.stringify({
+          state: {
+            insecureTls: false,
+            saveRequestOnSend: false,
+            disableEventThemes: true,
+          },
+          version: 0,
+        }),
+      );
     });
     await page.goto('/');
     await page.waitForSelector('text=Collections', { timeout: 15_000 });
@@ -977,6 +990,18 @@ const gitTest = test.extend<{ appPage: Page }>({
         },
       };
       localStorage.setItem('requesto-ui-storage', JSON.stringify(uiState));
+      // Disable holiday & event themes for screenshots (see appPage above).
+      localStorage.setItem(
+        'requesto-settings-storage',
+        JSON.stringify({
+          state: {
+            insecureTls: false,
+            saveRequestOnSend: false,
+            disableEventThemes: true,
+          },
+          version: 0,
+        }),
+      );
     });
     await page.goto('/');
     await page.waitForSelector('text=Collections', { timeout: 15_000 });
