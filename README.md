@@ -101,6 +101,22 @@ Requesto/
 | `npm run package:linux -w requesto-electron` | Linux packages |
 | `docker-compose up --build` | Build and run Docker image |
 
+### Releasing a New Version
+
+All packages share one lockstep version (root, backend, engine, CLI, frontend, electron, website, playwright). **Do not edit `package.json` files by hand** — use the bump tooling:
+
+```bash
+npm run release:minor        # 1.12.0 -> 1.13.0 (feature release)
+npm run release:patch        # 1.12.0 -> 1.12.1 (bugfix release)
+```
+
+Then release as usual:
+
+```bash
+git commit -m "BUMP: Bumped package versions"
+git push
+```
+
 ## Architecture
 
 ```

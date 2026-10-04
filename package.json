@@ -1,6 +1,6 @@
 {
   "name": "requesto",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "author": "Matthew Allen",
   "description": "A lightweight, self-hosted API client",
   "private": true,
@@ -45,7 +45,10 @@
     "cli": "node apps/cli/dist/index.mjs run . --environment \"Local Backend\" --var \"baseUrl={{requestoServerUrl}}\"",
     "build:cli": "npm run build:backend && npm run build:engine && npm run build -w @requesto/cli",
     "dev:cli": "npm run build:cli && npm run cli",
-    "version": "npm version %npm_package_version% --no-git-tag-version -w requesto-electron && git add apps/electron/package.json"
+    "release:minor": "npm version minor --no-git-tag-version",
+    "release:patch": "npm version patch --no-git-tag-version",
+    "version": "node scripts/bump-versions.mjs && git add package.json package-lock.json \"apps/*/package.json\" \"packages/*/package.json\"",
+    "bump": "node scripts/bump-versions.mjs"
   },
   "devDependencies": {
     "concurrently": "^10.0.5",
