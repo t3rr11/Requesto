@@ -28,4 +28,16 @@ describe('settings store', () => {
     const parsed = JSON.parse(raw!);
     expect(parsed.state.insecureTls).toBe(true);
   });
+
+  it('defaults disableEventThemes to false', () => {
+    expect(useSettingsStore.getState().disableEventThemes).toBe(false);
+  });
+
+  it('persists disableEventThemes via setter', () => {
+    useSettingsStore.getState().setDisableEventThemes(true);
+    expect(useSettingsStore.getState().disableEventThemes).toBe(true);
+    const raw = localStorage.getItem('requesto-settings-storage');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.disableEventThemes).toBe(true);
+  });
 });

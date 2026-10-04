@@ -99,3 +99,46 @@ button {
 .dark *:not(.scrollbar-hide)::-webkit-scrollbar-corner {
   background: #1f2937;
 }
+
+/* Event decoration: header spider — periodic/hover sway + click-to-crawl.
+   The crawl translate lives on the wrapper (.event-spider) and the sway
+   animation on the inner svg (.event-spider-art): a running animation
+   taints an element's transform and would suppress the crawl transition. */
+.event-spider {
+  transition: transform 1.2s ease-in-out;
+  cursor: pointer;
+}
+
+.event-spider-up {
+  transform: translateY(-70px);
+}
+
+.event-spider-art {
+  transform-origin: top center;
+}
+
+@keyframes event-spider-sway {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(3.5deg); }
+  50% { transform: rotate(-3.5deg); }
+  80% { transform: rotate(2deg); }
+}
+
+.event-spider-sway {
+  animation: event-spider-sway 4s ease-in-out;
+}
+
+.event-spider:hover > .event-spider-art {
+  animation: event-spider-sway 4s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-spider-sway,
+  .event-spider:hover > .event-spider-art {
+    animation: none;
+  }
+
+  .event-spider {
+    transition: none;
+  }
+}
