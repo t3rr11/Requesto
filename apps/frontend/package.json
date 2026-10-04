@@ -1,6 +1,6 @@
 {
   "name": "requesto-frontend",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,8 +22,8 @@
     "graphql-language-service": "^5.7.0",
     "lucide-react": "^1.50.0",
     "react": "^19.3.0",
-    "requesto-backend": "1.11.0",
-    "requesto-engine": "1.11.0",
+    "requesto-backend": "1.12.0",
+    "requesto-engine": "1.12.0",
     "react-dom": "^19.3.0",
     "react-hook-form": "^7.89.0",
     "react-icons": "^5.7.0",
