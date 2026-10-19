@@ -51,7 +51,7 @@
     "bump": "node scripts/bump-versions.mjs"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5",
+    "concurrently": "^10.0.6",
     "graphql": "^17.0.2",
     "rimraf": "^6.1.3"
   },
