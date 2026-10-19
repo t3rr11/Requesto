@@ -213,6 +213,11 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
       graphqlTransport: tabReq.graphql?.transport ?? 'post',
       graphqlSchemaProfileId: tabReq.graphql?.schemaProfileId ?? '',
     });
+    // Publish the reset values to the parent immediately.
+    // The watch subscription below only fires on changes, so without this
+    // saving right after a tab switch would persist the previous tab's
+    // data into this tab's request.
+    onChange?.(getValues() as RequestFormData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTab?.id]);
 
