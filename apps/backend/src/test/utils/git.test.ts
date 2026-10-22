@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'os';
 import path from 'node:path';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 import {
   commitWorkspace,
   initRepo,

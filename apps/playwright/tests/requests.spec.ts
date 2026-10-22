@@ -166,7 +166,7 @@ test.describe('Request Execution', () => {
     await expect(statusBadge).toBeVisible({ timeout: 15_000 });
 
     // Console should have a log entry
-    await expect(appPage.getByText('Console')).toBeVisible();
+    await expect(appPage.getByText(/^Console\b/)).toBeVisible();
 
     await takeScreenshot('requests', 'console-panel');
   });
