@@ -58,8 +58,8 @@ export function registerIpcHandlers(): void {
         title: 'Manual Installation Required',
         message: 'Automatic updates require the app to be signed.',
         detail: downloadedFile
-          ? 'The update has been downloaded. Open it in Finder, drag the new Requesto.app into your Applications folder, and relaunch.'
-          : 'Please download the latest version from the releases page and drag it into your Applications folder.',
+          ? 'The update has been downloaded. Open it in Finder, drag the new Requesto.app into your Applications folder, and relaunch. If macOS shows an "Apple could not verify" prompt, click Cancel (not Move to Trash), then allow the app via System Settings → Privacy & Security → Open Anyway.'
+          : 'Please download the latest version from the releases page and drag it into your Applications folder. If macOS blocks the first launch of the new version, click Cancel (not Move to Trash), then allow it via System Settings → Privacy & Security → Open Anyway.',
         buttons,
         defaultId: 0,
         cancelId: buttons.length - 1,

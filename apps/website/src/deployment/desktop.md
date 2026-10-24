@@ -33,7 +33,21 @@ Windows SmartScreen may warn about an unrecognized app since the binary isn't co
 
 ### macOS
 
-Open the `.dmg` and drag Requesto to Applications. On first launch, right-click → Open to bypass Gatekeeper.
+Open the `.dmg` and drag Requesto to Applications.
+
+Because the app isn't code-signed, Gatekeeper will block the first launch with an *"Apple could not verify…"* prompt. Click **Cancel** (don't choose "Move to Trash" — that deletes the app), then allow it:
+
+1. Open **System Settings → Privacy & Security**
+2. Scroll down to the **Security** section and click **Open Anyway** next to "Requesto.app"
+3. Click **Open** in the confirmation dialog
+
+Alternatively, strip the quarantine flag from Terminal instead:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Requesto.app
+```
+
+Both approaches are one-time only — the app launches normally after that.
 
 **Data location**: `~/Library/Application Support/requesto-electron/data`
 
@@ -59,6 +73,8 @@ Click the icon to open the update dialog, which shows the new version number and
 2. Once complete, click **Restart & Install** — the app closes, installs silently, and relaunches.
 
 On Windows the installer runs in-place using NSIS, so your taskbar and Start Menu shortcuts are preserved across updates. You can also dismiss the dialog and install later — the badge stays visible until you restart.
+
+On macOS, silent in-place updates aren't possible for unsigned apps, so instead of installing automatically you'll be given the downloaded file and instructions to drag the new version into Applications manually. Your data is not affected.
 
 ## How It Works
 
@@ -106,7 +122,7 @@ Output goes to `dist/` at the repository root.
 
 **Port 4747 conflict** - The backend uses port 4747 internally. If something else is using it, close that process and restart Requesto.
 
-**macOS Gatekeeper** - Right-click the app → "Open" to bypass on first launch.
+**macOS Gatekeeper** - If the app is blocked on first launch, click **Cancel** on the prompt (not "Move to Trash"), then allow it via **System Settings → Privacy & Security → Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/Requesto.app`. See the [macOS install steps](#macos) above.
 
 **Linux AppImage needs FUSE** - Install it with `sudo apt install fuse` (Ubuntu/Debian) or `sudo dnf install fuse` (Fedora).
 

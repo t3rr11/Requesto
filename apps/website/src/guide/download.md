@@ -37,6 +37,8 @@ The desktop installers are **not code-signed**. Windows SmartScreen and macOS Ga
 
 Code signing requires purchasing a certificate from a trusted Certificate Authority, which is a cost this project doesn't have the backing for. The binaries are built directly from the public source code, but without a signature your OS has no way to verify that.
 
+**On macOS**, Gatekeeper's first-launch prompt can delete the app if you pick the wrong button — click **Cancel**, then allow the app via **System Settings → Privacy & Security → Open Anyway**. Full steps are on the [Desktop App](/deployment/desktop#macos) page.
+
 If you'd rather not trust a pre-built binary:
 
 - **Review the source** — the full codebase is on [GitHub](https://github.com/t3rr11/Requesto)
