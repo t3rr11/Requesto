@@ -48,7 +48,7 @@ test.describe('GraphQL requests', () => {
     await appPage.keyboard.insertText('query Partial { users { id name } fieldError }');
 
     await appPage.getByRole('button', { name: 'Send' }).click();
-    await expect(appPage.getByText('Partial data')).toBeVisible({ timeout: 15_000 });
+    await expect(appPage.getByLabel('GraphQL response contains partial data')).toBeVisible({ timeout: 15_000 });
     await appPage.getByRole('button', { name: 'Errors (1)' }).click();
     await expect(appPage.getByText('This field intentionally failed')).toBeVisible();
     await expect(appPage.getByText('Path: fieldError')).toBeVisible();

@@ -1,4 +1,4 @@
-import simpleGit, { type StatusResult, type LogResult, type DefaultLogFields } from 'simple-git';
+import { simpleGit, type StatusResult, type LogResult, type DefaultLogFields } from 'simple-git';
 import path from 'node:path';
 import fs from 'node:fs';
 

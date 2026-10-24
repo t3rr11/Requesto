@@ -1,6 +1,6 @@
 {
   "name": "requesto-playwright",
-  "version": "1.12.1",
+  "version": "1.12.2",
   "private": true,
   "description": "Playwright E2E tests for Requesto",
   "scripts": {
@@ -9,7 +9,7 @@
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
     "report": "playwright show-report",
-    "screenshots:docs": "playwright test docs-screenshots"
+    "screenshots:docs": "playwright test docs-screenshots --config playwright.docs.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

@@ -8,6 +8,10 @@ const testDataDir = path.resolve(__dirname, 'test-data');
 
 export default defineConfig({
   testDir: './tests',
+  // The docs-screenshots spec regenerates committed screenshot assets
+  // (apps/website/src/public + images/) on every run, dirtying the repo
+  // without code changes. It only runs via the screenshots:docs script.
+  testIgnore: ['**/docs-screenshots.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
