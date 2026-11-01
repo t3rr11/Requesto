@@ -40,8 +40,8 @@
   "dependencies": {
     "@apidevtools/swagger-parser": "^13.1.0",
     "@fastify/cors": "^11.3.0",
-    "@fastify/static": "^10.1.5",
-    "axios": "^1.20.0",
+    "@fastify/static": "^10.1.8",
+    "axios": "^1.21.0",
     "fastify": "^5.12.5",
     "form-data": "^4.0.6",
     "graphql": "^17.0.2",
@@ -51,7 +51,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/node": "^26.6.4",
+    "@types/node": "^26.6.6",
     "@types/node-fetch": "^2.6.13",
     "selfsigned": "^5.5.0",
     "tsx": "^4.23.15",
