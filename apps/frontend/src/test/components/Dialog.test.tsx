@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Dialog, DialogFooter } from '../../components/Dialog';
 
 describe('Dialog', () => {
@@ -38,6 +38,38 @@ describe('Dialog', () => {
       </Dialog>,
     );
     expect(screen.getByLabelText('Close')).toBeInTheDocument();
+  });
+
+  it('uses a scrolling padded body by default', () => {
+    render(
+      <Dialog isOpen={true} onClose={() => {}} title="Test">
+        Content
+      </Dialog>,
+    );
+    expect(document.body.querySelector('.p-6.overflow-y-auto')).not.toBeNull();
+  });
+
+  it('uses a non-scrolling body when fullBleed is set', () => {
+    render(
+      <Dialog isOpen={true} onClose={() => {}} title="Test" fullBleed>
+        Content
+      </Dialog>,
+    );
+    expect(document.body.querySelector('.flex-1.min-h-0.overflow-hidden')).not.toBeNull();
+  });
+
+  it('routes close attempts through onCloseRequest when provided', () => {
+    const onCloseRequest = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <Dialog isOpen={true} onClose={onClose} onCloseRequest={onCloseRequest} title="Test">
+        Content
+      </Dialog>,
+    );
+
+    fireEvent.click(screen.getByLabelText('Close'));
+    expect(onCloseRequest).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
 

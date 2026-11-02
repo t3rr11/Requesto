@@ -145,7 +145,21 @@ button {
 
 /* Docs editor (TipTap), markdown-backed rich text on the request Docs tab */
 .requesto-doc .tiptap {
-  @apply min-h-full px-4 py-3 text-sm leading-relaxed text-gray-900 dark:text-gray-100 outline-none;
+  @apply text-sm leading-relaxed text-gray-900 dark:text-gray-100 outline-none;
+}
+
+/* Editors only: inset content and keep the empty document clickable */
+.requesto-doc--editor .tiptap {
+  @apply px-4 py-3 min-h-40;
+}
+
+/* Keep prose flush against the reading pane's rhythm */
+.requesto-doc .tiptap > :first-child {
+  @apply mt-0;
+}
+
+.requesto-doc .tiptap > :last-child {
+  @apply mb-0;
 }
 
 .requesto-doc .tiptap p {
@@ -153,7 +167,7 @@ button {
 }
 
 .requesto-doc .tiptap h1 {
-  @apply text-xl font-semibold mt-4 mb-2;
+  @apply text-base font-semibold mt-3 mb-1.5;
 }
 
 .requesto-doc .tiptap h2 {

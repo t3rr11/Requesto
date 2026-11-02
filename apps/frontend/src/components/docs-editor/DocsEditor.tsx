@@ -47,8 +47,9 @@ export function DocsEditor({ value, onChange, readOnly = false }: Readonly<DocsE
   return (
     <div className="h-full flex flex-col min-h-0">
       <DocsToolbar editor={editor} readOnly={readOnly} state={state} onOpenLinkDialog={() => setLinkDialogOpen(true)} />
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <EditorContent editor={editor} className="requesto-doc h-full" />
+      {/* basis-auto, not flex-1: always fills/resizes per host, so the caret stays reachable */}
+      <div className="grow basis-auto overflow-y-auto">
+        <EditorContent editor={editor} className="requesto-doc requesto-doc--editor" />
       </div>
       <LinkDialog
         editor={editor}

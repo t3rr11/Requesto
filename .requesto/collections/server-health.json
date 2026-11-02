@@ -11,7 +11,9 @@
       "url": "{{baseUrl}}/health",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-health",
       "order": 0,
       "requestType": "http",

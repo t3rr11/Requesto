@@ -3,9 +3,21 @@
   "name": "Collections API",
   "description": "Regression tests for the collection endpoints of Requesto's own backend. The suite is self-contained: 'Create Collection' captures the new id and every later request operates on that scratch data, cleaning up after itself. Run with the Local Backend environment against a server started via 'npm run dev' (port 4747) or the CLI in CI.",
   "folders": [
-    { "id": "fld-api-collections", "name": "1. Collections", "collectionId": "col-api-collections" },
-    { "id": "fld-api-requests", "name": "2. Requests", "collectionId": "col-api-collections" },
-    { "id": "fld-api-cleanup", "name": "3. Cleanup", "collectionId": "col-api-collections" }
+    {
+      "id": "fld-api-collections",
+      "name": "1. Collections",
+      "collectionId": "col-api-collections"
+    },
+    {
+      "id": "fld-api-requests",
+      "name": "2. Requests",
+      "collectionId": "col-api-collections"
+    },
+    {
+      "id": "fld-api-cleanup",
+      "name": "3. Cleanup",
+      "collectionId": "col-api-collections"
+    }
   ],
   "requests": [
     {
@@ -15,7 +27,9 @@
       "url": "{{baseUrl}}/api/collections",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-collections",
       "order": 0,
@@ -32,7 +46,9 @@
       "url": "{{baseUrl}}/api/collections",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-collections",
       "order": 1,
@@ -49,7 +65,9 @@
       "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-collections",
       "order": 2,
@@ -66,7 +84,9 @@
       "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-collections",
       "order": 3,
@@ -83,7 +103,9 @@
       "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/duplicate",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-collections",
       "order": 4,
@@ -100,7 +122,9 @@
       "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/export",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-collections",
       "order": 5,
@@ -117,7 +141,9 @@
       "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/requests",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-requests",
       "order": 0,
@@ -134,7 +160,9 @@
       "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}/requests/{{createdRequestId}}",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-requests",
       "order": 1,
@@ -151,7 +179,9 @@
       "url": "{{baseUrl}}/api/collections/{{duplicateCollectionId}}",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-cleanup",
       "order": 0,
@@ -168,7 +198,9 @@
       "url": "{{baseUrl}}/api/collections/{{createdCollectionId}}",
       "headers": {},
       "bodyType": "json",
-      "auth": { "type": "none" },
+      "auth": {
+        "type": "none"
+      },
       "collectionId": "col-api-collections",
       "folderId": "fld-api-cleanup",
       "order": 1,

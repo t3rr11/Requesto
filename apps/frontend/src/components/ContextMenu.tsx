@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './Button';
 
-type ContextMenuItem = {
+export type ContextMenuItem = {
   label: string;
   icon?: ReactNode;
   onClick: () => void;
