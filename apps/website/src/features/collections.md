@@ -77,6 +77,7 @@ A saved request stores:
 - Headers, query parameters, body
 - Authentication configuration
 - Pre-request and test scripts
+- Documentation (markdown, via the **Docs** tab; see [Request Documentation](/features/documentation))
 
 Click a saved request in the sidebar to open it. Edit it and click **Save** to save changes.
 

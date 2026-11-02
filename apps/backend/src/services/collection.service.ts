@@ -118,6 +118,7 @@ export class CollectionService {
       folderId?: string;
       preRequestScript?: string;
       testScript?: string;
+      documentation?: string;
       graphql?: GraphQLRequestConfig;
     },
   ): Promise<SavedRequest> {
@@ -139,6 +140,7 @@ export class CollectionService {
       folderId: data.folderId,
       preRequestScript: data.preRequestScript,
       testScript: data.testScript,
+      documentation: data.documentation,
       graphql: data.graphql,
       collectionId
     };

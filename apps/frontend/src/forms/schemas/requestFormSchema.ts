@@ -35,6 +35,7 @@ export const requestFormSchema = z.object({
   ),
   preRequestScript: z.string().optional(),
   testScript: z.string().optional(),
+  documentation: z.string().optional(),
   graphqlDocument: z.string().optional(),
   graphqlVariables: z.string().optional(),
   graphqlTransport: z.enum(['post', 'get']).optional(),

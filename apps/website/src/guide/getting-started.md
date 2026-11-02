@@ -80,7 +80,7 @@ See [OAuth 2.0](/features/oauth) for the full guide.
 
 **Tabs bar**: Open request tabs. An orange dot means unsaved changes. The environment selector (with its gear icon for managing environments) is here too.
 
-**Request panel**: URL bar, method dropdown, and tabs for Params, Headers, Body (Monaco editor), Auth, Tests, and Pre-request Script.
+**Request panel**: URL bar, method dropdown, and tabs for Params, Headers, Body (Monaco editor), Auth, Tests, Pre-request Script, and Docs (markdown documentation for the endpoint).
 
 **Response panel**: Status code, response time, size. Tabs for response Body (formatted), Headers, and Test Results.
 

@@ -17,7 +17,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('server reports ok', () => {\n  expect(response.json().status).toBe('ok');\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('server reports ok', () => {\n  expect(response.json().status).toBe('ok');\n});",
+      "documentation": "# Health Check\n\nVerifies the backend is up and reports status: ok. Run this first to confirm {{baseUrl}} resolves."
     }
   ]
 }

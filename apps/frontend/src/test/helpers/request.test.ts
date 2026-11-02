@@ -5,6 +5,7 @@ import {
   buildRequestFromFormData,
   buildSavePayloadFromFormData,
   buildSavedGraphQLRequest,
+  buildTabRequestFromFormData,
   getGraphQLOperations,
   parseGraphQLIntrospectionResponse,
 } from '../../helpers/request';
@@ -259,5 +260,36 @@ describe('buildSavedGraphQLRequest', () => {
     expect(request.method).toBe('POST');
     expect(request.body).toBe('{"query":"query { ping }"}');
     expect(request.headers).toEqual({ 'X-Custom': 'yes' });
+  });
+});
+
+describe('documentation persistence', () => {
+  it('carries markdown documentation into the save payload', () => {
+    const payload = buildSavePayloadFromFormData(createFormData({
+      documentation: '# GetUser\n\nFetches a single **user**.',
+    }));
+
+    expect(payload.documentation).toBe('# GetUser\n\nFetches a single **user**.');
+  });
+
+  it('keeps documentation when saving an HTTP request', () => {
+    const payload = buildSavePayloadFromFormData(createFormData({
+      requestType: 'http',
+      method: 'GET',
+      url: 'https://api.example.com/health',
+      body: '',
+      documentation: '# Health\n\n- Canary for pipelines',
+    }));
+
+    expect(payload.documentation).toBe('# Health\n\n- Canary for pipelines');
+    expect(payload.body).toBe('');
+  });
+
+  it('passes markdown documentation through the tab request sync', () => {
+    const tabRequest = buildTabRequestFromFormData(createFormData({
+      documentation: '# Notes',
+    }));
+
+    expect(tabRequest.documentation).toBe('# Notes');
   });
 });

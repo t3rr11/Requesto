@@ -22,7 +22,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('returns an array of collections', () => {\n  expect(Array.isArray(response.json())).toBeTruthy();\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('returns an array of collections', () => {\n  expect(Array.isArray(response.json())).toBeTruthy();\n});",
+      "documentation": "# List Collections\n\nLists every collection on the local backend. Expects a 200 and an array response. Later requests operate on the collection created by Create Collection."
     },
     {
       "id": "req-api-collections-create",
@@ -38,7 +39,8 @@
       "requestType": "http",
       "body": "{\n  \"name\": \"CLI Regression Suite\",\n  \"description\": \"Scratch collection created by Requesto's self-test suite\"\n}",
       "preRequestScript": "",
-      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('collection has a generated id', () => {\n  expect(response.json().id).toMatch(/^col-/);\n});\ntest('collection name is stored', () => {\n  expect(response.json().name).toBe('CLI Regression Suite');\n});\ntest('capture id for later requests', () => {\n  environment.set('createdCollectionId', response.json().id);\n});"
+      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('collection has a generated id', () => {\n  expect(response.json().id).toMatch(/^col-/);\n});\ntest('collection name is stored', () => {\n  expect(response.json().name).toBe('CLI Regression Suite');\n});\ntest('capture id for later requests', () => {\n  environment.set('createdCollectionId', response.json().id);\n});",
+      "documentation": "# Create Collection\n\nCreates the collection this suite runs against. The generated id is saved to createdCollectionId for later requests and cleanup."
     },
     {
       "id": "req-api-collections-get",
@@ -54,7 +56,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('returns the created collection', () => {\n  expect(response.json().id).toBe(environment.get('createdCollectionId'));\n  expect(response.json().name).toBe('CLI Regression Suite');\n});\ntest('new collection starts empty', () => {\n  expect(response.json().requests).toHaveLength(0);\n  expect(response.json().folders).toHaveLength(0);\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('returns the created collection', () => {\n  expect(response.json().id).toBe(environment.get('createdCollectionId'));\n  expect(response.json().name).toBe('CLI Regression Suite');\n});\ntest('new collection starts empty', () => {\n  expect(response.json().requests).toHaveLength(0);\n  expect(response.json().folders).toHaveLength(0);\n});",
+      "documentation": "# Get Single Collection\n\nFetches the collection by {{createdCollectionId}} and asserts it was stored correctly, with no requests or folders yet."
     },
     {
       "id": "req-api-collections-update",
@@ -70,7 +73,8 @@
       "requestType": "http",
       "body": "{\n  \"description\": \"Updated by Requesto's self-test suite\"\n}",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('description is updated', () => {\n  expect(response.json().description).toBe(\"Updated by Requesto's self-test suite\");\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('description is updated', () => {\n  expect(response.json().description).toBe(\"Updated by Requesto's self-test suite\");\n});",
+      "documentation": "# Update Collection\n\nUpdates only the description of the created collection and asserts the change round-trips."
     },
     {
       "id": "req-api-collections-duplicate",
@@ -86,7 +90,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('copy gets a new id', () => {\n  expect(response.json().id).toMatch(/^col-/);\n  expect(response.json().id).not.toBe(environment.get('createdCollectionId'));\n});\ntest('copy is named after the original', () => {\n  expect(response.json().name).toBe('CLI Regression Suite Copy');\n});\ntest('capture id for cleanup', () => {\n  environment.set('duplicateCollectionId', response.json().id);\n});"
+      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('copy gets a new id', () => {\n  expect(response.json().id).toMatch(/^col-/);\n  expect(response.json().id).not.toBe(environment.get('createdCollectionId'));\n});\ntest('copy is named after the original', () => {\n  expect(response.json().name).toBe('CLI Regression Suite Copy');\n});\ntest('capture id for cleanup', () => {\n  environment.set('duplicateCollectionId', response.json().id);\n});",
+      "documentation": "# Duplicate Collection\n\nCopies the created collection. The copy gets a new id, saved to duplicateCollectionId so cleanup can remove it."
     },
     {
       "id": "req-api-collections-export",
@@ -102,7 +107,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('export matches the collection', () => {\n  expect(response.json().id).toBe(environment.get('createdCollectionId'));\n  expect(response.json().name).toBe('CLI Regression Suite');\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('export matches the collection', () => {\n  expect(response.json().id).toBe(environment.get('createdCollectionId'));\n  expect(response.json().name).toBe('CLI Regression Suite');\n});",
+      "documentation": "# Export Collection\n\nExports the created collection and asserts the payload matches it by id and name."
     },
     {
       "id": "req-api-requests-add",
@@ -118,7 +124,8 @@
       "requestType": "http",
       "body": "{\n  \"name\": \"Self Test Request\",\n  \"requestType\": \"http\",\n  \"method\": \"GET\",\n  \"url\": \"{{baseUrl}}/health\"\n}",
       "preRequestScript": "",
-      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('request gets a generated id', () => {\n  expect(response.json().id).toMatch(/^req-/);\n});\ntest('method is normalised to uppercase', () => {\n  expect(response.json().method).toBe('GET');\n});\ntest('capture id for later requests', () => {\n  environment.set('createdRequestId', response.json().id);\n});"
+      "testScript": "test('status is 201', () => {\n  expect(response.status).toBe(201);\n});\ntest('request gets a generated id', () => {\n  expect(response.json().id).toMatch(/^req-/);\n});\ntest('method is normalised to uppercase', () => {\n  expect(response.json().method).toBe('GET');\n});\ntest('capture id for later requests', () => {\n  environment.set('createdRequestId', response.json().id);\n});",
+      "documentation": "# Add Request\n\nAdds a simple GET /health request to the created collection. The generated id is saved to createdRequestId for the delete test."
     },
     {
       "id": "req-api-requests-delete",
@@ -134,7 +141,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});",
+      "documentation": "# Delete Request\n\nDeletes the request added above and asserts the operation reports success."
     },
     {
       "id": "req-api-collections-delete-duplicate",
@@ -150,7 +158,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});",
+      "documentation": "# Delete Duplicate\n\nRemoves the copy created by Duplicate Collection."
     },
     {
       "id": "req-api-collections-delete",
@@ -166,7 +175,8 @@
       "requestType": "http",
       "body": "",
       "preRequestScript": "",
-      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});"
+      "testScript": "test('status is 200', () => {\n  expect(response.status).toBe(200);\n});\ntest('deletion succeeds', () => {\n  expect(response.json().success).toBe(true);\n});",
+      "documentation": "# Delete Collection\n\nRemoves the collection created at the start of the suite, which is the final cleanup step."
     }
   ]
 }

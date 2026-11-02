@@ -177,6 +177,28 @@ describe('CollectionService', () => {
       expect(result.preRequestScript).toContain('environment.set');
       expect(result.testScript).toContain('has data');
     });
+
+    it('persists markdown documentation', async () => {
+      const captured: SavedRequest[] = [];
+      const repo = mockRepo({
+        addRequest: vi.fn().mockImplementation(async (_id: string, req: SavedRequest) => {
+          captured.push(req);
+          return req;
+        }),
+      });
+      const service = new CollectionService(repo);
+
+      const result = await service.addRequest('col-1', {
+        name: 'health',
+        method: 'GET',
+        url: 'http://a.com/health',
+        documentation: '# Health\n\nReturns **200** when healthy.',
+      });
+
+      expect(captured).toHaveLength(1);
+      expect(captured[0].documentation).toBe('# Health\n\nReturns **200** when healthy.');
+      expect(result.documentation).toBe('# Health\n\nReturns **200** when healthy.');
+    });
   });
 
   describe('updateRequest', () => {
