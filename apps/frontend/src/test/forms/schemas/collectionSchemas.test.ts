@@ -17,7 +17,7 @@ describe('newCollectionSchema', () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.description).toBe('Test description');
+      expect(result.data.description).toBeUndefined();
     }
   });
 

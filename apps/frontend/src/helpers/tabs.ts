@@ -13,6 +13,7 @@ export function areRequestsEqual(a: TabRequest, b: TabRequest): boolean {
   if ((a.body || '') !== (b.body || '')) return false;
   if ((a.preRequestScript ?? '') !== (b.preRequestScript ?? '')) return false;
   if ((a.testScript ?? '') !== (b.testScript ?? '')) return false;
+  if ((a.documentation ?? '') !== (b.documentation ?? '')) return false;
   if (JSON.stringify(a.graphql) !== JSON.stringify(b.graphql)) return false;
 
   const normaliseAuth = (auth: TabRequest['auth']) => {
@@ -60,6 +61,7 @@ export function savedRequestToTabRequest(saved: {
   auth?: TabRequest['auth'];
   preRequestScript?: string;
   testScript?: string;
+  documentation?: string;
   graphql?: TabRequest['graphql'];
 }): TabRequest {
   return {
@@ -71,6 +73,7 @@ export function savedRequestToTabRequest(saved: {
     auth: normaliseSavedAuth(saved.auth),
     ...(saved.preRequestScript !== undefined && { preRequestScript: saved.preRequestScript }),
     ...(saved.testScript !== undefined && { testScript: saved.testScript }),
+    ...(saved.documentation !== undefined && { documentation: saved.documentation }),
     ...(saved.graphql !== undefined && { graphql: { ...saved.graphql } }),
   };
 }
@@ -100,6 +103,7 @@ export function cloneTabRequest(request: TabRequest): TabRequest {
     auth: request.auth ? JSON.parse(JSON.stringify(request.auth)) : undefined,
     ...(request.preRequestScript !== undefined && { preRequestScript: request.preRequestScript }),
     ...(request.testScript !== undefined && { testScript: request.testScript }),
+    ...(request.documentation !== undefined && { documentation: request.documentation }),
     ...(request.graphql !== undefined && { graphql: { ...request.graphql } }),
   };
 }

@@ -4,19 +4,27 @@ import { X } from 'lucide-react';
 interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Intercepts close attempts (button, backdrop, Escape) instead of closing; the parent decides. */
+  onCloseRequest?: () => void;
   title: string;
   children: ReactNode;
   footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  /** Padding-free body for pane-style dialogs (e.g. DocsDialog) that manage their own scroll areas. */
+  fullBleed?: boolean;
 }
 
-export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }: DialogProps) {
+export function Dialog({ isOpen, onClose, onCloseRequest, title, children, footer, size = 'md', fullBleed = false }: DialogProps) {
   const [visible, setVisible] = useState(false);
   const [animate, setAnimate] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClose = useCallback(() => {
+    if (onCloseRequest) {
+      onCloseRequest();
+      return;
+    }
     setAnimate(false);
     if (closeTimerRef.current) {
       clearTimeout(closeTimerRef.current);
@@ -27,7 +35,7 @@ export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }
       setVisible(false);
       onClose();
     }, 150);
-  }, [onClose]);
+  }, [onClose, onCloseRequest]);
 
   // Clear any pending close timers on unmount
   useEffect(() => {
@@ -74,6 +82,9 @@ export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }
     full: 'max-w-6xl',
   };
 
+  // Definite height, not max-height clamping: inner flex scroll lives or dies on this
+  const panelSizing = fullBleed ? `w-full ${sizes[size]} h-[90vh]` : `w-full ${sizes[size]} max-h-[90vh]`;
+
   return (
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-all duration-150 ease-out ${
@@ -83,7 +94,7 @@ export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }
     >
       <div
         ref={dialogRef}
-        className={`bg-white dark:bg-gray-800 rounded-xl w-full ${sizes[size]} max-h-[90vh] flex flex-col
+        className={`bg-white dark:bg-gray-800 rounded-xl ${panelSizing} flex flex-col
           shadow-[0_20px_60px_-12px_rgba(0,0,0,0.25)] dark:shadow-[0_20px_60px_-12px_rgba(0,0,0,0.5)]
           ring-1 ring-black/8 dark:ring-white/8
           transition-all duration-150 ease-out origin-center
@@ -113,7 +124,11 @@ export function Dialog({ isOpen, onClose, title, children, footer, size = 'md' }
           </div>
         )}
 
-        <div className="p-6 overflow-y-auto flex-1">{children}</div>
+        {fullBleed ? (
+          <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
+        ) : (
+          <div className="p-6 overflow-y-auto flex-1">{children}</div>
+        )}
 
         {footer && (
           <div className="px-6 py-4 bg-gray-50/80 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700/60 rounded-b-xl shrink-0">

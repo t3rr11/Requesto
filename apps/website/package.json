@@ -1,6 +1,6 @@
 {
   "name": "requesto-website",
-  "version": "1.12.2",
+  "version": "1.13.0",
   "description": "Requesto documentation website",
   "type": "module",
   "scripts": {

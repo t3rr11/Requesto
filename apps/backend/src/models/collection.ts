@@ -53,6 +53,7 @@ export interface SavedRequest {
   operationId?: string;
   preRequestScript?: string;
   testScript?: string;
+  documentation?: string;
   graphql?: GraphQLRequestConfig;
 }
 

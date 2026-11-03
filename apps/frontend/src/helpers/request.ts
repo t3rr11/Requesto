@@ -41,6 +41,7 @@ export function buildTabRequestFromFormData(formData: RequestFormData): TabReque
     auth: formData.auth as AuthConfig,
     preRequestScript: formData.preRequestScript,
     testScript: formData.testScript,
+    documentation: formData.documentation,
   };
 
   if (requestType === 'graphql') {
@@ -316,6 +317,7 @@ export function buildSavePayloadFromFormData(formData: RequestFormData): Request
     auth,
     preRequestScript: formData.preRequestScript,
     testScript: formData.testScript,
+    documentation: formData.documentation,
   };
 
   if ((formData.requestType ?? 'http') === 'graphql') {

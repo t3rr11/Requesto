@@ -1,7 +1,5 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Folder as FolderIcon, FolderPlus, Import, Play, Search, X, FileText, Braces } from 'lucide-react';
-import type { DragStartEvent, DragEndEvent, CollisionDetection } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Folder as FolderIcon, FolderPlus, Import, Play, Search, X, FileText, Braces, BookOpen } from 'lucide-react';
 import { useUIStore } from '../store/ui/store';
 import { useGitStore } from '../store/git/store';
 import { useCollectionsStore } from '../store/collections/store';
@@ -14,6 +12,7 @@ import { NewCollectionForm } from '../forms/NewCollectionForm';
 import { NewFolderForm } from '../forms/NewFolderForm';
 import { ImportOpenApiForm } from '../forms/ImportOpenApiForm';
 import { CollectionRunnerDialog } from './CollectionRunnerDialog';
+import { DocsDialog } from './docs/DocsDialog';
 import { CollectionItem } from './sidebar/CollectionItem';
 import { MethodBadge } from './sidebar/MethodBadge';
 import { getGraphQLBadgeOperation } from '../helpers/request';
@@ -21,17 +20,12 @@ import { Button } from './Button';
 import { ContextMenu } from './ContextMenu';
 import { GitStatusBar } from './GitStatusBar';
 import { GitAccordion } from './GitAccordion';
-import { useDialog, useDialogWithData, useConfirmDialog } from '../hooks/useDialog';
+import { useDialog, useDialogWithData } from '../hooks/useDialog';
 import { useResizablePanel } from '../hooks/useResizablePanel';
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-} from '@dnd-kit/core';
+import { useSidebarDragDrop } from '../hooks/useSidebarDragDrop';
+import { useSelectedRequestShortcuts } from '../hooks/useSelectedRequestShortcuts';
+import { DndContext, DragOverlay } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 interface RenameRequestData {
   request: SavedRequest;
@@ -68,7 +62,6 @@ export function CollectionsSidebar() {
   } = useUIStore();
   const { isRepo } = useGitStore();
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeId, setActiveId] = useState<string | null>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -79,78 +72,11 @@ export function CollectionsSidebar() {
     updateCollection,
     updateRequest,
     updateFolder,
-    moveRequest,
-    moveRequests,
-    moveCollection,
-    deleteRequests,
-    duplicateRequests,
   } = useCollectionsStore();
   const { showAlert } = useAlertStore();
-  const clipboardRef = useRef<SavedRequest[]>([]);
-  const multiDeleteDialog = useConfirmDialog();
+
+  const { confirmDialog: multiDeleteDialog } = useSelectedRequestShortcuts();
   const [runnerOpen, setRunnerOpen] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
-      // Don't fire when a modal dialog is open
-      if (document.querySelector('[role="dialog"]')) return;
-
-      const ids = useUIStore.getState().selectedRequestIds as Set<string>;
-      if (ids.size === 0) return;
-
-      const isMod = e.ctrlKey || e.metaKey;
-
-      if (isMod && e.key === 'c') {
-        e.preventDefault();
-        const allRequests = useCollectionsStore.getState().collections.flatMap(c => c.requests);
-        clipboardRef.current = [...ids]
-          .map(id => allRequests.find(r => r.id === id))
-          .filter((r): r is SavedRequest => r !== undefined);
-        showAlert(
-          `${clipboardRef.current.length} request${clipboardRef.current.length !== 1 ? 's' : ''} copied`,
-          'success'
-        );
-        return;
-      }
-
-      if (isMod && e.key === 'v') {
-        if (clipboardRef.current.length === 0) return;
-        e.preventDefault();
-        const reqs = clipboardRef.current.map(r => ({ collectionId: r.collectionId, requestId: r.id }));
-        duplicateRequests(reqs)
-          .then(() => showAlert(`${reqs.length} request${reqs.length !== 1 ? 's' : ''} pasted`, 'success'))
-          .catch(() => showAlert('Failed to paste requests', 'error'));
-        return;
-      }
-
-      if (e.key === 'Delete') {
-        e.preventDefault();
-        const allRequests = useCollectionsStore.getState().collections.flatMap(c => c.requests);
-        const toDelete = [...ids]
-          .map(id => allRequests.find(r => r.id === id))
-          .filter((r): r is SavedRequest => r !== undefined);
-        if (toDelete.length === 0) return;
-        multiDeleteDialog.open({
-          title: `Delete ${toDelete.length} Request${toDelete.length !== 1 ? 's' : ''}`,
-          message:
-            toDelete.length === 1
-              ? 'Are you sure you want to delete this request? This action cannot be undone.'
-              : `Are you sure you want to delete these ${toDelete.length} requests? This action cannot be undone.`,
-          confirmText: 'Delete',
-          variant: 'danger',
-          onConfirm: async () => {
-            await deleteRequests(toDelete.map(r => ({ collectionId: r.collectionId, requestId: r.id })));
-            clearSelection();
-          },
-        });
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [clearSelection, deleteRequests, duplicateRequests, multiDeleteDialog, showAlert]);
 
   // Close the git panel when switching to a workspace that isn't a git repo
   useEffect(() => {
@@ -159,101 +85,15 @@ export function CollectionsSidebar() {
     }
   }, [isRepo, isGitPanelOpen, setGitPanelOpen]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const collisionDetection: CollisionDetection = useCallback(args => {
-    if (args.active.data.current?.type === 'collection') {
-      return closestCenter({
-        ...args,
-        droppableContainers: args.droppableContainers.filter(c => c.data.current?.type === 'collection'),
-      });
-    }
-    return closestCenter(args);
-  }, []);
-
-  const handleDragStart = ({ active }: DragStartEvent) => {
-    setActiveId(active.id as string);
-    document.body.style.cursor = 'grabbing';
-    document.body.style.userSelect = 'none';
-  };
-
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    setActiveId(null);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    if (!over || active.id === over.id) return;
-
-    const activeData = active.data.current as { type: string; collectionId?: string; folderId?: string } | undefined;
-    if (!activeData) return;
-
-    if (activeData.type === 'collection') {
-      const overData = over.data.current as { type: string; collectionId?: string } | undefined;
-      if (!overData) return;
-
-      const targetCollectionId =
-        overData.type === 'collection'
-          ? (over.id as string)
-          : overData.type === 'collection-root' && overData.collectionId
-            ? overData.collectionId
-            : null;
-      if (!targetCollectionId) return;
-      const targetIndex = collections.findIndex(c => c.id === targetCollectionId);
-      if (targetIndex === -1) return;
-      moveCollection(active.id as string, targetIndex);
-      return;
-    }
-
-    if (activeData.type !== 'request') return;
-
-    const overData = over.data.current as { type: string; collectionId: string; folderId?: string } | undefined;
-    if (!overData) return;
-
-    let targetCollectionId: string;
-    let targetFolderId: string | undefined;
-    let targetOrder: number | undefined;
-
-    if (overData.type === 'request') {
-      targetCollectionId = overData.collectionId;
-      targetFolderId = overData.folderId;
-      const targetCollection = collections.find(c => c.id === targetCollectionId);
-      if (!targetCollection) return;
-      const slotRequests = targetCollection.requests
-        .filter(r => r.folderId === targetFolderId)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      targetOrder = slotRequests.findIndex(r => r.id === over.id);
-      if (targetOrder === -1) return;
-    } else if (overData.type === 'folder' || overData.type === 'collection-root') {
-      targetCollectionId = overData.collectionId;
-      targetFolderId = overData.folderId;
-      // targetOrder undefined → appends to end of target container
-    } else {
-      return;
-    }
-
-    // If dragging one of multiple selected items, move all of them to the same target
-    const dragSelectedIds = useUIStore.getState().selectedRequestIds as Set<string>;
-    if (dragSelectedIds.size > 1 && dragSelectedIds.has(active.id as string)) {
-      const allRequests = collections.flatMap(c => c.requests);
-      const toMove = [...dragSelectedIds]
-        .map(id => allRequests.find(r => r.id === id))
-        .filter((r): r is SavedRequest => r !== undefined)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map(r => ({ sourceCollectionId: r.collectionId, requestId: r.id }));
-      moveRequests(toMove, targetCollectionId, targetFolderId, targetOrder);
-      clearSelection();
-      return;
-    }
-
-    moveRequest(activeData.collectionId!, active.id as string, targetCollectionId, targetFolderId, targetOrder);
-    clearSelection();
-  };
-
-  const activeCollection = activeId ? collections.find(c => c.id === activeId) : null;
-  const activeRequest =
-    activeId && !activeCollection ? collections.flatMap(c => c.requests).find(r => r.id === activeId) : null;
+  const {
+    sensors,
+    collisionDetection,
+    handleDragStart,
+    handleDragEnd,
+    handleDragCancel,
+    activeCollection,
+    activeRequest,
+  } = useSidebarDragDrop();
 
   const { handleResizeStart } = useResizablePanel({
     containerRef: sidebarRef,
@@ -283,6 +123,13 @@ export function CollectionsSidebar() {
   const newFolderDialog = useDialogWithData<NewFolderData>();
   const [importMenuPos, setImportMenuPos] = useState<{ x: number; y: number } | null>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
+  const [docsDialogOpen, setDocsDialogOpen] = useState(false);
+  const [docsInitialNodeId, setDocsInitialNodeId] = useState<string | null>(null);
+
+  const handleViewDocs = () => {
+    setDocsInitialNodeId(null);
+    setDocsDialogOpen(true);
+  };
 
   const { handleResizeStart: handleGitPanelResizeStart } = useResizablePanel({
     containerRef: sidebarRef,
@@ -361,21 +208,30 @@ export function CollectionsSidebar() {
       <div className="px-4 pb-4 pt-2 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Button
               onClick={() => setRunnerOpen(true)}
               variant="icon"
-              size="md"
+              size="sm"
               title="Run All Collections"
               disabled={collections.length === 0}
             >
-              <Play className="w-5 h-5" />
+              <Play className="w-4 h-4" />
             </Button>
-            <Button onClick={newCollectionDialog.open} variant="icon" size="md" title="New Collection">
-              <FolderPlus className="w-5 h-5" />
+            <Button onClick={newCollectionDialog.open} variant="icon" size="sm" title="New Collection">
+              <FolderPlus className="w-4 h-4" />
             </Button>
-            <Button ref={importButtonRef} onClick={handleImportMenuOpen} variant="icon" size="md" title="Import">
-              <Import className="w-5 h-5" />
+            <Button ref={importButtonRef} onClick={handleImportMenuOpen} variant="icon" size="sm" title="Import">
+              <Import className="w-4 h-4" />
+            </Button>
+            <Button
+              onClick={handleViewDocs}
+              variant="icon"
+              size="sm"
+              title="View Documentation"
+              disabled={collections.length === 0}
+            >
+              <BookOpen className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -431,10 +287,7 @@ export function CollectionsSidebar() {
             collisionDetection={collisionDetection}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            onDragCancel={() => {
-              document.body.style.cursor = '';
-              document.body.style.userSelect = '';
-            }}
+            onDragCancel={handleDragCancel}
           >
             <div className="py-2">
               <SortableContext items={filteredCollections.map(c => c.id)} strategy={verticalListSortingStrategy}>
@@ -447,6 +300,10 @@ export function CollectionsSidebar() {
                     onRenameCollection={(id, name) => renameCollectionDialog.open({ id, name })}
                     onRenameFolder={(collectionId, id, name) => renameFolderDialog.open({ collectionId, id, name })}
                     onCreateFolder={(collectionId, parentId) => newFolderDialog.open({ collectionId, parentId })}
+                    onOpenDocs={id => {
+                      setDocsInitialNodeId(id);
+                      setDocsDialogOpen(true);
+                    }}
                   />
                 ))}
               </SortableContext>
@@ -518,6 +375,12 @@ export function CollectionsSidebar() {
         isOpen={runnerOpen}
         onClose={() => setRunnerOpen(false)}
         collections={collections}
+      />
+
+      <DocsDialog
+        isOpen={docsDialogOpen}
+        onClose={() => setDocsDialogOpen(false)}
+        initialNodeId={docsInitialNodeId}
       />
 
       <RenameForm

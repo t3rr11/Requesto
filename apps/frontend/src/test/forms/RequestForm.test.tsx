@@ -174,6 +174,15 @@ describe('RequestForm', () => {
     expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
   });
 
+  it('switches to docs tab and shows the markdown editor', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    await user.click(screen.getByText(/^docs$/i));
+    expect(screen.getByLabelText('Bold')).toBeInTheDocument();
+    expect(screen.getByLabelText('Heading 1')).toBeInTheDocument();
+  });
+
   it('switches to auth tab', async () => {
     const user = userEvent.setup();
     renderForm();

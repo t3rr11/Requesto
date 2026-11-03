@@ -22,13 +22,12 @@ export function NewCollectionForm({ onSuccess, onCancel }: NewCollectionFormProp
     resolver: zodResolver(newCollectionSchema),
     defaultValues: {
       name: '',
-      description: '',
     },
   });
 
   const onSubmit = async (data: NewCollectionFormData) => {
     try {
-      await createCollection({ name: data.name, description: data.description || undefined });
+      await createCollection({ name: data.name });
       showAlert('Success', 'Collection created successfully', 'success');
       reset();
       onSuccess();
@@ -59,19 +58,6 @@ export function NewCollectionForm({ onSuccess, onCancel }: NewCollectionFormProp
         {errors.name && (
           <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.name.message}</p>
         )}
-      </div>
-
-      <div>
-        <label htmlFor="collection-description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Description (optional)
-        </label>
-        <textarea
-          id="collection-description"
-          {...register('description')}
-          placeholder="Collection for testing user APIs"
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
-        />
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

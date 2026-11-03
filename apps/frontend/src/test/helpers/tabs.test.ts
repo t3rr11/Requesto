@@ -42,6 +42,18 @@ describe('areRequestsEqual', () => {
     expect(areRequestsEqual(baseRequest, { ...baseRequest, body: '{"a":1}' })).toBe(false);
   });
 
+  it('detects documentation change', () => {
+    expect(areRequestsEqual(baseRequest, { ...baseRequest, documentation: '# Docs' })).toBe(false);
+    expect(
+      areRequestsEqual(
+        { ...baseRequest, documentation: '# Docs' },
+        { ...baseRequest, documentation: '# Docs' },
+      ),
+    ).toBe(true);
+    // Empty strings normalise the same as absent documentation.
+    expect(areRequestsEqual({ ...baseRequest, documentation: '' }, baseRequest)).toBe(true);
+  });
+
   it('treats missing auth and {type:"none"} as equal', () => {
     const a: TabRequest = { ...baseRequest };
     const b: TabRequest = { ...baseRequest, auth: { type: 'none' } };
@@ -111,6 +123,21 @@ describe('savedRequestToTabRequest', () => {
     expect(result.body).toBe('{}');
     expect(result.headers).toEqual({ 'X-Test': 'yes' });
   });
+
+  it('carries markdown documentation onto the tab request', () => {
+    const saved = {
+      method: 'GET',
+      url: 'https://api.test.com/health',
+      documentation: '# Health\n\nChecks the server.',
+    };
+    const result = savedRequestToTabRequest(saved);
+    expect(result.documentation).toBe('# Health\n\nChecks the server.');
+  });
+
+  it('omits documentation when the saved request has none', () => {
+    const result = savedRequestToTabRequest({ method: 'GET', url: 'https://api.test.com' });
+    expect('documentation' in result).toBe(false);
+  });
 });
 
 describe('cloneTabRequest', () => {
@@ -122,5 +149,11 @@ describe('cloneTabRequest', () => {
     const clone = cloneTabRequest(original);
     expect(clone).toEqual(original);
     expect(clone).not.toBe(original);
+  });
+
+  it('preserves markdown documentation', () => {
+    const original: TabRequest = { ...baseRequest, documentation: '# Docs' };
+    const clone = cloneTabRequest(original);
+    expect(clone.documentation).toBe('# Docs');
   });
 });

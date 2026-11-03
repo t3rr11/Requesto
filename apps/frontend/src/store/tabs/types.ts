@@ -13,6 +13,7 @@ export type TabRequest = {
   auth?: AuthConfig;
   preRequestScript?: string;
   testScript?: string;
+  documentation?: string;
   graphql?: GraphQLRequestConfig;
 };
 

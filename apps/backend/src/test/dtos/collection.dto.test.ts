@@ -46,6 +46,23 @@ describe('collection request DTOs', () => {
     expect(updateRequestPayloadSchema.safeParse({ name: 'Renamed request' }).success).toBe(true);
   });
 
+  it('accepts markdown documentation on requests', () => {
+    expect(updateRequestSchema.safeParse({
+      documentation: '# Health Check\n\nCanary for pipelines.'
+    }).success).toBe(true);
+
+    expect(addRequestSchema.safeParse({
+      ...baseRequest,
+      documentation: '# Health\n\n- Canary for pipelines',
+    }).success).toBe(true);
+  });
+
+  it('rejects oversized documentation', () => {
+    expect(
+      updateRequestSchema.safeParse({ documentation: 'x'.repeat(1000001) }).success,
+    ).toBe(false);
+  });
+
   it('validates route payloads without requiring path-owned fields', () => {
     expect(createRequestPayloadSchema.safeParse({
       name: 'Users',

@@ -7,6 +7,7 @@ import { KeyValueEditor } from '../components/KeyValueEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
 import { TabStrip } from '../components/TabStrip';
+import { DocsEditor } from '../components/docs-editor/DocsEditor';
 import { AlertTriangle, BookOpen, ExternalLink, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { AuthConfig, FormDataEntry } from '../store/request/types';
 import { useThemeStore } from '../store/theme/store';
@@ -30,12 +31,12 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 export { requestFormSchema, type RequestFormData } from './schemas/requestFormSchema';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
-type RequestTab = 'params' | 'query' | 'variables' | 'auth' | 'headers' | 'body' | 'pre-request' | 'tests';
+type RequestTab = 'params' | 'query' | 'variables' | 'auth' | 'headers' | 'body' | 'pre-request' | 'tests' | 'docs';
 
 function getRequestTabs(requestType: 'http' | 'graphql'): RequestTab[] {
   return requestType === 'graphql'
-    ? ['query', 'variables', 'auth', 'headers', 'pre-request', 'tests']
-    : ['params', 'auth', 'headers', 'body', 'pre-request', 'tests'];
+    ? ['query', 'variables', 'auth', 'headers', 'pre-request', 'tests', 'docs']
+    : ['params', 'auth', 'headers', 'body', 'pre-request', 'tests', 'docs'];
 }
 
 function defineEditorTheme(monaco: Monaco) {
@@ -208,6 +209,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
       auth: tabReq.auth || { type: 'none' },
       preRequestScript: tabReq.preRequestScript ?? '',
       testScript: tabReq.testScript ?? '',
+      documentation: tabReq.documentation ?? '',
       graphqlDocument: tabReq.graphql?.document ?? '',
       graphqlVariables: tabReq.graphql?.variables ?? '',
       graphqlTransport: tabReq.graphql?.transport ?? 'post',
@@ -689,6 +691,23 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
                       readOnly: loading,
                     }}
                   />
+                )}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'docs' && (
+          <div className="h-full flex flex-col gap-3 min-h-50">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Endpoint documentation, written as markdown and saved with the request.
+            </p>
+            <div className="flex-1 flex flex-col border border-gray-300 dark:border-gray-600 rounded overflow-hidden min-h-50">
+              <Controller
+                name="documentation"
+                control={control}
+                render={({ field }) => (
+                  <DocsEditor value={field.value ?? ''} onChange={next => field.onChange(next)} readOnly={loading} />
                 )}
               />
             </div>

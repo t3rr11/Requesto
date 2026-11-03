@@ -24,6 +24,7 @@ export function useItemActions() {
         auth: request.auth,
         preRequestScript: request.preRequestScript,
         testScript: request.testScript,
+        documentation: request.documentation,
         graphql: request.graphql,
       },
       label: request.name,

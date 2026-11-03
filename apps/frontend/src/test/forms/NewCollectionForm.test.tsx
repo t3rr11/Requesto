@@ -27,7 +27,6 @@ describe('NewCollectionForm', () => {
     render(<NewCollectionForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
 
     expect(screen.getByLabelText(/name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
     expect(screen.getByText('Create Collection')).toBeInTheDocument();
     expect(screen.getByText('Cancel')).toBeInTheDocument();
   });

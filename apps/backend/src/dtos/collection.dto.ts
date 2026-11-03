@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { authConfigSchema, formDataEntrySchema } from './common';
 
+/** Cap for request documentation markdown stored in collection files. */
+const MAX_DOCUMENTATION_LENGTH = 1000000;
+
 export const createCollectionSchema = z.object({
   name: z.string().min(1, 'Collection name is required').trim(),
   description: z.string().optional(),
@@ -36,6 +39,7 @@ const requestFieldsSchema = z.object({
   operationId: z.string().optional(),
   preRequestScript: z.string().optional(),
   testScript: z.string().optional(),
+  documentation: z.string().max(MAX_DOCUMENTATION_LENGTH, 'Documentation is too large').optional(),
   graphql: z
     .object({
       document: z.string(),
