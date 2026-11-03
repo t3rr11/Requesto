@@ -16,6 +16,6 @@
   "dependencies": {
     "@openobserve/browser-logs": "^0.4.3",
     "@openobserve/browser-rum": "^0.4.3",
-    "medium-zoom": "^1.1.0"
+    "medium-zoom": "^1.1.2"
   }
 }
