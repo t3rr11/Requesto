@@ -95,6 +95,44 @@ describe('runCollections', () => {
     expect(summary.passedTests).toBe(1);
   });
 
+  it('chains script values across collections into GraphQL GET and POST requests', async () => {
+    const collections: Collection[] = [
+      {
+        id: 'c1', name: 'Login', folders: [],
+        requests: [{
+          id: 'r1', name: 'Login', method: 'GET', url: 'http://example.test', collectionId: 'c1',
+          testScript: `environment.set('token', 'a"b'); environment.set('userId', 42);`,
+        }],
+      },
+      {
+        id: 'c2', name: 'GraphQL', folders: [],
+        requests: (['get', 'post'] as const).map((transport, index) => ({
+          id: `g${index}`, name: transport, method: 'POST', url: '{{baseUrl}}/graphql?existing=1',
+          collectionId: 'c2', requestType: 'graphql' as const,
+          graphql: {
+            document: 'query User($id: Int, $token: String) { user(id: $id) { name } }',
+            variables: '{"id":"{{userId}}","token":"{{token}}"}',
+            transport,
+          },
+        })),
+      },
+    ];
+    const sent: { url: string; body?: string }[] = [];
+    const summary = await runCollections({
+      collections,
+      environment: { id: 'e', name: 'env', variables: [{ key: 'baseUrl', value: 'http://example.test', enabled: true }] },
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => { sent.push(req); return okResponse; },
+    });
+
+    expect(summary.errored).toBe(0);
+    const getUrl = new URL(sent[1].url);
+    expect(getUrl.searchParams.get('existing')).toBe('1');
+    expect(JSON.parse(getUrl.searchParams.get('variables')!)).toEqual({ id: 42, token: 'a"b' });
+    expect(JSON.parse(sent[2].body!).variables).toEqual({ id: 42, token: 'a"b' });
+  });
+
   it('unquotes number-typed variables in JSON bodies (script-created variables inherit type)', async () => {
     const col: Collection = {
       id: 'c1',
