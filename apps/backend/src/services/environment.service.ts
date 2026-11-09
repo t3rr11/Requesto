@@ -16,13 +16,19 @@ export class EnvironmentService {
     if (!this.localRepo) return env;
     const overrides = this.localRepo.getForEnvironment(env.id);
     if (Object.keys(overrides).length === 0) return env;
+    const variables = env.variables.map((v) =>
+      Object.prototype.hasOwnProperty.call(overrides, v.key)
+        ? { ...v, currentValue: overrides[v.key] }
+        : v,
+    );
+    for (const [key, currentValue] of Object.entries(overrides)) {
+      if (!variables.some((v) => v.key === key)) {
+        variables.push({ key, value: '', currentValue, enabled: true });
+      }
+    }
     return {
       ...env,
-      variables: env.variables.map((v) =>
-        Object.prototype.hasOwnProperty.call(overrides, v.key)
-          ? { ...v, currentValue: overrides[v.key] }
-          : v,
-      ),
+      variables,
     };
   }
 
