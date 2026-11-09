@@ -3,6 +3,10 @@ import { EnvironmentService } from '../../services/environment.service';
 import type { EnvironmentRepository } from '../../repositories/environment.repository';
 import type { Environment, EnvironmentsData } from '../../models/environment';
 import { AppError } from '../../errors/app-error';
+import { EnvironmentLocalRepository } from '../../repositories/environment-local.repository';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 function makeEnv(overrides: Partial<Environment> = {}): Environment {
   return {
@@ -37,6 +41,32 @@ describe('EnvironmentService', () => {
       const repo = mockRepo({ getAll: vi.fn().mockReturnValue(data) });
       const service = new EnvironmentService(repo);
       expect(service.getAll()).toEqual(data);
+    });
+
+    it('reloads existing and script-created current values from the local sidecar', () => {
+      const dir = mkdtempSync(join(tmpdir(), 'requesto-env-'));
+      try {
+        const env = makeEnv({ variables: [{ key: 'existing', value: 'initial', enabled: true }] });
+        const repo = mockRepo({
+          getAll: vi.fn().mockReturnValue(makeEnvsData([env], env.id)),
+          getActive: vi.fn().mockReturnValue(env),
+          findById: vi.fn().mockReturnValue(env),
+        });
+        const service = new EnvironmentService(repo, new EnvironmentLocalRepository(() => dir));
+        service.setCurrentValues(env.id, { existing: 'updated', created: 'new' });
+
+        const expected = [
+          { key: 'existing', value: 'initial', currentValue: 'updated', enabled: true },
+          { key: 'created', value: '', currentValue: 'new', enabled: true },
+        ];
+        expect(service.getAll().environments[0].variables).toEqual(expected);
+        expect(service.getActive()?.variables).toEqual(expected);
+        expect(env.variables).toEqual([{ key: 'existing', value: 'initial', enabled: true }]);
+        service.resetCurrentValues(env.id);
+        expect(service.getAll().environments[0].variables).toEqual(env.variables);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 
