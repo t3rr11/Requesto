@@ -19,7 +19,7 @@ import type { Environment } from '../store/environments/types';
 const noopOAuthResolver = async () => ({ accessToken: '', tokenType: 'Bearer' });
 
 export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId }: CollectionRunnerDialogProps) {
-  const { environmentsData } = useEnvironmentStore();
+  const { environmentsData, updateCurrentValues } = useEnvironmentStore();
   const { sendRequest } = useRequestStore();
 
   // The dialog renders even when closed (and the store's collections can be
@@ -135,9 +135,8 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
         : { request: r, status: 'pending', response: null, testResults: [] },
     ));
 
-    // Every run operates in a scratch server-side workspace; whatever the
-    // run creates or deletes is cleaned up when the engine finishes and the
-    // previous workspace is restored — the app's own data is untouched.
+    // Keep workspace mutations isolated, but retain script-set current values
+    // to apply to the original environment after the workspace is restored.
     try {
       const isolation = createRunnerIsolation();
       await isolation.setup();
@@ -171,13 +170,26 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       }
     };
 
+    const overrides: Record<string, string> = Object.create(null);
     try {
       await runCollections({
         collections: includedCollections,
         environment: activeEnv,
         oauthResolver: noopOAuthResolver,
         send: (request, ctx) => sendRequest(request, ctx.signal),
-        scripts: browserScriptRunner,
+        scripts: {
+          runPreRequest: async (...args) => {
+            const outcome = await browserScriptRunner.runPreRequest(...args);
+            Object.assign(overrides, outcome.envOverrides);
+            return outcome;
+          },
+          runTest: async (...args) => {
+            const outcome = await browserScriptRunner.runTest(...args);
+            Object.assign(overrides, outcome.envOverrides);
+            return outcome;
+          },
+        },
+        folders: folderId ? [folderId] : undefined,
         signal: abortController.signal,
         onEvent: handleEvent,
       });
@@ -185,6 +197,13 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       if (isolationRef.current) {
         try {
           await isolationRef.current.teardown();
+          if (activeEnv && Object.keys(overrides).length > 0) {
+            try {
+              await updateCurrentValues(activeEnv.id, overrides);
+            } catch (err) {
+              throw new Error(`Could not save runner current values: ${err instanceof Error ? err.message : String(err)}`);
+            }
+          }
         } catch (err) {
           setIsolationError(err instanceof Error ? err.message : String(err));
         }
@@ -193,7 +212,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       abortControllerRef.current = null;
       setRunning(false);
     }
-  }, [collections, includedCollections, excludedCollections, requests, activeEnv, sendRequest]);
+  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, folderId]);
 
   const handleStop = () => {
     abortControllerRef.current?.abort();
