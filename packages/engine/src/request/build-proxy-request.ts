@@ -60,10 +60,15 @@ export function buildSavedGraphQLRequest(req: SavedRequest): ProxyRequest {
     if (operation.operation !== 'query') {
       throw new Error('GraphQL GET requests can only execute query operations');
     }
-    const url = new URL(req.url);
-    url.searchParams.set('query', document);
-    if (variables) url.searchParams.set('variables', JSON.stringify(variables));
-    return { method: 'GET', url: url.toString(), headers, auth: req.auth };
+    const hashIndex = req.url.indexOf('#');
+    const base = hashIndex < 0 ? req.url : req.url.slice(0, hashIndex);
+    const hash = hashIndex < 0 ? '' : req.url.slice(hashIndex);
+    const queryIndex = base.indexOf('?');
+    const path = queryIndex < 0 ? base : base.slice(0, queryIndex);
+    const params = new URLSearchParams(queryIndex < 0 ? '' : base.slice(queryIndex + 1));
+    params.set('query', document);
+    if (variables) params.set('variables', JSON.stringify(variables));
+    return { method: 'GET', url: `${path}?${params}${hash}`, headers, auth: req.auth };
   }
 
   setDefaultHeader(headers, 'Content-Type', 'application/json');

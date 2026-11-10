@@ -1,6 +1,6 @@
 {
   "name": "requesto-playwright",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "private": true,
   "description": "Playwright E2E tests for Requesto",
   "scripts": {
