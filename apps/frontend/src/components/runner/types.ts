@@ -1,11 +1,10 @@
 import type { Collection, SavedRequest } from '../../store/collections/types';
 import type { ProxyResponse } from '../../store/request/types';
 import type { TestResult } from '../../helpers/scriptRunner';
-import type { DisplayItem } from 'requesto-engine/runner';
+import type { RequestStatus as EngineRequestStatus, WarningKind } from 'requesto-engine/runner';
 
-export type { DisplayItem };
-
-export type RequestStatus = 'pending' | 'running' | 'passed' | 'failed' | 'error' | 'skipped';
+export type { DisplayItem } from 'requesto-engine/runner';
+export type RequestStatus = EngineRequestStatus | 'pending' | 'running';
 export type ExpandedTab = 'tests' | 'response';
 
 export type RequestRunResult = {
@@ -14,6 +13,8 @@ export type RequestRunResult = {
   response: ProxyResponse | null;
   testResults: TestResult[];
   error?: string;
+  warning?: string;
+  warningKind?: WarningKind;
   /** ms */
   duration?: number;
 };

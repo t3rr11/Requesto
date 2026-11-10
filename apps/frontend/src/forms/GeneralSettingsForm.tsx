@@ -17,6 +17,8 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
   const setSaveRequestOnSend = useSettingsStore(s => s.setSaveRequestOnSend);
   const disableEventThemes = useSettingsStore(s => s.disableEventThemes);
   const setDisableEventThemes = useSettingsStore(s => s.setDisableEventThemes);
+  const warnOnHttpErrors = useSettingsStore(s => s.warnOnHttpErrors);
+  const setWarnOnHttpErrors = useSettingsStore(s => s.setWarnOnHttpErrors);
 
   const {
     register,
@@ -29,6 +31,7 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
       insecureTls,
       saveRequestOnSend,
       disableEventThemes,
+      warnOnHttpErrors,
     },
   });
 
@@ -38,6 +41,7 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
     setInsecureTls(data.insecureTls);
     setSaveRequestOnSend(data.saveRequestOnSend);
     setDisableEventThemes(data.disableEventThemes);
+    setWarnOnHttpErrors(data.warnOnHttpErrors);
     onSuccess();
   };
 
@@ -86,6 +90,26 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
             <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Automatically save a request to its collection when you send it, if it has unsaved changes.
               Only applies to requests that are already saved to a collection.
+            </span>
+          </span>
+        </label>
+
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-8">Collection Runner</h3>
+
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            {...register('warnOnHttpErrors')}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="flex-1">
+            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              Warn on HTTP errors
+            </span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Show an amber warning in the collection runner when a request with no failing
+              tests returns an HTTP 4xx/5xx status or a GraphQL errors envelope. Warnings
+              never fail a run.
             </span>
           </span>
         </label>

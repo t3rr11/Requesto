@@ -34,6 +34,7 @@ function statusIcon(result: RunRequestResult, paint: Painter): string {
   switch (result.status) {
     case 'passed': return paint.green('✓');
     case 'failed': return paint.red('✗');
+    case 'warned': return paint.yellow('⚠');
     case 'error': return paint.yellow('✗');
     case 'skipped': return paint.dim('○');
   }
@@ -43,6 +44,7 @@ function dotChar(result: RunRequestResult, paint: Painter): string {
   switch (result.status) {
     case 'passed': return paint.green('·');
     case 'failed': return paint.red('×');
+    case 'warned': return paint.yellow('!');
     case 'error': return paint.yellow('×');
     case 'skipped': return paint.dim('-');
   }
@@ -88,9 +90,10 @@ export type ConsoleReporter = {
 
 /**
  * Vitest-style streaming reporter. Each request prints when it completes
- * with its icon and duration; failing tests print inline; a failures-only
- * summary and run totals close the output. Colours are disabled when not
- * attached to a TTY or when NO_COLOR is set.
+ * with its icon and duration; failing tests print inline; warned requests
+ * show an amber ⚠ row plus the warning text; a failures-only summary and
+ * run totals close the output. Colours are disabled when not attached to a
+ * TTY or when NO_COLOR is set.
  */
 export function createConsoleReporter(mode: ReporterMode, stream: Stream = process.stdout): ConsoleReporter {
   const paint = createPainter(stream);
@@ -104,6 +107,9 @@ export function createConsoleReporter(mode: ReporterMode, stream: Stream = proce
 
   const writeRequestLine = (result: RunRequestResult): void => {
     stream.write(` ${statusIcon(result, paint)} ${result.request.name}${paint.dim(durationTail(result))}\n`);
+    if (result.status === 'warned' && result.warning) {
+      stream.write(paint.yellow(`    ⚠ ${result.warning}\n`));
+    }
   };
 
   const failureEntries = (summary: RunSummary): { label: string; lines: string[] }[] =>
@@ -131,10 +137,13 @@ export function createConsoleReporter(mode: ReporterMode, stream: Stream = proce
   };
 
   const writeSummary = (summary: RunSummary, meta: ReporterMeta): void => {
-    const failed = summary.failed + summary.errored;
+    // failed and errored are counted separately (mirrors the app's toolbar);
+    // warnings are a distinct, non-failing tier.
     const counts = [
       summary.passed > 0 ? paint.green(`${summary.passed} passed`) : null,
-      failed > 0 ? paint.red(`${failed} failed`) : null,
+      summary.failed > 0 ? paint.red(`${summary.failed} failed`) : null,
+      summary.errored > 0 ? paint.yellow(`${summary.errored} errored`) : null,
+      summary.warned > 0 ? paint.yellow(`${summary.warned} warnings`) : null,
       summary.skipped > 0 ? paint.dim(`${summary.skipped} skipped`) : null,
     ].filter(Boolean);
 

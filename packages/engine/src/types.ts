@@ -8,7 +8,8 @@ export type { ProxyRequest, ProxyResponse } from 'requesto-backend/models/proxy'
 export type { OAuthTokenResolver } from 'requesto-backend/utils/auth';
 export type { TestResult } from './scripts/sandbox-core.ts';
 
-export type RequestStatus = 'passed' | 'failed' | 'error' | 'skipped';
+export type RequestStatus = 'passed' | 'failed' | 'error' | 'skipped' | 'warned';
+export type WarningKind = 'http-status' | 'graphql-errors';
 
 export type RunRequestResult = {
   collectionId: string;
@@ -17,8 +18,9 @@ export type RunRequestResult = {
   status: RequestStatus;
   response: ProxyResponse | null;
   testResults: TestResult[];
-  /** Set when status is 'error'. */
   error?: string;
+  warning?: string;
+  warningKind?: WarningKind;
   /** Total request duration in ms (as reported by the engine). */
   duration?: number;
 };
@@ -30,6 +32,7 @@ export type RunSummary = {
   passed: number;
   failed: number;
   errored: number;
+  warned: number;
   skipped: number;
   totalTests: number;
   passedTests: number;

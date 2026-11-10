@@ -1,0 +1,80 @@
+{
+  "id": "col-warnings",
+  "name": "Warnings",
+  "description": "Fixture collection used by the CLI warnings/abort test suite. Every request has no test assertions (the warn tier applies to zero-test runs).",
+  "requests": [
+    {
+      "id": "req-warn-ok",
+      "name": "Clean",
+      "method": "GET",
+      "url": "{{baseUrl}}/ok",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-warnings",
+      "order": 0
+    },
+    {
+      "id": "req-warn-500",
+      "name": "Server Error",
+      "method": "GET",
+      "url": "{{baseUrl}}/warn/500",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-warnings",
+      "order": 1
+    },
+    {
+      "id": "req-warn-graphql",
+      "name": "GraphQL Errors",
+      "method": "POST",
+      "url": "{{baseUrl}}/warn/graphql",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-warnings",
+      "order": 2
+    },
+    {
+      "id": "req-warn-asserted",
+      "name": "Asserted Server Error",
+      "method": "GET",
+      "url": "{{baseUrl}}/warn/500",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-warnings",
+      "order": 3,
+      "testScript": "test('server responded with 500', () => {\n  expect(response.status).toBe(500);\n});"
+    },
+    {
+      "id": "req-warn-hang",
+      "name": "Hangs",
+      "method": "GET",
+      "url": "{{baseUrl}}/hang",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-warnings",
+      "order": 4
+    },
+    {
+      "id": "req-warn-404",
+      "name": "Not Found",
+      "method": "GET",
+      "url": "{{baseUrl}}/warn/404",
+      "headers": {},
+      "bodyType": "json",
+      "body": "",
+      "auth": { "type": "none" },
+      "collectionId": "col-warnings",
+      "order": 5
+    }
+  ]
+}

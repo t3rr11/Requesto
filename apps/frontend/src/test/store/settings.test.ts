@@ -3,7 +3,7 @@ import { useSettingsStore } from '../../store/settings/store';
 
 describe('settings store', () => {
   beforeEach(() => {
-    useSettingsStore.setState({ insecureTls: false });
+    useSettingsStore.setState({ insecureTls: false, warnOnHttpErrors: true });
   });
 
   it('defaults insecureTls to false', () => {
@@ -39,5 +39,17 @@ describe('settings store', () => {
     const raw = localStorage.getItem('requesto-settings-storage');
     const parsed = JSON.parse(raw!);
     expect(parsed.state.disableEventThemes).toBe(true);
+  });
+
+  it('defaults warnOnHttpErrors to true (opt-out)', () => {
+    expect(useSettingsStore.getState().warnOnHttpErrors).toBe(true);
+  });
+
+  it('persists warnOnHttpErrors via setter', () => {
+    useSettingsStore.getState().setWarnOnHttpErrors(false);
+    expect(useSettingsStore.getState().warnOnHttpErrors).toBe(false);
+    const raw = localStorage.getItem('requesto-settings-storage');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.warnOnHttpErrors).toBe(false);
   });
 });

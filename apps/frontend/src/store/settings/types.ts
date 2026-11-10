@@ -19,4 +19,11 @@ export type Settings = {
    * uses the standard look regardless of the date. Off by default — opt-out.
    */
   disableEventThemes: boolean;
+
+  /**
+   * When true, the collection runner shows an amber warning for responses that
+   * a zero-test run would otherwise report as a plain pass: HTTP 4xx/5xx
+   * statuses and GraphQL `errors` envelopes. On by default, opt-out.
+   */
+  warnOnHttpErrors: boolean;
 };

@@ -1,0 +1,5 @@
+{
+  "collections": ["col-warnings"],
+  "environments": ["env-warnings"],
+  "oauthConfigs": []
+}

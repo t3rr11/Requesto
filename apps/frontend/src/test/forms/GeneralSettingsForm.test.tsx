@@ -51,4 +51,28 @@ describe('GeneralSettingsForm', () => {
     expect(screen.getByRole('checkbox', { name: /ignore ssl certificate errors/i })).toBeChecked();
     expect(screen.getByText(/disabling certificate verification/i)).toBeInTheDocument();
   });
+
+  it('renders the warn-on-HTTP-errors checkbox checked by default', () => {
+    useSettingsStore.setState({ warnOnHttpErrors: true });
+    render(<GeneralSettingsForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+    expect(screen.getByRole('checkbox', { name: /warn on http errors/i })).toBeChecked();
+  });
+
+  it('initialises the warn-on-HTTP-errors checkbox from the store when opted out', () => {
+    useSettingsStore.setState({ warnOnHttpErrors: false });
+    render(<GeneralSettingsForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+    expect(screen.getByRole('checkbox', { name: /warn on http errors/i })).not.toBeChecked();
+  });
+
+  it('persists the warn-on-HTTP-errors opt-out on submit', async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ warnOnHttpErrors: true });
+    render(<GeneralSettingsForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+    await user.click(screen.getByRole('checkbox', { name: /warn on http errors/i }));
+    await user.click(screen.getByText('Save Settings'));
+    await vi.waitFor(() => {
+      expect(useSettingsStore.getState().warnOnHttpErrors).toBe(false);
+      expect(mockOnSuccess).toHaveBeenCalledOnce();
+    });
+  });
 });

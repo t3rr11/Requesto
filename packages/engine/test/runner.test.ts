@@ -29,6 +29,19 @@ const okResponse: ProxyResponse = {
   duration: 5,
 };
 
+function responseOf(status: number, statusText: string, body: string): ProxyResponse {
+  return { status, statusText, headers: {}, body, bodyEncoding: 'utf8', duration: 5 };
+}
+
+function singleRequest(name: string, extra: Partial<Collection['requests'][number]> = {}): Collection {
+  return {
+    id: 'c1',
+    name: 'API',
+    folders: [],
+    requests: [{ id: 'r1', name, method: 'GET', url: `/`, collectionId: 'c1', ...extra }],
+  };
+}
+
 describe('buildCollectionItems', () => {
   it('orders folders before root requests, depth tracked, nested folders included', () => {
     const items = buildCollectionItems(collection());
@@ -465,5 +478,168 @@ describe('runCollections', () => {
       insecure: true,
     });
     expect(seen).toEqual([true]);
+  });
+});
+
+describe('runCollections warnings', () => {
+  const baseOpts = {
+    environment: null as null,
+    oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+    scripts: nodeScriptRunner,
+  };
+
+  it('warns on 500 with no tests, and on 404', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [],
+      requests: [
+        { id: 'r1', name: 'Boom', method: 'GET', url: '/boom', collectionId: 'c1' },
+        { id: 'r2', name: 'Missing', method: 'GET', url: '/missing', collectionId: 'c1' },
+      ],
+    };
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [col],
+      send: async (req) => (req.url === '/boom'
+        ? responseOf(500, 'Internal Server Error', 'oops')
+        : responseOf(404, 'Not Found', 'nope')),
+    });
+    expect(summary.results.map((r) => r.status)).toEqual(['warned', 'warned']);
+    expect(summary.results[0]).toMatchObject({
+      warning: 'HTTP 500 Internal Server Error',
+      warningKind: 'http-status',
+    });
+    expect(summary.warned).toBe(2);
+    expect(summary.passed).toBe(0);
+    expect(summary.failed).toBe(0);
+  });
+
+  it('500 with at least one passing test stays passed', async () => {
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [
+        singleRequest('Asserted', {
+          testScript: `test('500 expected', () => { expect(response.status).toBe(500); });`,
+        }),
+      ],
+      send: async () => responseOf(500, 'Internal Server Error', 'oops'),
+    });
+    expect(summary.results[0].status).toBe('passed');
+    expect(summary.warned).toBe(0);
+  });
+
+  it('500 with a failing test is failed (warn suppressed)', async () => {
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [
+        singleRequest('Bad', {
+          testScript: `test('200 expected', () => { expect(response.status).toBe(200); });`,
+        }),
+      ],
+      send: async () => responseOf(500, 'Internal Server Error', 'oops'),
+    });
+    expect(summary.results[0].status).toBe('failed');
+    expect(summary.results[0].warning).toBeUndefined();
+  });
+
+  it('warns on HTTP 200 GraphQL errors envelope (POST body transport)', async () => {
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [
+        singleRequest('Graphql', { requestType: 'graphql', graphql: { document: '{ user }', variables: '{}', transport: 'post' } }),
+      ],
+      send: async () =>
+        responseOf(200, 'OK', JSON.stringify({ errors: [{ message: 'Field "user" not found' }], data: null })),
+    });
+    expect(summary.results[0]).toMatchObject({
+      status: 'warned',
+      warning: 'Field "user" not found',
+      warningKind: 'graphql-errors',
+    });
+  });
+
+  it('warns on HTTP 200 GraphQL errors envelope (GET transport)', async () => {
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [
+        singleRequest('Graphql', { requestType: 'graphql', graphql: { document: '{ user }', variables: '{}', transport: 'get' } }),
+      ],
+      send: async () =>
+        responseOf(200, 'OK', JSON.stringify({ errors: [{ message: 'Unauthorized' }], data: null })),
+    });
+    expect(summary.results[0]).toMatchObject({ status: 'warned', warningKind: 'graphql-errors' });
+  });
+
+  it('warns on a plain (non-GraphQL) 200 response with an errors envelope', async () => {
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [singleRequest('Envelope')],
+      send: async () =>
+        responseOf(200, 'OK', JSON.stringify({ errors: [{ message: 'Partial failure' }], data: { item: 1 } })),
+    });
+    expect(summary.results[0]).toMatchObject({ status: 'warned', warning: 'Partial failure' });
+  });
+
+  it('HTTP 200 with a clean GraphQL payload stays passed', async () => {
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [
+        singleRequest('Graphql', { requestType: 'graphql', graphql: { document: '{ user { name } }', variables: '{}', transport: 'post' } }),
+      ],
+      send: async () => responseOf(200, 'OK', JSON.stringify({ data: { user: { name: 'Ada' } } })),
+    });
+    expect(summary.results[0].status).toBe('passed');
+    expect(summary.warned).toBe(0);
+  });
+
+  it('warnings:httpErrorStatuses=false keeps old passing semantics', async () => {
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [
+        singleRequest('Boom'),
+        singleRequest('Graphql', { requestType: 'graphql', graphql: { document: '{ user }', variables: '{}', transport: 'post' } }),
+      ],
+      send: async () =>
+        responseOf(200, 'OK', JSON.stringify({ errors: [{ message: 'Field "user" not found' }], data: null })),
+      warnings: { httpErrorStatuses: false },
+    });
+    expect(summary.results.map((r) => r.status)).toEqual(['passed', 'passed']);
+    expect(summary.warned).toBe(0);
+  });
+
+  it('warned entries count in the summary but do not trigger bail', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [],
+      requests: [
+        { id: 'r1', name: 'Boom', method: 'GET', url: '/boom', collectionId: 'c1' },
+        { id: 'r2', name: 'Ok', method: 'GET', url: '/ok', collectionId: 'c1' },
+        { id: 'r3', name: 'Also Boom', method: 'GET', url: '/boom', collectionId: 'c1' },
+      ],
+    };
+    const summary = await runCollections({
+      ...baseOpts,
+      collections: [col],
+      bail: true,
+      send: async (req) => (req.url === '/boom' ? responseOf(500, 'Internal Server Error', 'oops') : okResponse),
+    });
+    expect(summary.warned).toBe(2);
+    expect(summary.bailTriggered).toBe(false);
+    expect(summary.results.map((r) => r.status)).toEqual(['warned', 'passed', 'warned']);
+  });
+
+  it('emits warned statuses through request-end events', async () => {
+    const events: string[] = [];
+    await runCollections({
+      ...baseOpts,
+      collections: [singleRequest('Boom')],
+      send: async () => responseOf(500, 'Internal Server Error', 'oops'),
+      onEvent: (event) => {
+        if (event.type === 'request-end') events.push(`${event.result.request.name}:${event.result.status}`);
+      },
+    });
+    expect(events).toEqual(['Boom:warned']);
   });
 });

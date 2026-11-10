@@ -28,6 +28,12 @@ export interface ExecuteRequestOptions {
   oauthResolver?: OAuthTokenResolver;
   /** Request timeout in ms (default 30000). */
   timeout?: number;
+  /**
+   * Abort signal for the HTTP request: firing it cancels the in-flight axios
+   * request and `executeRequest` rejects. Used by the collection runner so an
+   * interrupted run doesn't hang until the timeout elapses.
+   */
+  signal?: AbortSignal;
   /** Set `false` to skip writing to request history (default true). */
   saveHistory?: boolean;
 }
@@ -200,6 +206,7 @@ export class ProxyService {
       validateStatus: () => true,
       timeout: opts.timeout ?? 30000,
       responseType: 'arraybuffer',
+      ...(opts.signal && { signal: opts.signal }),
       ...(httpsAgent && { httpsAgent }),
     };
 

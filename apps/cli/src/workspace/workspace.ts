@@ -89,10 +89,14 @@ export class CliWorkspace {
     );
   }
 
-  /** Send a request through the backend engine with the given per-run options. */
+  /**
+   * Send a request through the backend engine with the given per-run options.
+   * The runner-provided abort signal is forwarded so an interrupted run can
+   * cancel the in-flight HTTP request instead of waiting for its timeout.
+   */
   sendRequest(
     request: ProxyRequest,
-    opts: { oauthResolver: OAuthTokenResolver; timeout?: number },
+    opts: { oauthResolver: OAuthTokenResolver; timeout?: number; signal?: AbortSignal },
   ): ReturnType<ProxyService['executeRequest']> {
     return this.proxyService.executeRequest(request, {
       // The CLI substitutes variables itself against the live environment,
@@ -100,6 +104,7 @@ export class CliWorkspace {
       environment: null,
       oauthResolver: opts.oauthResolver,
       timeout: opts.timeout,
+      signal: opts.signal,
       saveHistory: false,
     });
   }

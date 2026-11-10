@@ -2,6 +2,7 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CollectionRunnerDialog } from '../../../components/CollectionRunnerDialog';
+import { useSettingsStore } from '../../../store/settings/store';
 import type { Collection } from '../../../store/collections/types';
 
 const mocks = vi.hoisted(() => ({
@@ -60,9 +61,12 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     mocks.setup.mockResolvedValue(undefined);
     mocks.teardown.mockResolvedValue(undefined);
     mocks.updateCurrentValues.mockResolvedValue(undefined);
-    mocks.sendRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '{}', duration: 1 });
+    mocks.sendRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '{}', bodyEncoding: 'utf8', duration: 1 });
     mocks.runPreRequest.mockResolvedValue({ envOverrides: { token: 'pre' } });
     mocks.runTest.mockResolvedValue({ testResults: [], envOverrides: { token: 'final', newKey: 'value' } });
+
+    // The dialog reads this from the real settings store; reset to the default.
+    useSettingsStore.setState({ warnOnHttpErrors: true });
   });
 
   it('renders every request under its collection and folder headers', () => {
@@ -170,5 +174,96 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
     await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
     expect(mocks.sendRequest).toHaveBeenCalledTimes(1);
+  });
+
+  describe('warnings and network errors', () => {
+    function makeSingleRequestCollections(): Collection[] {
+      return [
+        {
+          id: 'col-1',
+          name: 'Only',
+          folders: [],
+          requests: [{ id: 'r-1', name: 'Solo Request', method: 'GET', url: '/', collectionId: 'col-1' }],
+        },
+      ];
+    }
+
+    // Regression: HTTP 500 with no tests used to count as a green "passed".
+    it('marks a 5xx response with no tests as warned and keeps it out of the passed count', async () => {
+      mocks.sendRequest.mockResolvedValue({ status: 500, statusText: 'Internal Server Error', headers: {}, body: '{}', bodyEncoding: 'utf8', duration: 1 });
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeSingleRequestCollections()} />);
+      await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+      await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
+
+      expect(screen.getByText('0 passed')).toBeInTheDocument();
+      expect(screen.queryByText('1 failed')).not.toBeInTheDocument();
+      expect(await screen.findByText('HTTP 500 Internal Server Error')).toBeInTheDocument(); // warn banner, row auto-expanded
+      expect(screen.getByText('1 warnings')).toBeInTheDocument();
+    });
+
+    it('keeps a 5xx response passed when at least one test passes', async () => {
+      mocks.sendRequest.mockResolvedValue({ status: 500, statusText: 'Internal Server Error', headers: {}, body: '{}', bodyEncoding: 'utf8', duration: 1 });
+      mocks.runTest.mockResolvedValue({ testResults: [{ name: 'returns 500', passed: true }], envOverrides: {} });
+      const collections = makeSingleRequestCollections();
+      collections[0].requests[0].testScript = 'assert status is 500';
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+      await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+      await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
+
+      expect(screen.getByText('1 passed')).toBeInTheDocument();
+      expect(screen.queryByText('1 warnings')).not.toBeInTheDocument();
+      expect(screen.queryByText('HTTP 500 Internal Server Error')).not.toBeInTheDocument();
+    });
+
+    it('suppresses warnings when the warn-on-HTTP-errors setting is disabled', async () => {
+      useSettingsStore.setState({ warnOnHttpErrors: false });
+      mocks.sendRequest.mockResolvedValue({ status: 500, statusText: 'Internal Server Error', headers: {}, body: '{}', bodyEncoding: 'utf8', duration: 1 });
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeSingleRequestCollections()} />);
+      await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+      await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
+
+      expect(screen.getByText('1 passed')).toBeInTheDocument();
+      expect(screen.queryByText('1 warnings')).not.toBeInTheDocument();
+      expect(screen.queryByText('HTTP 500 Internal Server Error')).not.toBeInTheDocument();
+    });
+
+    it('marks a GraphQL 200 response with an errors envelope as warned', async () => {
+      mocks.sendRequest.mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        body: JSON.stringify({ data: null, errors: [{ message: 'Not authorised' }, { message: 'Not authorised' }] }),
+        bodyEncoding: 'utf8',
+        duration: 1,
+      });
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeSingleRequestCollections()} />);
+      await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+      await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
+
+      expect(screen.getByText('0 passed')).toBeInTheDocument();
+      expect(await screen.findByText('GraphQL errors: 2 — Not authorised')).toBeInTheDocument();
+      expect(screen.getByText('1 warnings')).toBeInTheDocument();
+    });
+
+    // Regression: the proxy controller wraps axios network failures in a
+    // synthetic HTTP-200 response (status 0); the runner used to count it as
+    // passed while the CLI reports error.
+    it('marks a synthetic network-error response as error instead of passed', async () => {
+      mocks.sendRequest.mockResolvedValue({
+        status: 0,
+        statusText: 'Network Error',
+        headers: {},
+        body: JSON.stringify({ error: 'getaddrinfo ENOTFOUND example.test', code: 'ENOTFOUND' }),
+        duration: 0,
+      });
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeSingleRequestCollections()} />);
+      await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+      await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
+
+      expect(screen.getByText('0 passed')).toBeInTheDocument();
+      expect(await screen.findByText('getaddrinfo ENOTFOUND example.test')).toBeInTheDocument(); // error banner, row auto-expanded
+      expect(screen.getByText('1 errors')).toBeInTheDocument();
+      expect(screen.queryByText('1 warnings')).not.toBeInTheDocument();
+    });
   });
 });

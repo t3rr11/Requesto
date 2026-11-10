@@ -953,8 +953,8 @@ test.describe('Collection Runner', () => {
     // Click Run Collection to execute the requests
     await appPage.getByRole('button', { name: 'Run Collection' }).click();
 
-    // Wait for the run to complete — status badge changes from running to passed/failed/error
-    await expect(appPage.locator('text=/passed|failed|error/i').first()).toBeVisible({ timeout: 20_000 });
+    // Wait for the run to complete - status badge changes from running to passed/warned/failed/error
+    await expect(appPage.locator('text=/passed|warnings|failed|error/i').first()).toBeVisible({ timeout: 20_000 });
     await appPage.waitForTimeout(600);
 
     await takeDocScreenshot('collection-runner', 'results');

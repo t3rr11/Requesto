@@ -7,6 +7,7 @@ import { createConsoleReporter } from './reporters/console.ts';
 import { CliError } from './cli-error.ts';
 import { CLI_VERSION } from './version.ts';
 import { computeExitCode, runCommand, BUILTIN_SERVER_VAR } from './commands/run.ts';
+import type { RunOptions } from './commands/run.ts';
 import type { ReporterMode, ReporterSpec, RunResult } from './types.ts';
 import type { RunnerEvent } from 'requesto-engine';
 
@@ -38,6 +39,35 @@ function writeFileReports(specs: ReporterSpec[], result: RunResult): void {
 }
 
 /**
+ * Map commander's parsed `run` command options onto `RunOptions`.
+ *
+ * Note: `warnHttpErrors` is the commander mirror of the `--no-warn-http-errors`
+ * negation flag: commander defaults it to `true` and flips it to `false` when
+ * the flag is given. It must therefore be declared without an explicit
+ * defaultValue (a third `false` argument would pin it to `false` permanently).
+ */
+export function collectRunOptions(pathArg: string, opts: Record<string, unknown>): RunOptions {
+  return {
+    path: pathArg,
+    collections: opts.collection as string[],
+    excludeCollections: opts.excludeCollection as string[],
+    folders: opts.folder as string[],
+    environment: opts.environment as string | undefined,
+    vars: opts.var as string[],
+    varFile: opts.varFile as string | undefined,
+    tokens: opts.token as string[],
+    oauthSecrets: opts.oauthSecret as string[],
+    refreshTokens: opts.refreshToken as string[],
+    bail: opts.bail as boolean,
+    insecure: opts.insecure as boolean,
+    timeout: opts.timeout as number | undefined,
+    persist: opts.persist as boolean,
+    server: opts.server as string | undefined,
+    noWarnHttpErrors: (opts.warnHttpErrors as boolean | undefined) === false,
+  };
+}
+
+/**
  * Route usage errors (unknown flags, bad values, help/version) through the
  * catch block in bin.ts so exit codes stay consistent: 0 pass, 1 failures,
  * 2 configuration error.
@@ -61,7 +91,10 @@ export async function runCli(argv: readonly string[]): Promise<number> {
         'The run never touches your workspace or any server data: collections targeting the\n' +
         `{{${BUILTIN_SERVER_VAR}}} variable run against an ephemeral scratch server that the CLI\n` +
         'boots and tears down itself. Use --server to test a deployed server instead.\n\n' +
-        'Exit codes: 0 = all passed, 1 = failures/errors, 2 = configuration error.',
+        'Exit codes: 0 = all passed, 1 = failures/errors, 2 = configuration error.\n\n' +
+        '4xx/5xx responses with no test assertions land as warnings: they print as ⚠ and\n' +
+        'never affect the exit code unless --fail-on-warn is given. Ctrl-C cancels the\n' +
+        'in-flight request and skips the rest; press again to exit immediately.',
     )
     .argument('[path]', 'repository or .requesto directory', process.cwd())
     .option('-c, --collection <name>', 'collection to run (name or id, repeatable; default: all)', collect, [])
@@ -82,28 +115,17 @@ export async function runCli(argv: readonly string[]): Promise<number> {
     })
     .option('--persist', 'persist OAuth tokens acquired during the run to .requesto/local/ (default: memory only)', false)
     .option('--server <url>', 'test a deployed Requesto server instead of the embedded scratch server (its active workspace is protected by a scratch workspace)')
+    .option('--no-warn-http-errors', 'disable warn-tier results for 4xx/5xx responses with no test assertions (default: warns are on)')
+    .option('--fail-on-warn', 'exit 1 when any request is warned (default: warns never affect the exit code)', false)
     .option('--reporter <spec>', 'reporter: console, verbose, dot, junit:<path> or json:<path> (repeatable; default: console)', collect, [])
     .action(async (pathArg: string, opts: Record<string, unknown>) => {
       const specs = (opts.reporter as string[]).map(parseReporterSpec);
       const consoleMode = findConsoleMode(specs);
       const consoleReporter = createConsoleReporter(consoleMode);
 
+      const runOptions = collectRunOptions(pathArg, opts);
       const result = await runCommand({
-        path: pathArg,
-        collections: opts.collection as string[],
-        excludeCollections: opts.excludeCollection as string[],
-        folders: opts.folder as string[],
-        environment: opts.environment as string | undefined,
-        vars: opts.var as string[],
-        varFile: opts.varFile as string | undefined,
-        tokens: opts.token as string[],
-        oauthSecrets: opts.oauthSecret as string[],
-        refreshTokens: opts.refreshToken as string[],
-        bail: opts.bail as boolean,
-        insecure: opts.insecure as boolean,
-        timeout: opts.timeout as number | undefined,
-        persist: opts.persist as boolean,
-        server: opts.server as string | undefined,
+        ...runOptions,
         onEvent: (event: RunnerEvent) => consoleReporter.onEvent(event),
       });
 
@@ -114,7 +136,7 @@ export async function runCli(argv: readonly string[]): Promise<number> {
       });
       writeFileReports(specs, result);
 
-      exitCode = computeExitCode(result.summary);
+      exitCode = computeExitCode(result.summary, { failOnWarn: opts.failOnWarn as boolean });
     });
 
   await program.parseAsync(argv, { from: 'user' });

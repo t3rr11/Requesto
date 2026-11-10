@@ -12,6 +12,7 @@ export type {
   RunRequestResult,
   RunSummary,
   RunnerEvent,
+  WarningKind,
 } from './types.ts';
 export { runCollections, type RunnerOptions, type SendFn } from './runner/run.ts';
 export {
@@ -20,7 +21,12 @@ export {
   resolveFolderIds,
   type DisplayItem,
 } from './runner/display.ts';
-export { buildProxyRequest, buildSavedGraphQLRequest } from './request/build-proxy-request.ts';
+export { buildProxyRequest, buildSavedGraphQLRequest, encodeGraphQLGetUrl } from './request/build-proxy-request.ts';
+export {
+  getGraphQLResponseInfo,
+  type GraphQLResponseError,
+  type GraphQLResponseInfo,
+} from './request/graphql-envelope.ts';
 export {
   executePreRequestScript,
   executeTestScript,

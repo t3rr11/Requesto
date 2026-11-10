@@ -14,6 +14,7 @@ function summary(results: RunSummary['results']): RunSummary {
     passed: results.filter((r) => r.status === 'passed').length,
     failed: results.filter((r) => r.status === 'failed').length,
     errored: results.filter((r) => r.status === 'error').length,
+    warned: results.filter((r) => r.status === 'warned').length,
     skipped: results.filter((r) => r.status === 'skipped').length,
     totalTests: results.reduce((a, r) => a + r.testResults.length, 0),
     passedTests: results.reduce((a, r) => a + r.testResults.filter((t) => t.passed).length, 0),
@@ -57,7 +58,7 @@ describe('buildJsonReport', () => {
       },
     ])));
 
-    expect(report.summary.requests).toEqual({ executed: 2, passed: 1, failed: 0, errored: 1, skipped: 1 });
+    expect(report.summary.requests).toEqual({ executed: 2, passed: 1, failed: 0, errored: 1, warned: 0, skipped: 1 });
     expect(report.summary.tests).toEqual({ total: 2, passed: 2 });
     expect(report.summary.environment).toBe('staging');
     expect(report.summary.durationMs).toBe(912);
@@ -98,6 +99,41 @@ describe('buildJsonReport', () => {
 
     expect(report.results[0].tests[0]).toEqual({ name: 'nope', passed: false, error: 'Expected 1 to be 2' });
     expect(report.summary.tests).toEqual({ total: 1, passed: 0 });
+  });
+
+  it('emits warned statuses with their warning fields (additive)', () => {
+    const report = JSON.parse(buildJsonReport(summary([
+      {
+        collectionId: 'c1',
+        collectionName: 'API',
+        request: request('Server Error'),
+        status: 'warned',
+        response: { status: 500, statusText: 'Internal Server Error', headers: {}, body: '', bodyEncoding: 'utf8', duration: 4 },
+        testResults: [],
+        warning: 'HTTP 500 Internal Server Error',
+        warningKind: 'http-status',
+        duration: 4,
+      },
+    ])));
+    const report2 = JSON.parse(buildJsonReport(summary([
+      {
+        collectionId: 'c1',
+        collectionName: 'API',
+        request: request('Clean'),
+        status: 'passed',
+        response: null,
+        testResults: [],
+      },
+    ])));
+
+    expect(report.summary.requests).toMatchObject({ warned: 1 });
+    expect(report.results[0]).toMatchObject({
+      status: 'warned',
+      httpStatus: 500,
+      warning: 'HTTP 500 Internal Server Error',
+      warningKind: 'http-status',
+    });
+    expect(report2.results[0]).toMatchObject({ status: 'passed', warning: null, warningKind: null });
   });
 
   it('handles an empty run', () => {
