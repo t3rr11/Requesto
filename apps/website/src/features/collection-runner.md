@@ -33,7 +33,7 @@ Every run executes inside a temporary server-side workspace:
 2. The whole run happens inside it.
 3. Afterwards, even if the run fails or is stopped, your previous workspace is restored and the scratch workspace is deleted.
 
-Collections, environments and workspaces created or deleted by a run disappear with the scratch workspace. Script-set environment current values chain through the run and are saved to the original active environment after restoration, including when a run is stopped or a request fails. Current values are local and are not committed to git. If there is no active environment, script-set values are not persisted.
+Collections, environments and workspaces created or deleted by a run disappear with the scratch workspace. Script-set environment current values chain through the run and are saved to the original active environment after restoration, including when a run is stopped or a request fails. Current values are local and are not committed to git. If there is no active environment, script-set values are not persisted. Note that variable types (number/boolean) set by scripts are only applied while the run is in progress; after a restart, script-created variables resolve as strings.
 
 The CLI supports the same behaviour with `--isolated <serverUrl>` (see [CLI Reference](/cli/reference#isolated-runs-isolated)); in pipelines you opt in there because the CLI can also target APIs that aren't Requesto servers.
 

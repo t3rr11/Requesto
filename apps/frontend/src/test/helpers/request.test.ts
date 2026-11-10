@@ -67,6 +67,24 @@ describe('GraphQL request helpers', () => {
     expect(url.searchParams.get('query')).toContain('query GetUser');
   });
 
+  it('supports environment placeholders in GET URLs without throwing', () => {
+    const request = buildRequestFromFormData(
+      createFormData({ url: '{{baseUrl}}/graphql?existing=1#frag', graphqlTransport: 'get' }),
+    );
+
+    expect(request.method).toBe('GET');
+    expect(request.body).toBeUndefined();
+    // Placeholders survive assembly for later substitution, existing query
+    // params and fragments are preserved, and the document is URL-encoded.
+    expect(request.url).toMatch(/^\{\{baseUrl\}\}\/graphql\?/);
+    expect(request.url).toContain('existing=1');
+    expect(request.url).toContain('=query+GetUser');
+    expect(request.url.endsWith('#frag')).toBe(true);
+    expect(
+      new URL(request.url.replace('{{baseUrl}}', 'https://api.example.com')).searchParams.get('variables'),
+    ).toBe('{"id":"123"}');
+  });
+
   it('rejects mutations sent using GET', () => {
     expect(() =>
       buildRequestFromFormData(
@@ -235,6 +253,20 @@ describe('buildSavedGraphQLRequest', () => {
     expect(request.method).toBe('GET');
     expect(request.body).toBeUndefined();
     expect(new URL(request.url).searchParams.get('query')).toContain('query Users');
+  });
+
+  it('supports environment placeholders in GET URLs without throwing', () => {
+    const request = buildSavedGraphQLRequest(createSavedRequest({
+      method: 'GET',
+      url: '{{baseUrl}}/graphql',
+      graphql: { document: 'query Users { users { id } }', variables: '', transport: 'get' },
+    }));
+
+    expect(request.method).toBe('GET');
+    expect(request.url).toMatch(/^\{\{baseUrl\}\}\/graphql\?/);
+    expect(new URL(request.url.replace('{{baseUrl}}', 'https://api.example.com')).searchParams.get('query')).toBe(
+      'query Users { users { id } }',
+    );
   });
 
   it('rejects mutations sent using GET', () => {

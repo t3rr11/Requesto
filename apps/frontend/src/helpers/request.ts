@@ -120,6 +120,24 @@ function setDefaultHeader(headers: Record<string, string>, name: string, value: 
   }
 }
 
+/**
+ * Encode a GraphQL document (and optional variables) onto a GET request URL,
+ * preserving any existing query string and fragment. The URL is assembled
+ * manually rather than via `new URL()` so unresolved `{{variable}}`
+ * placeholders in the base pass through for later substitution.
+ */
+export function encodeGraphQLGetUrl(base: string, document: string, variables?: Record<string, unknown>): string {
+  const hashIndex = base.indexOf('#');
+  const withoutHash = hashIndex < 0 ? base : base.slice(0, hashIndex);
+  const hash = hashIndex < 0 ? '' : base.slice(hashIndex);
+  const queryIndex = withoutHash.indexOf('?');
+  const path = queryIndex < 0 ? withoutHash : withoutHash.slice(0, queryIndex);
+  const params = new URLSearchParams(queryIndex < 0 ? '' : withoutHash.slice(queryIndex + 1));
+  params.set('query', document);
+  if (variables) params.set('variables', JSON.stringify(variables));
+  return `${path}?${params}${hash}`;
+}
+
 function buildGraphQLRequest(formData: RequestFormData): ProxyRequest {
   const document = formData.graphqlDocument?.trim() ?? '';
   if (!document) throw new Error('GraphQL query is required');
@@ -134,10 +152,12 @@ function buildGraphQLRequest(formData: RequestFormData): ProxyRequest {
     if (operation.operation !== 'query') {
       throw new Error('GraphQL GET requests can only execute query operations');
     }
-    const url = new URL(buildUrlWithParams(formData.url, formData.params));
-    url.searchParams.set('query', document);
-    if (variables) url.searchParams.set('variables', JSON.stringify(variables));
-    return { method: 'GET', url: url.toString(), headers, auth: formData.auth as AuthConfig };
+    return {
+      method: 'GET',
+      url: encodeGraphQLGetUrl(buildUrlWithParams(formData.url, formData.params), document, variables),
+      headers,
+      auth: formData.auth as AuthConfig,
+    };
   }
 
   setDefaultHeader(headers, 'Content-Type', 'application/json');
@@ -188,10 +208,12 @@ export function buildSavedGraphQLRequest(req: SavedRequest): ProxyRequest {
     if (operation.operation !== 'query') {
       throw new Error('GraphQL GET requests can only execute query operations');
     }
-    const url = new URL(req.url);
-    url.searchParams.set('query', document);
-    if (variables) url.searchParams.set('variables', JSON.stringify(variables));
-    return { method: 'GET', url: url.toString(), headers, auth: req.auth };
+    return {
+      method: 'GET',
+      url: encodeGraphQLGetUrl(req.url, document, variables),
+      headers,
+      auth: req.auth,
+    };
   }
 
   setDefaultHeader(headers, 'Content-Type', 'application/json');
