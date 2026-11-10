@@ -43,6 +43,15 @@ export type RunOptions = {
    * workspace for the duration of the run and restored afterwards.
    */
   server?: string;
+  /**
+   * Abort signal: firing it cancels the in-flight HTTP request and skips the
+   * remaining requests (they land as 'skipped'). When it isn't provided the
+   * CLI still wires Ctrl-C itself: the first interrupt aborts gracefully,
+   * a second interrupt force-exits immediately.
+   */
+  signal?: AbortSignal;
+  /** Disable the warn tier for 4xx/5xx responses with no test assertions (default: warns on). */
+  noWarnHttpErrors?: boolean;
   /** Progress callback for streaming reporters (see RunnerEvent). */
   onEvent?: (event: RunnerEvent) => void;
 };
@@ -53,6 +62,49 @@ export type RunOptions = {
  * `baseUrl = {{requestoServerUrl}}` so Requesto-API suites run anywhere.
  */
 export const BUILTIN_SERVER_VAR = 'requestoServerUrl';
+
+/**
+ * Merge the caller's abort signal (if any) with the CLI's own Ctrl-C
+ * handling into a single signal for the run:
+ *  - first SIGINT: abort gracefully, the in-flight HTTP request is
+ *    cancelled and the remaining requests land as 'skipped';
+ *  - second SIGINT: force-exit immediately (some host or stalled
+ *    teardown shouldn't hold the terminal hostage).
+ *
+ * Returns the merged signal plus a `dispose` that removes the listeners;
+ * callers must dispose in a `finally` so Ctrl-C behaves normally again.
+ */
+function wireAbortSignal(opts: RunOptions): { signal: AbortSignal; dispose: () => void } {
+  const controller = new AbortController();
+  const externalSignal = opts.signal ?? null;
+  let interrupts = 0;
+
+  const handleInterrupt = (): void => {
+    interrupts += 1;
+    if (interrupts > 1) {
+      process.stderr.write('\nForcing exit (second interrupt).\n');
+      process.exit(130);
+    }
+    controller.abort();
+    process.stderr.write(
+      '\nInterrupted: cancelling the in-flight request and skipping the rest of the run. Press Ctrl-C again to force exit.\n',
+    );
+  };
+  const handleExternalAbort = (): void => {
+    controller.abort(externalSignal?.reason);
+  };
+
+  process.on('SIGINT', handleInterrupt);
+  externalSignal?.addEventListener('abort', handleExternalAbort);
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      process.off('SIGINT', handleInterrupt);
+      externalSignal?.removeEventListener('abort', handleExternalAbort);
+    },
+  };
+}
 
 /**
  * Execute the `requesto run` command. Resolves the workspace, merges
@@ -133,6 +185,7 @@ export async function runCommand(opts: RunOptions): Promise<RunResult> {
   }
 
   const runEnv = withBuiltinServerVar(effectiveEnv, serverUrl);
+  const abort = wireAbortSignal(opts);
 
   try {
     // 6. Run
@@ -147,6 +200,8 @@ export async function runCommand(opts: RunOptions): Promise<RunResult> {
       bail: opts.bail,
       insecure: opts.insecure,
       timeout: opts.timeout,
+      signal: abort.signal,
+      warnings: { httpErrorStatuses: !opts.noWarnHttpErrors },
       onEvent: opts.onEvent,
     });
 
@@ -157,6 +212,7 @@ export async function runCommand(opts: RunOptions): Promise<RunResult> {
       serverUrl,
     };
   } finally {
+    abort.dispose();
     if (embedded) {
       try {
         await embedded.stop();
@@ -174,9 +230,14 @@ export async function runCommand(opts: RunOptions): Promise<RunResult> {
   }
 }
 
-/** Compute the process exit code for a run summary. */
-export function computeExitCode(summary: RunSummary): number {
-  return summary.failed + summary.errored > 0 ? 1 : 0;
+/**
+ * Compute the process exit code for a run summary. Warned requests never
+ * fail the run by default; `--fail-on-warn` opts in to counting them like
+ * failures.
+ */
+export function computeExitCode(summary: RunSummary, opts: { failOnWarn?: boolean } = {}): number {
+  const failing = summary.failed + summary.errored + (opts.failOnWarn ? summary.warned : 0);
+  return failing > 0 ? 1 : 0;
 }
 
 /** Whether any enabled variable references the built-in server variable. */

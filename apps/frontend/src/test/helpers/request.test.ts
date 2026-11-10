@@ -4,11 +4,11 @@ import {
   buildGraphQLIntrospectionRequest,
   buildRequestFromFormData,
   buildSavePayloadFromFormData,
-  buildSavedGraphQLRequest,
   buildTabRequestFromFormData,
   getGraphQLOperations,
   parseGraphQLIntrospectionResponse,
 } from '../../helpers/request';
+import { buildSavedGraphQLRequest } from 'requesto-engine/runner';
 import { substituteInRequest } from '../../helpers/environment';
 import type { Environment } from '../../store/environments/types';
 import type { SavedRequest } from '../../store/collections/types';

@@ -1,0 +1,7 @@
+{
+  "id": "env-warnings",
+  "name": "ci",
+  "variables": [
+    { "key": "baseUrl", "value": "http://localhost:1", "enabled": true }
+  ]
+}

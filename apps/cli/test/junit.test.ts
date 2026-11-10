@@ -10,13 +10,14 @@ function request(name: string): SavedRequest {
 function summary(results: RunSummary['results']): RunSummary {
   return {
     results,
-    executed: results.filter((r) => r.status !== 'skipped').length,
-    passed: results.filter((r) => r.status === 'passed').length,
-    failed: results.filter((r) => r.status === 'failed').length,
-    errored: results.filter((r) => r.status === 'error').length,
-    skipped: results.filter((r) => r.status === 'skipped').length,
+    executed: results.filter(r => r.status !== 'skipped').length,
+    passed: results.filter(r => r.status === 'passed').length,
+    failed: results.filter(r => r.status === 'failed').length,
+    errored: results.filter(r => r.status === 'error').length,
+    warned: results.filter(r => r.status === 'warned').length,
+    skipped: results.filter(r => r.status === 'skipped').length,
     totalTests: results.reduce((a, r) => a + r.testResults.length, 0),
-    passedTests: results.reduce((a, r) => a + r.testResults.filter((t) => t.passed).length, 0),
+    passedTests: results.reduce((a, r) => a + r.testResults.filter(t => t.passed).length, 0),
     totalDuration: 1500,
     environmentName: 'ci',
     bailTriggered: false,
@@ -38,7 +39,7 @@ describe('buildJunitReport', () => {
             { name: 'has items', passed: true },
           ],
         },
-      ]),
+      ])
     );
     expect(xml).toContain('<testsuites name="requesto" tests="2" failures="0" errors="0"');
     expect(xml).toContain('<testsuite name="API" tests="2" failures="0" errors="0"');
@@ -57,7 +58,7 @@ describe('buildJunitReport', () => {
           response: null,
           testResults: [{ name: 'status', passed: false, error: 'Expected 500 to be 200' }],
         },
-      ]),
+      ])
     );
     expect(xml).toContain('failures="1"');
     expect(xml).toContain('<failure message="Expected 500 to be 200"');
@@ -75,7 +76,7 @@ describe('buildJunitReport', () => {
           testResults: [],
           error: 'connect ECONNREFUSED',
         },
-      ]),
+      ])
     );
     expect(xml).toContain('errors="1"');
     expect(xml).toContain('<error message="connect ECONNREFUSED"');
@@ -92,7 +93,7 @@ describe('buildJunitReport', () => {
           response: null,
           testResults: [],
         },
-      ]),
+      ])
     );
     expect(xml).toContain('<testcase name="Request: Ping"');
   });
@@ -108,9 +109,52 @@ describe('buildJunitReport', () => {
           response: null,
           testResults: [],
         },
-      ]),
+      ])
     );
     expect(xml).toContain('<skipped/>');
+  });
+
+  it('renders warned requests as non-fatal skipped testcases', () => {
+    const xml = buildJunitReport(
+      summary([
+        {
+          collectionId: 'c1',
+          collectionName: 'API',
+          request: request('Server Error'),
+          status: 'warned',
+          response: {
+            status: 500,
+            statusText: 'Internal Server Error',
+            headers: {},
+            body: '',
+            bodyEncoding: 'utf8',
+            duration: 9,
+          },
+          testResults: [],
+          warning: 'HTTP 500 Internal Server Error',
+          warningKind: 'http-status',
+          duration: 9,
+        },
+        {
+          collectionId: 'c1',
+          collectionName: 'API',
+          request: request('Skipped'),
+          status: 'skipped',
+          response: null,
+          testResults: [],
+        },
+      ])
+    );
+
+    // Non-fatal: skipped annotation with the warning message, never <failure> or <error>.
+    expect(xml).toContain('<testcase name="Request: Server Error" classname="API" time="0.009">');
+    expect(xml).toContain('<skipped message="HTTP 500 Internal Server Error"/>');
+    expect(xml).not.toContain('<failure');
+    expect(xml).not.toContain('<error');
+
+    // Suite counters: both warned and skipped count as skipped testcases.
+    expect(xml).toContain('<testsuite name="API" tests="2" failures="0" errors="0" skipped="2"');
+    expect(xml).toContain('<testsuites name="requesto" tests="2" failures="0" errors="0" skipped="2"');
   });
 
   it('escapes XML special characters', () => {
@@ -124,7 +168,7 @@ describe('buildJunitReport', () => {
           response: null,
           testResults: [{ name: 't', passed: false, error: `Expected "a<b" && c` }],
         },
-      ]),
+      ])
     );
     expect(xml).toContain('name="API &lt;special&gt; &amp; &quot;quotes&quot;"');
     expect(xml).toContain('Expected &quot;a&lt;b&quot; &amp;&amp; c');

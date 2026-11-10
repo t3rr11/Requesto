@@ -8,6 +8,7 @@ interface RunnerToolbarProps {
   passedCount: number;
   failedCount: number;
   errorCount: number;
+  warnedCount: number;
   totalTests: number;
   passedTests: number;
   onRun: () => void;
@@ -22,12 +23,13 @@ export function RunnerToolbar({
   passedCount,
   failedCount,
   errorCount,
+  warnedCount,
   totalTests,
   passedTests,
   onRun,
   onStop,
   onReset,
-}: RunnerToolbarProps) {
+}: Readonly<RunnerToolbarProps>) {
   return (
     <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
       {!running ? (
@@ -63,6 +65,7 @@ export function RunnerToolbar({
             <span className="text-green-600 dark:text-green-400 font-medium">{passedCount} passed</span>
             {failedCount > 0 && <span className="text-red-600 dark:text-red-400 font-medium">{failedCount} failed</span>}
             {errorCount > 0 && <span className="text-orange-500 dark:text-orange-400 font-medium">{errorCount} errors</span>}
+            {warnedCount > 0 && <span className="text-amber-500 dark:text-amber-400 font-medium">{warnedCount} warnings</span>}
             {totalTests > 0 && (
               <span>
                 Tests: <span className="font-medium text-gray-700 dark:text-gray-300">{passedTests}/{totalTests}</span>

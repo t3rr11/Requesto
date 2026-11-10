@@ -13,3 +13,7 @@ export function setSaveRequestOnSend(set: SettingsSetState, value: boolean): voi
 export function setDisableEventThemes(set: SettingsSetState, value: boolean): void {
   set({ disableEventThemes: value });
 }
+
+export function setWarnOnHttpErrors(set: SettingsSetState, value: boolean): void {
+  set({ warnOnHttpErrors: value });
+}

@@ -23,7 +23,7 @@ The dialog shows all requests grouped by their folder structure. The toolbar at 
 - **Stop** - aborts the in-flight request immediately and marks the remaining requests as skipped
 - **Reset** - clears all results and resets every request to pending
 
-A summary count at the top right shows how many requests passed, failed, or errored during the run.
+A summary count at the top right shows how many requests passed, failed, errored, or gave a warning during the run.
 
 ## Isolation
 
@@ -45,10 +45,24 @@ Each request row shows one of the following statuses:
 |--------|---------|
 | Pending | Not yet run |
 | Running | Currently executing |
-| Passed | All tests passed (or no tests defined) |
+| Passed | All tests passed (or no tests defined and nothing suspicious about the response) |
+| Warned | No test failed and no test was written, but the response looks suspicious (HTTP 4xx/5xx, or a GraphQL `errors` envelope) |
 | Failed | One or more tests failed |
 | Error | The request itself failed (network error, timeout, etc.) |
 | Skipped | The run was stopped before this request was reached |
+
+### Warnings
+
+A request that fails no tests still gets an amber **⚠ warning** when the response itself looks wrong, so "green" always means the run really made sense. Two things trigger a warning:
+
+- **HTTP error statuses.** A `4xx`/`5xx` response warns **when the request has zero tests**. This is the classic trap: asserting nothing about the status makes any response pass. Once at least one test exists and passes, the request stays `passed`. Your test is the contract, so a deliberate contract test on a 500 stays green.
+- **GraphQL `errors` envelopes.** A GraphQL request that answers `HTTP 200` with `{"errors": [...]}` also warns, since the HTTP status alone hides partial (or failed) GraphQL execution.
+
+A failing test always wins over a warning: a request with failed tests is `failed`, never `warned`. Warnings never affect fail/pass semantics for tests or environment chaining; they are advisory.
+
+In the app this is controlled by **Settings → General → Collection Runner → Warn on HTTP errors** (on by default). Uncheck it to restore the old behavior where a 4xx/5xx with no failing tests is `passed`.
+
+In the CLI, `--no-warn-http-errors` turns the warning tier off and `--fail-on-warn` (opt-in) makes warnings fail the run (see [CLI Reference](/cli/reference#run-behavior)).
 
 ## Expanding Request Results
 
@@ -57,7 +71,7 @@ Click a request row to expand it and see the response details. Expanded rows hav
 - **Response** - status code, headers, body, and duration
 - **Tests** - individual test names and pass/fail status
 
-Rows with test results (or errors) expand automatically as each request finishes.
+Rows with test results, warnings, or errors expand automatically as each request finishes.
 
 The runner uses the currently active environment for every request. GraphQL requests run as proper GraphQL (the saved query document and variables are sent), and pre-request scripts, test scripts, and environment chaining all apply to them as well.
 

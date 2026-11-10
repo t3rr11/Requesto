@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Minus, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Minus, Loader2, AlertTriangle } from 'lucide-react';
 import type { Folder } from '../../store/collections/types';
 import type { DisplayItem, RequestStatus } from './types';
 
@@ -8,6 +8,7 @@ export function statusIcon(status: RequestStatus): React.ReactElement {
     case 'passed':  return <CheckCircle className="w-4 h-4 text-green-500" />;
     case 'failed':  return <XCircle className="w-4 h-4 text-red-500" />;
     case 'error':   return <XCircle className="w-4 h-4 text-orange-500" />;
+    case 'warned':  return <AlertTriangle className="w-4 h-4 text-amber-500" />;
     case 'skipped': return <Minus className="w-4 h-4 text-gray-300 dark:text-gray-600" />;
     default:        return <Minus className="w-4 h-4 text-gray-300 dark:text-gray-600" />;
   }

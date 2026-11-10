@@ -52,6 +52,8 @@ All three have environment-variable equivalents (see below), which is usually cl
 | Flag | Description |
 |------|-------------|
 | `-x, --bail` | Stop the run after the first failed or errored request. Remaining requests are reported as skipped. |
+| `--no-warn-http-errors` | Disable the warning tier: a 4xx/5xx response (or GraphQL `errors` envelope) on a request with no failing tests is reported `passed` instead of amber-warned. Default: warnings on. |
+| `--fail-on-warn` | Opt in to treating warnings as failures for the **exit code** only; the run still proceeds. Default: a warning exits 0. |
 | `--insecure` | Skip TLS certificate verification (self-signed certificates). |
 | `--timeout <ms>` | Per-request timeout. Default: 30000. |
 | `--persist` | Write OAuth tokens acquired during the run to `.requesto/local/oauth-tokens.json`. Default: memory only. |
@@ -114,7 +116,7 @@ Env vars are the lowest-precedence source of variable overrides: explicit `--var
 
 ### `console` (default)
 
-Results stream in as each request completes: a `✓` or `✗` with the request name and duration, failing assertions inline, then a failures-only section and a summary block. Passing tests are hidden in this mode; use `verbose` to see them.
+Results stream in as each request completes: a `✓`, `✗` or ⚠ with the request name and duration, failing assertions inline, then a failures-only section and a summary block. A warning (HTTP 4xx/5xx or a GraphQL `errors` envelope on a request with zero failing tests) prints an amber ⚠ row with the warning text plus its own counter in the summary. Passing tests are hidden in this mode; use `verbose` to see them.
 
 ### `verbose`
 
@@ -122,7 +124,7 @@ Same layout as `console`, plus every test (passed and failed) under its request.
 
 ### `dot`
 
-One character per request (`·` passed, `×` failed or errored, `-` skipped) followed by the same failures section and summary. Useful for large suites in CI logs.
+One character per request (`·` passed, `×` failed or errored, `!` warned, `-` skipped) followed by the same failures section and summary. Useful for large suites in CI logs.
 
 Colours are disabled automatically when output is not a terminal or `NO_COLOR` is set.
 
@@ -133,6 +135,7 @@ Writes a JUnit XML file for CI test reporting:
 - One `<testsuite>` per collection.
 - Each `test()` assertion becomes a `<testcase>`; failures carry a `<failure>` element with the assertion message.
 - Requests without a test script become a single `<testcase>` named `Request: <name>`.
+- Warnings (HTTP 4xx/5xx or GraphQL `errors` envelope on a request with zero failing tests) become a `<skipped>` element with the warning text. They never mark the suite failed, so CI stays green unless you also pass `--fail-on-warn`. Suites gain a standard `skipped` attribute when any are present.
 - Request-level errors (connection refused, timeouts) become `<error>` elements.
 
 Attach it to your CI's test-report step (GitHub Actions: [dorny/test-reporter](https://github.com/dorny/test-reporter) with `reporter: java-junit`; GitLab: `artifacts:reports:junit`; Azure DevOps: **Publish Test Results** task).
@@ -144,7 +147,7 @@ Writes the full run report as JSON for custom processing (Slack summaries, dashb
 ```json
 {
   "summary": {
-    "requests": { "executed": 26, "passed": 26, "failed": 0, "errored": 0, "skipped": 0 },
+    "requests": { "executed": 26, "passed": 26, "failed": 0, "errored": 0, "warned": 0, "skipped": 0 },
     "tests": { "total": 69, "passed": 69 },
     "environment": "staging",
     "bailTriggered": false,
@@ -162,6 +165,8 @@ Writes the full run report as JSON for custom processing (Slack summaries, dashb
       "httpStatus": 200,
       "durationMs": 11,
       "error": null,
+      "warning": null,
+      "warningKind": null,
       "tests": [{ "name": "status is 200", "passed": true, "error": null }]
     }
   ]
@@ -171,6 +176,7 @@ Writes the full run report as JSON for custom processing (Slack summaries, dashb
 Notes:
 
 - `url` is the request's **saved** URL with variables unresolved, so the report is safe to attach as a CI artifact even when variables carry secrets.
+- `status` can be `warned` for a 4xx/5xx or GraphQL `errors` envelope on a request with zero failing tests; `warning` (human-readable text) and `warningKind` (`http-status` or `graphql-errors`) are `null` otherwise. Either way the run's exit code stays 0 unless `--fail-on-warn` is set.
 - Reporters combine: `--reporter console --reporter junit:report.xml --reporter json:report.json` streams to the terminal *and* writes both files.
 - Write reports to an artifacts path (or `.gitignore` them): they're run outputs, not source.
 
@@ -178,9 +184,11 @@ Notes:
 
 | Code | Meaning |
 |------|---------|
-| `0` | All executed requests passed. |
-| `1` | One or more requests failed their tests, errored, or could not authenticate. |
+| `0` | All executed requests passed. Warnings (amber ⚠, see below) do not affect the exit code. |
+| `1` | One or more requests failed their tests, errored, or could not authenticate. With the opt-in `--fail-on-warn` flag, warnings also exit 1. |
 | `2` | Configuration error: workspace not found, unknown collection/environment, malformed flag values. |
+
+Warnings are the amber tier: a request with zero failing tests whose response looks suspicious (HTTP 4xx/5xx, or a GraphQL `errors` envelope) is printed as ⚠ and reported `warned`, but the run still exits 0 by default. See `--no-warn-http-errors` and `--fail-on-warn` under [Run behavior](#run-behavior).
 
 ## Script sandbox
 

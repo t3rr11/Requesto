@@ -31,7 +31,13 @@ function setDefaultHeader(headers: Record<string, string>, name: string, value: 
   }
 }
 
-/** Build a ProxyRequest from a saved GraphQL request. */
+/**
+ * Build a ProxyRequest from a saved GraphQL request.
+ * Shared by the engine runner and the frontend editor so both use one copy
+ * of the logic. Browser hosts import from the light `requesto-engine/runner`
+ * subpath, which never pulls in the Node-only embedded server (the package
+ * root does).
+ */
 export function buildSavedGraphQLRequest(req: SavedRequest): ProxyRequest {
   const config = req.graphql;
   if (!config) {
@@ -60,15 +66,12 @@ export function buildSavedGraphQLRequest(req: SavedRequest): ProxyRequest {
     if (operation.operation !== 'query') {
       throw new Error('GraphQL GET requests can only execute query operations');
     }
-    const hashIndex = req.url.indexOf('#');
-    const base = hashIndex < 0 ? req.url : req.url.slice(0, hashIndex);
-    const hash = hashIndex < 0 ? '' : req.url.slice(hashIndex);
-    const queryIndex = base.indexOf('?');
-    const path = queryIndex < 0 ? base : base.slice(0, queryIndex);
-    const params = new URLSearchParams(queryIndex < 0 ? '' : base.slice(queryIndex + 1));
-    params.set('query', document);
-    if (variables) params.set('variables', JSON.stringify(variables));
-    return { method: 'GET', url: `${path}?${params}${hash}`, headers, auth: req.auth };
+    return {
+      method: 'GET',
+      url: encodeGraphQLGetUrl(req.url, document, variables),
+      headers,
+      auth: req.auth,
+    };
   }
 
   setDefaultHeader(headers, 'Content-Type', 'application/json');
@@ -84,6 +87,25 @@ export function buildSavedGraphQLRequest(req: SavedRequest): ProxyRequest {
     bodyType: 'json',
     auth: req.auth,
   };
+}
+
+/**
+ * Encode a GraphQL document (and optional variables) onto a GET request URL,
+ * preserving any existing query string and fragment. The URL is assembled
+ * manually rather than via `new URL()` so unresolved `{{variable}}`
+ * placeholders in the base pass through for later substitution.
+ * Also used by host code (e.g. the frontend editor's form-built requests).
+ */
+export function encodeGraphQLGetUrl(base: string, document: string, variables?: Record<string, unknown>): string {
+  const hashIndex = base.indexOf('#');
+  const withoutHash = hashIndex < 0 ? base : base.slice(0, hashIndex);
+  const hash = hashIndex < 0 ? '' : base.slice(hashIndex);
+  const queryIndex = withoutHash.indexOf('?');
+  const path = queryIndex < 0 ? withoutHash : withoutHash.slice(0, queryIndex);
+  const params = new URLSearchParams(queryIndex < 0 ? '' : withoutHash.slice(queryIndex + 1));
+  params.set('query', document);
+  if (variables) params.set('variables', JSON.stringify(variables));
+  return `${path}?${params}${hash}`;
 }
 
 /** Build a ProxyRequest from any saved request (HTTP or GraphQL). */

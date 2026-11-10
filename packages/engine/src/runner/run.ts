@@ -1,8 +1,21 @@
-﻿import type { OAuthTokenResolver, ProxyRequest, ProxyResponse, Collection, Environment, EnvironmentVariableType, RunRequestResult, RunSummary, RunnerEvent, TestResult } from '../types.ts';
-import type { ScriptFormEntry } from '../scripts/sandbox-core.ts';
+﻿import type { ScriptFormEntry } from '../scripts/sandbox-core.ts';
 import { substituteInRequest, substituteInAuth } from 'requesto-backend/utils/variable-substitution';
 import { buildProxyRequest } from '../request/build-proxy-request.ts';
+import { getGraphQLResponseInfo } from '../request/graphql-envelope.ts';
 import { buildCollectionItems, resolveFolderIds } from './display.ts';
+import type {
+  OAuthTokenResolver,
+  ProxyRequest,
+  ProxyResponse,
+  Collection,
+  Environment,
+  EnvironmentVariableType,
+  RunRequestResult,
+  RunSummary,
+  RunnerEvent,
+  TestResult,
+  WarningKind
+} from '../types.ts';
 
 /** Request context passed to script runners. */
 export type ScriptRequestContext = { method: string; url: string; headers?: Record<string, string>; body?: string; formDataEntries?: ScriptFormEntry[] };
@@ -60,6 +73,15 @@ export type RunnerOptions = {
   /** Abort signal: when fired, remaining requests are marked skipped. */
   signal?: AbortSignal;
   /**
+   * Warning tier for responses that a zero-test run would otherwise report as
+   * plain 'passed': HTTP 4xx/5xx statuses and GraphQL `errors` envelopes.
+   * Warnings are advisory: they never fail a request and never trigger bail.
+   */
+  warnings?: {
+    /** Warn when a 4xx/5xx response has no tests to assert it. Default true. */
+    httpErrorStatuses?: boolean;
+  };
+  /**
    * Progress callback: invoked as the run unfolds so reporters and UIs can
    * stream output. Events arrive in order: collection-start, then per request
    * request-start → request-end.
@@ -106,6 +128,46 @@ function applyEnvOverrides(
     }
   }
   return { ...env, variables };
+}
+
+/**
+ * Determine the final status for an executed request.
+ *
+ * - any failing test → 'failed'
+ * - no tests at all + no failing tests → 'warned' when a warning condition is
+ *   present (HTTP 4xx/5xx, or a GraphQL `errors` envelope) and warnings are
+ *   enabled; otherwise 'passed'
+ * - everything else (including 4xx/5xx responses asserted by at least one
+ *   passing test) → 'passed'
+ */
+function resolveStatus(
+  allTestsPassed: boolean,
+  testCount: number,
+  response: ProxyResponse,
+  warnings: RunnerOptions['warnings'],
+): { status: RunRequestResult['status']; warning?: string; warningKind?: WarningKind } {
+  if (!allTestsPassed) return { status: 'failed' };
+  const warningsEnabled = warnings?.httpErrorStatuses !== false;
+  const hasTests = testCount > 0;
+  if (warningsEnabled && !hasTests) {
+    if (response.status >= 400) {
+      const statusText = response.statusText?.trim();
+      return {
+        status: 'warned',
+        warning: statusText ? `HTTP ${response.status} ${statusText}` : `HTTP ${response.status}`,
+        warningKind: 'http-status',
+      };
+    }
+    const graphqlInfo = getGraphQLResponseInfo(response);
+    if (graphqlInfo && graphqlInfo.errors.length > 0) {
+      return {
+        status: 'warned',
+        warning: graphqlInfo.errors[0].message,
+        warningKind: 'graphql-errors',
+      };
+    }
+  }
+  return { status: 'passed' };
 }
 
 /**
@@ -225,8 +287,16 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
         }
 
         const allPassed = testResults.every((t) => t.passed);
-        const status: RunRequestResult['status'] = allPassed ? 'passed' : 'failed';
-        const result: RunRequestResult = { ...base, status, response, testResults, duration: response.duration };
+        const { status, warning, warningKind } = resolveStatus(allPassed, testResults.length, response, opts.warnings);
+        const result: RunRequestResult = {
+          ...base,
+          status,
+          response,
+          testResults,
+          ...(warning !== undefined && { warning }),
+          ...(warningKind !== undefined && { warningKind }),
+          duration: response.duration,
+        };
         results.push(result);
         opts.onEvent?.({ type: 'request-end', result });
 
@@ -253,6 +323,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
     passed: results.filter((r) => r.status === 'passed').length,
     failed: results.filter((r) => r.status === 'failed').length,
     errored: results.filter((r) => r.status === 'error').length,
+    warned: results.filter((r) => r.status === 'warned').length,
     skipped: results.filter((r) => r.status === 'skipped').length,
     totalTests: results.reduce((acc, r) => acc + r.testResults.length, 0),
     passedTests: results.reduce((acc, r) => acc + r.testResults.filter((t) => t.passed).length, 0),

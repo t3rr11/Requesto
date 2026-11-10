@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
-import { formatResponseBody, formatBytes } from '../../helpers/response';
+import { formatResponseBody, formatBytes, getGraphQLResponseInfo } from '../../helpers/response';
 import { statusIcon, httpStatusColor } from './helpers';
 import type { RequestRunResult, ExpandedTab } from './types';
 
@@ -22,8 +22,11 @@ export function RunnerRequestRow({
   onToggleExpand,
   onSetTab,
 }: RunnerRequestRowProps) {
-  const { request, status, response, testResults, error, duration } = result;
+  const { request, status, response, testResults, error, warning, warningKind, duration } = result;
   const hasDetails = response !== null || !!error;
+  const warnBanner = warningKind === 'graphql-errors' && response
+    ? `GraphQL errors: ${getGraphQLResponseInfo(response)?.errors.length ?? 1} — ${warning ?? ''}`
+    : warning;
   const indent = depth * 16;
 
   return (
@@ -133,6 +136,13 @@ export function RunnerRequestRow({
             {error && (
               <div className="text-xs text-orange-600 dark:text-orange-400 font-mono bg-orange-50 dark:bg-orange-900/20 rounded p-2">
                 {error}
+              </div>
+            )}
+
+            {/* Warning (always visible above tabs) */}
+            {warnBanner && (
+              <div className="text-xs text-amber-600 dark:text-amber-400 font-mono bg-amber-50 dark:bg-amber-900/20 rounded p-2">
+                {warnBanner}
               </div>
             )}
 

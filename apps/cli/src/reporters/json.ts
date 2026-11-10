@@ -16,6 +16,7 @@ export function buildJsonReport(summary: RunSummary): string {
         passed: summary.passed,
         failed: summary.failed,
         errored: summary.errored,
+        warned: summary.warned,
         skipped: summary.skipped,
       },
       tests: {
@@ -37,6 +38,8 @@ export function buildJsonReport(summary: RunSummary): string {
       httpStatus: result.response?.status ?? null,
       durationMs: result.duration ?? null,
       error: result.error ?? null,
+      warning: result.warning ?? null,
+      warningKind: result.warningKind ?? null,
       tests: result.testResults.map((test) => ({
         name: test.name,
         passed: test.passed,

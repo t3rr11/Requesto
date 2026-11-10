@@ -13,6 +13,11 @@ function seconds(ms: number | undefined): string {
   return ((ms ?? 0) / 1000).toFixed(3);
 }
 
+/** Number of testcases that render `<skipped>`: skipped requests (bail/abort) plus warned requests. */
+function skippedTestcaseCount(results: RunRequestResult[]): number {
+  return results.filter((r) => r.status === 'skipped' || r.status === 'warned').length;
+}
+
 function testcase(result: RunRequestResult, indent: string): string[] {
   const classname = escapeXml(result.collectionName);
   const lines: string[] = [];
@@ -32,6 +37,18 @@ function testcase(result: RunRequestResult, indent: string): string[] {
     lines.push(
       `${indent}<testcase name="${escapeXml(result.request.name)}" classname="${classname}" time="0">`,
       `${indent}  <skipped/>`,
+      `${indent}</testcase>`,
+    );
+    return lines;
+  }
+
+  if (result.status === 'warned') {
+    // Non-fatal: the request stands in as a single skipped testcase, with the
+    // warning as the message, so CI displays it without failing the suite.
+    const message = result.warning ?? 'Warning';
+    lines.push(
+      `${indent}<testcase name="${escapeXml(`Request: ${result.request.name}`)}" classname="${classname}" time="${seconds(result.duration)}">`,
+      `${indent}  <skipped message="${escapeXml(message)}"/>`,
       `${indent}</testcase>`,
     );
     return lines;
@@ -66,7 +83,8 @@ function testcase(result: RunRequestResult, indent: string): string[] {
 /**
  * Build a JUnit XML report for CI systems (GitHub Actions, GitLab, Azure
  * DevOps, Jenkins). One `<testsuite>` per collection; each `test()` assertion
- * becomes a `<testcase>`, request-level errors become `<error>` testcases.
+ * becomes a `<testcase>`, request-level errors become `<error>` testcases,
+ * and warned requests become `<skipped>` testcases (non-fatal for CI).
  */
 export function buildJunitReport(summary: RunSummary): string {
   const suites: string[] = [];
@@ -88,7 +106,7 @@ export function buildJunitReport(summary: RunSummary): string {
 
     suites.push(
       [
-        `  <testsuite name="${escapeXml(collectionName)}" tests="${tests}" failures="${failures}" errors="${errors}" time="${time}">`,
+        `  <testsuite name="${escapeXml(collectionName)}" tests="${tests}" failures="${failures}" errors="${errors}" skipped="${skippedTestcaseCount(results)}" time="${time}">`,
         ...results.flatMap((r) => testcase(r, '    ')),
         `  </testsuite>`,
       ].join('\n'),
@@ -107,7 +125,7 @@ export function buildJunitReport(summary: RunSummary): string {
 
   return [
     `<?xml version="1.0" encoding="UTF-8"?>`,
-    `<testsuites name="requesto" tests="${totalTests}" failures="${totalFailures}" errors="${totalErrors}" time="${seconds(summary.totalDuration)}">`,
+    `<testsuites name="requesto" tests="${totalTests}" failures="${totalFailures}" errors="${totalErrors}" skipped="${skippedTestcaseCount(summary.results)}" time="${seconds(summary.totalDuration)}">`,
     ...suites,
     `</testsuites>`,
     ``,

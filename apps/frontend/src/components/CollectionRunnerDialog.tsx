@@ -6,6 +6,8 @@ import { runCollections, buildCollectionItems, buildWorkspaceItems } from 'reque
 import type { RunnerEvent } from 'requesto-engine/runner';
 import { browserScriptRunner } from '../helpers/scriptRunner';
 import { createRunnerIsolation, type RunnerIsolation } from '../helpers/runner/isolation';
+import { networkErrorFromResponse } from '../helpers/runner/networkError';
+import { useSettingsStore } from '../store/settings/store';
 import { isVisible } from './runner/helpers';
 import { RunnerToolbar } from './runner/RunnerToolbar';
 import { RunnerCollectionRow } from './runner/RunnerCollectionRow';
@@ -21,6 +23,7 @@ const noopOAuthResolver = async () => ({ accessToken: '', tokenType: 'Bearer' })
 export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId }: CollectionRunnerDialogProps) {
   const { environmentsData, updateCurrentValues } = useEnvironmentStore();
   const { sendRequest } = useRequestStore();
+  const warnOnHttpErrors = useSettingsStore(s => s.warnOnHttpErrors);
 
   // The dialog renders even when closed (and the store's collections can be
   // empty while loading or after a workspace switch) — never assume
@@ -157,12 +160,21 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       const status: RequestStatus = result.status;
       setResults(prev => prev.map(r =>
         r.request.id === result.request.id
-          ? { ...r, status, response: result.response, testResults: result.testResults, duration: result.duration, error: result.error }
+          ? {
+              ...r,
+              status,
+              response: result.response,
+              testResults: result.testResults,
+              duration: result.duration,
+              error: result.error,
+              warning: result.warning,
+              warningKind: result.warningKind,
+            }
           : r,
       ));
 
-      // Auto-expand rows that have test results or errors
-      if (result.testResults.length > 0 || result.status === 'error') {
+      // Auto-expand rows that have test results, errors or warnings
+      if (result.testResults.length > 0 || result.status === 'error' || result.status === 'warned') {
         setExpandedRows(prev => new Set([...prev, result.request.id]));
         if (result.testResults.length > 0) {
           setExpandedTabs(prev => new Map([...prev, [result.request.id, 'tests']]));
@@ -176,7 +188,19 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
         collections: includedCollections,
         environment: activeEnv,
         oauthResolver: noopOAuthResolver,
-        send: (request, ctx) => sendRequest(request, ctx.signal),
+        send: (request, ctx) => {
+          const response = sendRequest(request, ctx.signal);
+          // Align with the CLI: the proxy controller turns network failures
+          // into a synthetic HTTP-200 response with status 0, which the engine
+          // would otherwise report as a plain pass. Throw so the run marks
+          // these as `error`.
+          return response.then(response => {
+            const networkError = networkErrorFromResponse(response);
+            if (networkError) throw networkError;
+            return response;
+          });
+        },
+        warnings: { httpErrorStatuses: warnOnHttpErrors },
         scripts: {
           runPreRequest: async (...args) => {
             const outcome = await browserScriptRunner.runPreRequest(...args);
@@ -212,7 +236,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       abortControllerRef.current = null;
       setRunning(false);
     }
-  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, folderId]);
+  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, warnOnHttpErrors, folderId]);
 
   const handleStop = () => {
     abortControllerRef.current?.abort();
@@ -227,6 +251,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
   const passedCount = results.filter(r => r.status === 'passed').length;
   const failedCount = results.filter(r => r.status === 'failed').length;
   const errorCount = results.filter(r => r.status === 'error').length;
+  const warnedCount = results.filter(r => r.status === 'warned').length;
   const totalTests = results.reduce((acc, r) => acc + r.testResults.length, 0);
   const passedTests = results.reduce((acc, r) => acc + r.testResults.filter(t => t.passed).length, 0);
 
@@ -250,6 +275,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
         passedCount={passedCount}
         failedCount={failedCount}
         errorCount={errorCount}
+        warnedCount={warnedCount}
         totalTests={totalTests}
         passedTests={passedTests}
         onRun={handleRun}

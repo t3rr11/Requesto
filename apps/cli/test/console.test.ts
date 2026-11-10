@@ -10,13 +10,14 @@ function request(name: string): SavedRequest {
 function summary(results: RunSummary['results']): RunSummary {
   return {
     results,
-    executed: results.filter((r) => r.status !== 'skipped').length,
-    passed: results.filter((r) => r.status === 'passed').length,
-    failed: results.filter((r) => r.status === 'failed').length,
-    errored: results.filter((r) => r.status === 'error').length,
-    skipped: results.filter((r) => r.status === 'skipped').length,
+    executed: results.filter(r => r.status !== 'skipped').length,
+    passed: results.filter(r => r.status === 'passed').length,
+    failed: results.filter(r => r.status === 'failed').length,
+    errored: results.filter(r => r.status === 'error').length,
+    warned: results.filter(r => r.status === 'warned').length,
+    skipped: results.filter(r => r.status === 'skipped').length,
     totalTests: results.reduce((a, r) => a + r.testResults.length, 0),
-    passedTests: results.reduce((a, r) => a + r.testResults.filter((t) => t.passed).length, 0),
+    passedTests: results.reduce((a, r) => a + r.testResults.filter(t => t.passed).length, 0),
     totalDuration: 500,
     environmentName: 'ci',
     bailTriggered: false,
@@ -24,12 +25,9 @@ function summary(results: RunSummary['results']): RunSummary {
 }
 
 /** Replay a finished summary through the reporter, as the CLI does live. */
-function capture(
-  sum: RunSummary,
-  mode: 'default' | 'verbose' | 'dot' = 'default',
-): string {
+function capture(sum: RunSummary, mode: 'default' | 'verbose' | 'dot' = 'default'): string {
   const chunks: string[] = [];
-  const reporter = createConsoleReporter(mode, { write: (chunk) => chunks.push(chunk) });
+  const reporter = createConsoleReporter(mode, { write: chunk => chunks.push(chunk) });
   let lastCollection = '';
   for (const result of sum.results) {
     const event: RunnerEvent =
@@ -72,7 +70,7 @@ describe('console reporter (default)', () => {
           ],
           duration: 7,
         },
-      ]),
+      ])
     );
 
     expect(output).toContain('API');
@@ -102,7 +100,7 @@ describe('console reporter (default)', () => {
           testResults: [],
           duration: 3,
         },
-      ]),
+      ])
     );
 
     const failuresAt = output.indexOf('Failed Requests (1)');
@@ -124,11 +122,80 @@ describe('console reporter (default)', () => {
           testResults: [],
           error: 'connect ECONNREFUSED 127.0.0.1:1',
         },
-      ]),
+      ])
     );
 
     expect(output).toContain('✗ Dead');
     expect(output).toContain('ECONNREFUSED');
+  });
+
+  it('counts failed and errored separately in the summary', () => {
+    const output = capture(
+      summary([
+        {
+          collectionId: 'c1',
+          collectionName: 'API',
+          request: request('Bad'),
+          status: 'failed',
+          response: null,
+          testResults: [{ name: 'nope', passed: false }],
+        },
+        {
+          collectionId: 'c1',
+          collectionName: 'API',
+          request: request('Dead'),
+          status: 'error',
+          response: null,
+          testResults: [],
+          error: 'connect ECONNREFUSED',
+        },
+      ])
+    );
+
+    expect(output).toContain('1 failed');
+    expect(output).toContain('1 errored');
+  });
+
+  it('marks warned requests with ⚠, the warning text and a separate counter', () => {
+    const output = capture(
+      summary([
+        {
+          collectionId: 'c1',
+          collectionName: 'API',
+          request: request('Server Error'),
+          status: 'warned',
+          response: {
+            status: 500,
+            statusText: 'Internal Server Error',
+            headers: {},
+            body: '',
+            bodyEncoding: 'utf8',
+            duration: 6,
+          },
+          testResults: [],
+          warning: 'HTTP 500 Internal Server Error',
+          warningKind: 'http-status',
+          duration: 6,
+        },
+        {
+          collectionId: 'c1',
+          collectionName: 'API',
+          request: request('Fine'),
+          status: 'passed',
+          response: null,
+          testResults: [],
+          duration: 1,
+        },
+      ])
+    );
+
+    expect(output).toContain('⚠ Server Error');
+    expect(output).toContain('    ⚠ HTTP 500 Internal Server Error');
+    expect(output).toContain('1 passed, 1 warnings');
+
+    // Warns are not failures: no failures section, no red ✗.
+    expect(output).not.toContain('Failed Requests');
+    expect(output).not.toContain('✗');
   });
 
   it('marks skipped requests and reports the bail reason', () => {
@@ -154,9 +221,23 @@ describe('console reporter (default)', () => {
   it('groups requests under collection headers and includes run metadata', () => {
     const output = capture(
       summary([
-        { collectionId: 'c1', collectionName: 'First', request: request('A'), status: 'passed', response: null, testResults: [] },
-        { collectionId: 'c2', collectionName: 'Second', request: request('B'), status: 'passed', response: null, testResults: [] },
-      ]),
+        {
+          collectionId: 'c1',
+          collectionName: 'First',
+          request: request('A'),
+          status: 'passed',
+          response: null,
+          testResults: [],
+        },
+        {
+          collectionId: 'c2',
+          collectionName: 'Second',
+          request: request('B'),
+          status: 'passed',
+          response: null,
+          testResults: [],
+        },
+      ])
     );
 
     expect(output).toContain('First');
@@ -181,7 +262,7 @@ describe('console reporter (verbose)', () => {
           duration: 5,
         },
       ]),
-      'verbose',
+      'verbose'
     );
 
     expect(output).toContain('✓ status is 201');
@@ -192,15 +273,48 @@ describe('console reporter (dot)', () => {
   it('prints one character per request and still shows the summary', () => {
     const output = capture(
       summary([
-        { collectionId: 'c1', collectionName: 'First', request: request('A'), status: 'passed', response: null, testResults: [] },
-        { collectionId: 'c1', collectionName: 'First', request: request('B'), status: 'failed', response: null, testResults: [{ name: 'x', passed: false }] },
+        {
+          collectionId: 'c1',
+          collectionName: 'First',
+          request: request('A'),
+          status: 'passed',
+          response: null,
+          testResults: [],
+        },
+        {
+          collectionId: 'c1',
+          collectionName: 'First',
+          request: request('B'),
+          status: 'failed',
+          response: null,
+          testResults: [{ name: 'x', passed: false }],
+        },
       ]),
-      'dot',
+      'dot'
     );
 
     expect(output).toContain('·');
     expect(output).toContain('×');
     expect(output).toContain('Requests');
     expect(output).not.toContain('✓ A');
+  });
+
+  it('prints ! for warned requests in dot mode', () => {
+    const output = capture(
+      summary([
+        {
+          collectionId: 'c1',
+          collectionName: 'API',
+          request: request('Server Error'),
+          status: 'warned',
+          response: null,
+          testResults: [],
+          warning: 'HTTP 500 Internal Server Error',
+        },
+      ]),
+      'dot'
+    );
+
+    expect(output).toContain('!');
   });
 });
