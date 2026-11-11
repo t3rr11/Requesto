@@ -28,6 +28,27 @@ describe('executePreRequestScript', () => {
     expect(result.envOverrides.out).toBe('');
   });
 
+  it('environment.get returns values parsed per the declared type', () => {
+    const result = executePreRequestScript(
+      [
+        `if (environment.get('n') !== 42) { throw new Error('n: ' + JSON.stringify(environment.get('n'))); }`,
+        `if (environment.get('flag') !== true) { throw new Error('flag: ' + JSON.stringify(environment.get('flag'))); }`,
+        `if (environment.get('s') !== 'hello') { throw new Error('s: ' + JSON.stringify(environment.get('s'))); }`,
+        // No declared type: string, even when it looks numeric.
+        `if (environment.get('strNum') !== '123') { throw new Error('strNum: ' + JSON.stringify(environment.get('strNum'))); }`,
+        // Declared Number but not a valid number literal: falls back to the string.
+        `if (environment.get('zip') !== '02134') { throw new Error('zip: ' + JSON.stringify(environment.get('zip'))); }`,
+      ].join('\n'),
+      {
+        env: { n: '42', flag: 'true', s: 'hello', strNum: '123', zip: '02134' },
+        envTypes: { n: 'number', flag: 'boolean', zip: 'number' },
+        request: baseRequest,
+      },
+    );
+    // No throw above means every get() matched its declared type.
+    expect(result.envOverrides.n).toBe('42');
+  });
+
   it('can read the request', () => {
     const result = executePreRequestScript(`environment.set('m', request.method);`, {
       env: {},
@@ -51,6 +72,14 @@ describe('executePreRequestScript', () => {
       { env: {}, request: baseRequest },
     );
     expect(result.envTypes).toEqual({ n: 'number', flag: 'boolean', s: 'string', strNum: 'string' });
+  });
+
+  it('environment.get returns the typed value a script set in the same run', () => {
+    const result = executePreRequestScript(
+      `environment.set('n', 42); if (environment.get('n') !== 42) { throw new Error('n: ' + JSON.stringify(environment.get('n'))); }`,
+      { env: {}, request: baseRequest },
+    );
+    expect(result.envTypes.n).toBe('number');
   });
 
   it('cannot reach Node or browser globals', () => {

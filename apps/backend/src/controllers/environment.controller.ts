@@ -1,9 +1,27 @@
 import { FastifyPluginAsync } from 'fastify';
 import { EnvironmentService } from '../services/environment.service';
-import type { Environment } from '../models/environment';
+import type { Environment, EnvironmentVariableType } from '../models/environment';
 
 interface Options {
   environmentService: EnvironmentService;
+}
+
+const VARIABLE_TYPES: readonly EnvironmentVariableType[] = ['string', 'number', 'boolean'];
+
+/** Keep only entries whose value is a declared variable type; drop the rest. */
+function filterVariableTypes(
+  types: Record<string, string> | undefined,
+): Record<string, EnvironmentVariableType> | undefined {
+  if (!types) return undefined;
+  const filtered: Record<string, EnvironmentVariableType> = {};
+  let any = false;
+  for (const [key, type] of Object.entries(types)) {
+    if ((VARIABLE_TYPES as readonly string[]).includes(type)) {
+      filtered[key] = type as EnvironmentVariableType;
+      any = true;
+    }
+  }
+  return any ? filtered : undefined;
 }
 
 const environmentController: FastifyPluginAsync<Options> = async (server, opts) => {
@@ -54,12 +72,13 @@ const environmentController: FastifyPluginAsync<Options> = async (server, opts) 
   /**
    * PATCH /environments/:id/current-values
    * Merge runtime overrides into the local sidecar (never committed to git).
-   * Body: `{ overrides: Record<string, string> }`
+   * Body: `{ overrides: Record<string, string>, types?: Record<string, EnvironmentVariableType> }`
    */
-  server.patch<{ Params: { id: string }; Body: { overrides: Record<string, string> } }>(
+  server.patch<{ Params: { id: string }; Body: { overrides: Record<string, string>; types?: Record<string, string> } }>(
     '/environments/:id/current-values',
     async (request, _reply) => {
-      environmentService.setCurrentValues(request.params.id, request.body.overrides);
+      const types = filterVariableTypes(request.body.types);
+      environmentService.setCurrentValues(request.params.id, request.body.overrides, types);
       return { success: true };
     },
   );

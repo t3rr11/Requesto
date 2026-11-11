@@ -14,7 +14,7 @@ import { RunnerCollectionRow } from './runner/RunnerCollectionRow';
 import { RunnerFolderRow } from './runner/RunnerFolderRow';
 import { RunnerRequestRow } from './runner/RunnerRequestRow';
 import type { CollectionRunnerDialogProps, RequestRunResult, ExpandedTab, RequestStatus } from './runner/types';
-import type { Environment } from '../store/environments/types';
+import type { Environment, EnvironmentVariableType } from '../store/environments/types';
 
 // The engine resolves OAuth server-side for the app (the proxy endpoint
 // handles auth configs), so the run itself never needs a token.
@@ -183,6 +183,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     };
 
     const overrides: Record<string, string> = Object.create(null);
+    const types: Record<string, EnvironmentVariableType> = Object.create(null);
     try {
       await runCollections({
         collections: includedCollections,
@@ -205,11 +206,13 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
           runPreRequest: async (...args) => {
             const outcome = await browserScriptRunner.runPreRequest(...args);
             Object.assign(overrides, outcome.envOverrides);
+            Object.assign(types, outcome.envTypes ?? {});
             return outcome;
           },
           runTest: async (...args) => {
             const outcome = await browserScriptRunner.runTest(...args);
             Object.assign(overrides, outcome.envOverrides);
+            Object.assign(types, outcome.envTypes ?? {});
             return outcome;
           },
         },
@@ -223,7 +226,13 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
           await isolationRef.current.teardown();
           if (activeEnv && Object.keys(overrides).length > 0) {
             try {
-              await updateCurrentValues(activeEnv.id, overrides);
+              // Only pass types when scripts recorded one, so value-only
+              // persists keep their two-argument shape.
+              await updateCurrentValues(
+                activeEnv.id,
+                overrides,
+                ...(Object.keys(types).length > 0 ? [types as Record<string, EnvironmentVariableType>] : []),
+              );
             } catch (err) {
               throw new Error(`Could not save runner current values: ${err instanceof Error ? err.message : String(err)}`);
             }

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Environment, EnvironmentsData } from './types';
+import type { Environment, EnvironmentVariableType, EnvironmentsData } from './types';
 import * as actions from './actions';
 
 type EnvironmentState = {
@@ -14,7 +14,11 @@ type EnvironmentState = {
   updateEnvironment: (environment: Environment) => void;
   importEnvironment: (file: File) => Promise<Environment>;
   exportEnvironment: (environmentId: string) => Promise<void>;
-  updateCurrentValues: (envId: string, overrides: Record<string, string>) => Promise<void>;
+  updateCurrentValues: (
+    envId: string,
+    overrides: Record<string, string>,
+    types?: Record<string, EnvironmentVariableType>,
+  ) => Promise<void>;
   resetCurrentValues: (envId: string, key?: string) => Promise<void>;
 };
 
@@ -48,6 +52,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => ({
 
   importEnvironment: (file) => actions.importEnvironment(set, file),
   exportEnvironment: (environmentId) => actions.exportEnvironment(environmentId),
-  updateCurrentValues: (envId, overrides) => actions.updateCurrentValues(set, get, envId, overrides),
+  updateCurrentValues: (envId, overrides, types) => actions.updateCurrentValues(set, get, envId, overrides, types),
   resetCurrentValues: (envId, key) => actions.resetCurrentValues(set, get, envId, key),
 }));

@@ -66,13 +66,14 @@ export async function runPreRequestScript(
   script: string,
   env: Record<string, string>,
   request: { method: string; url: string; headers?: Record<string, string>; body?: string },
+  envTypes?: Record<string, EnvironmentVariableType>,
 ): Promise<PreRequestOutcome> {
   if (!script.trim()) return { envOverrides: {}, envTypes: {} };
 
   const result = await runInWorker({
     type: 'pre-request',
     script,
-    context: { env, request },
+    context: { env, envTypes, request },
   });
 
   if ('error' in result) throw new Error(result.error);
@@ -90,13 +91,14 @@ export async function runTestScript(
   response: { status: number; statusText: string; headers: Record<string, string>; body: string; duration: number },
   request: { method: string; url: string; headers?: Record<string, string>; body?: string; formDataEntries?: ScriptFormEntry[] },
   env: Record<string, string>,
+  envTypes?: Record<string, EnvironmentVariableType>,
 ): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
   if (!script.trim()) return { testResults: [], envOverrides: {}, envTypes: {} };
 
   const result = await runInWorker({
     type: 'test',
     script,
-    context: { env, response, request },
+    context: { env, envTypes, response, request },
   });
 
   if ('error' in result) throw new Error(result.error);
@@ -108,6 +110,6 @@ export async function runTestScript(
 
 /** Script runner backed by Node worker threads; the default for headless runs. */
 export const nodeScriptRunner: ScriptRunner = {
-  runPreRequest: (script, env, request) => runPreRequestScript(script, env, request),
-  runTest: (script, response, request, env) => runTestScript(script, response, request, env),
+  runPreRequest: (script, env, request, envTypes) => runPreRequestScript(script, env, request, envTypes),
+  runTest: (script, response, request, env, envTypes) => runTestScript(script, response, request, env, envTypes),
 };

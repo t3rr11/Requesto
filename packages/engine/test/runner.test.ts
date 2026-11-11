@@ -146,6 +146,49 @@ describe('runCollections', () => {
     expect(JSON.parse(sent[2].body!).variables).toEqual({ id: 42, token: 'a"b' });
   });
 
+  it('exposes typed values to scripts via environment.get()', async () => {
+    // Regression: a Number-typed variable must come back as a number from
+    // `environment.get()`, not as its raw string form.
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [],
+      requests: [
+        {
+          id: 'r1',
+          name: 'Typed get',
+          method: 'POST',
+          url: 'http://x.local',
+          body: '{"n": "{{n}}", "doubled": "{{doubled}}"}',
+          bodyType: 'json',
+          collectionId: 'c1',
+          preRequestScript: [
+            `if (environment.get('n') !== 21) { throw new Error('n: ' + JSON.stringify(environment.get('n'))); }`,
+            `environment.set('doubled', environment.get('n') * 2);`,
+          ].join('\n'),
+        },
+      ],
+    };
+    const sent: string[] = [];
+    const summary = await runCollections({
+      collections: [col],
+      environment: {
+        id: 'e',
+        name: 'env',
+        variables: [{ key: 'n', value: '21', enabled: true, type: 'number' }],
+      },
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.body ?? '');
+        return okResponse;
+      },
+    });
+
+    expect(summary.errored).toBe(0);
+    expect(sent).toEqual(['{"n": 21, "doubled": 42}']);
+  });
+
   it('keeps response-string IDs string-typed when chained into GraphQL variables', async () => {
     // Regression: a GraphQL `ID` read from a response is a JS string; it must
     // not be re-typed as Number (from its stringified content) and then

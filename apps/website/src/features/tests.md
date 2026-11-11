@@ -95,10 +95,10 @@ Read and write variables in the active environment. The same API as in pre-reque
 
 | Method | Description |
 |--------|-------------|
-| `environment.get(key)` | Returns the current value of `key`, or an empty string |
+| `environment.get(key)` | Returns the current value of `key` - as a Number or Boolean when the variable has that type (falling back to the string when the value cannot represent it) - or an empty string |
 | `environment.set(key, value)` | Sets the current value of `key` |
 
-`environment.set()` in a test script writes to the variable's current value, so you can pass a value extracted from a response (like a token or ID) to later requests. The value's type is inherited as well - `environment.set('count', 42)` marks `count` as a Number so it is sent unquoted in JSON bodies. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
+`environment.set()` in a test script writes to the variable's current value, so you can pass a value extracted from a response (like a token or ID) to later requests. The value's type is inherited as well - `environment.set('count', 42)` marks `count` as a Number so it is sent unquoted in JSON bodies, while a string ID from a response stays a String and is sent quoted. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
 
 ## Examples
 
