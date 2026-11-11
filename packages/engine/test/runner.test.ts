@@ -146,6 +146,50 @@ describe('runCollections', () => {
     expect(JSON.parse(sent[2].body!).variables).toEqual({ id: 42, token: 'a"b' });
   });
 
+  it('keeps response-string IDs string-typed when chained into GraphQL variables', async () => {
+    // Regression: a GraphQL `ID` read from a response is a JS string; it must
+    // not be re-typed as Number (from its stringified content) and then
+    // un-quoted by JSON-aware substitution, or servers reject the request
+    // with `Expected a string for type 'ID', got Number(...)`.
+    const collections: Collection[] = [
+      {
+        id: 'c1', name: 'Fetch', folders: [],
+        requests: [{
+          id: 'r1', name: 'Fetch', method: 'GET', url: 'http://example.test', collectionId: 'c1',
+          testScript: `environment.set('appId', response.json().data.applicationByName.id);`,
+        }],
+      },
+      {
+        id: 'c2', name: 'GraphQL', folders: [],
+        requests: [{
+          id: 'g1', name: 'post', method: 'POST', url: 'http://example.test/graphql',
+          collectionId: 'c2', requestType: 'graphql' as const,
+          graphql: {
+            document: 'query GetRoleRefs($appId: ID!) { adminRole: roleByName(applicationId: $appId) { id } }',
+            variables: '{"appId":"{{appId}}"}',
+            transport: 'post',
+          },
+        }],
+      },
+    ];
+    const sent: { url: string; body?: string }[] = [];
+    const summary = await runCollections({
+      collections,
+      environment: { id: 'e', name: 'env', variables: [] },
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req);
+        return responseOf(200, 'OK', '{"data":{"applicationByName":{"id":"1001"}}}');
+      },
+    });
+
+    expect(summary.errored).toBe(0);
+    const variables = JSON.parse(sent[1].body!).variables;
+    expect(variables).toEqual({ appId: '1001' });
+    expect(typeof variables.appId).toBe('string');
+  });
+
   it('unquotes number-typed variables in JSON bodies (script-created variables inherit type)', async () => {
     const col: Collection = {
       id: 'c1',

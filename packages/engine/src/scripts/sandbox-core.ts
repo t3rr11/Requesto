@@ -10,7 +10,6 @@
  * returned the same way: the host wrappers do the worker plumbing.
  */
 
-import { inferType } from 'requesto-backend/utils/variable-substitution';
 import type { EnvironmentVariableType } from 'requesto-backend/models/environment';
 
 export type TestResult = { name: string; passed: boolean; error?: string };
@@ -153,6 +152,22 @@ function createExpect(actual: unknown, inverted = false): Expectation {
   };
 }
 
+/**
+ * Type a script-set variable from the runtime type of the value passed to
+ * `environment.set()`, not from its stringified content. A value that was
+ * a JS string stays String-typed even when it looks numeric (e.g. a GraphQL
+ * `ID` read out of a response), so it is never silently un-quoted in JSON
+ * bodies and GraphQL variables; scripts that want Number/Boolean typing
+ * pass actual numbers or booleans (`environment.set('count', 42)`).
+ */
+function typeOfScriptValue(value: unknown): EnvironmentVariableType {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? 'number' : 'string';
+  }
+  if (typeof value === 'boolean') return 'boolean';
+  return 'string';
+}
+
 function createEnvironment(env: Record<string, string>) {
   const envStore: Record<string, string> = { ...env };
   // Types recorded per key set during this run, so callers can re-type variables.
@@ -164,7 +179,7 @@ function createEnvironment(env: Record<string, string>) {
       get: (key: string): string => envStore[key] ?? '',
       set: (key: string, value: unknown): void => {
         envStore[key] = String(value);
-        typeStore[key] = inferType(value);
+        typeStore[key] = typeOfScriptValue(value);
       },
     },
   };
