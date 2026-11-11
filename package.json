@@ -51,9 +51,9 @@
     "bump": "node scripts/bump-versions.mjs"
   },
   "devDependencies": {
-    "concurrently": "^10.0.6",
-    "graphql": "^17.0.2",
-    "rimraf": "^6.1.3"
+    "concurrently": "^10.0.7",
+    "graphql": "^17.1.0",
+    "rimraf": "^6.1.4"
   },
   "allowScripts": {
     "electron-winstaller@5.4.0": true,
