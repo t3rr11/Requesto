@@ -58,7 +58,9 @@ Add variables in the editor table. Click the **+** row to add a new one, or remo
 
 ## Variable Types and JSON Bodies
 
-Every variable has a type: **String** (default), **Number**, or **Boolean**. The editor's type dropdown auto-suggests as you type the value (e.g. `42` suggests Number, `true` suggests Boolean), and you can override it at any time. Scripts and CLI variables infer the type automatically - `environment.set('count', 42)` makes `count` a Number, and `--var flag=true` a Boolean.
+Every variable has a type: **String** (default), **Number**, or **Boolean**. The editor's type dropdown auto-suggests as you type the value (e.g. `42` suggests Number, `true` suggests Boolean), and you can override it at any time. Scripts record the type of the value passed to `environment.set()` - a number makes the variable a Number, a boolean makes it a Boolean, and a string stays a String even when it looks numeric (e.g. an ID like `"1001"` read from a response, which must keep being sent quoted). CLI variables infer the type from the value's content - `--var flag=true` is a Boolean.
+
+The type travels with the variable's current value: it is shown in the environment editor and saved to the local sidecar alongside script-set values, so it survives app restarts.
 
 The type only affects **JSON request bodies and GraphQL variables**. Because a JSON body must be valid *before* substitution, number and boolean variables are still written inside quotes - and the quotes are removed automatically when the request is sent:
 

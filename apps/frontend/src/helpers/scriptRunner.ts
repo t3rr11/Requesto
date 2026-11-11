@@ -41,6 +41,16 @@ function buildEnvRecord(env: Environment | null): Record<string, string> {
   );
 }
 
+/** Declared types of enabled env variables, omitted entirely when none is set. */
+function buildEnvTypes(env: Environment | null): Record<string, EnvironmentVariableType> | undefined {
+  if (!env) return undefined;
+  const types: Record<string, EnvironmentVariableType> = {};
+  for (const v of env.variables) {
+    if (v.enabled && v.type) types[v.key] = v.type;
+  }
+  return Object.keys(types).length > 0 ? types : undefined;
+}
+
 /**
  * Run the pre-request script in an isolated Worker.
  * Returns the env variable overrides set by the script (key/value pairs
@@ -52,13 +62,14 @@ export async function runPreRequestScript(
   env: Environment | null,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
 ): Promise<PreRequestOutcome> {
-  return runPreRequestWithRecord(script, buildEnvRecord(env), request);
+  return runPreRequestWithRecord(script, buildEnvRecord(env), request, buildEnvTypes(env));
 }
 
 async function runPreRequestWithRecord(
   script: string,
   env: Record<string, string>,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'>,
+  envTypes?: Record<string, EnvironmentVariableType>,
 ): Promise<PreRequestOutcome> {
   if (!script.trim()) return { envOverrides: {}, envTypes: {} };
 
@@ -67,6 +78,7 @@ async function runPreRequestWithRecord(
     script,
     context: {
       env,
+      envTypes,
       request: { method: request.method, url: request.url, headers: request.headers, body: request.body },
     },
   });
@@ -87,7 +99,7 @@ export async function runTestScript(
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body' | 'formDataEntries'>,
   env: Environment | null,
 ): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
-  return runTestWithRecord(script, response, request, buildEnvRecord(env));
+  return runTestWithRecord(script, response, request, buildEnvRecord(env), buildEnvTypes(env));
 }
 
 async function runTestWithRecord(
@@ -95,6 +107,7 @@ async function runTestWithRecord(
   response: Pick<ProxyResponse, 'status' | 'statusText' | 'headers' | 'body' | 'duration'>,
   request: Pick<ProxyRequest, 'method' | 'url' | 'headers' | 'body'> & { formDataEntries?: ScriptFormEntry[] },
   env: Record<string, string>,
+  envTypes?: Record<string, EnvironmentVariableType>,
 ): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
   if (!script.trim()) return { testResults: [], envOverrides: {}, envTypes: {} };
 
@@ -103,6 +116,7 @@ async function runTestWithRecord(
     script,
     context: {
       env,
+      envTypes,
       response: {
         status: response.status,
         statusText: response.statusText,
@@ -132,6 +146,6 @@ async function runTestWithRecord(
  * the CLI's Node worker runner. Implements the engine's ScriptRunner shape.
  */
 export const browserScriptRunner: ScriptRunner = {
-  runPreRequest: (script, env, request) => runPreRequestWithRecord(script, env, request),
-  runTest: (script, response, request, env) => runTestWithRecord(script, response, request, env),
+  runPreRequest: (script, env, request, envTypes) => runPreRequestWithRecord(script, env, request, envTypes),
+  runTest: (script, response, request, env, envTypes) => runTestWithRecord(script, response, request, env, envTypes),
 };

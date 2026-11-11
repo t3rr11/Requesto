@@ -99,8 +99,8 @@ export function RequestResponseView() {
             }
           });
           const updatedEnv = { ...activeEnv, variables: updatedVariables };
-          // Persist current values to the local sidecar (never committed to git)
-          await updateCurrentValues(activeEnv.id, envOverrides);
+          // Persist current values (and their types) to the local sidecar
+          await updateCurrentValues(activeEnv.id, envOverrides, envTypes);
           // Use the updated env for this request's variable substitution
           effectiveEnv = updatedEnv;
         }
@@ -172,10 +172,10 @@ export function RequestResponseView() {
       const isStreamingResponse = 'isStreaming' in response && response.isStreaming;
       if (formData.testScript?.trim() && !isStreamingResponse) {
         try {
-          const { testResults, envOverrides: testEnvOverrides } = await runTestScript(formData.testScript, response as ProxyResponse, request, effectiveEnv);
+          const { testResults, envOverrides: testEnvOverrides, envTypes: testEnvTypes } = await runTestScript(formData.testScript, response as ProxyResponse, request, effectiveEnv);
           setTabTestResults(tab.id, testResults);
           if (effectiveEnv && Object.keys(testEnvOverrides).length > 0) {
-            await updateCurrentValues(effectiveEnv.id, testEnvOverrides);
+            await updateCurrentValues(effectiveEnv.id, testEnvOverrides, testEnvTypes);
           }
           const passed = testResults.filter(r => r.passed).length;
           addConsoleLog({

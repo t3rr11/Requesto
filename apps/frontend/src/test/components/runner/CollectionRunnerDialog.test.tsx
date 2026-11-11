@@ -142,6 +142,22 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     expect(mocks.updateCurrentValues).not.toHaveBeenCalled();
   });
 
+  it('persists script-recorded variable types alongside the current values', async () => {
+    mocks.environment = { id: 'env-1', name: 'Local', variables: [] };
+    const collections = makeCollections();
+    collections[0].requests[0].testScript = 'set a numeric id';
+    mocks.runTest.mockResolvedValue({
+      testResults: [],
+      envOverrides: { appId: '1001' },
+      envTypes: { appId: 'number' },
+    });
+    render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+    await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+    await waitFor(() =>
+      expect(mocks.updateCurrentValues).toHaveBeenCalledWith('env-1', { appId: '1001' }, { appId: 'number' }),
+    );
+  });
+
   it('does not write current values if workspace restoration fails', async () => {
     mocks.environment = { id: 'env-1', name: 'Local', variables: [] };
     mocks.teardown.mockRejectedValue(new Error('restore failed'));

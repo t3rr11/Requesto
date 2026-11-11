@@ -1,4 +1,4 @@
-import type { Environment, EnvironmentsData } from './types';
+import type { Environment, EnvironmentVariableType, EnvironmentsData } from './types';
 import { API_BASE } from '../../helpers/api/config';
 import { downloadJSON, readJSONFile } from '../../helpers/file';
 import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
@@ -151,18 +151,21 @@ export async function exportEnvironment(environmentId: string): Promise<void> {
 /**
  * Persist runtime current-value overrides to the local sidecar file (never
  * committed to git). Also updates the in-memory Zustand state so the UI
- * reflects the new values immediately without a full reload.
+ * reflects the new values immediately without a full reload. `types`
+ * optionally records the type each value came in as (from script
+ * `environment.set()`), so the variable's stored type stays correct.
  */
 export async function updateCurrentValues(
   set: SetState,
   get: GetState,
   envId: string,
   overrides: Record<string, string>,
+  types?: Record<string, EnvironmentVariableType>,
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/environments/${envId}/current-values`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ overrides }),
+    body: JSON.stringify({ overrides, ...(types && Object.keys(types).length > 0 && { types }) }),
   });
   if (!res.ok) throw new Error('Failed to update current values');
 
@@ -174,13 +177,13 @@ export async function updateCurrentValues(
   const env = environmentsData.environments[idx];
   const updatedVariables = env.variables.map((v) =>
     Object.prototype.hasOwnProperty.call(overrides, v.key)
-      ? { ...v, currentValue: overrides[v.key] }
+      ? { ...v, currentValue: overrides[v.key], ...(types?.[v.key] !== undefined && { type: types[v.key] }) }
       : v,
   );
   // Also add any newly-introduced keys as new variables (current-value only)
   Object.entries(overrides).forEach(([key, value]) => {
     if (!updatedVariables.some((v) => v.key === key)) {
-      updatedVariables.push({ key, value: '', currentValue: value, enabled: true });
+      updatedVariables.push({ key, value: '', currentValue: value, enabled: true, type: types?.[key] ?? 'string' });
     }
   });
 

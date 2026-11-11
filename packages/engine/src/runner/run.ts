@@ -42,12 +42,18 @@ export type ScriptEnvOverrides = {
  * browser Web Worker runner for the app.
  */
 export type ScriptRunner = {
-  runPreRequest(script: string, env: Record<string, string>, request: ScriptRequestContext): Promise<ScriptEnvOverrides>;
+  runPreRequest(
+    script: string,
+    env: Record<string, string>,
+    request: ScriptRequestContext,
+    envTypes?: Record<string, EnvironmentVariableType>,
+  ): Promise<ScriptEnvOverrides>;
   runTest(
     script: string,
     response: ScriptResponseContext,
     request: ScriptRequestContext,
     env: Record<string, string>,
+    envTypes?: Record<string, EnvironmentVariableType>,
   ): Promise<{ testResults: TestResult[] } & ScriptEnvOverrides>;
 };
 
@@ -99,6 +105,16 @@ function envRecord(env: Environment | null): Record<string, string> {
   return Object.fromEntries(
     env.variables.filter((v) => v.enabled).map((v) => [v.key, v.currentValue ?? v.value]),
   );
+}
+
+/** Declared types of enabled env variables, omitted entirely when none is set. */
+function envTypesRecord(env: Environment | null): Record<string, EnvironmentVariableType> | undefined {
+  if (!env) return undefined;
+  const types: Record<string, EnvironmentVariableType> = {};
+  for (const v of env.variables) {
+    if (v.enabled && v.type) types[v.key] = v.type;
+  }
+  return Object.keys(types).length > 0 ? types : undefined;
 }
 
 function isExcluded(collection: Collection, selectors: string[]): boolean {
@@ -236,6 +252,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             item.request.preRequestScript,
             envRecord(liveEnv),
             { method: proxyReq.method, url: proxyReq.url, headers: proxyReq.headers, body: proxyReq.body },
+            envTypesRecord(liveEnv),
           );
           liveEnv = applyEnvOverrides(liveEnv, overrides);
         }
@@ -281,6 +298,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
               formDataEntries: proxyReq.formDataEntries?.map(({ key, value, type, fileName }) => ({ key, value, type, fileName })),
             },
             envRecord(liveEnv),
+            envTypesRecord(liveEnv),
           );
           testResults = outcome.testResults;
           liveEnv = applyEnvOverrides(liveEnv, outcome);

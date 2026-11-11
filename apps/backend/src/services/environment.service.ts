@@ -1,8 +1,8 @@
 import { EnvironmentRepository } from '../repositories/environment.repository';
-import { EnvironmentLocalRepository } from '../repositories/environment-local.repository';
+import { EnvironmentLocalRepository, type LocalVariable } from '../repositories/environment-local.repository';
 import { substituteInAuth, substituteInRequest } from '../utils/variable-substitution';
 import { AppError } from '../errors/app-error';
-import type { Environment, EnvironmentVariable, EnvironmentsData } from '../models/environment';
+import type { Environment, EnvironmentVariable, EnvironmentVariableType, EnvironmentsData } from '../models/environment';
 import type { AuthConfig, ProxyRequest } from '../models/proxy';
 
 export class EnvironmentService {
@@ -11,19 +11,20 @@ export class EnvironmentService {
     private readonly localRepo?: EnvironmentLocalRepository,
   ) {}
 
-  /** Merge current values from the local sidecar into an environment's variables. */
+  /** Merge current values (and their recorded types) from the local sidecar into an environment's variables. */
   private mergeCurrentValues(env: Environment): Environment {
     if (!this.localRepo) return env;
     const overrides = this.localRepo.getForEnvironment(env.id);
     if (Object.keys(overrides).length === 0) return env;
-    const variables = env.variables.map((v) =>
-      Object.prototype.hasOwnProperty.call(overrides, v.key)
-        ? { ...v, currentValue: overrides[v.key] }
-        : v,
-    );
-    for (const [key, currentValue] of Object.entries(overrides)) {
+    const withType = (v: EnvironmentVariable, entry: LocalVariable): EnvironmentVariable =>
+      entry.type !== undefined ? { ...v, currentValue: entry.value, type: entry.type } : { ...v, currentValue: entry.value };
+    const variables = env.variables.map((v) => {
+      const entry = overrides[v.key];
+      return entry ? withType(v, entry) : v;
+    });
+    for (const [key, entry] of Object.entries(overrides)) {
       if (!variables.some((v) => v.key === key)) {
-        variables.push({ key, value: '', currentValue, enabled: true });
+        variables.push({ key, value: '', currentValue: entry.value, enabled: true, ...(entry.type !== undefined && { type: entry.type }) });
       }
     }
     return {
@@ -84,12 +85,17 @@ export class EnvironmentService {
 
   /**
    * Persist current-value overrides to the local sidecar file.
-   * Called by pre-request scripts via `environment.set()`.
+   * Called by pre-request scripts via `environment.set()`. `types` optionally
+   * records the type each value came in as (from the script sandbox).
    */
-  setCurrentValues(envId: string, overrides: Record<string, string>): void {
+  setCurrentValues(
+    envId: string,
+    overrides: Record<string, string>,
+    types?: Record<string, EnvironmentVariableType>,
+  ): void {
     const env = this.repo.findById(envId);
     if (!env) throw AppError.notFound('Environment not found');
-    this.localRepo?.setForEnvironment(envId, overrides);
+    this.localRepo?.setForEnvironment(envId, overrides, types);
   }
 
   /** Reset all current values for an environment back to their initial values. */

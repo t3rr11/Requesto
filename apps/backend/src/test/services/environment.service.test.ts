@@ -68,6 +68,71 @@ describe('EnvironmentService', () => {
         rmSync(dir, { recursive: true, force: true });
       }
     });
+
+    it('persists and reloads the type a script recorded alongside the value', () => {
+      const dir = mkdtempSync(join(tmpdir(), 'requesto-env-'));
+      try {
+        const env = makeEnv({
+          variables: [
+            { key: 'existing', value: 'initial', enabled: true },
+            { key: 'typed', value: 'initial', type: 'string', enabled: true },
+          ],
+        });
+        const repo = mockRepo({
+          getAll: vi.fn().mockReturnValue(makeEnvsData([env], env.id)),
+          getActive: vi.fn().mockReturnValue(env),
+          findById: vi.fn().mockReturnValue(env),
+        });
+        const service = new EnvironmentService(repo, new EnvironmentLocalRepository(() => dir));
+        service.setCurrentValues(
+          env.id,
+          { existing: '1', created: '2', typed: '3' },
+          { existing: 'number', created: 'number', typed: 'number' },
+        );
+
+        const expected = [
+          { key: 'existing', value: 'initial', currentValue: '1', enabled: true, type: 'number' },
+          { key: 'typed', value: 'initial', currentValue: '3', enabled: true, type: 'number' },
+          { key: 'created', value: '', currentValue: '2', enabled: true, type: 'number' },
+        ];
+        expect(service.getAll().environments[0].variables).toEqual(expected);
+        expect(service.getActive()?.variables).toEqual(expected);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('keeps a recorded type when a later set omits it, and reads legacy string-only sidecar entries', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'requesto-env-'));
+      try {
+        const env = makeEnv({ variables: [] });
+        const repo = mockRepo({
+          getAll: vi.fn().mockReturnValue(makeEnvsData([env], env.id)),
+          getActive: vi.fn().mockReturnValue(env),
+          findById: vi.fn().mockReturnValue(env),
+        });
+        const service = new EnvironmentService(repo, new EnvironmentLocalRepository(() => dir));
+        service.setCurrentValues(env.id, { appId: '1001' }, { appId: 'number' });
+        // Later override without a type: the recorded type survives.
+        service.setCurrentValues(env.id, { appId: '1002' });
+        expect(service.getActive()?.variables).toEqual([
+          { key: 'appId', value: '', currentValue: '1002', enabled: true, type: 'number' },
+        ]);
+
+        // Legacy sidecar written before types existed: plain string entries.
+        const { writeFileSync } = await import('node:fs');
+        service.resetCurrentValues(env.id);
+        writeFileSync(
+          join(dir, 'environments.local.json'),
+          JSON.stringify({ [env.id]: { legacy: 'value-only' } }),
+        );
+        expect(service.getActive()?.variables).toEqual([
+          { key: 'legacy', value: '', currentValue: 'value-only', enabled: true },
+        ]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
   });
 
   describe('save', () => {

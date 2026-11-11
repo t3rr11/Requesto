@@ -11,12 +11,14 @@
  */
 
 import type { EnvironmentVariableType } from 'requesto-backend/models/environment';
+import { isNumericLiteral } from 'requesto-backend/utils/variable-substitution';
 
 export type TestResult = { name: string; passed: boolean; error?: string };
 
 export type PreRequestContext = {
   request: { method: string; url: string; headers?: Record<string, string>; body?: string };
   env: Record<string, string>;
+  envTypes?: Record<string, EnvironmentVariableType>;
 };
 
 export type ScriptFormEntry = { key: string; value: string; type?: 'text' | 'file'; fileName?: string };
@@ -37,6 +39,7 @@ export type TestContext = {
     formDataEntries?: ScriptFormEntry[];
   };
   env: Record<string, string>;
+  envTypes?: Record<string, EnvironmentVariableType>;
 };
 
 export type PreRequestOutcome = {
@@ -168,7 +171,18 @@ function typeOfScriptValue(value: unknown): EnvironmentVariableType {
   return 'string';
 }
 
-function createEnvironment(env: Record<string, string>) {
+/**
+ * Parse a stored string value according to its declared type. Values that
+ * cannot represent the type (e.g. a Number variable holding `02134`) fall
+ * back to the raw string, mirroring the JSON substitution fallback.
+ */
+function typedValue(value: string, type: EnvironmentVariableType | undefined): string | number | boolean {
+  if (type === 'number' && isNumericLiteral(value)) return Number(value);
+  if (type === 'boolean' && (value === 'true' || value === 'false')) return value === 'true';
+  return value;
+}
+
+function createEnvironment(env: Record<string, string>, declaredTypes?: Record<string, EnvironmentVariableType>) {
   const envStore: Record<string, string> = { ...env };
   // Types recorded per key set during this run, so callers can re-type variables.
   const typeStore: Record<string, EnvironmentVariableType> = {};
@@ -176,7 +190,11 @@ function createEnvironment(env: Record<string, string>) {
     store: envStore,
     types: typeStore,
     api: {
-      get: (key: string): string => envStore[key] ?? '',
+      get: (key: string): string | number | boolean => {
+        const raw = envStore[key];
+        if (raw === undefined) return '';
+        return typedValue(raw, typeStore[key] ?? declaredTypes?.[key]);
+      },
       set: (key: string, value: unknown): void => {
         envStore[key] = String(value);
         typeStore[key] = typeOfScriptValue(value);
@@ -187,7 +205,7 @@ function createEnvironment(env: Record<string, string>) {
 
 /** Execute a pre-request script. Throws on script errors. */
 export function executePreRequestScript(script: string, context: PreRequestContext): PreRequestOutcome {
-  const { store, types, api } = createEnvironment(context.env);
+  const { store, types, api } = createEnvironment(context.env, context.envTypes);
   const request = { ...context.request };
 
   // eslint-disable-next-line no-new-func
@@ -201,7 +219,7 @@ export function executePreRequestScript(script: string, context: PreRequestConte
 export function executeTestScript(script: string, context: TestContext): TestOutcome {
   const results: TestResult[] = [];
   const { response: responseCtx, request: requestCtx } = context;
-  const { store, types, api } = createEnvironment(context.env);
+  const { store, types, api } = createEnvironment(context.env, context.envTypes);
 
   const response = {
     status: responseCtx.status,

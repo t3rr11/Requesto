@@ -23,12 +23,12 @@ Read and write variables in the active environment.
 
 | Method | Description |
 |--------|-------------|
-| `environment.get(key)` | Returns the current value of `key`, or an empty string if the variable does not exist |
+| `environment.get(key)` | Returns the current value of `key` - as a Number or Boolean when the variable has that type (falling back to the string when the value cannot represent it) - or an empty string if the variable does not exist |
 | `environment.set(key, value)` | Sets the current value of `key` in the active environment |
 
 `environment.set()` writes to the variable's **current value**, which is a local override stored separately from the committed environment files under `.requesto/environments/`. This means scripts never cause unintended git changes. See [Environments: Initial Value and Current Value](/features/environments#initial-value-and-current-value) for details.
 
-The type of the value is inherited too: `environment.set('count', 42)` marks `count` as a Number and `environment.set('flag', true)` as a Boolean, so they are sent unquoted in JSON bodies and GraphQL variables. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
+The type of the value is inherited too: `environment.set('count', 42)` marks `count` as a Number and `environment.set('flag', true)` as a Boolean, so they are sent unquoted in JSON bodies and GraphQL variables. A string stays a String even when it looks numeric - `environment.set('appId', json.data.application.id)` where the API returns `"1001"` keeps `appId` a String, so GraphQL `ID` variables are not accidentally sent as numbers. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
 
 ### `request`
 
