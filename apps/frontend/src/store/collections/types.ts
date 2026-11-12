@@ -1,4 +1,5 @@
 import type { AuthConfig, BodyType, FormDataEntry } from '../request/types';
+import type { EnvironmentVariable } from '../environments/types';
 
 export type OpenApiSpecLink = {
   source: string;
@@ -45,6 +46,7 @@ export type Folder = {
   name: string;
   parentId?: string;
   collectionId: string;
+  variables?: EnvironmentVariable[];
 };
 
 export type Collection = {
@@ -53,6 +55,7 @@ export type Collection = {
   description?: string;
   /** Set on system-managed collections (e.g. "Uncategorized"). Prevents rename/delete in the UI. */
   isSystem?: boolean;
+  variables?: EnvironmentVariable[];
   folders: Folder[];
   requests: SavedRequest[];
   openApiSpec?: OpenApiSpecLink;

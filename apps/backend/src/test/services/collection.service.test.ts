@@ -4,7 +4,9 @@ import path from 'node:path';
 import os from 'os';
 import { CollectionService } from '../../services/collection.service';
 import { CollectionRepository } from '../../repositories/collection.repository';
+import { CollectionLocalRepository } from '../../repositories/collection-local.repository';
 import type { Collection, SavedRequest, Folder } from '../../models/collection';
+import type { EnvironmentVariable } from '../../models/environment';
 
 function makeCollection(overrides: Partial<Collection> = {}): Collection {
   return {
@@ -575,6 +577,122 @@ describe('CollectionService', () => {
   });
 });
 
+describe('CollectionService current values (local sidecar)', () => {
+  let localDir: string;
+  let localRepo: CollectionLocalRepository;
+
+  beforeEach(() => {
+    localDir = fs.mkdtempSync(path.join(os.tmpdir(), 'requesto-col-local-'));
+    localRepo = new CollectionLocalRepository(() => localDir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(localDir, { recursive: true, force: true });
+  });
+
+  const makeVar = (key: string, value: string, overrides: Partial<EnvironmentVariable> = {}): EnvironmentVariable => ({
+    key,
+    value,
+    enabled: true,
+    ...overrides,
+  });
+
+  it('merges sidecar current values into collection and folder variables on read', async () => {
+    const col = makeCollection({
+      variables: [makeVar('base', 'https://initial.example.com')],
+      folders: [{ id: 'f-1', name: 'F', collectionId: 'col-1', variables: [makeVar('token', 'initial')] }],
+    });
+    const repo = mockRepo({
+      getAll: vi.fn().mockResolvedValue([col]),
+      getById: vi.fn().mockResolvedValue(col),
+    });
+    const service = new CollectionService(repo, localRepo);
+    service.setCurrentValues('col-1', { base: 'https://current.example.com' });
+    service.setCurrentValues('col-1', { token: 'current-token' }, undefined, 'f-1');
+
+    const expectedCollection = [makeVar('base', 'https://initial.example.com', { currentValue: 'https://current.example.com' })];
+    const expectedFolder = [makeVar('token', 'initial', { currentValue: 'current-token' })];
+
+    expect((await service.getById('col-1')).variables).toEqual(expectedCollection);
+    expect((await service.getById('col-1')).folders?.[0].variables).toEqual(expectedFolder);
+    expect((await service.getAll())[0].variables).toEqual(expectedCollection);
+    expect((await service.getAll())[0].folders?.[0].variables).toEqual(expectedFolder);
+    // The stored collection itself is untouched (merge happens on read only)
+    expect(col.variables?.[0].currentValue).toBeUndefined();
+    expect(col.folders?.[0].variables?.[0].currentValue).toBeUndefined();
+  });
+
+  it('keeps folder overrides out of the collection scope', async () => {
+    const col = makeCollection({
+      variables: [makeVar('shared', 'col-initial')],
+      folders: [{ id: 'f-1', name: 'F', collectionId: 'col-1', variables: [makeVar('shared', 'folder-initial')] }],
+    });
+    const repo = mockRepo({
+      getById: vi.fn().mockResolvedValue(col),
+    });
+    const service = new CollectionService(repo, localRepo);
+    service.setCurrentValues('col-1', { shared: 'folder-set' }, undefined, 'f-1');
+
+    expect((await service.getById('col-1')).variables).toEqual([makeVar('shared', 'col-initial')]);
+    expect((await service.getById('col-1')).folders?.[0].variables).toEqual([makeVar('shared', 'folder-initial', { currentValue: 'folder-set' })]);
+  });
+
+  it('creates read-back entries for script-created variables and records their type', async () => {
+    const col = makeCollection();
+    const repo = mockRepo({ getById: vi.fn().mockResolvedValue(col) });
+    const service = new CollectionService(repo, localRepo);
+    service.setCurrentValues('col-1', { generated: '123' }, { generated: 'number' });
+
+    expect((await service.getById('col-1')).variables).toEqual([
+      { key: 'generated', value: '', currentValue: '123', enabled: true, type: 'number' },
+    ]);
+  });
+
+  it('strips current values before saving so the committed file stays clean', async () => {
+    const col = makeCollection({
+      variables: [makeVar('base', 'initial', { currentValue: 'current' })],
+      folders: [{ id: 'f-1', name: 'F', collectionId: 'col-1', variables: [makeVar('token', 'initial', { currentValue: 'current' })] }],
+    });
+    const saveAll = vi.fn().mockResolvedValue(undefined);
+    const repo = mockRepo({ getAll: vi.fn().mockResolvedValue([col]), saveAll });
+    const service = new CollectionService(repo, localRepo);
+
+    await service.saveAll(col);
+
+    const written = saveAll.mock.calls[0][0][0] as Collection;
+    expect(written.variables).toEqual([makeVar('base', 'initial')]);
+    expect(written.folders?.[0].variables).toEqual([makeVar('token', 'initial')]);
+  });
+
+  it('strips current values when updating variables directly', async () => {
+    const updated = makeCollection({ variables: [makeVar('base', 'initial', { currentValue: 'current' })] });
+    const update = vi.fn().mockResolvedValue(updated);
+    const repo = mockRepo({ update });
+    const service = new CollectionService(repo, localRepo);
+
+    await service.update('col-1', { variables: [makeVar('base', 'initial', { currentValue: 'current' })] });
+
+    expect(update).toHaveBeenCalledWith('col-1', {
+      variables: [makeVar('base', 'initial')],
+    });
+  });
+
+  it('removes sidecar data when a collection or folder is deleted', async () => {
+    const repo = mockRepo({ delete: vi.fn().mockResolvedValue(true), deleteFolder: vi.fn().mockResolvedValue(true) });
+    const service = new CollectionService(repo, localRepo);
+    service.setCurrentValues('col-1', { base: 'current' });
+    service.setCurrentValues('col-1', { token: 'current' }, undefined, 'f-1');
+    service.setCurrentValues('col-1', { other: 'current' }, undefined, 'f-2');
+
+    await service.deleteFolder('col-1', 'f-1');
+    expect(localRepo.getForScope('col-1::f-1')).toEqual({});
+    expect(localRepo.getForScope('col-1::f-2')).toEqual({ other: { value: 'current' } });
+
+    await service.delete('col-1');
+    expect(localRepo.getAll()).toEqual({});
+  });
+});
+
 describe('CollectionService with real repository (split file layout)', () => {
   let tmpDir: string;
   let repo: CollectionRepository;
@@ -614,6 +732,18 @@ describe('CollectionService with real repository (split file layout)', () => {
     expect(second.id).not.toBe(first.id);
     expect(await repo.getById(first.id)).toBeDefined();
     expect(await repo.getById(second.id)).toBeDefined();
+  });
+
+  it('importCollection keeps variables but drops runtime current values', async () => {
+    const imported = await service.importCollection({
+      name: 'With Vars',
+      variables: [{ key: 'base', value: 'https://initial.example.com', currentValue: 'https://current.example.com', enabled: true }],
+      folders: [{ id: 'f-old', name: 'F', variables: [{ key: 'token', value: 'initial', currentValue: 'current', enabled: true }] }],
+    });
+
+    const stored = await repo.getById(imported.id);
+    expect(stored?.variables).toEqual([{ key: 'base', value: 'https://initial.example.com', enabled: true }]);
+    expect(stored?.folders?.[0].variables).toEqual([{ key: 'token', value: 'initial', enabled: true }]);
   });
 
   it('moveCollection rewrites only the order manifest, leaving collection files untouched', async () => {
