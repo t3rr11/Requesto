@@ -1,5 +1,5 @@
 ﻿import type { ScriptFormEntry } from '../scripts/sandbox-core.ts';
-import { substituteInRequest, substituteInAuth } from 'requesto-backend/utils/variable-substitution';
+import type { VariableScope } from 'requesto-backend/utils/variable-substitution';
 import { buildProxyRequest } from '../request/build-proxy-request.ts';
 import { getGraphQLResponseInfo } from '../request/graphql-envelope.ts';
 import { buildCollectionItems, resolveFolderIds } from './display.ts';
@@ -10,12 +10,19 @@ import type {
   Collection,
   Environment,
   EnvironmentVariableType,
+  Folder,
   RunRequestResult,
   RunSummary,
   RunnerEvent,
   TestResult,
   WarningKind
 } from '../types.ts';
+import {
+  effectiveVariables,
+  folderChainFor,
+  substituteInRequest,
+  substituteInAuth,
+} from 'requesto-backend/utils/variable-substitution';
 
 /** Request context passed to script runners. */
 export type ScriptRequestContext = { method: string; url: string; headers?: Record<string, string>; body?: string; formDataEntries?: ScriptFormEntry[] };
@@ -123,27 +130,48 @@ function isExcluded(collection: Collection, selectors: string[]): boolean {
   return lower.includes(collection.name.toLowerCase()) || lower.includes(collection.id.toLowerCase());
 }
 
-/** Merge script-set overrides into the live environment (in memory only).
- *  Keys not present in the environment are appended as new variables so
- *  `environment.set()` on a fresh key works in chained requests. Types are
- *  re-typed from the script value when provided. */
-function applyEnvOverrides(
+/** Merge script-set overrides into the effective substitution scope (in
+ *  memory only): env over collection over folder chain, with script-set
+ *  values layered on top so they win even with no environment selected.
+ *  Keys not present in any scope are appended so `environment.set()` on a
+ *  fresh key works in chained requests. Types are re-typed from the script
+ *  value when provided. */
+function effectiveScope(
   env: Environment | null,
-  overrides: ScriptEnvOverrides,
-): Environment | null {
-  const { envOverrides, envTypes } = overrides;
-  if (!env || Object.keys(envOverrides).length === 0) return env;
-  const variables = env.variables.map((v) =>
-    Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-      ? { ...v, currentValue: envOverrides[v.key], type: envTypes?.[v.key] ?? v.type }
+  collection: Collection,
+  folderChain: Folder[],
+  overrides: Record<string, string>,
+  types: Record<string, EnvironmentVariableType>,
+): VariableScope {
+  const scope = effectiveVariables(env, collection, folderChain);
+  const variables = scope.variables.map((v) =>
+    Object.hasOwn(overrides, v.key)
+      ? { ...v, currentValue: overrides[v.key], type: types[v.key] ?? v.type }
       : v,
   );
-  for (const [key, value] of Object.entries(envOverrides)) {
+  for (const [key, value] of Object.entries(overrides)) {
     if (!variables.some((v) => v.key === key)) {
-      variables.push({ key, value, currentValue: value, enabled: true, type: envTypes?.[key] ?? 'string' });
+      variables.push({ key, value, currentValue: value, enabled: true, type: types[key] ?? 'string' });
     }
   }
-  return { ...env, variables };
+  return { variables };
+}
+
+/** Values visible to scripts: the environment plus script-set overrides. */
+function envRecordWithOverrides(
+  env: Environment | null,
+  overrides: Record<string, string>,
+): Record<string, string> {
+  return { ...envRecord(env), ...overrides };
+}
+
+/** Declared types visible to scripts: env types plus types recorded for script-set values. */
+function envTypesWithOverrides(
+  env: Environment | null,
+  overrides: Record<string, EnvironmentVariableType>,
+): Record<string, EnvironmentVariableType> | undefined {
+  const types = { ...envTypesRecord(env), ...overrides };
+  return Object.keys(types).length > 0 ? types : undefined;
 }
 
 /**
@@ -190,12 +218,16 @@ function resolveStatus(
  * Run the given collections sequentially, mirroring the app's collection
  * runner: pre-request script → variable substitution → send → test script.
  * Environment changes made by scripts are chained in memory (never written
- * back to the workspace).
+ * back to the workspace). Collection and folder variables are re-scoped per
+ * request: the environment is shared across collections, collection and
+ * folder variables are not.
  */
 export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
   const results: RunRequestResult[] = [];
   const started = Date.now();
   let liveEnv = opts.environment;
+  let scriptValues: Record<string, string> = {};
+  let scriptTypes: Record<string, EnvironmentVariableType> = {};
   let bailTriggered = false;
   let lastCollectionId: string | null = null;
 
@@ -250,14 +282,22 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
         if (item.request.preRequestScript?.trim()) {
           const overrides = await opts.scripts.runPreRequest(
             item.request.preRequestScript,
-            envRecord(liveEnv),
+            envRecordWithOverrides(liveEnv, scriptValues),
             { method: proxyReq.method, url: proxyReq.url, headers: proxyReq.headers, body: proxyReq.body },
-            envTypesRecord(liveEnv),
+            envTypesWithOverrides(liveEnv, scriptTypes),
           );
-          liveEnv = applyEnvOverrides(liveEnv, overrides);
+          scriptValues = { ...scriptValues, ...overrides.envOverrides };
+          scriptTypes = { ...scriptTypes, ...(overrides.envTypes ?? {}) };
         }
 
-        // 3. Variable substitution with the live environment.
+        // 3. Variable substitution: env over this collection's own variables and the request's folder chain, with script-set values on top.
+        const scope = effectiveScope(
+          liveEnv,
+          collection,
+          folderChainFor(collection, item.request.folderId),
+          scriptValues,
+          scriptTypes,
+        );
         const substituted = substituteInRequest(
           {
             url: proxyReq.url,
@@ -266,9 +306,9 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             bodyType: proxyReq.bodyType,
             formDataEntries: proxyReq.formDataEntries,
           },
-          liveEnv,
+          scope,
         );
-        const auth = substituteInAuth(proxyReq.auth, liveEnv);
+        const auth = substituteInAuth(proxyReq.auth, scope);
         proxyReq = { ...proxyReq, ...substituted, auth };
 
         // 4. Send.
@@ -297,11 +337,12 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
               body: proxyReq.body,
               formDataEntries: proxyReq.formDataEntries?.map(({ key, value, type, fileName }) => ({ key, value, type, fileName })),
             },
-            envRecord(liveEnv),
-            envTypesRecord(liveEnv),
+            envRecordWithOverrides(liveEnv, scriptValues),
+            envTypesWithOverrides(liveEnv, scriptTypes),
           );
           testResults = outcome.testResults;
-          liveEnv = applyEnvOverrides(liveEnv, outcome);
+          scriptValues = { ...scriptValues, ...outcome.envOverrides };
+          scriptTypes = { ...scriptTypes, ...(outcome.envTypes ?? {}) };
         }
 
         const allPassed = testResults.every((t) => t.passed);

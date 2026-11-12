@@ -15,6 +15,7 @@ import {
   isNumericLiteral,
   inferType,
   effectiveVariables,
+  folderChainFor,
 } from '../../helpers/environment';
 import type { Environment } from '../../store/environments/types';
 import type { Collection, Folder } from '../../store/collections/types';
@@ -529,5 +530,33 @@ describe('effectiveVariables', () => {
   it('keeps variable types through the merge', () => {
     const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
     expect(substituteJsonVariables('{"id": "{{TYPED}}"}', scope)).toBe('{"id": 42}');
+  });
+});
+
+//GOTCHA: Keep the folderChainFor fixtures in sync with apps/backend/src/test/utils/variable-substitution.test.ts.
+describe('folderChainFor', () => {
+  const chainCollection: Collection = {
+    id: 'col-1',
+    name: 'Chain',
+    folders: [
+      { id: 'f-1', name: 'Outer', collectionId: 'col-1' },
+      { id: 'f-2', name: 'Inner', parentId: 'f-1', collectionId: 'col-1' },
+      { id: 'f-3', name: 'Other', collectionId: 'col-1' },
+    ],
+    requests: [],
+  };
+
+  it('walks parentId upward, outermost to innermost', () => {
+    expect(folderChainFor(chainCollection, 'f-2').map(f => f.id)).toEqual(['f-1', 'f-2']);
+  });
+
+  it('returns a single entry for a root-level folder', () => {
+    expect(folderChainFor(chainCollection, 'f-3').map(f => f.id)).toEqual(['f-3']);
+  });
+
+  it('returns empty for root-level requests, unknown folders, and missing collections', () => {
+    expect(folderChainFor(chainCollection)).toEqual([]);
+    expect(folderChainFor(chainCollection, 'missing')).toEqual([]);
+    expect(folderChainFor(null, 'f-1')).toEqual([]);
   });
 });

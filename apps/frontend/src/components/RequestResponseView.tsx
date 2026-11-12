@@ -23,15 +23,16 @@ import {
   buildSavePayloadFromFormData,
   parseGraphQLIntrospectionResponse,
 } from '../helpers/request';
-import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
+import { effectiveVariables, folderChainFor, substituteInRequest, getUndefinedVariables } from '../helpers/environment';
 import { applyAuthForDisplay } from '../helpers/api/authPreview';
 import { runPreRequestScript, runTestScript } from '../helpers/scriptRunner';
 import type { ProxyResponse, StreamingResponse } from '../store/request/types';
+import type { Tab } from '../store/tabs/types';
 import type { GraphQLSchema } from 'graphql';
 
 export function RequestResponseView() {
   const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab, setTabTestResults } = useTabsStore();
-  const { updateRequest } = useCollectionsStore();
+  const { collections, updateRequest } = useCollectionsStore();
   const { environmentsData, updateCurrentValues } = useEnvironmentStore();
   const { sendRequest, sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
@@ -60,6 +61,21 @@ export function RequestResponseView() {
     };
   }, []);
 
+  // Collection, folder chain, and active environment for the tab's saved
+  // request; merged into the substitution scope at send time.
+  const getVariableContext = useCallback((tab: Tab | null) => {
+    const activeEnv = environmentsData.environments.find(
+      e => e.id === environmentsData.activeEnvironmentId,
+    ) ?? null;
+    const collection = tab?.collectionId
+      ? collections.find(c => c.id === tab.collectionId) ?? null
+      : null;
+    const savedRequest = tab?.savedRequestId
+      ? collection?.requests.find(r => r.id === tab.savedRequestId)
+      : undefined;
+    return { activeEnv, collection, folderChain: folderChainFor(collection, savedRequest?.folderId) };
+  }, [environmentsData, collections]);
+
   const handleSend = useCallback(async (formData: RequestFormData) => {
     const tab = getActiveTab();
     if (!tab) return;
@@ -76,9 +92,7 @@ export function RequestResponseView() {
       return;
     }
 
-    const activeEnv = environmentsData.environments.find(
-      e => e.id === environmentsData.activeEnvironmentId,
-    ) ?? null;
+    const { activeEnv, collection, folderChain } = getVariableContext(tab);
 
     // effectiveEnv starts as the current active environment, and may be updated
     // by the pre-request script before variable substitution runs.
@@ -109,13 +123,13 @@ export function RequestResponseView() {
       }
     }
 
-    const request = effectiveEnv ? substituteInRequest(rawRequest, effectiveEnv) : rawRequest;
+    const scope = effectiveVariables(effectiveEnv, collection, folderChain);
 
-    if (effectiveEnv) {
-      const undefinedVars = getUndefinedVariables(rawRequest, effectiveEnv);
-      if (undefinedVars.length > 0) {
-        showAlert('Warning', `Undefined variables: ${undefinedVars.join(', ')}`, 'warning');
-      }
+    const request = substituteInRequest(rawRequest, scope);
+
+    const undefinedVars = getUndefinedVariables(rawRequest, scope);
+    if (undefinedVars.length > 0) {
+      showAlert('Warning', `Undefined variables: ${undefinedVars.join(', ')}`, 'warning');
     }
 
     const requestId = crypto.randomUUID();
@@ -219,7 +233,7 @@ export function RequestResponseView() {
     }
   }, [
     getActiveTab,
-    environmentsData,
+    getVariableContext,
     sendStreamingRequest,
     touchTab,
     setTabLoading,
@@ -239,14 +253,13 @@ export function RequestResponseView() {
   }, []);
 
   const handleFetchGraphQLSchema = useCallback(async (formData: RequestFormData): Promise<GraphQLSchema> => {
-    const activeEnv = environmentsData.environments.find(
-      environment => environment.id === environmentsData.activeEnvironmentId,
-    ) ?? null;
+    const { activeEnv, collection, folderChain } = getVariableContext(getActiveTab());
+    const scope = effectiveVariables(activeEnv, collection, folderChain);
     const introspectionRequest = buildGraphQLIntrospectionRequest(formData);
-    const request = activeEnv ? substituteInRequest(introspectionRequest, activeEnv) : introspectionRequest;
+    const request = substituteInRequest(introspectionRequest, scope);
     const response = await sendRequest(request);
     return parseGraphQLIntrospectionResponse(response);
-  }, [environmentsData, sendRequest]);
+  }, [getActiveTab, getVariableContext, sendRequest]);
 
   const handleSave = useCallback(async () => {
     if (!activeTab || !formDataRef.current) return;

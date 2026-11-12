@@ -38,6 +38,22 @@ export function effectiveVariables(
 }
 
 /**
+ * Folder chain for a request's folder, outermost to innermost (the order
+ * `effectiveVariables` expects). Empty for root-level requests.
+ */
+export function folderChainFor(collection: Collection | null | undefined, folderId?: string): Folder[] {
+  if (!collection || !folderId) return [];
+  const chain: Folder[] = [];
+  let current = collection.folders.find(folder => folder.id === folderId);
+  while (current) {
+    chain.unshift(current);
+    const parentId = current.parentId;
+    current = parentId ? collection.folders.find(folder => folder.id === parentId) : undefined;
+  }
+  return chain;
+}
+
+/**
  * Replace `{{variableName}}` placeholders with values from the active variable scope.
  */
 export function substituteVariables(text: string, scope: VariableScope | null): string {
