@@ -403,6 +403,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
                   placeholder="Enter Request URL"
                   disabled={loading}
                   className="w-full px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-blue-500 bg-transparent text-black dark:text-gray-200"
+                  collectionId={currentTab?.collectionId}
                 />
               )}
             />
@@ -451,6 +452,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
             keyPlaceholder="Parameter"
             valuePlaceholder="Value"
             disabled={loading}
+            collectionId={currentTab?.collectionId}
           />
         )}
 
@@ -514,7 +516,9 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
           </div>
         )}
 
-        {activeTab === 'auth' && <AuthEditor auth={auth} onAuthChange={handleAuthChange} disabled={loading} />}
+        {activeTab === 'auth' && (
+          <AuthEditor auth={auth} onAuthChange={handleAuthChange} disabled={loading} collectionId={currentTab?.collectionId} />
+        )}
 
         {activeTab === 'headers' && (
           <KeyValueEditor
@@ -524,6 +528,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
             keyPlaceholder="Header"
             valuePlaceholder="Value"
             disabled={loading}
+            collectionId={currentTab?.collectionId}
           />
         )}
 
@@ -615,6 +620,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
                 valuePlaceholder="Value"
                 addLabel="+ Add Field"
                 disabled={loading}
+                collectionId={currentTab?.collectionId}
               />
             )}
           </div>

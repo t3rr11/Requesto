@@ -8,9 +8,10 @@ interface AuthEditorProps {
   auth: AuthConfig;
   onAuthChange: (auth: AuthConfig) => void;
   disabled?: boolean;
+  collectionId?: string;
 }
 
-export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorProps) {
+export function AuthEditor({ auth, onAuthChange, disabled = false, collectionId }: Readonly<AuthEditorProps>) {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleTypeChange = (type: AuthType) => {
@@ -76,6 +77,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
               placeholder="Enter username"
               disabled={disabled}
               className={inputClass}
+              collectionId={collectionId}
             />
           </div>
           <div>
@@ -88,6 +90,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
                 disabled={disabled}
                 type={showPassword ? 'text' : 'password'}
                 className={`${inputClass} pr-10`}
+                collectionId={collectionId}
               />
               <ToggleButton />
             </div>
@@ -98,8 +101,9 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
       {auth.type === 'bearer' && auth.bearer && (
         <div className="space-y-4 pt-2">
           <div className={descClass}>
-            Bearer token authentication sends the token in the Authorization header with the Bearer prefix.
-            Supports environment variables (e.g. <code className="px-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">{`{{API_TOKEN}}`}</code>).
+            Bearer token authentication sends the token in the Authorization header with the Bearer prefix. Supports
+            environment variables (e.g.{' '}
+            <code className="px-1 bg-gray-100 dark:bg-gray-700 rounded text-xs">{`{{API_TOKEN}}`}</code>).
           </div>
           <div>
             <label className={labelClass}>Token</label>
@@ -110,6 +114,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
               disabled={disabled}
               type="text"
               className={inputClass}
+              collectionId={collectionId}
             />
           </div>
         </div>
@@ -117,9 +122,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
 
       {auth.type === 'api-key' && auth.apiKey && (
         <div className="space-y-4 pt-2">
-          <div className={descClass}>
-            API key authentication can be sent via request header or query parameter.
-          </div>
+          <div className={descClass}>API key authentication can be sent via request header or query parameter.</div>
           <div>
             <label className={labelClass}>Key</label>
             <VariableAwareInput
@@ -128,6 +131,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
               placeholder="e.g., X-API-Key, api_key"
               disabled={disabled}
               className={inputClass}
+              collectionId={collectionId}
             />
           </div>
           <div>
@@ -140,6 +144,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
                 disabled={disabled}
                 type="text"
                 className={inputClass}
+                collectionId={collectionId}
               />
             </div>
           </div>
@@ -147,7 +152,9 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
             <label className={labelClass}>Add To</label>
             <select
               value={auth.apiKey.addTo}
-              onChange={e => onAuthChange({ ...auth, apiKey: { ...auth.apiKey!, addTo: e.target.value as 'header' | 'query' } })}
+              onChange={e =>
+                onAuthChange({ ...auth, apiKey: { ...auth.apiKey!, addTo: e.target.value as 'header' | 'query' } })
+              }
               className={selectClass}
               disabled={disabled}
             >
@@ -160,9 +167,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
 
       {auth.type === 'digest' && auth.digest && (
         <div className="space-y-4 pt-2">
-          <div className={descClass}>
-            Digest authentication is more secure than Basic auth, using MD5 hashing.
-          </div>
+          <div className={descClass}>Digest authentication is more secure than Basic auth, using MD5 hashing.</div>
           <div>
             <label className={labelClass}>Username</label>
             <VariableAwareInput
@@ -171,6 +176,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
               placeholder="Enter username"
               disabled={disabled}
               className={inputClass}
+              collectionId={collectionId}
             />
           </div>
           <div>
@@ -183,6 +189,7 @@ export function AuthEditor({ auth, onAuthChange, disabled = false }: AuthEditorP
                 disabled={disabled}
                 type={showPassword ? 'text' : 'password'}
                 className={`${inputClass} pr-10`}
+                collectionId={collectionId}
               />
               <ToggleButton />
             </div>

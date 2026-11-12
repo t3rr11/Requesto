@@ -62,7 +62,7 @@ describe('VariableTooltip', () => {
     expect(screen.getByText('(empty)')).toBeInTheDocument();
   });
 
-  it('shows environment name when provided', () => {
+  it('shows the source name and label when provided', () => {
     render(
       <VariableTooltip
         show={true}
@@ -71,10 +71,29 @@ describe('VariableTooltip', () => {
         variableKey="host"
         variableValue="api.dev.com"
         isSecret={false}
-        environmentName="Development"
+        sourceLabel="Environment"
+        sourceName="Development"
       />,
     );
     expect(screen.getByText('Development')).toBeInTheDocument();
+    expect(screen.getByText('Environment')).toBeInTheDocument();
+  });
+
+  it('shows a collection source', () => {
+    render(
+      <VariableTooltip
+        show={true}
+        x={0}
+        y={0}
+        variableKey="apiKey"
+        variableValue="abc123"
+        isSecret={false}
+        sourceLabel="Collection"
+        sourceName="API"
+      />,
+    );
+    expect(screen.getByText('API')).toBeInTheDocument();
+    expect(screen.getByText('Collection')).toBeInTheDocument();
   });
 
   it('positions at specified coordinates', () => {

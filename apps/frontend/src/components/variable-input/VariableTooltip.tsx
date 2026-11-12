@@ -5,7 +5,8 @@ interface VariableTooltipProps {
   variableKey: string;
   variableValue: string;
   isSecret: boolean;
-  environmentName?: string;
+  sourceLabel?: string;
+  sourceName?: string;
 }
 
 export function VariableTooltip({
@@ -15,8 +16,9 @@ export function VariableTooltip({
   variableKey,
   variableValue,
   isSecret,
-  environmentName,
-}: VariableTooltipProps) {
+  sourceLabel,
+  sourceName,
+}: Readonly<VariableTooltipProps>) {
   if (!show) return null;
 
   return (
@@ -28,10 +30,10 @@ export function VariableTooltip({
       <div className="font-mono text-sm font-semibold mb-2">{variableKey}</div>
       <div className="text-xs text-gray-300 dark:text-gray-400 mb-1">Value</div>
       <div className="text-sm break-all">{isSecret ? '••••••••' : variableValue || '(empty)'}</div>
-      {environmentName && (
+      {sourceName && (
         <>
-          <div className="text-xs text-gray-300 dark:text-gray-400 mt-2 mb-1">Environment</div>
-          <div className="text-sm">{environmentName}</div>
+          <div className="text-xs text-gray-300 dark:text-gray-400 mt-2 mb-1">{sourceLabel}</div>
+          <div className="text-sm">{sourceName}</div>
         </>
       )}
     </div>
