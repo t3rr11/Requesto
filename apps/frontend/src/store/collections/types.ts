@@ -46,7 +46,6 @@ export type Folder = {
   name: string;
   parentId?: string;
   collectionId: string;
-  variables?: EnvironmentVariable[];
 };
 
 export type Collection = {

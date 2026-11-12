@@ -1,5 +1,5 @@
 import { CollectionRepository } from '../repositories/collection.repository';
-import { CollectionLocalRepository, scopeKey } from '../repositories/collection-local.repository';
+import { CollectionLocalRepository } from '../repositories/collection-local.repository';
 import { withCurrentValues, withoutCurrentValues } from '../utils/local-variables';
 import { AppError } from '../errors/app-error';
 import type { Collection, SavedRequest, Folder, GraphQLRequestConfig, RequestType } from '../models/collection';
@@ -40,7 +40,7 @@ export class CollectionService {
 
   /**
    * Merge current values (and their recorded types) from the local sidecar
-   * into a collection's variables and each folder's variables.
+   * into a collection's variables.
    */
   private mergeCurrentValues(collection: Collection): Collection {
     if (!this.localRepo) return collection;
@@ -48,10 +48,6 @@ export class CollectionService {
     return {
       ...collection,
       variables: withCurrentValues(collection.variables, local.getForScope(collection.id)),
-      folders: collection.folders?.map((f) => ({
-        ...f,
-        variables: withCurrentValues(f.variables, local.getForScope(scopeKey(collection.id, f.id))),
-      })),
     };
   }
 
@@ -63,7 +59,6 @@ export class CollectionService {
     return {
       ...collection,
       variables: withoutCurrentValues(collection.variables),
-      folders: collection.folders?.map((f) => ({ ...f, variables: withoutCurrentValues(f.variables) })),
     };
   }
 
@@ -259,28 +254,20 @@ export class CollectionService {
   async updateFolder(
     collectionId: string,
     folderId: string,
-    updates: Partial<Pick<Folder, 'name' | 'parentId' | 'variables'>>,
+    updates: Partial<Pick<Folder, 'name' | 'parentId'>>,
   ): Promise<Folder> {
-    const updatesWithVars = 'variables' in updates
-      ? { ...updates, variables: withoutCurrentValues(updates.variables) }
-      : updates;
-    const saved = await this.repo.updateFolder(collectionId, folderId, updatesWithVars);
+    const saved = await this.repo.updateFolder(collectionId, folderId, updates);
     if (!saved) {
       throw AppError.notFound('Collection or folder not found');
     }
-    const local = this.localRepo?.getForScope(scopeKey(collectionId, folderId)) ?? {};
-    return { ...saved, variables: withCurrentValues(saved.variables, local) };
+    return saved;
   }
 
   async deleteFolder(collectionId: string, folderId: string): Promise<void> {
-    const collection = await this.repo.getById(collectionId);
     const deleted = await this.repo.deleteFolder(collectionId, folderId);
     if (!deleted) {
       throw AppError.notFound('Collection or folder not found');
     }
-
-    // Delete descendant folders recursively, so their sidecar scopes go too
-    this.localRepo?.deleteFolder(collectionId, [folderId, ...folderDescendantIds(collection?.folders ?? [], folderId)]);
   }
 
   async moveRequest(params: MoveRequestParams): Promise<SavedRequest> {
@@ -412,9 +399,6 @@ export class CollectionService {
     const updatedTarget: Collection = { ...targetCollection, folders: allFolders, requests: allRequests };
     await this.saveAll(updatedTarget);
 
-    // Move any associated scopes for the descendant folders to the target collection
-    this.localRepo?.moveScopesToCollection(sourceCollectionId, targetCollectionId, descendantIds);
-
     return movedFolder;
   }
 
@@ -524,24 +508,23 @@ export class CollectionService {
 
   /**
    * Persist current-value overrides to the local sidecar file.
-   * Called by pre-request scripts via `collectionVariables.set()` and
-   * `folderVariables.set()`. `types` optionally records the type each value
-   * came in as (from the script sandbox).
+   * Called by pre-request scripts via `collectionVariables.set()`. `types`
+   * optionally records the type each value came in as (from the script
+   * sandbox).
    */
   setCurrentValues(
     collectionId: string,
     overrides: Record<string, string>,
     types?: Record<string, EnvironmentVariableType>,
-    folderId?: string,
   ): void {
-    this.localRepo?.setForScope(scopeKey(collectionId, folderId), overrides, types);
+    this.localRepo?.setForScope(collectionId, overrides, types);
   }
 
-  resetCurrentValues(collectionId: string, folderId?: string): void {
-    this.localRepo?.resetForScope(scopeKey(collectionId, folderId));
+  resetCurrentValues(collectionId: string): void {
+    this.localRepo?.resetForScope(collectionId);
   }
 
-  resetCurrentValue(collectionId: string, key: string, folderId?: string): void {
-    this.localRepo?.resetVariable(scopeKey(collectionId, folderId), key);
+  resetCurrentValue(collectionId: string, key: string): void {
+    this.localRepo?.resetVariable(collectionId, key);
   }
 }

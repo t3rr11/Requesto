@@ -139,31 +139,20 @@ describe('runCollections', () => {
     expect(sent).toEqual(['http://one.test/one', 'http://two.test/two']);
   });
 
-  it('resolves folder variables innermost-first, with collection variables as fallback', async () => {
+  it('lets requests inside folders resolve the collection variables', async () => {
     const col: Collection = {
       id: 'c1',
       name: 'API',
-      variables: [{ key: 'token', value: 'from-collection', enabled: true }],
+      variables: [
+        { key: 'token', value: 'from-collection', enabled: true },
+        { key: 'extra', value: 'yes', enabled: true },
+      ],
       folders: [
-        {
-          id: 'f-outer',
-          name: 'Outer',
-          collectionId: 'c1',
-          variables: [
-            { key: 'token', value: 'from-outer', enabled: true },
-            { key: 'outer', value: 'yes', enabled: true },
-          ],
-        },
-        {
-          id: 'f-inner',
-          name: 'Inner',
-          parentId: 'f-outer',
-          collectionId: 'c1',
-          variables: [{ key: 'token', value: 'from-inner', enabled: true }],
-        },
+        { id: 'f-outer', name: 'Outer', collectionId: 'c1' },
+        { id: 'f-inner', name: 'Inner', parentId: 'f-outer', collectionId: 'c1' },
       ],
       requests: [
-        { id: 'r1', name: 'Nested', method: 'GET', url: '{{token}}/{{outer}}', collectionId: 'c1', folderId: 'f-inner' },
+        { id: 'r1', name: 'Nested', method: 'GET', url: '{{token}}/{{extra}}', collectionId: 'c1', folderId: 'f-inner' },
         { id: 'r2', name: 'Root', method: 'GET', url: '{{token}}', collectionId: 'c1' },
       ],
     };
@@ -178,19 +167,17 @@ describe('runCollections', () => {
         return okResponse;
       },
     });
-    expect(sent).toEqual(['from-inner/yes', 'from-collection']);
+    expect(sent).toEqual(['from-collection/yes', 'from-collection']);
   });
 
-  it('lets environment variables win over collection and folder variables', async () => {
+  it('lets environment variables win over collection variables', async () => {
     const col: Collection = {
       id: 'c1',
       name: 'API',
       variables: [{ key: 'token', value: 'from-collection', enabled: true }],
-      folders: [
-        { id: 'f1', name: 'Users', collectionId: 'c1', variables: [{ key: 'token', value: 'from-folder', enabled: true }] },
-      ],
+      folders: [],
       requests: [
-        { id: 'r1', name: 'In Folder', method: 'GET', url: '{{token}}', collectionId: 'c1', folderId: 'f1' },
+        { id: 'r1', name: 'A', method: 'GET', url: '{{token}}', collectionId: 'c1' },
       ],
     };
     const sent: string[] = [];
@@ -407,104 +394,6 @@ describe('runCollections', () => {
     // is unquoted in the JSON body per its inferred type.
     expect(sent[0].url).toBe('http://x.local/{{token}}');
     expect(JSON.parse(sent[0].body!)).toEqual({ n: 21 });
-  });
-
-  it('applies folderVariables.set to the innermost folder without leaking to siblings', async () => {
-    const col: Collection = {
-      id: 'c1',
-      name: 'API',
-      folders: [
-        {
-          id: 'f-a',
-          name: 'Alpha',
-          collectionId: 'c1',
-          variables: [{ key: 'token', value: 'from-alpha', enabled: true }],
-        },
-        {
-          id: 'f-b',
-          name: 'Beta',
-          collectionId: 'c1',
-          variables: [{ key: 'token', value: 'from-beta', enabled: true }],
-        },
-      ],
-      requests: [
-        {
-          id: 'r1',
-          name: 'In Alpha',
-          method: 'GET',
-          url: '{{token}}',
-          collectionId: 'c1',
-          folderId: 'f-a',
-          preRequestScript: [
-            `if (folderVariables.get('token') !== 'from-alpha') { throw new Error('get: ' + folderVariables.get('token')); }`,
-            `folderVariables.set('token', 'script-alpha');`,
-          ].join('\n'),
-        },
-        { id: 'r2', name: 'In Alpha again', method: 'GET', url: '{{token}}', collectionId: 'c1', folderId: 'f-a' },
-        { id: 'r3', name: 'In Beta', method: 'GET', url: '{{token}}', collectionId: 'c1', folderId: 'f-b' },
-        { id: 'r4', name: 'Root', method: 'GET', url: '{{token}}', collectionId: 'c1' },
-      ],
-    };
-    const sent: string[] = [];
-    await runCollections({
-      collections: [col],
-      environment: null,
-      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
-      scripts: nodeScriptRunner,
-      send: async (req) => {
-        sent.push(req.url);
-        return okResponse;
-      },
-    });
-    expect(sent).toEqual(['script-alpha', 'script-alpha', 'from-beta', '{{token}}']);
-  });
-
-  it('resolves folderVariables.get innermost-first in nested folder chains', async () => {
-    const col: Collection = {
-      id: 'c1',
-      name: 'API',
-      folders: [
-        {
-          id: 'f-outer',
-          name: 'Outer',
-          collectionId: 'c1',
-          variables: [
-            { key: 'token', value: 'from-outer', enabled: true },
-            { key: 'outer', value: 'yes', enabled: true },
-          ],
-        },
-        {
-          id: 'f-inner',
-          name: 'Inner',
-          parentId: 'f-outer',
-          collectionId: 'c1',
-          variables: [{ key: 'token', value: 'from-inner', enabled: true }],
-        },
-      ],
-      requests: [
-        {
-          id: 'r1',
-          name: 'Nested',
-          method: 'GET',
-          url: 'http://x.local',
-          collectionId: 'c1',
-          folderId: 'f-inner',
-          preRequestScript: [
-            `if (folderVariables.get('token') !== 'from-inner') { throw new Error('token: ' + folderVariables.get('token')); }`,
-            `if (folderVariables.get('outer') !== 'yes') { throw new Error('outer: ' + folderVariables.get('outer')); }`,
-          ].join('\n'),
-        },
-      ],
-    };
-    const summary = await runCollections({
-      collections: [col],
-      environment: null,
-      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
-      scripts: nodeScriptRunner,
-      send: async () => okResponse,
-    });
-    expect(summary.failed).toBe(0);
-    expect(summary.errored).toBe(0);
   });
 
   it('chains script values across collections into GraphQL GET and POST requests', async () => {

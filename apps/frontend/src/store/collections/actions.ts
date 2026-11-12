@@ -45,7 +45,7 @@ async function deleteCollectionApi(id: string): Promise<void> {
 
 async function setCurrentValuesApi(
   collectionId: string,
-  data: { overrides: Record<string, string>; types?: Record<string, EnvironmentVariableType>; folderId?: string },
+  data: { overrides: Record<string, string>; types?: Record<string, EnvironmentVariableType> },
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/collections/${collectionId}/current-values`, {
     method: 'PATCH',
@@ -55,9 +55,8 @@ async function setCurrentValuesApi(
   if (!res.ok) throw new Error('Failed to update collection current values');
 }
 
-async function resetCurrentValueApi(collectionId: string, key: string, folderId?: string): Promise<void> {
+async function resetCurrentValueApi(collectionId: string, key: string): Promise<void> {
   const params = new URLSearchParams({ key });
-  if (folderId) params.set('folderId', folderId);
   const res = await fetch(`${API_BASE}/collections/${collectionId}/current-values?${params.toString()}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to reset collection current value');
 }
@@ -341,12 +340,11 @@ export async function updateCollection(set: SetState, id: string, updates: Parti
 }
 
 /**
- * Persist runtime current-value overrides for collection or folder variables
- * to the local sidecar file (never committed to git), and update the
- * in-memory state so the UI reflects the new values immediately. `folderId`
- * scopes the overrides to a folder's variables instead of the collection's
- * own. `types` optionally records the type each value came in as (from
- * script `collectionVariables.set()` / `folderVariables.set()`).
+ * Persist runtime current-value overrides for collection variables to the
+ * local sidecar file (never committed to git), and update the in-memory
+ * state so the UI reflects the new values immediately. `types` optionally
+ * records the type each value came in as (from script
+ * `collectionVariables.set()`).
  */
 export async function updateCollectionCurrentValues(
   set: SetState,
@@ -354,12 +352,10 @@ export async function updateCollectionCurrentValues(
   collectionId: string,
   overrides: Record<string, string>,
   types?: Record<string, EnvironmentVariableType>,
-  folderId?: string,
 ): Promise<void> {
   await setCurrentValuesApi(collectionId, {
     overrides,
     ...(types && Object.keys(types).length > 0 && { types }),
-    ...(folderId && { folderId }),
   });
 
   const { collections } = get();
@@ -383,14 +379,7 @@ export async function updateCollectionCurrentValues(
 
   const collection = collections[idx];
   const next = [...collections];
-  next[idx] = folderId
-    ? {
-        ...collection,
-        folders: collection.folders.map(f =>
-          f.id === folderId ? { ...f, variables: applyOverrides(f.variables ?? []) } : f,
-        ),
-      }
-    : { ...collection, variables: applyOverrides(collection.variables ?? []) };
+  next[idx] = { ...collection, variables: applyOverrides(collection.variables ?? []) };
   set({ collections: next });
 }
 
@@ -399,9 +388,8 @@ export async function resetCollectionCurrentValue(
   get: GetState,
   collectionId: string,
   key: string,
-  folderId?: string,
 ): Promise<void> {
-  await resetCurrentValueApi(collectionId, key, folderId);
+  await resetCurrentValueApi(collectionId, key);
 
   const { collections } = get();
   const idx = collections.findIndex(c => c.id === collectionId);
@@ -412,12 +400,7 @@ export async function resetCollectionCurrentValue(
 
   const collection = collections[idx];
   const next = [...collections];
-  next[idx] = folderId
-    ? {
-        ...collection,
-        folders: collection.folders.map(f => (f.id === folderId ? { ...f, variables: clearCurrent(f.variables ?? []) } : f)),
-      }
-    : { ...collection, variables: clearCurrent(collection.variables ?? []) };
+  next[idx] = { ...collection, variables: clearCurrent(collection.variables ?? []) };
   set({ collections: next });
 }
 

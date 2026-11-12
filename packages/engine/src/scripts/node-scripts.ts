@@ -76,9 +76,6 @@ export async function runPreRequestScript(
       collectionOverrides: {},
       collectionTypes: {},
       collectionCleared: [],
-      folderOverrides: {},
-      folderTypes: {},
-      folderCleared: [],
     };
   }
 
@@ -96,9 +93,6 @@ export async function runPreRequestScript(
     collectionOverrides: {},
     collectionTypes: {},
     collectionCleared: [],
-    folderOverrides: {},
-    folderTypes: {},
-    folderCleared: [],
   };
 }
 
@@ -123,9 +117,6 @@ export async function runTestScript(
       collectionOverrides: {},
       collectionTypes: {},
       collectionCleared: [],
-      folderOverrides: {},
-      folderTypes: {},
-      folderCleared: [],
     };
   }
 
@@ -144,9 +135,6 @@ export async function runTestScript(
     collectionOverrides: {},
     collectionTypes: {},
     collectionCleared: [],
-    folderOverrides: {},
-    folderTypes: {},
-    folderCleared: [],
   };
 }
 

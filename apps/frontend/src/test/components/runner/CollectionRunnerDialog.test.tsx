@@ -185,33 +185,18 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     );
   });
 
-  it('persists script-set folder variables scoped to the folder', async () => {
-    mocks.runPreRequest.mockResolvedValue({ envOverrides: {}, folderOverrides: { token: 'script-folder' } });
-    const collections = makeCollections();
-    collections[0].requests[1].preRequestScript = 'pre';
-    render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
-    await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
-
-    await waitFor(() =>
-      expect(mocks.updateCollectionCurrentValues).toHaveBeenCalledWith('col-1', { token: 'script-folder' }, 'f-1'),
-    );
-  });
-
   it('resets script-cleared collection variables instead of writing values', async () => {
     mocks.runPreRequest.mockResolvedValue({
       envOverrides: {},
       collectionOverrides: {},
       collectionCleared: ['gone'],
-      folderCleared: ['old'],
     });
     const collections = makeCollections();
     collections[0].requests[0].preRequestScript = 'pre';
-    collections[0].requests[1].preRequestScript = 'pre';
     render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
     await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
 
     await waitFor(() => expect(mocks.resetCollectionCurrentValue).toHaveBeenCalledWith('col-1', 'gone'));
-    expect(mocks.resetCollectionCurrentValue).toHaveBeenCalledWith('col-1', 'old', 'f-1');
     expect(mocks.updateCollectionCurrentValues).not.toHaveBeenCalled();
   });
 

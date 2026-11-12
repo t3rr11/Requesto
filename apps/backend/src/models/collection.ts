@@ -6,7 +6,6 @@ export interface Folder {
   name: string;
   parentId?: string;
   collectionId: string;
-  variables?: EnvironmentVariable[];
 }
 
 export interface OpenApiSpecLink {

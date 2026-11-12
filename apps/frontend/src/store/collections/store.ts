@@ -29,9 +29,8 @@ type CollectionsState = {
     collectionId: string,
     overrides: Record<string, string>,
     types?: Record<string, EnvironmentVariableType>,
-    folderId?: string,
   ) => Promise<void>;
-  resetCollectionCurrentValue: (collectionId: string, key: string, folderId?: string) => Promise<void>;
+  resetCollectionCurrentValue: (collectionId: string, key: string) => Promise<void>;
   updateRequest: (collectionId: string, requestId: string, updates: Partial<SavedRequest>) => Promise<void>;
   updateFolder: (collectionId: string, folderId: string, updates: Partial<Folder>) => Promise<void>;
   moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
@@ -71,10 +70,10 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   duplicateRequests: (requests) => actions.duplicateRequests(set, requests),
   duplicateCollection: (id) => actions.duplicateCollection(set, id),
   updateCollection: (id, updates) => actions.updateCollection(set, id, updates),
-  updateCollectionCurrentValues: (collectionId, overrides, types, folderId) =>
-    actions.updateCollectionCurrentValues(set, get, collectionId, overrides, types, folderId),
-  resetCollectionCurrentValue: (collectionId, key, folderId) =>
-    actions.resetCollectionCurrentValue(set, get, collectionId, key, folderId),
+  updateCollectionCurrentValues: (collectionId, overrides, types) =>
+    actions.updateCollectionCurrentValues(set, get, collectionId, overrides, types),
+  resetCollectionCurrentValue: (collectionId, key) =>
+    actions.resetCollectionCurrentValue(set, get, collectionId, key),
   updateRequest: (collectionId, requestId, updates) =>
     actions.updateRequest(set, collectionId, requestId, updates),
   updateFolder: (collectionId, folderId, updates) =>

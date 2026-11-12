@@ -23,7 +23,7 @@ import {
   buildSavePayloadFromFormData,
   parseGraphQLIntrospectionResponse,
 } from '../helpers/request';
-import { effectiveVariables, effectiveVariablesWithOverrides, folderChainFor, substituteInRequest, getUndefinedVariables, mergeScriptOverrides, scriptVariableRecords, type ScriptScopeOverrides } from '../helpers/environment';
+import { effectiveVariables, effectiveVariablesWithOverrides, substituteInRequest, getUndefinedVariables, mergeScriptOverrides, scriptVariableRecords, type ScriptScopeOverrides } from '../helpers/environment';
 import { applyAuthForDisplay } from '../helpers/api/authPreview';
 import { runPreRequestScript, runTestScript } from '../helpers/scriptRunner';
 import type { PreRequestOutcome, TestOutcome } from 'requesto-engine/sandbox-core';
@@ -62,8 +62,8 @@ export function RequestResponseView() {
     };
   }, []);
 
-  // Collection, folder chain, and active environment for the tab's saved
-  // request; merged into the substitution scope at send time.
+  // Collection and active environment for the tab's saved request; merged
+  // into the substitution scope at send time.
   const getVariableContext = useCallback((tab: Tab | null) => {
     const activeEnv = environmentsData.environments.find(
       e => e.id === environmentsData.activeEnvironmentId,
@@ -71,10 +71,7 @@ export function RequestResponseView() {
     const collection = tab?.collectionId
       ? collections.find(c => c.id === tab.collectionId) ?? null
       : null;
-    const savedRequest = tab?.savedRequestId
-      ? collection?.requests.find(r => r.id === tab.savedRequestId)
-      : undefined;
-    return { activeEnv, collection, folderChain: folderChainFor(collection, savedRequest?.folderId) };
+    return { activeEnv, collection };
   }, [environmentsData, collections]);
 
   const handleSend = useCallback(async (formData: RequestFormData) => {
@@ -93,14 +90,12 @@ export function RequestResponseView() {
       return;
     }
 
-    const { activeEnv, collection, folderChain } = getVariableContext(tab);
-    const innermostFolderId = folderChain.length > 0 ? folderChain[folderChain.length - 1].id : null;
+    const { activeEnv, collection } = getVariableContext(tab);
 
-    // Script-set collection and folder variable overrides, accumulated across
-    // the pre-request and test scripts of this send and applied to the
+    // Script-set collection variable overrides, accumulated across the
+    // pre-request and test scripts of this send and applied to the
     // substitution scope in memory.
     const collectionScript: ScriptScopeOverrides = { values: {} };
-    const folderScript: Record<string, ScriptScopeOverrides> = {};
 
     // Persists script-set values (and resets cleared keys) to the sidecar
     // immediately, the same lifecycle as `environment.set()` current values.
@@ -110,15 +105,6 @@ export function RequestResponseView() {
         types: outcome.collectionTypes,
         cleared: outcome.collectionCleared,
       });
-      if (innermostFolderId) {
-        const folderOverrides = folderScript[innermostFolderId] ?? { values: {} };
-        mergeScriptOverrides(folderOverrides, {
-          values: outcome.folderOverrides,
-          types: outcome.folderTypes,
-          cleared: outcome.folderCleared,
-        });
-        folderScript[innermostFolderId] = folderOverrides;
-      }
       if (!collection) return;
       if (Object.keys(outcome.collectionOverrides).length > 0) {
         await updateCollectionCurrentValues(
@@ -130,19 +116,6 @@ export function RequestResponseView() {
       for (const key of outcome.collectionCleared) {
         await resetCollectionCurrentValue(collection.id, key);
       }
-      if (innermostFolderId) {
-        if (Object.keys(outcome.folderOverrides).length > 0) {
-          await updateCollectionCurrentValues(
-            collection.id,
-            outcome.folderOverrides,
-            ...(Object.keys(outcome.folderTypes).length > 0 ? [outcome.folderTypes] : []),
-            innermostFolderId,
-          );
-        }
-        for (const key of outcome.folderCleared) {
-          await resetCollectionCurrentValue(collection.id, key, innermostFolderId);
-        }
-      }
     };
 
     // effectiveEnv starts as the current active environment, and may be updated
@@ -152,8 +125,7 @@ export function RequestResponseView() {
       try {
         const outcome = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest, {
           collectionId: collection?.id,
-          folderId: innermostFolderId,
-          ...scriptVariableRecords(collection, folderChain, { collection: collectionScript, folders: folderScript }),
+          ...scriptVariableRecords(collection, { collection: collectionScript }),
         });
         if (activeEnv && Object.keys(outcome.envOverrides).length > 0) {
           const updatedVariables = activeEnv.variables.map(v =>
@@ -182,9 +154,8 @@ export function RequestResponseView() {
       }
     }
 
-    const scope = effectiveVariablesWithOverrides(effectiveEnv, collection, folderChain, {
+    const scope = effectiveVariablesWithOverrides(effectiveEnv, collection, {
       collection: collectionScript,
-      folders: folderScript,
     });
 
     const request = substituteInRequest(rawRequest, scope);
@@ -255,8 +226,7 @@ export function RequestResponseView() {
             effectiveEnv,
             {
               collectionId: collection?.id,
-              folderId: innermostFolderId,
-              ...scriptVariableRecords(collection, folderChain, { collection: collectionScript, folders: folderScript }),
+              ...scriptVariableRecords(collection, { collection: collectionScript }),
             },
           );
           setTabTestResults(tab.id, outcome.testResults);
@@ -328,8 +298,8 @@ export function RequestResponseView() {
   }, []);
 
   const handleFetchGraphQLSchema = useCallback(async (formData: RequestFormData): Promise<GraphQLSchema> => {
-    const { activeEnv, collection, folderChain } = getVariableContext(getActiveTab());
-    const scope = effectiveVariables(activeEnv, collection, folderChain);
+    const { activeEnv, collection } = getVariableContext(getActiveTab());
+    const scope = effectiveVariables(activeEnv, collection);
     const introspectionRequest = buildGraphQLIntrospectionRequest(formData);
     const request = substituteInRequest(introspectionRequest, scope);
     const response = await sendRequest(request);

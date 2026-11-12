@@ -597,10 +597,9 @@ describe('CollectionService current values (local sidecar)', () => {
     ...overrides,
   });
 
-  it('merges sidecar current values into collection and folder variables on read', async () => {
+  it('merges sidecar current values into collection variables on read', async () => {
     const col = makeCollection({
       variables: [makeVar('base', 'https://initial.example.com')],
-      folders: [{ id: 'f-1', name: 'F', collectionId: 'col-1', variables: [makeVar('token', 'initial')] }],
     });
     const repo = mockRepo({
       getAll: vi.fn().mockResolvedValue([col]),
@@ -608,33 +607,13 @@ describe('CollectionService current values (local sidecar)', () => {
     });
     const service = new CollectionService(repo, localRepo);
     service.setCurrentValues('col-1', { base: 'https://current.example.com' });
-    service.setCurrentValues('col-1', { token: 'current-token' }, undefined, 'f-1');
 
     const expectedCollection = [makeVar('base', 'https://initial.example.com', { currentValue: 'https://current.example.com' })];
-    const expectedFolder = [makeVar('token', 'initial', { currentValue: 'current-token' })];
 
     expect((await service.getById('col-1')).variables).toEqual(expectedCollection);
-    expect((await service.getById('col-1')).folders?.[0].variables).toEqual(expectedFolder);
     expect((await service.getAll())[0].variables).toEqual(expectedCollection);
-    expect((await service.getAll())[0].folders?.[0].variables).toEqual(expectedFolder);
     // The stored collection itself is untouched (merge happens on read only)
     expect(col.variables?.[0].currentValue).toBeUndefined();
-    expect(col.folders?.[0].variables?.[0].currentValue).toBeUndefined();
-  });
-
-  it('keeps folder overrides out of the collection scope', async () => {
-    const col = makeCollection({
-      variables: [makeVar('shared', 'col-initial')],
-      folders: [{ id: 'f-1', name: 'F', collectionId: 'col-1', variables: [makeVar('shared', 'folder-initial')] }],
-    });
-    const repo = mockRepo({
-      getById: vi.fn().mockResolvedValue(col),
-    });
-    const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { shared: 'folder-set' }, undefined, 'f-1');
-
-    expect((await service.getById('col-1')).variables).toEqual([makeVar('shared', 'col-initial')]);
-    expect((await service.getById('col-1')).folders?.[0].variables).toEqual([makeVar('shared', 'folder-initial', { currentValue: 'folder-set' })]);
   });
 
   it('creates read-back entries for script-created variables and records their type', async () => {
@@ -651,7 +630,6 @@ describe('CollectionService current values (local sidecar)', () => {
   it('strips current values before saving so the committed file stays clean', async () => {
     const col = makeCollection({
       variables: [makeVar('base', 'initial', { currentValue: 'current' })],
-      folders: [{ id: 'f-1', name: 'F', collectionId: 'col-1', variables: [makeVar('token', 'initial', { currentValue: 'current' })] }],
     });
     const saveAll = vi.fn().mockResolvedValue(undefined);
     const repo = mockRepo({ getAll: vi.fn().mockResolvedValue([col]), saveAll });
@@ -661,7 +639,6 @@ describe('CollectionService current values (local sidecar)', () => {
 
     const written = saveAll.mock.calls[0][0][0] as Collection;
     expect(written.variables).toEqual([makeVar('base', 'initial')]);
-    expect(written.folders?.[0].variables).toEqual([makeVar('token', 'initial')]);
   });
 
   it('strips current values when updating variables directly', async () => {
@@ -677,101 +654,15 @@ describe('CollectionService current values (local sidecar)', () => {
     });
   });
 
-  it('strips current values when updating folder variables and merges sidecar into the result', async () => {
-    const updatedFolder: Folder = {
-      id: 'f-1',
-      name: 'F',
-      collectionId: 'col-1',
-      variables: [makeVar('token', 'initial', { currentValue: 'current' })],
-    };
-    const updateFolder = vi.fn().mockResolvedValue(updatedFolder);
-    const repo = mockRepo({ updateFolder });
-    const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { token: 'sidecar' }, undefined, 'f-1');
-
-    const result = await service.updateFolder('col-1', 'f-1', {
-      variables: [makeVar('token', 'initial', { currentValue: 'current' })],
-    });
-
-    expect(updateFolder).toHaveBeenCalledWith('col-1', 'f-1', {
-      variables: [makeVar('token', 'initial')],
-    });
-    expect(result.variables).toEqual([makeVar('token', 'initial', { currentValue: 'sidecar' })]);
-  });
-
-  it('removes sidecar data when a collection or folder is deleted', async () => {
-    const repo = mockRepo({ delete: vi.fn().mockResolvedValue(true), deleteFolder: vi.fn().mockResolvedValue(true) });
+  it('removes sidecar data when a collection is deleted', async () => {
+    const repo = mockRepo({ delete: vi.fn().mockResolvedValue(true) });
     const service = new CollectionService(repo, localRepo);
     service.setCurrentValues('col-1', { base: 'current' });
-    service.setCurrentValues('col-1', { token: 'current' }, undefined, 'f-1');
-    service.setCurrentValues('col-1', { other: 'current' }, undefined, 'f-2');
-
-    await service.deleteFolder('col-1', 'f-1');
-    expect(localRepo.getForScope('col-1::f-1')).toEqual({});
-    expect(localRepo.getForScope('col-1::f-2')).toEqual({ other: { value: 'current' } });
+    service.setCurrentValues('col-2', { other: 'current' });
 
     await service.delete('col-1');
-    expect(localRepo.getAll()).toEqual({});
-  });
-
-  it('removes sidecar data for descendant folders when a folder is deleted', async () => {
-    const col = makeCollection({
-      folders: [
-        { id: 'f-1', name: 'F', collectionId: 'col-1' },
-        { id: 'f-1-1', name: 'Child', parentId: 'f-1', collectionId: 'col-1' },
-        { id: 'f-2', name: 'Other', collectionId: 'col-1' },
-      ],
-    });
-    const repo = mockRepo({ getById: vi.fn().mockResolvedValue(col), deleteFolder: vi.fn().mockResolvedValue(true) });
-    const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { token: 'current' }, undefined, 'f-1');
-    service.setCurrentValues('col-1', { token: 'current' }, undefined, 'f-1-1');
-    service.setCurrentValues('col-1', { token: 'current' }, undefined, 'f-2');
-
-    await service.deleteFolder('col-1', 'f-1');
-
-    expect(localRepo.getForScope('col-1::f-1')).toEqual({});
-    expect(localRepo.getForScope('col-1::f-1-1')).toEqual({});
-    expect(localRepo.getForScope('col-1::f-2')).toEqual({ token: { value: 'current' } });
-  });
-
-  it('migrates folder overrides when a folder moves to another collection', async () => {
-    const source = makeCollection({ folders: [{ id: 'f-1', name: 'F', collectionId: 'col-1' }] });
-    const target = makeCollection({ id: 'col-2' });
-    const repo = mockRepo({
-      getById: vi.fn().mockResolvedValueOnce(source).mockResolvedValueOnce(target),
-      deleteFolder: vi.fn().mockResolvedValue(true),
-      getAll: vi.fn().mockResolvedValue([source, target]),
-      saveAll: vi.fn().mockResolvedValue(undefined),
-    });
-    const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { token: 'current' }, undefined, 'f-1');
-
-    await service.moveFolder({ sourceCollectionId: 'col-1', folderId: 'f-1', targetCollectionId: 'col-2' });
-
-    expect(localRepo.getForScope('col-1::f-1')).toEqual({});
-    expect(localRepo.getForScope('col-2::f-1')).toEqual({ token: { value: 'current' } });
-  });
-
-  it('keeps folder overrides in place when a folder moves within the same collection', async () => {
-    const source = makeCollection({
-      folders: [
-        { id: 'f-1', name: 'F', collectionId: 'col-1' },
-        { id: 'f-2', name: 'G', collectionId: 'col-1' },
-      ],
-    });
-    const repo = mockRepo({
-      getById: vi.fn().mockResolvedValue(source),
-      deleteFolder: vi.fn().mockResolvedValue(true),
-      getAll: vi.fn().mockResolvedValue([source]),
-      saveAll: vi.fn().mockResolvedValue(undefined),
-    });
-    const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { token: 'current' }, undefined, 'f-1');
-
-    await service.moveFolder({ sourceCollectionId: 'col-1', folderId: 'f-1', targetCollectionId: 'col-1', targetParentId: 'f-2' });
-
-    expect(localRepo.getForScope('col-1::f-1')).toEqual({ token: { value: 'current' } });
+    expect(localRepo.getForScope('col-1')).toEqual({});
+    expect(localRepo.getForScope('col-2')).toEqual({ other: { value: 'current' } });
   });
 });
 
@@ -820,12 +711,10 @@ describe('CollectionService with real repository (split file layout)', () => {
     const imported = await service.importCollection({
       name: 'With Vars',
       variables: [{ key: 'base', value: 'https://initial.example.com', currentValue: 'https://current.example.com', enabled: true }],
-      folders: [{ id: 'f-old', name: 'F', variables: [{ key: 'token', value: 'initial', currentValue: 'current', enabled: true }] }],
     });
 
     const stored = await repo.getById(imported.id);
     expect(stored?.variables).toEqual([{ key: 'base', value: 'https://initial.example.com', enabled: true }]);
-    expect(stored?.folders?.[0].variables).toEqual([{ key: 'token', value: 'initial', enabled: true }]);
   });
 
   it('moveCollection rewrites only the order manifest, leaving collection files untouched', async () => {

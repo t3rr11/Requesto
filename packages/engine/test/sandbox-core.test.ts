@@ -222,11 +222,10 @@ describe('executeTestScript', () => {
   });
 });
 
-describe('collectionVariables and folderVariables APIs', () => {
+describe('collectionVariables API', () => {
   const collectionCtx = {
     collectionVariables: { base: 'https://api.example.com', typed: '42', secret: 'abc' },
     collectionVariableTypes: { typed: 'number' },
-    folderVariables: { outer: 'outer-value', shared: 'inner-value' },
   };
 
   it('exposes collectionVariables.get with declared types applied', () => {
@@ -282,41 +281,15 @@ describe('collectionVariables and folderVariables APIs', () => {
     expect(result.collectionCleared).toEqual([]);
   });
 
-  it('folderVariables.get and set operate on the folder scope', () => {
-    const result = executePreRequestScript(
-      [
-        `if (folderVariables.get('shared') !== 'inner-value') { throw new Error('shared'); }`,
-        `folderVariables.set('generated', 'xy');`,
-      ].join('\n'),
-      { env: {}, request: baseRequest, ...collectionCtx },
-    );
-    expect(result.folderOverrides).toEqual({ generated: 'xy' });
-    expect(result.folderTypes).toEqual({ generated: 'string' });
-    expect(result.folderCleared).toEqual([]);
-  });
-
-  it('scopes are independent: collection set is invisible to folderVariables', () => {
-    const result = executePreRequestScript(
-      [
-        `collectionVariables.set('only', 'collection');`,
-        `if (folderVariables.get('only') !== '') { throw new Error('leaked into folder scope'); }`,
-      ].join('\n'),
-      { env: {}, request: baseRequest },
-    );
-    expect(result.collectionOverrides).toEqual({ only: 'collection' });
-    expect(result.folderOverrides).toEqual({});
-  });
-
-  it('test scripts can read and set collection and folder variables', () => {
+  it('test scripts can read and set collection variables', () => {
     const result = executeTestScript(
       [
-        `test('read', () => { expect(collectionVariables.get('typed')).toBe(42); expect(folderVariables.get('outer')).toBe('outer-value'); });`,
-        `test('write', () => { collectionVariables.set('nextId', response.json().a); folderVariables.set('lastRun', 'now'); });`,
+        `test('read', () => { expect(collectionVariables.get('typed')).toBe(42); });`,
+        `test('write', () => { collectionVariables.set('nextId', response.json().a); });`,
       ].join('\n'),
       { env: {}, response: baseResponse, request: baseRequest, ...collectionCtx },
     );
     expect(result.testResults.every((t) => t.passed)).toBe(true);
     expect(result.collectionOverrides).toEqual({ nextId: '1' });
-    expect(result.folderOverrides).toEqual({ lastRun: 'now' });
   });
 });

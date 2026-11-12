@@ -95,8 +95,7 @@ export const addFolderSchema = z.object({
 
 export const updateFolderSchema = addFolderSchema
   .omit({ id: true, collectionId: true })
-  .partial()
-  .extend({ variables: z.array(environmentVariableSchema).optional() });
+  .partial();
 
 export const moveFolderSchema = z.object({
   targetCollectionId: z.string(),
@@ -120,11 +119,9 @@ export const applySyncSchema = z.object({
   newSpecSource: z.string(),
 });
 
-// folderId scopes the overrides to a folder's variables instead of the collection's own
 export const setCurrentValuesSchema = z.object({
   overrides: z.record(z.string(), z.string()),
   types: z.record(z.string(), z.enum(['string', 'number', 'boolean'])).optional(),
-  folderId: z.string().optional(),
 });
 
 export type CreateCollectionDto = z.infer<typeof createCollectionSchema>;

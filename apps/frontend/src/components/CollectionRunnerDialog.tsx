@@ -188,10 +188,9 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     const overrides: Record<string, string> = Object.create(null);
     const types: Record<string, EnvironmentVariableType> = Object.create(null);
 
-    // Collection and folder script-set values, attributed to their scope via
-    // the vars context the engine passes to the script runners.
+    // Collection script-set values, attributed to their collection via the
+    // vars context the engine passes to the script runners.
     const collectionOverrides = new Map<string, ScriptScopeOverrides>();
-    const folderOverrides = new Map<string, { collectionId: string; scope: ScriptScopeOverrides }>();
     const recordOutcome = (outcome: ScriptEnvOverrides, vars?: ScriptVarsContext) => {
       Object.assign(overrides, outcome.envOverrides);
       Object.assign(types, outcome.envTypes ?? {});
@@ -203,15 +202,6 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
           cleared: outcome.collectionCleared,
         });
         collectionOverrides.set(vars.collectionId, scope);
-      }
-      if (vars?.collectionId && vars.folderId) {
-        const entry = folderOverrides.get(vars.folderId) ?? { collectionId: vars.collectionId, scope: { values: {} } };
-        mergeScriptOverrides(entry.scope, {
-          values: outcome.folderOverrides ?? {},
-          types: outcome.folderTypes,
-          cleared: outcome.folderCleared,
-        });
-        folderOverrides.set(vars.folderId, entry);
       }
     };
     try {
@@ -266,8 +256,8 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
             }
           }
 
-          // Collection and folder script-set values persist per scope after
-          // the workspace is restored, same as the environment values above.
+          // Collection script-set values persist per collection after the
+          // workspace is restored, same as the environment values above.
           try {
             for (const [collectionId, scope] of collectionOverrides) {
               if (Object.keys(scope.values).length > 0) {
@@ -279,19 +269,6 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
               }
               for (const key of scope.cleared ?? []) {
                 await resetCollectionCurrentValue(collectionId, key);
-              }
-            }
-            for (const [folderId, entry] of folderOverrides) {
-              if (Object.keys(entry.scope.values).length > 0) {
-                await updateCollectionCurrentValues(
-                  entry.collectionId,
-                  entry.scope.values,
-                  ...(entry.scope.types && Object.keys(entry.scope.types).length > 0 ? [entry.scope.types] : []),
-                  folderId,
-                );
-              }
-              for (const key of entry.scope.cleared ?? []) {
-                await resetCollectionCurrentValue(entry.collectionId, key, folderId);
               }
             }
           } catch (err) {

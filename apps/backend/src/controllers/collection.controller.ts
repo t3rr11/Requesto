@@ -57,20 +57,20 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
   server.patch<{ Params: { id: string }; Body: SetCurrentValuesDto }>(
     '/collections/:id/current-values',
     async (request, _reply) => {
-      const { overrides, types, folderId } = setCurrentValuesSchema.parse(request.body);
-      collectionService.setCurrentValues(request.params.id, overrides, types, folderId);
+      const { overrides, types } = setCurrentValuesSchema.parse(request.body);
+      collectionService.setCurrentValues(request.params.id, overrides, types);
       return { success: true };
     },
   );
 
-  server.delete<{ Params: { id: string }; Querystring: { key?: string; folderId?: string } }>(
+  server.delete<{ Params: { id: string }; Querystring: { key?: string } }>(
     '/collections/:id/current-values',
     async (request, _reply) => {
-      const { key, folderId } = request.query;
+      const { key } = request.query;
       if (key) {
-        collectionService.resetCurrentValue(request.params.id, key, folderId);
+        collectionService.resetCurrentValue(request.params.id, key);
       } else {
-        collectionService.resetCurrentValues(request.params.id, folderId);
+        collectionService.resetCurrentValues(request.params.id);
       }
       return { success: true };
     },

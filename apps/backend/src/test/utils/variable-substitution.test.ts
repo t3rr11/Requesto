@@ -10,11 +10,10 @@ import {
   effectiveVariablesWithOverrides,
   mergeScriptOverrides,
   scriptVariableRecords,
-  folderChainFor,
   type ScriptScopeOverrides,
 } from '../../utils/variable-substitution';
 import type { Environment } from '../../models/environment';
-import type { Collection, Folder } from '../../models/collection';
+import type { Collection } from '../../models/collection';
 
 const env: Environment = {
   id: 'env-1',
@@ -262,33 +261,11 @@ const mergeCollection: Collection = {
   variables: [
     { key: 'BASE_URL', value: 'https://collection.example', enabled: true },
     { key: 'ONLY_IN_COLLECTION', value: 'collection', enabled: true },
-    { key: 'MASKED_BY_FOLDER', value: 'collection', enabled: true },
     { key: 'MASKED_BY_ENV', value: 'collection', enabled: true },
     { key: 'ENV_DISABLED_FALLBACK', value: 'collection', enabled: true },
     { key: 'TYPED', value: '42', enabled: true, type: 'number' },
     { key: 'LAST_WINS', value: 'first', enabled: true },
     { key: 'LAST_WINS', value: 'second', enabled: true },
-  ],
-};
-
-const outerFolder: Folder = {
-  id: 'f-1',
-  name: 'Outer',
-  collectionId: 'col-1',
-  variables: [
-    { key: 'MASKED_BY_FOLDER', value: 'outer', enabled: true },
-    { key: 'FOLDER_KEY', value: 'outer', enabled: true },
-    { key: 'INNER_OVERRIDES', value: 'outer', enabled: true },
-  ],
-};
-
-const innerFolder: Folder = {
-  id: 'f-2',
-  name: 'Inner',
-  collectionId: 'col-1',
-  variables: [
-    { key: 'FOLDER_KEY', value: 'inner', enabled: true },
-    { key: 'INNER_OVERRIDES', value: 'inner', enabled: true },
   ],
 };
 
@@ -306,63 +283,46 @@ const mergeEnv: Environment = {
 function merged(
   environment: Environment | null,
   collection?: Collection | null,
-  folderChain?: Folder[],
 ) {
-  return effectiveVariables(environment, collection, folderChain);
+  return effectiveVariables(environment, collection);
 }
 
 describe('effectiveVariables (backend)', () => {
-  it('environment wins over folder and collection', () => {
-    const scope = merged(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+  it('environment wins over collection', () => {
+    const scope = merged(mergeEnv, mergeCollection);
     const vars = Object.fromEntries(scope.variables.map((v) => [v.key, v.value]));
     expect(vars.BASE_URL).toBe('https://env.example');
     expect(vars.MASKED_BY_ENV).toBe('env');
   });
 
-  it('innermost folder wins over outer folder', () => {
-    const scope = merged(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
-    const vars = Object.fromEntries(scope.variables.map((v) => [v.key, v.value]));
-    expect(vars.FOLDER_KEY).toBe('inner');
-    expect(vars.INNER_OVERRIDES).toBe('inner');
-  });
-
-  it('folder wins over collection', () => {
-    const scope = merged(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
-    const vars = Object.fromEntries(scope.variables.map((v) => [v.key, v.value]));
-    expect(vars.MASKED_BY_FOLDER).toBe('outer');
-  });
-
   it('disabled variable in a higher scope falls back to lower scopes', () => {
-    const scope = merged(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const scope = merged(mergeEnv, mergeCollection);
     const vars = Object.fromEntries(scope.variables.map((v) => [v.key, v.value]));
     expect(vars.ENV_DISABLED_FALLBACK).toBe('collection');
   });
 
-  it('resolves collection and folder variables with no environment', () => {
-    const scope = merged(null, mergeCollection, [outerFolder, innerFolder]);
+  it('resolves collection variables with no environment', () => {
+    const scope = merged(null, mergeCollection);
     const vars = Object.fromEntries(scope.variables.map((v) => [v.key, v.value]));
     expect(vars.BASE_URL).toBe('https://collection.example');
-    expect(vars.FOLDER_KEY).toBe('inner');
-    expect(substituteVariables('{{BASE_URL}}/{{FOLDER_KEY}}', scope)).toBe(
-      'https://collection.example/inner',
-    );
+    expect(substituteVariables('{{BASE_URL}}', scope)).toBe('https://collection.example');
   });
 
   it('currentValue wins over value', () => {
-    const scope = merged(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const scope = merged(mergeEnv, mergeCollection);
     const entry = scope.variables.find((v) => v.key === 'CURRENT');
     expect(entry?.currentValue).toBe('current');
     expect(substituteVariables('{{CURRENT}}', scope)).toBe('current');
   });
 
   it('last duplicate key within a scope wins', () => {
-    const scope = merged(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const scope = merged(mergeEnv, mergeCollection);
     const vars = Object.fromEntries(scope.variables.map((v) => [v.key, v.value]));
     expect(vars.LAST_WINS).toBe('second');
   });
 
   it('keeps variable types through the merge', () => {
-    const scope = merged(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const scope = merged(mergeEnv, mergeCollection);
     expect(substituteJsonVariables('{"id": "{{TYPED}}"}', scope)).toBe('{"id": 42}');
   });
 });
@@ -387,74 +347,44 @@ describe('effectiveVariablesWithOverrides and scriptVariableRecords (backend)', 
     ],
   };
 
-  const overrideOuter: Folder = {
-    id: 'f-1',
-    name: 'Outer',
-    collectionId: 'col-1',
-    variables: [{ key: 'FOLDER', value: 'from-outer', enabled: true }],
-  };
-
-  const overrideInner: Folder = {
-    id: 'f-2',
-    name: 'Inner',
-    collectionId: 'col-1',
-    variables: [{ key: 'FOLDER', value: 'from-inner', enabled: true }],
-  };
-
   it('script-set collection values beat their own scope but not the environment', () => {
-    const scope = effectiveVariablesWithOverrides(overrideEnv, overrideCollection, [], {
+    const scope = effectiveVariablesWithOverrides(overrideEnv, overrideCollection, {
       collection: { values: { SHARED: 'from-script' } },
     });
     expect(substituteVariables('{{SHARED}}', scope)).toBe('from-env');
 
-    const withoutEnv = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+    const withoutEnv = effectiveVariablesWithOverrides(null, overrideCollection, {
       collection: { values: { SHARED: 'from-script' } },
     });
     expect(substituteVariables('{{SHARED}}', withoutEnv)).toBe('from-script');
   });
 
   it('script-set values on a disabled variable still resolve', () => {
-    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, {
       collection: { values: { DISABLED: 'scripted' } },
     });
     expect(substituteVariables('{{DISABLED}}', scope)).toBe('scripted');
   });
 
   it('cleared keys stop resolving in their own scope', () => {
-    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, {
       collection: { values: {}, cleared: ['SHARED'] },
     });
     expect(substituteVariables('{{SHARED}}', scope)).toBe('{{SHARED}}');
   });
 
   it('appends script-created keys with the recorded type', () => {
-    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, {
       collection: { values: { CREATED: '7' }, types: { CREATED: 'number' } },
     });
     expect(substituteJsonVariables('{"id": "{{CREATED}}"}', scope)).toBe('{"id": 7}');
   });
 
   it('re-types an existing variable from the script value', () => {
-    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, {
       collection: { values: { TYPED: '9' }, types: { TYPED: 'string' } },
     });
     expect(substituteJsonVariables('{"id": "{{TYPED}}"}', scope)).toBe('{"id": "9"}');
-  });
-
-  it('applies folder overrides per folder id, innermost winning', () => {
-    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [overrideOuter, overrideInner], {
-      folders: {
-        'f-1': { values: { FOLDER: 'outer-script' } },
-        'f-2': { values: { FOLDER: 'inner-script' } },
-      },
-    });
-    expect(substituteVariables('{{FOLDER}}', scope)).toBe('inner-script');
-
-    // An override for a folder outside the chain must not leak in.
-    const siblingScope = effectiveVariablesWithOverrides(null, overrideCollection, [overrideOuter], {
-      folders: { 'f-2': { values: { FOLDER: 'inner-script' } } },
-    });
-    expect(substituteVariables('{{FOLDER}}', siblingScope)).toBe('from-outer');
   });
 
   it('mergeScriptOverrides lets a later set revive an earlier clear and vice versa', () => {
@@ -474,14 +404,11 @@ describe('effectiveVariablesWithOverrides and scriptVariableRecords (backend)', 
   });
 
   it('scriptVariableRecords layers overrides and removes cleared keys per scope', () => {
-    const records = scriptVariableRecords(overrideCollection, [overrideOuter, overrideInner], {
+    const records = scriptVariableRecords(overrideCollection, {
       collection: { values: { SHARED: 'script-collection' }, types: { SHARED: 'string' } },
-      folders: { 'f-2': { values: { FOLDER: 'script-inner' } } },
     });
     expect(records.collectionVariables).toEqual({ SHARED: 'script-collection', TYPED: '1' });
     expect(records.collectionVariableTypes).toEqual({ SHARED: 'string', TYPED: 'number' });
-    // Folder records merge the chain innermost-wins, overrides layered on top.
-    expect(records.folderVariables).toEqual({ FOLDER: 'script-inner' });
   });
 
   it('scriptVariableRecords applies current values and clears without overrides', () => {
@@ -489,39 +416,10 @@ describe('effectiveVariablesWithOverrides and scriptVariableRecords (backend)', 
       ...overrideCollection,
       variables: [{ key: 'CURRENT', value: 'initial', currentValue: 'current', enabled: true }],
     };
-    const records = scriptVariableRecords(collection, [overrideOuter], {
-      folders: { 'f-1': { values: {}, cleared: ['FOLDER'] } },
+    const records = scriptVariableRecords(collection, {
+      collection: { values: {}, cleared: ['CURRENT'] },
     });
-    expect(records.collectionVariables).toEqual({ CURRENT: 'current' });
-    expect(records.folderVariables).toEqual({});
+    expect(records.collectionVariables).toEqual({});
     expect(records.collectionVariableTypes).toBeUndefined();
-  });
-});
-
-//GOTCHA: Keep the folderChainFor fixtures in sync with apps/frontend/src/test/helpers/environment.test.ts.
-describe('folderChainFor (backend)', () => {
-  const chainCollection: Collection = {
-    id: 'col-1',
-    name: 'Chain',
-    folders: [
-      { id: 'f-1', name: 'Outer', collectionId: 'col-1' },
-      { id: 'f-2', name: 'Inner', parentId: 'f-1', collectionId: 'col-1' },
-      { id: 'f-3', name: 'Other', collectionId: 'col-1' },
-    ],
-    requests: [],
-  };
-
-  it('walks parentId upward, outermost to innermost', () => {
-    expect(folderChainFor(chainCollection, 'f-2').map((f) => f.id)).toEqual(['f-1', 'f-2']);
-  });
-
-  it('returns a single entry for a root-level folder', () => {
-    expect(folderChainFor(chainCollection, 'f-3').map((f) => f.id)).toEqual(['f-3']);
-  });
-
-  it('returns empty for root-level requests, unknown folders, and missing collections', () => {
-    expect(folderChainFor(chainCollection)).toEqual([]);
-    expect(folderChainFor(chainCollection, 'missing')).toEqual([]);
-    expect(folderChainFor(null, 'f-1')).toEqual([]);
   });
 });

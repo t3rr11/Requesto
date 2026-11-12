@@ -13,9 +13,6 @@ const EMPTY_OVERRIDES: PreRequestOutcome = {
   collectionOverrides: {},
   collectionTypes: {},
   collectionCleared: [],
-  folderOverrides: {},
-  folderTypes: {},
-  folderCleared: [],
 };
 
 const SCRIPT_TIMEOUT_MS = 5000;
@@ -86,7 +83,7 @@ async function runPreRequestWithRecord(
 ): Promise<PreRequestOutcome> {
   if (!script.trim()) return { ...EMPTY_OVERRIDES };
 
-  const { collectionId: _c, folderId: _f, ...records } = vars ?? {};
+  const { collectionId: _c, ...records } = vars ?? {};
   const result = await runInWorker({
     type: 'pre-request',
     script,
@@ -128,7 +125,7 @@ async function runTestWithRecord(
 ): Promise<TestOutcome> {
   if (!script.trim()) return { ...EMPTY_OVERRIDES, testResults: [] };
 
-  const { collectionId: _c, folderId: _f, ...records } = vars ?? {};
+  const { collectionId: _c, ...records } = vars ?? {};
   const result = await runInWorker({
     type: 'test',
     script,

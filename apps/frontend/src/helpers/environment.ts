@@ -1,4 +1,4 @@
-import type { Collection, Folder } from '../store/collections/types';
+import type { Collection } from '../store/collections/types';
 import type { Environment, EnvironmentVariable, EnvironmentVariableType } from '../store/environments/types';
 import type { AuthConfig, ProxyRequest } from '../store/request/types';
 
@@ -19,7 +19,6 @@ export type ScriptScopeOverrides = {
 export type ScriptOverrideSet = {
   env?: ScriptScopeOverrides;
   collection?: ScriptScopeOverrides;
-  folders?: Record<string, ScriptScopeOverrides>;
 };
 
 /**
@@ -69,12 +68,10 @@ function applyScriptOverrides(variables: EnvironmentVariable[], overrides?: Scri
 export function effectiveVariablesWithOverrides(
   environment: Environment | null,
   collection?: Collection | null,
-  folderChain?: Folder[],
   overrides?: ScriptOverrideSet,
 ): VariableScope {
   const scopes: EnvironmentVariable[][] = [
     applyScriptOverrides(collection?.variables ?? [], overrides?.collection),
-    ...(folderChain ?? []).map(folder => applyScriptOverrides(folder.variables ?? [], overrides?.folders?.[folder.id])),
     applyScriptOverrides(environment?.variables ?? [], overrides?.env),
   ];
 
@@ -90,30 +87,14 @@ export function effectiveVariablesWithOverrides(
 
 /**
  * Merge variable scopes into one effective list, highest precedence last
- * (later entries win per key): collection, then folders outermost to
- * innermost, then the active environment. Disabled variables are dropped so
- * a lower scope can still resolve the key.
+ * (later entries win per key): collection, then the active environment.
+ * Disabled variables are dropped so a lower scope can still resolve the key.
  */
 export function effectiveVariables(
   environment: Environment | null,
   collection?: Collection | null,
-  folderChain?: Folder[],
 ): VariableScope {
-  return effectiveVariablesWithOverrides(environment, collection, folderChain);
-}
-
-/** Folder-chain script overrides merged innermost-wins (inner folders last). */
-function mergedFolderOverrides(
-  folderChain: Folder[],
-  folders?: Record<string, ScriptScopeOverrides>,
-): ScriptScopeOverrides | undefined {
-  if (!folders) return undefined;
-  const merged: ScriptScopeOverrides = { values: {} };
-  for (const folder of folderChain) {
-    const overrides = folders[folder.id];
-    if (overrides) mergeScriptOverrides(merged, overrides);
-  }
-  return Object.keys(merged.values).length > 0 || (merged.cleared?.length ?? 0) > 0 ? merged : undefined;
+  return effectiveVariablesWithOverrides(environment, collection);
 }
 
 /** Enabled values of one scope, with script-set overrides applied on top. */
@@ -150,45 +131,22 @@ function scopeTypesRecord(
 }
 
 /**
- * The collection and folder variable records a script sandbox sees:
- * enabled values (current values applied), script-set overrides layered on
- * top, cleared keys removed, folder chain merged innermost-wins.
+ * The collection variable record a script sandbox sees: enabled values
+ * (current values applied), script-set overrides layered on top, cleared
+ * keys removed.
  */
 export function scriptVariableRecords(
   collection?: Collection | null,
-  folderChain?: Folder[],
-  overrides?: Pick<ScriptOverrideSet, 'collection' | 'folders'>,
+  overrides?: Pick<ScriptOverrideSet, 'collection'>,
 ): {
   collectionVariables: Record<string, string>;
   collectionVariableTypes?: Record<string, EnvironmentVariableType>;
-  folderVariables: Record<string, string>;
-  folderVariableTypes?: Record<string, EnvironmentVariableType>;
 } {
   const collectionVars = collection?.variables ?? [];
-  const folderVars = (folderChain ?? []).flatMap(folder => folder.variables ?? []);
-  const folderOverrides = mergedFolderOverrides(folderChain ?? [], overrides?.folders);
   return {
     collectionVariables: scopeValuesRecord(collectionVars, overrides?.collection),
     collectionVariableTypes: scopeTypesRecord(collectionVars, overrides?.collection),
-    folderVariables: scopeValuesRecord(folderVars, folderOverrides),
-    folderVariableTypes: scopeTypesRecord(folderVars, folderOverrides),
   };
-}
-
-/**
- * Folder chain for a request's folder, outermost to innermost (the order
- * `effectiveVariables` expects). Empty for root-level requests.
- */
-export function folderChainFor(collection: Collection | null | undefined, folderId?: string): Folder[] {
-  if (!collection || !folderId) return [];
-  const chain: Folder[] = [];
-  let current = collection.folders.find(folder => folder.id === folderId);
-  while (current) {
-    chain.unshift(current);
-    const parentId = current.parentId;
-    current = parentId ? collection.folders.find(folder => folder.id === parentId) : undefined;
-  }
-  return chain;
 }
 
 /**

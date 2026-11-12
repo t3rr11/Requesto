@@ -9,7 +9,6 @@ import type {
   Collection,
   Environment,
   EnvironmentVariableType,
-  Folder,
   RunRequestResult,
   RunSummary,
   RunnerEvent,
@@ -18,7 +17,6 @@ import type {
 } from '../types.ts';
 import {
   effectiveVariablesWithOverrides,
-  folderChainFor,
   mergeScriptOverrides,
   scriptVariableRecords,
   substituteInRequest,
@@ -40,8 +38,8 @@ export type ScriptResponseContext = {
 
 /**
  * Env variable overrides set by a script, with the type inferred per key.
- * Collection and folder overrides are scoped separately and only contain
- * keys the script actually touched.
+ * Collection overrides are scoped separately and only contain keys the
+ * script actually touched.
  */
 export type ScriptEnvOverrides = {
   envOverrides: Record<string, string>;
@@ -50,25 +48,18 @@ export type ScriptEnvOverrides = {
   collectionOverrides?: Record<string, string>;
   collectionTypes?: Record<string, EnvironmentVariableType>;
   collectionCleared?: string[];
-  folderOverrides?: Record<string, string>;
-  folderTypes?: Record<string, EnvironmentVariableType>;
-  folderCleared?: string[];
 };
 
 /**
  * Variable records and scope ids passed to script runners alongside the
- * environment: the sandbox-visible `collectionVariables` / `folderVariables`
- * values, plus the scope a script's `set` calls belong to so hosts can
- * persist them to the right sidecar scope.
+ * environment: the sandbox-visible `collectionVariables` values, plus the
+ * collection a script's `set` calls belong to so hosts can persist them to
+ * the right sidecar scope.
  */
 export type ScriptVarsContext = {
   collectionId?: string;
-  /** Innermost folder of the request's folder chain; `folderVariables.set` targets it. */
-  folderId?: string | null;
   collectionVariables?: Record<string, string>;
   collectionVariableTypes?: Record<string, EnvironmentVariableType>;
-  folderVariables?: Record<string, string>;
-  folderVariableTypes?: Record<string, EnvironmentVariableType>;
 };
 
 /**
@@ -177,20 +168,14 @@ function envTypesWithOverrides(
   return Object.keys(types).length > 0 ? types : undefined;
 }
 
-/** The sandbox-visible collection and folder records for a request. */
+/** The sandbox-visible collection record for a request. */
 function varsContextFor(
   collection: Collection,
-  folderChain: Folder[],
   collectionOverrides?: ScriptScopeOverrides,
-  folderOverrides?: Record<string, ScriptScopeOverrides>,
 ): ScriptVarsContext {
-  const records = scriptVariableRecords(collection, folderChain, {
-    collection: collectionOverrides,
-    folders: folderOverrides,
-  });
+  const records = scriptVariableRecords(collection, { collection: collectionOverrides });
   return {
     collectionId: collection.id,
-    folderId: folderChain.at(-1)?.id ?? null,
     ...records,
   };
 }
@@ -239,9 +224,9 @@ function resolveStatus(
  * Run the given collections sequentially, mirroring the app's collection
  * runner: pre-request script → variable substitution → send → test script.
  * Environment changes made by scripts are chained in memory (never written
- * back to the workspace). Collection and folder variables are re-scoped per
- * request: the environment is shared across collections, collection and
- * folder variables are not.
+ * back to the workspace). Collection variables are re-scoped per request:
+ * the environment is shared across collections, collection variables are
+ * not.
  */
 export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
   const results: RunRequestResult[] = [];
@@ -249,10 +234,9 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
   let liveEnv = opts.environment;
   let envScript: ScriptScopeOverrides = { values: {} };
 
-  // Collection and folder variables are not shared across collections, so
-  // their script-set overrides reset when the run moves to the next one.
+  // Collection variables are not shared across collections, so their
+  // script-set overrides reset when the run moves to the next one.
   let collectionScript: ScriptScopeOverrides = { values: {} };
-  let folderScript: Record<string, ScriptScopeOverrides> = {};
   let bailTriggered = false;
   let lastCollectionId: string | null = null;
 
@@ -285,7 +269,6 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
         opts.onEvent?.({ type: 'collection-start', collectionId: collection.id, collectionName: collection.name });
         lastCollectionId = collection.id;
         collectionScript = { values: {} };
-        folderScript = {};
       }
 
       const base: Omit<RunRequestResult, 'status' | 'response' | 'testResults'> = {
@@ -305,9 +288,8 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
         // 1. Build the proxy request (GraphQL requests are expanded here).
         let proxyReq = buildProxyRequest(item.request, opts.insecure);
 
-        // 2. Pre-request script: may set environment, collection, or folder variables.
-        const folderChain = folderChainFor(collection, item.request.folderId);
-        const vars = varsContextFor(collection, folderChain, collectionScript, folderScript);
+        // 2. Pre-request script: may set environment or collection variables.
+        const vars = varsContextFor(collection, collectionScript);
         if (item.request.preRequestScript?.trim()) {
           const outcome = await opts.scripts.runPreRequest(
             item.request.preRequestScript,
@@ -322,22 +304,12 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             types: outcome.collectionTypes,
             cleared: outcome.collectionCleared,
           });
-          if (vars.folderId) {
-            const folderOverrides = folderScript[vars.folderId] ?? { values: {} };
-            mergeScriptOverrides(folderOverrides, {
-              values: outcome.folderOverrides ?? {},
-              types: outcome.folderTypes,
-              cleared: outcome.folderCleared,
-            });
-            folderScript[vars.folderId] = folderOverrides;
-          }
         }
 
-        // 3. Variable substitution: env over this collection's own variables and the request's folder chain, with script-set values on top.
-        const scope = effectiveVariablesWithOverrides(liveEnv, collection, folderChain, {
+        // 3. Variable substitution: env over this collection's own variables, with script-set values on top.
+        const scope = effectiveVariablesWithOverrides(liveEnv, collection, {
           env: envScript,
           collection: collectionScript,
-          folders: folderScript,
         });
         const substituted = substituteInRequest(
           {
@@ -359,7 +331,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
           signal: opts.signal,
         });
 
-        // 5. Test script: may set environment, collection, or folder variables for later requests.
+        // 5. Test script: may set environment or collection variables for later requests.
         let testResults: RunRequestResult['testResults'] = [];
         if (item.request.testScript?.trim()) {
           const outcome = await opts.scripts.runTest(
@@ -380,7 +352,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             },
             envRecordWithOverrides(liveEnv, envScript.values),
             envTypesWithOverrides(liveEnv, envScript.types ?? {}),
-            varsContextFor(collection, folderChain, collectionScript, folderScript),
+            varsContextFor(collection, collectionScript),
           );
           testResults = outcome.testResults;
           mergeScriptOverrides(envScript, { values: outcome.envOverrides, types: outcome.envTypes });
@@ -389,15 +361,6 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             types: outcome.collectionTypes,
             cleared: outcome.collectionCleared,
           });
-          if (vars.folderId) {
-            const folderOverrides = folderScript[vars.folderId] ?? { values: {} };
-            mergeScriptOverrides(folderOverrides, {
-              values: outcome.folderOverrides ?? {},
-              types: outcome.folderTypes,
-              cleared: outcome.folderCleared,
-            });
-            folderScript[vars.folderId] = folderOverrides;
-          }
         }
 
         const allPassed = testResults.every((t) => t.passed);
