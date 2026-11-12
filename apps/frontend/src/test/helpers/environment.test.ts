@@ -14,8 +14,10 @@ import {
   createEmptyVariable,
   isNumericLiteral,
   inferType,
+  effectiveVariables,
 } from '../../helpers/environment';
 import type { Environment } from '../../store/environments/types';
+import type { Collection, Folder } from '../../store/collections/types';
 
 const makeEnv = (vars: { key: string; value: string; enabled: boolean }[]): Environment => ({
   id: 'env-1',
@@ -421,5 +423,111 @@ describe('substituteInAuth', () => {
 
   it('returns auth unchanged for type: none', () => {
     expect(substituteInAuth({ type: 'none' }, env)).toEqual({ type: 'none' });
+  });
+});
+
+// GOTCHA: Fixtures mirrored in apps/backend/src/test/utils/variable-substitution.test.ts; keep in sync.
+const mergeCollection: Collection = {
+  id: 'col-1',
+  name: 'Collection',
+  folders: [],
+  requests: [],
+  variables: [
+    { key: 'BASE_URL', value: 'https://collection.example', enabled: true },
+    { key: 'ONLY_IN_COLLECTION', value: 'collection', enabled: true },
+    { key: 'MASKED_BY_FOLDER', value: 'collection', enabled: true },
+    { key: 'MASKED_BY_ENV', value: 'collection', enabled: true },
+    { key: 'ENV_DISABLED_FALLBACK', value: 'collection', enabled: true },
+    { key: 'TYPED', value: '42', enabled: true, type: 'number' },
+    { key: 'LAST_WINS', value: 'first', enabled: true },
+    { key: 'LAST_WINS', value: 'second', enabled: true },
+  ],
+};
+
+const outerFolder: Folder = {
+  id: 'f-1',
+  name: 'Outer',
+  collectionId: 'col-1',
+  variables: [
+    { key: 'MASKED_BY_FOLDER', value: 'outer', enabled: true },
+    { key: 'FOLDER_KEY', value: 'outer', enabled: true },
+    { key: 'INNER_OVERRIDES', value: 'outer', enabled: true },
+  ],
+};
+
+const innerFolder: Folder = {
+  id: 'f-2',
+  name: 'Inner',
+  collectionId: 'col-1',
+  variables: [
+    { key: 'FOLDER_KEY', value: 'inner', enabled: true },
+    { key: 'INNER_OVERRIDES', value: 'inner', enabled: true },
+  ],
+};
+
+const mergeEnv: Environment = {
+  id: 'env-9',
+  name: 'Merge',
+  variables: [
+    { key: 'BASE_URL', value: 'https://env.example', enabled: true },
+    { key: 'MASKED_BY_ENV', value: 'env', enabled: true },
+    { key: 'ENV_DISABLED_FALLBACK', value: 'env', enabled: false },
+    { key: 'CURRENT', value: 'initial', currentValue: 'current', enabled: true },
+  ],
+};
+
+describe('effectiveVariables', () => {
+  it('environment wins over folder and collection', () => {
+    const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const vars = Object.fromEntries(scope.variables.map(v => [v.key, v.value]));
+    expect(vars.BASE_URL).toBe('https://env.example');
+    expect(vars.MASKED_BY_ENV).toBe('env');
+  });
+
+  it('innermost folder wins over outer folder', () => {
+    const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const vars = Object.fromEntries(scope.variables.map(v => [v.key, v.value]));
+    expect(vars.FOLDER_KEY).toBe('inner');
+    expect(vars.INNER_OVERRIDES).toBe('inner');
+  });
+
+  it('folder wins over collection', () => {
+    const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const vars = Object.fromEntries(scope.variables.map(v => [v.key, v.value]));
+    expect(vars.MASKED_BY_FOLDER).toBe('outer');
+  });
+
+  it('disabled variable in a higher scope falls back to lower scopes', () => {
+    const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const vars = Object.fromEntries(scope.variables.map(v => [v.key, v.value]));
+    expect(vars.ENV_DISABLED_FALLBACK).toBe('collection');
+  });
+
+  it('resolves collection and folder variables with no environment', () => {
+    const scope = effectiveVariables(null, mergeCollection, [outerFolder, innerFolder]);
+    const vars = Object.fromEntries(scope.variables.map(v => [v.key, v.value]));
+    expect(vars.BASE_URL).toBe('https://collection.example');
+    expect(vars.FOLDER_KEY).toBe('inner');
+    expect(substituteVariables('{{BASE_URL}}/{{FOLDER_KEY}}', scope)).toBe(
+      'https://collection.example/inner',
+    );
+  });
+
+  it('currentValue wins over value', () => {
+    const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const entry = scope.variables.find(v => v.key === 'CURRENT');
+    expect(entry?.currentValue).toBe('current');
+    expect(substituteVariables('{{CURRENT}}', scope)).toBe('current');
+  });
+
+  it('last duplicate key within a scope wins', () => {
+    const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    const vars = Object.fromEntries(scope.variables.map(v => [v.key, v.value]));
+    expect(vars.LAST_WINS).toBe('second');
+  });
+
+  it('keeps variable types through the merge', () => {
+    const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
+    expect(substituteJsonVariables('{"id": "{{TYPED}}"}', scope)).toBe('{"id": 42}');
   });
 });

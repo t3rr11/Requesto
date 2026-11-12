@@ -1,3 +1,4 @@
+import type { Collection, Folder } from '../store/collections/types';
 import type { Environment, EnvironmentVariable, EnvironmentVariableType } from '../store/environments/types';
 import type { AuthConfig, ProxyRequest } from '../store/request/types';
 
@@ -5,14 +6,45 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+export type VariableScope = {
+  variables: EnvironmentVariable[];
+};
+
 /**
- * Replace `{{variableName}}` placeholders with values from the active environment.
+ * Merge variable scopes into one effective list, highest precedence last
+ * (later entries win per key): collection, then folders outermost to
+ * innermost, then the active environment. Disabled variables are dropped so
+ * a lower scope can still resolve the key.
  */
-export function substituteVariables(text: string, environment: Environment | null): string {
-  if (!environment || !text) return text;
+export function effectiveVariables(
+  environment: Environment | null,
+  collection?: Collection | null,
+  folderChain?: Folder[],
+): VariableScope {
+  const scopes: EnvironmentVariable[][] = [
+    collection?.variables ?? [],
+    ...(folderChain ?? []).map(folder => folder.variables ?? []),
+    environment?.variables ?? [],
+  ];
+
+  const byKey = new Map<string, EnvironmentVariable>();
+  for (const variables of scopes) {
+    for (const variable of variables) {
+      if (!variable.enabled || !variable.key) continue;
+      byKey.set(variable.key, variable);
+    }
+  }
+  return { variables: [...byKey.values()] };
+}
+
+/**
+ * Replace `{{variableName}}` placeholders with values from the active variable scope.
+ */
+export function substituteVariables(text: string, scope: VariableScope | null): string {
+  if (!scope || !text) return text;
 
   let result = text;
-  for (const variable of environment.variables) {
+  for (const variable of scope.variables) {
     if (variable.enabled && variable.key) {
       const pattern = new RegExp(`{{\\s*${escapeRegExp(variable.key)}\\s*}}`, 'g');
       // currentValue (set by pre-request scripts) takes precedence over value (initial)
@@ -60,11 +92,11 @@ function typedJsonLiteral(
  * when the value cannot represent the type); other quoted placeholders get a
  * JSON-escaped string. Unquoted placeholders are inserted raw, unchanged.
  */
-export function substituteJsonVariables(text: string, environment: Environment | null): string {
-  if (!environment || !text) return text;
+export function substituteJsonVariables(text: string, scope: VariableScope | null): string {
+  if (!scope || !text) return text;
 
   let result = text;
-  for (const variable of environment.variables) {
+  for (const variable of scope.variables) {
     if (!variable.enabled || !variable.key) continue;
     const keyPattern = escapeRegExp(variable.key);
     const value = variable.currentValue ?? variable.value ?? '';
@@ -83,15 +115,15 @@ export function substituteJsonVariables(text: string, environment: Environment |
  * so its placeholders only exist in decoded form, where they need the
  * JSON-aware pass (typed values must end up unquoted in the JSON).
  */
-function substituteUrlVariables(url: string, environment: Environment | null): string {
-  const substituted = substituteVariables(url, environment);
-  if (!environment || !substituted.includes('=')) return substituted;
+function substituteUrlVariables(url: string, scope: VariableScope | null): string {
+  const substituted = substituteVariables(url, scope);
+  if (!scope || !substituted.includes('=')) return substituted;
 
   try {
     const parsed = new URL(substituted);
     const variables = parsed.searchParams.get('variables');
     if (variables && variables.includes('{{')) {
-      parsed.searchParams.set('variables', substituteJsonVariables(variables, environment));
+      parsed.searchParams.set('variables', substituteJsonVariables(variables, scope));
       return parsed.toString();
     }
   } catch {
@@ -107,10 +139,10 @@ function substituteUrlVariables(url: string, environment: Environment | null): s
  * `oauth.configId` is left untouched — it's a stable identifier resolved
  * server-side, not a user-entered credential.
  */
-export function substituteInAuth(auth: AuthConfig | undefined, environment: Environment | null): AuthConfig | undefined {
+export function substituteInAuth(auth: AuthConfig | undefined, scope: VariableScope | null): AuthConfig | undefined {
   if (!auth) return auth;
 
-  const sub = (v: string) => substituteVariables(v, environment);
+  const sub = (v: string) => substituteVariables(v, scope);
 
   switch (auth.type) {
     case 'basic':
@@ -139,28 +171,28 @@ export function substituteInAuth(auth: AuthConfig | undefined, environment: Envi
  * JSON bodies get JSON-aware substitution so typed variables are emitted
  * as unquoted numbers/booleans.
  */
-export function substituteInRequest(request: ProxyRequest, environment: Environment | null): typeof request {
-  if (!environment) return request;
+export function substituteInRequest(request: ProxyRequest, scope: VariableScope | null): typeof request {
+  if (!scope) return request;
 
   const jsonMode = request.bodyType === 'json' || (!request.bodyType && !!request.body);
   const bodySub = jsonMode ? substituteJsonVariables : substituteVariables;
 
   return {
     method: request.method,
-    url: substituteUrlVariables(request.url, environment),
+    url: substituteUrlVariables(request.url, scope),
     headers: request.headers
-      ? Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, environment)]))
+      ? Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, scope)]))
       : undefined,
-    body: request.body ? bodySub(request.body, environment) : undefined,
+    body: request.body ? bodySub(request.body, scope) : undefined,
     bodyType: request.bodyType,
     formDataEntries: request.formDataEntries
       ? request.formDataEntries.map(entry => ({
           ...entry,
-          key: substituteVariables(entry.key, environment),
-          value: entry.type === 'text' ? substituteVariables(entry.value, environment) : entry.value,
+          key: substituteVariables(entry.key, scope),
+          value: entry.type === 'text' ? substituteVariables(entry.value, scope) : entry.value,
         }))
       : undefined,
-    auth: substituteInAuth(request.auth, environment),
+    auth: substituteInAuth(request.auth, scope),
   };
 }
 
@@ -187,7 +219,7 @@ export function hasVariables(text: string): boolean {
  */
 export function getUndefinedVariables(
   request: { method: string; url: string; headers?: Record<string, string>; body?: string },
-  environment: Environment | null
+  scope: VariableScope | null
 ): string[] {
   const used = new Set<string>();
 
@@ -201,10 +233,10 @@ export function getUndefinedVariables(
     extractVariableNames(request.body).forEach(v => used.add(v));
   }
 
-  if (!environment) return Array.from(used);
+  if (!scope) return Array.from(used);
 
   const defined = new Set(
-    environment.variables
+    scope.variables
       .filter(v => v.enabled && v.key && (v.currentValue !== undefined || v.value !== undefined))
       .map(v => v.key),
   );
