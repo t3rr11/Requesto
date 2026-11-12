@@ -31,7 +31,7 @@ export abstract class LocalVariablesRepository extends BaseRepository {
     );
   }
 
-  private writeAll(data: Record<string, Record<string, LocalVariable>>): void {
+  protected writeAll(data: Record<string, Record<string, LocalVariable>>): void {
     this.writeJson(this.getFilePath(), data);
   }
 

@@ -25,7 +25,24 @@ export class CollectionLocalRepository extends LocalVariablesRepository {
     this.removeScopes((scope) => scope === collectionId || scope.startsWith(prefix));
   }
 
-  deleteFolder(collectionId: string, folderId: string): void {
-    this.resetForScope(scopeKey(collectionId, folderId));
+  /** Remove all data for a deleted folder and its deleted descendants. */
+  deleteFolder(collectionId: string, folderIds: string[]): void {
+    const keys = new Set(folderIds.map((id) => scopeKey(collectionId, id)));
+    this.removeScopes((scope) => keys.has(scope));
+  }
+
+  /** Re-key folder scopes after the folders moved to another collection (folder ids survive moves). */
+  moveScopesToCollection(collectionId: string, targetCollectionId: string, folderIds: string[]): void {
+    const data = this.readAll();
+    let changed = false;
+    for (const folderId of folderIds) {
+      const from = scopeKey(collectionId, folderId);
+      const to = scopeKey(targetCollectionId, folderId);
+      if (from === to || !data[from]) continue;
+      data[to] = { ...(data[to] ?? {}), ...data[from] };
+      delete data[from];
+      changed = true;
+    }
+    if (changed) this.writeAll(data);
   }
 }

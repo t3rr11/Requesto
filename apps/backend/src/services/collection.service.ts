@@ -22,6 +22,12 @@ export interface MoveFolderParams {
   targetParentId?: string;
 }
 
+function folderDescendantIds(folders: Folder[], rootId: string): string[] {
+  const childrenOf = (parentId: string): string[] =>
+    folders.filter((f) => f.parentId === parentId).flatMap((child) => [child.id, ...childrenOf(child.id)]);
+  return childrenOf(rootId);
+}
+
 export class CollectionService {
   constructor(
     private readonly repo: CollectionRepository,
@@ -267,11 +273,14 @@ export class CollectionService {
   }
 
   async deleteFolder(collectionId: string, folderId: string): Promise<void> {
+    const collection = await this.repo.getById(collectionId);
     const deleted = await this.repo.deleteFolder(collectionId, folderId);
     if (!deleted) {
       throw AppError.notFound('Collection or folder not found');
     }
-    this.localRepo?.deleteFolder(collectionId, folderId);
+
+    // Delete descendant folders recursively, so their sidecar scopes go too
+    this.localRepo?.deleteFolder(collectionId, [folderId, ...folderDescendantIds(collection?.folders ?? [], folderId)]);
   }
 
   async moveRequest(params: MoveRequestParams): Promise<SavedRequest> {
@@ -357,11 +366,7 @@ export class CollectionService {
       }
     }
 
-    const getDescendantIds = (parentId: string): string[] => {
-      const children = sourceCollection.folders?.filter((f) => f.parentId === parentId) || [];
-      return children.flatMap((child) => [child.id, ...getDescendantIds(child.id)]);
-    };
-    const descendantIds = [folderId, ...getDescendantIds(folderId)];
+    const descendantIds = [folderId, ...folderDescendantIds(sourceCollection.folders ?? [], folderId)];
 
     const requestsToMove = sourceCollection.requests.filter(
       (r) => r.folderId && descendantIds.includes(r.folderId),
@@ -406,6 +411,10 @@ export class CollectionService {
 
     const updatedTarget: Collection = { ...targetCollection, folders: allFolders, requests: allRequests };
     await this.saveAll(updatedTarget);
+
+    // Move any associated scopes for the descendant folders to the target collection
+    this.localRepo?.moveScopesToCollection(sourceCollectionId, targetCollectionId, descendantIds);
+
     return movedFolder;
   }
 
