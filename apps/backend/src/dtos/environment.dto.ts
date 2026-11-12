@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const environmentVariableSchema = z.object({
+export const environmentVariableSchema = z.object({
   key: z.string(),
   value: z.string(),
   enabled: z.boolean(),

@@ -1,4 +1,5 @@
 import type { Collection, SavedRequest, Folder, SaveRequestInput, SyncPreviewResult, SyncApplyBody } from './types';
+import type { EnvironmentVariable } from '../environments/types';
 import { API_BASE } from '../../helpers/api/config';
 import { downloadJSON, readJSONFile } from '../../helpers/file';
 import { notifyDataMutated } from '../../hooks/useGitAutoRefresh';
@@ -24,7 +25,10 @@ async function createCollectionApi(data: { name: string; description?: string })
   return res.json();
 }
 
-async function updateCollectionApi(id: string, data: { name?: string; description?: string }): Promise<Collection> {
+async function updateCollectionApi(
+  id: string,
+  data: { name?: string; description?: string; variables?: EnvironmentVariable[] },
+): Promise<Collection> {
   const res = await fetch(`${API_BASE}/collections/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

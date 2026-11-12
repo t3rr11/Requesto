@@ -117,7 +117,10 @@ export class CollectionService {
     return this.repo.create(newCollection);
   }
 
-  async update(id: string, updates: Partial<Pick<Collection, 'name' | 'description' | 'variables'>>): Promise<Collection> {
+  async update(
+    id: string,
+    updates: Partial<Pick<Collection, 'name' | 'description' | 'variables'>>,
+  ): Promise<Collection> {
     if (id === UNCATEGORIZED_COLLECTION_ID) {
       throw AppError.badRequest('The Uncategorized collection cannot be renamed.');
     }
@@ -250,13 +253,17 @@ export class CollectionService {
   async updateFolder(
     collectionId: string,
     folderId: string,
-    updates: Partial<Pick<Folder, 'name' | 'parentId'>>,
+    updates: Partial<Pick<Folder, 'name' | 'parentId' | 'variables'>>,
   ): Promise<Folder> {
-    const saved = await this.repo.updateFolder(collectionId, folderId, updates);
+    const updatesWithVars = 'variables' in updates
+      ? { ...updates, variables: withoutCurrentValues(updates.variables) }
+      : updates;
+    const saved = await this.repo.updateFolder(collectionId, folderId, updatesWithVars);
     if (!saved) {
       throw AppError.notFound('Collection or folder not found');
     }
-    return saved;
+    const local = this.localRepo?.getForScope(scopeKey(collectionId, folderId)) ?? {};
+    return { ...saved, variables: withCurrentValues(saved.variables, local) };
   }
 
   async deleteFolder(collectionId: string, folderId: string): Promise<void> {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { authConfigSchema, formDataEntrySchema } from './common';
+import { environmentVariableSchema } from './environment.dto';
 
 /** Cap for request documentation markdown stored in collection files. */
 const MAX_DOCUMENTATION_LENGTH = 1000000;
@@ -12,14 +13,7 @@ export const createCollectionSchema = z.object({
 export const updateCollectionSchema = z.object({
   name: z.string().min(1).trim().optional(),
   description: z.string().optional(),
-  openApiSpec: z
-    .object({
-      source: z.string(),
-      lastSyncedAt: z.number(),
-      specHash: z.string().optional(),
-    })
-    .nullable()
-    .optional(),
+  variables: z.array(environmentVariableSchema).optional(),
 });
 
 const requestFieldsSchema = z.object({
@@ -101,7 +95,8 @@ export const addFolderSchema = z.object({
 
 export const updateFolderSchema = addFolderSchema
   .omit({ id: true, collectionId: true })
-  .partial();
+  .partial()
+  .extend({ variables: z.array(environmentVariableSchema).optional() });
 
 export const moveFolderSchema = z.object({
   targetCollectionId: z.string(),
@@ -125,6 +120,13 @@ export const applySyncSchema = z.object({
   newSpecSource: z.string(),
 });
 
+// folderId scopes the overrides to a folder's variables instead of the collection's own
+export const setCurrentValuesSchema = z.object({
+  overrides: z.record(z.string(), z.string()),
+  types: z.record(z.string(), z.enum(['string', 'number', 'boolean'])).optional(),
+  folderId: z.string().optional(),
+});
+
 export type CreateCollectionDto = z.infer<typeof createCollectionSchema>;
 export type UpdateCollectionDto = z.infer<typeof updateCollectionSchema>;
 export type AddRequestDto = z.infer<typeof addRequestSchema>;
@@ -135,3 +137,4 @@ export type UpdateFolderDto = z.infer<typeof updateFolderSchema>;
 export type MoveFolderDto = z.infer<typeof moveFolderSchema>;
 export type ImportOpenApiDto = z.infer<typeof importOpenApiSchema>;
 export type ApplySyncDto = z.infer<typeof applySyncSchema>;
+export type SetCurrentValuesDto = z.infer<typeof setCurrentValuesSchema>;

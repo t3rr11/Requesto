@@ -677,6 +677,28 @@ describe('CollectionService current values (local sidecar)', () => {
     });
   });
 
+  it('strips current values when updating folder variables and merges sidecar into the result', async () => {
+    const updatedFolder: Folder = {
+      id: 'f-1',
+      name: 'F',
+      collectionId: 'col-1',
+      variables: [makeVar('token', 'initial', { currentValue: 'current' })],
+    };
+    const updateFolder = vi.fn().mockResolvedValue(updatedFolder);
+    const repo = mockRepo({ updateFolder });
+    const service = new CollectionService(repo, localRepo);
+    service.setCurrentValues('col-1', { token: 'sidecar' }, undefined, 'f-1');
+
+    const result = await service.updateFolder('col-1', 'f-1', {
+      variables: [makeVar('token', 'initial', { currentValue: 'current' })],
+    });
+
+    expect(updateFolder).toHaveBeenCalledWith('col-1', 'f-1', {
+      variables: [makeVar('token', 'initial')],
+    });
+    expect(result.variables).toEqual([makeVar('token', 'initial', { currentValue: 'sidecar' })]);
+  });
+
   it('removes sidecar data when a collection or folder is deleted', async () => {
     const repo = mockRepo({ delete: vi.fn().mockResolvedValue(true), deleteFolder: vi.fn().mockResolvedValue(true) });
     const service = new CollectionService(repo, localRepo);

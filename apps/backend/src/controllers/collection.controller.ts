@@ -3,7 +3,16 @@ import { CollectionService } from '../services/collection.service';
 import { OpenApiService } from '../services/openapi.service';
 import type { SavedRequest } from '../models/collection';
 import type { SyncApplyBody } from '../models/openapi-sync';
-import { createRequestPayloadSchema, updateRequestPayloadSchema } from '../dtos/collection.dto';
+import {
+  createRequestPayloadSchema,
+  updateRequestPayloadSchema,
+  updateCollectionSchema,
+  updateFolderSchema,
+  setCurrentValuesSchema,
+  type UpdateCollectionDto,
+  type UpdateFolderDto,
+  type SetCurrentValuesDto,
+} from '../dtos/collection.dto';
 
 interface Options {
   collectionService: CollectionService;
@@ -31,10 +40,11 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     return reply.code(201).send(collection);
   });
 
-  server.put<{ Params: { id: string }; Body: { name?: string; description?: string } }>(
+  server.put<{ Params: { id: string }; Body: UpdateCollectionDto }>(
     '/collections/:id',
     async (request, _reply) => {
-      const collection = await collectionService.update(request.params.id, request.body);
+      const updates = updateCollectionSchema.parse(request.body);
+      const collection = await collectionService.update(request.params.id, updates);
       return collection;
     }
   );
@@ -43,6 +53,28 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     await collectionService.delete(request.params.id);
     return { success: true };
   });
+
+  server.patch<{ Params: { id: string }; Body: SetCurrentValuesDto }>(
+    '/collections/:id/current-values',
+    async (request, _reply) => {
+      const { overrides, types, folderId } = setCurrentValuesSchema.parse(request.body);
+      collectionService.setCurrentValues(request.params.id, overrides, types, folderId);
+      return { success: true };
+    },
+  );
+
+  server.delete<{ Params: { id: string }; Querystring: { key?: string; folderId?: string } }>(
+    '/collections/:id/current-values',
+    async (request, _reply) => {
+      const { key, folderId } = request.query;
+      if (key) {
+        collectionService.resetCurrentValue(request.params.id, key, folderId);
+      } else {
+        collectionService.resetCurrentValues(request.params.id, folderId);
+      }
+      return { success: true };
+    },
+  );
 
   server.post<{ Params: { id: string } }>('/collections/:id/duplicate', async (request, reply) => {
     const collection = await collectionService.duplicateCollection(request.params.id);
@@ -104,13 +136,14 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     }
   );
 
-  server.put<{ Params: { id: string; folderId: string }; Body: { name?: string; parentId?: string } }>(
-    '/collections/:id/folders/:folderId',
-    async (request, _reply) => {
-      const saved = await collectionService.updateFolder(request.params.id, request.params.folderId, request.body);
-      return saved;
-    }
-  );
+  server.put<{
+    Params: { id: string; folderId: string };
+    Body: UpdateFolderDto;
+  }>('/collections/:id/folders/:folderId', async (request, _reply) => {
+    const updates = updateFolderSchema.parse(request.body);
+    const saved = await collectionService.updateFolder(request.params.id, request.params.folderId, updates);
+    return saved;
+  });
 
   server.delete<{ Params: { id: string; folderId: string } }>(
     '/collections/:id/folders/:folderId',
