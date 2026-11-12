@@ -15,7 +15,11 @@ import {
   isNumericLiteral,
   inferType,
   effectiveVariables,
+  effectiveVariablesWithOverrides,
+  mergeScriptOverrides,
+  scriptVariableRecords,
   folderChainFor,
+  type ScriptScopeOverrides,
 } from '../../helpers/environment';
 import type { Environment } from '../../store/environments/types';
 import type { Collection, Folder } from '../../store/collections/types';
@@ -530,6 +534,137 @@ describe('effectiveVariables', () => {
   it('keeps variable types through the merge', () => {
     const scope = effectiveVariables(mergeEnv, mergeCollection, [outerFolder, innerFolder]);
     expect(substituteJsonVariables('{"id": "{{TYPED}}"}', scope)).toBe('{"id": 42}');
+  });
+});
+
+// GOTCHA: Fixtures mirrored in apps/backend/src/test/utils/variable-substitution.test.ts; keep in sync.
+describe('effectiveVariablesWithOverrides and scriptVariableRecords', () => {
+  const overrideEnv: Environment = {
+    id: 'env-9',
+    name: 'Env',
+    variables: [{ key: 'SHARED', value: 'from-env', enabled: true }],
+  };
+
+  const overrideCollection: Collection = {
+    id: 'col-1',
+    name: 'Collection',
+    folders: [],
+    requests: [],
+    variables: [
+      { key: 'SHARED', value: 'from-collection', enabled: true },
+      { key: 'TYPED', value: '1', enabled: true, type: 'number' },
+      { key: 'DISABLED', value: 'off', enabled: false },
+    ],
+  };
+
+  const overrideOuter: Folder = {
+    id: 'f-1',
+    name: 'Outer',
+    collectionId: 'col-1',
+    variables: [{ key: 'FOLDER', value: 'from-outer', enabled: true }],
+  };
+
+  const overrideInner: Folder = {
+    id: 'f-2',
+    name: 'Inner',
+    collectionId: 'col-1',
+    variables: [{ key: 'FOLDER', value: 'from-inner', enabled: true }],
+  };
+
+  it('script-set collection values beat their own scope but not the environment', () => {
+    const scope = effectiveVariablesWithOverrides(overrideEnv, overrideCollection, [], {
+      collection: { values: { SHARED: 'from-script' } },
+    });
+    expect(substituteVariables('{{SHARED}}', scope)).toBe('from-env');
+
+    const withoutEnv = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+      collection: { values: { SHARED: 'from-script' } },
+    });
+    expect(substituteVariables('{{SHARED}}', withoutEnv)).toBe('from-script');
+  });
+
+  it('script-set values on a disabled variable still resolve', () => {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+      collection: { values: { DISABLED: 'scripted' } },
+    });
+    expect(substituteVariables('{{DISABLED}}', scope)).toBe('scripted');
+  });
+
+  it('cleared keys stop resolving in their own scope', () => {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+      collection: { values: {}, cleared: ['SHARED'] },
+    });
+    expect(substituteVariables('{{SHARED}}', scope)).toBe('{{SHARED}}');
+  });
+
+  it('appends script-created keys with the recorded type', () => {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+      collection: { values: { CREATED: '7' }, types: { CREATED: 'number' } },
+    });
+    expect(substituteJsonVariables('{"id": "{{CREATED}}"}', scope)).toBe('{"id": 7}');
+  });
+
+  it('re-types an existing variable from the script value', () => {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [], {
+      collection: { values: { TYPED: '9' }, types: { TYPED: 'string' } },
+    });
+    expect(substituteJsonVariables('{"id": "{{TYPED}}"}', scope)).toBe('{"id": "9"}');
+  });
+
+  it('applies folder overrides per folder id, innermost winning', () => {
+    const scope = effectiveVariablesWithOverrides(null, overrideCollection, [overrideOuter, overrideInner], {
+      folders: {
+        'f-1': { values: { FOLDER: 'outer-script' } },
+        'f-2': { values: { FOLDER: 'inner-script' } },
+      },
+    });
+    expect(substituteVariables('{{FOLDER}}', scope)).toBe('inner-script');
+
+    // An override for a folder outside the chain must not leak in.
+    const siblingScope = effectiveVariablesWithOverrides(null, overrideCollection, [overrideOuter], {
+      folders: { 'f-2': { values: { FOLDER: 'inner-script' } } },
+    });
+    expect(substituteVariables('{{FOLDER}}', siblingScope)).toBe('from-outer');
+  });
+
+  it('mergeScriptOverrides lets a later set revive an earlier clear and vice versa', () => {
+    const target: ScriptScopeOverrides = { values: {} };
+    mergeScriptOverrides(target, { values: { A: '1', B: '1' } });
+    mergeScriptOverrides(target, { values: {}, cleared: ['A'] });
+    expect(target.values).toEqual({ B: '1' });
+    expect(target.cleared).toEqual(['A']);
+
+    mergeScriptOverrides(target, { values: { A: '2' } });
+    expect(target.values).toEqual({ A: '2', B: '1' });
+    expect(target.cleared).toEqual([]);
+
+    mergeScriptOverrides(target, { values: {}, cleared: ['B'] });
+    expect(target.values).toEqual({ A: '2' });
+    expect(target.cleared).toEqual(['B']);
+  });
+
+  it('scriptVariableRecords layers overrides and removes cleared keys per scope', () => {
+    const records = scriptVariableRecords(overrideCollection, [overrideOuter, overrideInner], {
+      collection: { values: { SHARED: 'script-collection' }, types: { SHARED: 'string' } },
+      folders: { 'f-2': { values: { FOLDER: 'script-inner' } } },
+    });
+    expect(records.collectionVariables).toEqual({ SHARED: 'script-collection', TYPED: '1' });
+    expect(records.collectionVariableTypes).toEqual({ SHARED: 'string', TYPED: 'number' });
+    // Folder records merge the chain innermost-wins, overrides layered on top.
+    expect(records.folderVariables).toEqual({ FOLDER: 'script-inner' });
+  });
+
+  it('scriptVariableRecords applies current values and clears without overrides', () => {
+    const collection: Collection = {
+      ...overrideCollection,
+      variables: [{ key: 'CURRENT', value: 'initial', currentValue: 'current', enabled: true }],
+    };
+    const records = scriptVariableRecords(collection, [overrideOuter], {
+      folders: { 'f-1': { values: {}, cleared: ['FOLDER'] } },
+    });
+    expect(records.collectionVariables).toEqual({ CURRENT: 'current' });
+    expect(records.folderVariables).toEqual({});
+    expect(records.collectionVariableTypes).toBeUndefined();
   });
 });
 

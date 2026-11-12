@@ -260,6 +260,253 @@ describe('runCollections', () => {
     expect(sent).toEqual(['http://from-script/x']);
   });
 
+  it('resolves collectionVariables.set in the same request and chains to later requests', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      variables: [{ key: 'host', value: 'http://base.test', enabled: true }],
+      folders: [],
+      requests: [
+        {
+          id: 'r1',
+          name: 'First',
+          method: 'GET',
+          url: '{{host}}/one',
+          collectionId: 'c1',
+          preRequestScript: [
+            `if (collectionVariables.get('host') !== 'http://base.test') { throw new Error('get: ' + collectionVariables.get('host')); }`,
+            `collectionVariables.set('host', 'http://script.test');`,
+          ].join('\n'),
+          testScript: [
+            `test('pre-request set visible to test script', () => {`,
+            `  expect(collectionVariables.get('host')).toBe('http://script.test');`,
+            `});`,
+          ].join('\n'),
+        },
+        { id: 'r2', name: 'Second', method: 'GET', url: '{{host}}/two', collectionId: 'c1' },
+      ],
+    };
+    const sent: string[] = [];
+    const summary = await runCollections({
+      collections: [col],
+      environment: null,
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.url);
+        return okResponse;
+      },
+    });
+    expect(sent).toEqual(['http://script.test/one', 'http://script.test/two']);
+    expect(summary.passedTests).toBe(1);
+  });
+
+  it('keeps script-set collection variables scoped to their collection', async () => {
+    const collections: Collection[] = [
+      {
+        id: 'c1',
+        name: 'One',
+        variables: [{ key: 'host', value: 'http://one.test', enabled: true }],
+        folders: [],
+        requests: [
+          {
+            id: 'r1',
+            name: 'A',
+            method: 'GET',
+            url: '{{host}}/one',
+            collectionId: 'c1',
+            testScript: `collectionVariables.set('host', 'http://scripted-one.test');`,
+          },
+          { id: 'r1b', name: 'A again', method: 'GET', url: '{{host}}/one', collectionId: 'c1' },
+        ],
+      },
+      {
+        id: 'c2',
+        name: 'Two',
+        variables: [{ key: 'host', value: 'http://two.test', enabled: true }],
+        folders: [],
+        requests: [{ id: 'r2', name: 'B', method: 'GET', url: '{{host}}/two', collectionId: 'c2' }],
+      },
+    ];
+    const sent: string[] = [];
+    await runCollections({
+      collections,
+      environment: null,
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.url);
+        return okResponse;
+      },
+    });
+    expect(sent).toEqual(['http://one.test/one', 'http://scripted-one.test/one', 'http://two.test/two']);
+  });
+
+  it('environment variables still win over script-set collection variables', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      variables: [{ key: 'token', value: 'from-collection', enabled: true }],
+      folders: [],
+      requests: [
+        {
+          id: 'r1',
+          name: 'A',
+          method: 'GET',
+          url: '{{token}}',
+          collectionId: 'c1',
+          preRequestScript: `collectionVariables.set('token', 'from-collection-script');`,
+        },
+      ],
+    };
+    const sent: string[] = [];
+    await runCollections({
+      collections: [col],
+      environment: { id: 'e', name: 'env', variables: [{ key: 'token', value: 'from-env', enabled: true }] },
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.url);
+        return okResponse;
+      },
+    });
+    expect(sent).toEqual(['from-env']);
+  });
+
+  it('drops a collection variable cleared by a script and emits typed script values into JSON', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      variables: [{ key: 'token', value: 'from-collection', enabled: true }],
+      folders: [],
+      requests: [
+        {
+          id: 'r1',
+          name: 'Cleared',
+          method: 'POST',
+          url: 'http://x.local/{{token}}',
+          body: '{"n": "{{n}}"}',
+          bodyType: 'json',
+          collectionId: 'c1',
+          preRequestScript: `collectionVariables.clear('token'); collectionVariables.set('n', 21);`,
+        },
+      ],
+    };
+    const sent: { url: string; body?: string }[] = [];
+    await runCollections({
+      collections: [col],
+      environment: null,
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req);
+        return okResponse;
+      },
+    });
+    // The cleared variable no longer resolves anywhere; the script-set number
+    // is unquoted in the JSON body per its inferred type.
+    expect(sent[0].url).toBe('http://x.local/{{token}}');
+    expect(JSON.parse(sent[0].body!)).toEqual({ n: 21 });
+  });
+
+  it('applies folderVariables.set to the innermost folder without leaking to siblings', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [
+        {
+          id: 'f-a',
+          name: 'Alpha',
+          collectionId: 'c1',
+          variables: [{ key: 'token', value: 'from-alpha', enabled: true }],
+        },
+        {
+          id: 'f-b',
+          name: 'Beta',
+          collectionId: 'c1',
+          variables: [{ key: 'token', value: 'from-beta', enabled: true }],
+        },
+      ],
+      requests: [
+        {
+          id: 'r1',
+          name: 'In Alpha',
+          method: 'GET',
+          url: '{{token}}',
+          collectionId: 'c1',
+          folderId: 'f-a',
+          preRequestScript: [
+            `if (folderVariables.get('token') !== 'from-alpha') { throw new Error('get: ' + folderVariables.get('token')); }`,
+            `folderVariables.set('token', 'script-alpha');`,
+          ].join('\n'),
+        },
+        { id: 'r2', name: 'In Alpha again', method: 'GET', url: '{{token}}', collectionId: 'c1', folderId: 'f-a' },
+        { id: 'r3', name: 'In Beta', method: 'GET', url: '{{token}}', collectionId: 'c1', folderId: 'f-b' },
+        { id: 'r4', name: 'Root', method: 'GET', url: '{{token}}', collectionId: 'c1' },
+      ],
+    };
+    const sent: string[] = [];
+    await runCollections({
+      collections: [col],
+      environment: null,
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.url);
+        return okResponse;
+      },
+    });
+    expect(sent).toEqual(['script-alpha', 'script-alpha', 'from-beta', '{{token}}']);
+  });
+
+  it('resolves folderVariables.get innermost-first in nested folder chains', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [
+        {
+          id: 'f-outer',
+          name: 'Outer',
+          collectionId: 'c1',
+          variables: [
+            { key: 'token', value: 'from-outer', enabled: true },
+            { key: 'outer', value: 'yes', enabled: true },
+          ],
+        },
+        {
+          id: 'f-inner',
+          name: 'Inner',
+          parentId: 'f-outer',
+          collectionId: 'c1',
+          variables: [{ key: 'token', value: 'from-inner', enabled: true }],
+        },
+      ],
+      requests: [
+        {
+          id: 'r1',
+          name: 'Nested',
+          method: 'GET',
+          url: 'http://x.local',
+          collectionId: 'c1',
+          folderId: 'f-inner',
+          preRequestScript: [
+            `if (folderVariables.get('token') !== 'from-inner') { throw new Error('token: ' + folderVariables.get('token')); }`,
+            `if (folderVariables.get('outer') !== 'yes') { throw new Error('outer: ' + folderVariables.get('outer')); }`,
+          ].join('\n'),
+        },
+      ],
+    };
+    const summary = await runCollections({
+      collections: [col],
+      environment: null,
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async () => okResponse,
+    });
+    expect(summary.failed).toBe(0);
+    expect(summary.errored).toBe(0);
+  });
+
   it('chains script values across collections into GraphQL GET and POST requests', async () => {
     const collections: Collection[] = [
       {

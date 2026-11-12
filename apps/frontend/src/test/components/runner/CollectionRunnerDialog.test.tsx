@@ -8,6 +8,8 @@ import type { Collection } from '../../../store/collections/types';
 const mocks = vi.hoisted(() => ({
   environment: null as { id: string; name: string; variables: { key: string; value: string; enabled: boolean }[] } | null,
   updateCurrentValues: vi.fn(),
+  updateCollectionCurrentValues: vi.fn(),
+  resetCollectionCurrentValue: vi.fn(),
   sendRequest: vi.fn(),
   setup: vi.fn(),
   teardown: vi.fn(),
@@ -19,6 +21,13 @@ vi.mock('../../../store/environments/store', () => ({
   useEnvironmentStore: () => ({
     environmentsData: { activeEnvironmentId: mocks.environment?.id ?? null, environments: mocks.environment ? [mocks.environment] : [] },
     updateCurrentValues: mocks.updateCurrentValues,
+  }),
+}));
+
+vi.mock('../../../store/collections/store', () => ({
+  useCollectionsStore: () => ({
+    updateCollectionCurrentValues: mocks.updateCollectionCurrentValues,
+    resetCollectionCurrentValue: mocks.resetCollectionCurrentValue,
   }),
 }));
 
@@ -61,6 +70,8 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     mocks.setup.mockResolvedValue(undefined);
     mocks.teardown.mockResolvedValue(undefined);
     mocks.updateCurrentValues.mockResolvedValue(undefined);
+    mocks.updateCollectionCurrentValues.mockResolvedValue(undefined);
+    mocks.resetCollectionCurrentValue.mockResolvedValue(undefined);
     mocks.sendRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '{}', bodyEncoding: 'utf8', duration: 1 });
     mocks.runPreRequest.mockResolvedValue({ envOverrides: { token: 'pre' } });
     mocks.runTest.mockResolvedValue({ testResults: [], envOverrides: { token: 'final', newKey: 'value' } });
@@ -158,8 +169,53 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     );
   });
 
-  it('does not write current values if workspace restoration fails', async () => {
-    mocks.environment = { id: 'env-1', name: 'Local', variables: [] };
+  it('persists script-set collection variables per collection after the run', async () => {
+    mocks.runPreRequest.mockResolvedValue({ envOverrides: {}, collectionOverrides: { host: 'scripted' } });
+    const collections = makeCollections();
+    collections[0].requests[0].preRequestScript = 'pre';
+    collections[1].requests[0].preRequestScript = 'pre';
+    render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+    await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+
+    await waitFor(() => expect(mocks.updateCollectionCurrentValues).toHaveBeenCalledTimes(2));
+    expect(mocks.updateCollectionCurrentValues).toHaveBeenCalledWith('col-1', { host: 'scripted' });
+    expect(mocks.updateCollectionCurrentValues).toHaveBeenCalledWith('col-2', { host: 'scripted' });
+    expect(mocks.teardown.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.updateCollectionCurrentValues.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('persists script-set folder variables scoped to the folder', async () => {
+    mocks.runPreRequest.mockResolvedValue({ envOverrides: {}, folderOverrides: { token: 'script-folder' } });
+    const collections = makeCollections();
+    collections[0].requests[1].preRequestScript = 'pre';
+    render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+    await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+
+    await waitFor(() =>
+      expect(mocks.updateCollectionCurrentValues).toHaveBeenCalledWith('col-1', { token: 'script-folder' }, 'f-1'),
+    );
+  });
+
+  it('resets script-cleared collection variables instead of writing values', async () => {
+    mocks.runPreRequest.mockResolvedValue({
+      envOverrides: {},
+      collectionOverrides: {},
+      collectionCleared: ['gone'],
+      folderCleared: ['old'],
+    });
+    const collections = makeCollections();
+    collections[0].requests[0].preRequestScript = 'pre';
+    collections[0].requests[1].preRequestScript = 'pre';
+    render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+    await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+
+    await waitFor(() => expect(mocks.resetCollectionCurrentValue).toHaveBeenCalledWith('col-1', 'gone'));
+    expect(mocks.resetCollectionCurrentValue).toHaveBeenCalledWith('col-1', 'old', 'f-1');
+    expect(mocks.updateCollectionCurrentValues).not.toHaveBeenCalled();
+  });
+
+  it('does not write current values if workspace restoration fails', async () => {    mocks.environment = { id: 'env-1', name: 'Local', variables: [] };
     mocks.teardown.mockRejectedValue(new Error('restore failed'));
     const collections = makeCollections();
     collections[0].requests[0].preRequestScript = 'pre';

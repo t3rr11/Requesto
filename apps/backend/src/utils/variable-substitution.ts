@@ -6,6 +6,89 @@ export interface VariableScope {
   variables: EnvironmentVariable[];
 }
 
+export interface ScriptScopeOverrides {
+  values: Record<string, string>;
+  types?: Record<string, EnvironmentVariableType>;
+  cleared?: string[];
+}
+
+export interface ScriptOverrideSet {
+  env?: ScriptScopeOverrides;
+  collection?: ScriptScopeOverrides;
+  folders?: Record<string, ScriptScopeOverrides>;
+}
+
+/**
+ * Merge a script's overrides into an accumulator so the outcome order within
+ * a run decides the final state: a later `set` revives a key cleared earlier,
+ * a later `clear` drops a key set earlier. Mutates `target`.
+ */
+export function mergeScriptOverrides(
+  target: ScriptScopeOverrides,
+  source: { values: Record<string, string>; types?: Record<string, EnvironmentVariableType>; cleared?: string[] },
+): void {
+  const values = { ...target.values, ...source.values };
+  const cleared = new Set([...(target.cleared ?? []), ...(source.cleared ?? [])]);
+  
+  // A set in this outcome revives a key cleared earlier, in the same or an earlier script.
+  for (const key of Object.keys(source.values)) cleared.delete(key);
+  for (const key of cleared) delete values[key];
+  target.values = values;
+  target.types = { ...target.types, ...source.types };
+  target.cleared = [...cleared];
+}
+
+/** Layer one scope's script overrides onto that scope's variable list. */
+function applyScriptOverrides(
+  variables: EnvironmentVariable[],
+  overrides?: ScriptScopeOverrides,
+): EnvironmentVariable[] {
+  if (!overrides) return variables;
+  const cleared = new Set(overrides.cleared ?? []);
+  const applied = variables
+    .filter((v) => v.enabled && v.key && !cleared.has(v.key))
+    .map((v) =>
+      Object.hasOwn(overrides.values, v.key)
+        ? { ...v, currentValue: overrides.values[v.key], type: overrides.types?.[v.key] ?? v.type }
+        : v,
+    );
+  for (const [key, value] of Object.entries(overrides.values)) {
+    if (!applied.some((v) => v.key === key)) {
+      applied.push({ key, value, currentValue: value, enabled: true, type: overrides.types?.[key] ?? 'string' });
+    }
+  }
+  return applied;
+}
+
+/**
+ * `effectiveVariables` with script-set overrides applied to their own scope
+ * before merging, so a script-set collection value still loses to an
+ * environment value of the same key.
+ */
+export function effectiveVariablesWithOverrides(
+  environment: Environment | null,
+  collection?: Collection | null,
+  folderChain?: Folder[],
+  overrides?: ScriptOverrideSet,
+): VariableScope {
+  const scopes: EnvironmentVariable[][] = [
+    applyScriptOverrides(collection?.variables ?? [], overrides?.collection),
+    ...(folderChain ?? []).map((folder) =>
+      applyScriptOverrides(folder.variables ?? [], overrides?.folders?.[folder.id]),
+    ),
+    applyScriptOverrides(environment?.variables ?? [], overrides?.env),
+  ];
+
+  const byKey = new Map<string, EnvironmentVariable>();
+  for (const variables of scopes) {
+    for (const variable of variables) {
+      if (!variable.enabled || !variable.key) continue;
+      byKey.set(variable.key, variable);
+    }
+  }
+  return { variables: [...byKey.values()] };
+}
+
 /**
  * Merge variable scopes into one effective list, highest precedence last
  * (later entries win per key): collection, then folders outermost to
@@ -17,20 +100,80 @@ export function effectiveVariables(
   collection?: Collection | null,
   folderChain?: Folder[],
 ): VariableScope {
-  const scopes: EnvironmentVariable[][] = [
-    collection?.variables ?? [],
-    ...(folderChain ?? []).map((folder) => folder.variables ?? []),
-    environment?.variables ?? [],
-  ];
+  return effectiveVariablesWithOverrides(environment, collection, folderChain);
+}
 
-  const byKey = new Map<string, EnvironmentVariable>();
-  for (const variables of scopes) {
-    for (const variable of variables) {
-      if (!variable.enabled || !variable.key) continue;
-      byKey.set(variable.key, variable);
-    }
+/** Folder-chain script overrides merged innermost-wins (inner folders last). */
+function mergedFolderOverrides(
+  folderChain: Folder[],
+  folders?: Record<string, ScriptScopeOverrides>,
+): ScriptScopeOverrides | undefined {
+  if (!folders) return undefined;
+  const merged: ScriptScopeOverrides = { values: {} };
+  for (const folder of folderChain) {
+    const overrides = folders[folder.id];
+    if (overrides) mergeScriptOverrides(merged, overrides);
   }
-  return { variables: [...byKey.values()] };
+  return Object.keys(merged.values).length > 0 || (merged.cleared?.length ?? 0) > 0 ? merged : undefined;
+}
+
+/** Enabled values of one scope, with script-set overrides applied on top. */
+function scopeValuesRecord(
+  variables: EnvironmentVariable[],
+  overrides?: ScriptScopeOverrides,
+): Record<string, string> {
+  const cleared = new Set(overrides?.cleared ?? []);
+  const record: Record<string, string> = {};
+  for (const variable of variables) {
+    if (!variable.enabled || !variable.key || cleared.has(variable.key)) continue;
+    record[variable.key] =
+      overrides && Object.hasOwn(overrides.values, variable.key)
+        ? overrides.values[variable.key]
+        : variable.currentValue ?? variable.value;
+  }
+  for (const [key, value] of Object.entries(overrides?.values ?? {})) {
+    if (!cleared.has(key)) record[key] = value;
+  }
+  return record;
+}
+
+/** Declared types of one scope, with script-recorded types layered on top. */
+function scopeTypesRecord(
+  variables: EnvironmentVariable[],
+  overrides?: ScriptScopeOverrides,
+): Record<string, EnvironmentVariableType> | undefined {
+  const types: Record<string, EnvironmentVariableType> = {};
+  for (const variable of variables) {
+    if (variable.enabled && variable.type) types[variable.key] = variable.type;
+  }
+  Object.assign(types, overrides?.types);
+  return Object.keys(types).length > 0 ? types : undefined;
+}
+
+/**
+ * The collection and folder variable records a script sandbox sees:
+ * enabled values (current values applied), script-set overrides layered on
+ * top, cleared keys removed, folder chain merged innermost-wins.
+ */
+export function scriptVariableRecords(
+  collection?: Collection | null,
+  folderChain?: Folder[],
+  overrides?: Pick<ScriptOverrideSet, 'collection' | 'folders'>,
+): {
+  collectionVariables: Record<string, string>;
+  collectionVariableTypes?: Record<string, EnvironmentVariableType>;
+  folderVariables: Record<string, string>;
+  folderVariableTypes?: Record<string, EnvironmentVariableType>;
+} {
+  const collectionVars = collection?.variables ?? [];
+  const folderVars = (folderChain ?? []).flatMap((folder) => folder.variables ?? []);
+  const folderOverrides = mergedFolderOverrides(folderChain ?? [], overrides?.folders);
+  return {
+    collectionVariables: scopeValuesRecord(collectionVars, overrides?.collection),
+    collectionVariableTypes: scopeTypesRecord(collectionVars, overrides?.collection),
+    folderVariables: scopeValuesRecord(folderVars, folderOverrides),
+    folderVariableTypes: scopeTypesRecord(folderVars, folderOverrides),
+  };
 }
 
 /**

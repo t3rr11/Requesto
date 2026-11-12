@@ -1,10 +1,12 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Dialog } from './Dialog';
 import { useEnvironmentStore } from '../store/environments/store';
+import { useCollectionsStore } from '../store/collections/store';
 import { useRequestStore } from '../store/request/store';
 import { runCollections, buildCollectionItems, buildWorkspaceItems } from 'requesto-engine/runner';
-import type { RunnerEvent } from 'requesto-engine/runner';
+import type { RunnerEvent, ScriptEnvOverrides, ScriptVarsContext } from 'requesto-engine/runner';
 import { browserScriptRunner } from '../helpers/scriptRunner';
+import { mergeScriptOverrides, type ScriptScopeOverrides } from '../helpers/environment';
 import { createRunnerIsolation, type RunnerIsolation } from '../helpers/runner/isolation';
 import { networkErrorFromResponse } from '../helpers/runner/networkError';
 import { useSettingsStore } from '../store/settings/store';
@@ -22,6 +24,7 @@ const noopOAuthResolver = async () => ({ accessToken: '', tokenType: 'Bearer' })
 
 export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId }: CollectionRunnerDialogProps) {
   const { environmentsData, updateCurrentValues } = useEnvironmentStore();
+  const { updateCollectionCurrentValues, resetCollectionCurrentValue } = useCollectionsStore();
   const { sendRequest } = useRequestStore();
   const warnOnHttpErrors = useSettingsStore(s => s.warnOnHttpErrors);
 
@@ -184,6 +187,33 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
 
     const overrides: Record<string, string> = Object.create(null);
     const types: Record<string, EnvironmentVariableType> = Object.create(null);
+
+    // Collection and folder script-set values, attributed to their scope via
+    // the vars context the engine passes to the script runners.
+    const collectionOverrides = new Map<string, ScriptScopeOverrides>();
+    const folderOverrides = new Map<string, { collectionId: string; scope: ScriptScopeOverrides }>();
+    const recordOutcome = (outcome: ScriptEnvOverrides, vars?: ScriptVarsContext) => {
+      Object.assign(overrides, outcome.envOverrides);
+      Object.assign(types, outcome.envTypes ?? {});
+      if (vars?.collectionId) {
+        const scope = collectionOverrides.get(vars.collectionId) ?? { values: {} };
+        mergeScriptOverrides(scope, {
+          values: outcome.collectionOverrides ?? {},
+          types: outcome.collectionTypes,
+          cleared: outcome.collectionCleared,
+        });
+        collectionOverrides.set(vars.collectionId, scope);
+      }
+      if (vars?.collectionId && vars.folderId) {
+        const entry = folderOverrides.get(vars.folderId) ?? { collectionId: vars.collectionId, scope: { values: {} } };
+        mergeScriptOverrides(entry.scope, {
+          values: outcome.folderOverrides ?? {},
+          types: outcome.folderTypes,
+          cleared: outcome.folderCleared,
+        });
+        folderOverrides.set(vars.folderId, entry);
+      }
+    };
     try {
       await runCollections({
         collections: includedCollections,
@@ -203,16 +233,14 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
         },
         warnings: { httpErrorStatuses: warnOnHttpErrors },
         scripts: {
-          runPreRequest: async (...args) => {
-            const outcome = await browserScriptRunner.runPreRequest(...args);
-            Object.assign(overrides, outcome.envOverrides);
-            Object.assign(types, outcome.envTypes ?? {});
+          runPreRequest: async (script, env, request, envTypes, vars) => {
+            const outcome = await browserScriptRunner.runPreRequest(script, env, request, envTypes, vars);
+            recordOutcome(outcome, vars);
             return outcome;
           },
-          runTest: async (...args) => {
-            const outcome = await browserScriptRunner.runTest(...args);
-            Object.assign(overrides, outcome.envOverrides);
-            Object.assign(types, outcome.envTypes ?? {});
+          runTest: async (script, response, request, env, envTypes, vars) => {
+            const outcome = await browserScriptRunner.runTest(script, response, request, env, envTypes, vars);
+            recordOutcome(outcome, vars);
             return outcome;
           },
         },
@@ -237,6 +265,38 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
               throw new Error(`Could not save runner current values: ${err instanceof Error ? err.message : String(err)}`);
             }
           }
+
+          // Collection and folder script-set values persist per scope after
+          // the workspace is restored, same as the environment values above.
+          try {
+            for (const [collectionId, scope] of collectionOverrides) {
+              if (Object.keys(scope.values).length > 0) {
+                await updateCollectionCurrentValues(
+                  collectionId,
+                  scope.values,
+                  ...(scope.types && Object.keys(scope.types).length > 0 ? [scope.types] : []),
+                );
+              }
+              for (const key of scope.cleared ?? []) {
+                await resetCollectionCurrentValue(collectionId, key);
+              }
+            }
+            for (const [folderId, entry] of folderOverrides) {
+              if (Object.keys(entry.scope.values).length > 0) {
+                await updateCollectionCurrentValues(
+                  entry.collectionId,
+                  entry.scope.values,
+                  ...(entry.scope.types && Object.keys(entry.scope.types).length > 0 ? [entry.scope.types] : []),
+                  folderId,
+                );
+              }
+              for (const key of entry.scope.cleared ?? []) {
+                await resetCollectionCurrentValue(entry.collectionId, key, folderId);
+              }
+            }
+          } catch (err) {
+            throw new Error(`Could not save runner current values: ${err instanceof Error ? err.message : String(err)}`);
+          }
         } catch (err) {
           setIsolationError(err instanceof Error ? err.message : String(err));
         }
@@ -245,7 +305,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       abortControllerRef.current = null;
       setRunning(false);
     }
-  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, warnOnHttpErrors, folderId]);
+  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, updateCollectionCurrentValues, resetCollectionCurrentValue, warnOnHttpErrors, folderId]);
 
   const handleStop = () => {
     abortControllerRef.current?.abort();

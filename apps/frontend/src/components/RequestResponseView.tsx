@@ -23,16 +23,17 @@ import {
   buildSavePayloadFromFormData,
   parseGraphQLIntrospectionResponse,
 } from '../helpers/request';
-import { effectiveVariables, folderChainFor, substituteInRequest, getUndefinedVariables } from '../helpers/environment';
+import { effectiveVariables, effectiveVariablesWithOverrides, folderChainFor, substituteInRequest, getUndefinedVariables, mergeScriptOverrides, scriptVariableRecords, type ScriptScopeOverrides } from '../helpers/environment';
 import { applyAuthForDisplay } from '../helpers/api/authPreview';
 import { runPreRequestScript, runTestScript } from '../helpers/scriptRunner';
+import type { PreRequestOutcome, TestOutcome } from 'requesto-engine/sandbox-core';
 import type { ProxyResponse, StreamingResponse } from '../store/request/types';
 import type { Tab } from '../store/tabs/types';
 import type { GraphQLSchema } from 'graphql';
 
 export function RequestResponseView() {
   const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab, setTabTestResults } = useTabsStore();
-  const { collections, updateRequest } = useCollectionsStore();
+  const { collections, updateRequest, updateCollectionCurrentValues, resetCollectionCurrentValue } = useCollectionsStore();
   const { environmentsData, updateCurrentValues } = useEnvironmentStore();
   const { sendRequest, sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
@@ -93,37 +94,98 @@ export function RequestResponseView() {
     }
 
     const { activeEnv, collection, folderChain } = getVariableContext(tab);
+    const innermostFolderId = folderChain.length > 0 ? folderChain[folderChain.length - 1].id : null;
+
+    // Script-set collection and folder variable overrides, accumulated across
+    // the pre-request and test scripts of this send and applied to the
+    // substitution scope in memory.
+    const collectionScript: ScriptScopeOverrides = { values: {} };
+    const folderScript: Record<string, ScriptScopeOverrides> = {};
+
+    // Persists script-set values (and resets cleared keys) to the sidecar
+    // immediately, the same lifecycle as `environment.set()` current values.
+    const applyScriptOutcome = async (outcome: PreRequestOutcome | TestOutcome) => {
+      mergeScriptOverrides(collectionScript, {
+        values: outcome.collectionOverrides,
+        types: outcome.collectionTypes,
+        cleared: outcome.collectionCleared,
+      });
+      if (innermostFolderId) {
+        const folderOverrides = folderScript[innermostFolderId] ?? { values: {} };
+        mergeScriptOverrides(folderOverrides, {
+          values: outcome.folderOverrides,
+          types: outcome.folderTypes,
+          cleared: outcome.folderCleared,
+        });
+        folderScript[innermostFolderId] = folderOverrides;
+      }
+      if (!collection) return;
+      if (Object.keys(outcome.collectionOverrides).length > 0) {
+        await updateCollectionCurrentValues(
+          collection.id,
+          outcome.collectionOverrides,
+          ...(Object.keys(outcome.collectionTypes).length > 0 ? [outcome.collectionTypes] : []),
+        );
+      }
+      for (const key of outcome.collectionCleared) {
+        await resetCollectionCurrentValue(collection.id, key);
+      }
+      if (innermostFolderId) {
+        if (Object.keys(outcome.folderOverrides).length > 0) {
+          await updateCollectionCurrentValues(
+            collection.id,
+            outcome.folderOverrides,
+            ...(Object.keys(outcome.folderTypes).length > 0 ? [outcome.folderTypes] : []),
+            innermostFolderId,
+          );
+        }
+        for (const key of outcome.folderCleared) {
+          await resetCollectionCurrentValue(collection.id, key, innermostFolderId);
+        }
+      }
+    };
 
     // effectiveEnv starts as the current active environment, and may be updated
     // by the pre-request script before variable substitution runs.
     let effectiveEnv = activeEnv;
     if (formData.preRequestScript?.trim()) {
       try {
-        const { envOverrides, envTypes } = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest);
-        if (activeEnv && Object.keys(envOverrides).length > 0) {
+        const outcome = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest, {
+          collectionId: collection?.id,
+          folderId: innermostFolderId,
+          ...scriptVariableRecords(collection, folderChain, { collection: collectionScript, folders: folderScript }),
+        });
+        if (activeEnv && Object.keys(outcome.envOverrides).length > 0) {
           const updatedVariables = activeEnv.variables.map(v =>
-            Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-              ? { ...v, currentValue: envOverrides[v.key], type: envTypes[v.key] ?? v.type }
+            Object.prototype.hasOwnProperty.call(outcome.envOverrides, v.key)
+              ? { ...v, currentValue: outcome.envOverrides[v.key], type: outcome.envTypes[v.key] ?? v.type }
               : v,
           );
+
           // Also add any newly-introduced keys
-          Object.entries(envOverrides).forEach(([key, value]) => {
+          Object.entries(outcome.envOverrides).forEach(([key, value]) => {
             if (!updatedVariables.some(v => v.key === key)) {
-              updatedVariables.push({ key, value: '', currentValue: value, enabled: true, type: envTypes[key] ?? 'string' });
+              updatedVariables.push({ key, value: '', currentValue: value, enabled: true, type: outcome.envTypes[key] ?? 'string' });
             }
           });
           const updatedEnv = { ...activeEnv, variables: updatedVariables };
+
           // Persist current values (and their types) to the local sidecar
-          await updateCurrentValues(activeEnv.id, envOverrides, envTypes);
+          await updateCurrentValues(activeEnv.id, outcome.envOverrides, outcome.envTypes);
+
           // Use the updated env for this request's variable substitution
           effectiveEnv = updatedEnv;
         }
+        await applyScriptOutcome(outcome);
       } catch (err) {
         showAlert('Pre-request script error', err instanceof Error ? err.message : String(err), 'error');
       }
     }
 
-    const scope = effectiveVariables(effectiveEnv, collection, folderChain);
+    const scope = effectiveVariablesWithOverrides(effectiveEnv, collection, folderChain, {
+      collection: collectionScript,
+      folders: folderScript,
+    });
 
     const request = substituteInRequest(rawRequest, scope);
 
@@ -186,18 +248,29 @@ export function RequestResponseView() {
       const isStreamingResponse = 'isStreaming' in response && response.isStreaming;
       if (formData.testScript?.trim() && !isStreamingResponse) {
         try {
-          const { testResults, envOverrides: testEnvOverrides, envTypes: testEnvTypes } = await runTestScript(formData.testScript, response as ProxyResponse, request, effectiveEnv);
-          setTabTestResults(tab.id, testResults);
-          if (effectiveEnv && Object.keys(testEnvOverrides).length > 0) {
-            await updateCurrentValues(effectiveEnv.id, testEnvOverrides, testEnvTypes);
+          const outcome = await runTestScript(
+            formData.testScript,
+            response as ProxyResponse,
+            request,
+            effectiveEnv,
+            {
+              collectionId: collection?.id,
+              folderId: innermostFolderId,
+              ...scriptVariableRecords(collection, folderChain, { collection: collectionScript, folders: folderScript }),
+            },
+          );
+          setTabTestResults(tab.id, outcome.testResults);
+          if (effectiveEnv && Object.keys(outcome.envOverrides).length > 0) {
+            await updateCurrentValues(effectiveEnv.id, outcome.envOverrides, outcome.envTypes);
           }
-          const passed = testResults.filter(r => r.passed).length;
+          await applyScriptOutcome(outcome);
+          const passed = outcome.testResults.filter(r => r.passed).length;
           addConsoleLog({
             id: `test-${Date.now()}`,
             requestId,
             timestamp: Date.now(),
             type: 'info',
-            message: `Tests: ${passed}/${testResults.length} passed`,
+            message: `Tests: ${passed}/${outcome.testResults.length} passed`,
           });
         } catch (err) {
           showAlert('Test script error', err instanceof Error ? err.message : String(err), 'error');
@@ -243,6 +316,8 @@ export function RequestResponseView() {
     addConsoleLog,
     showAlert,
     updateCurrentValues,
+    updateCollectionCurrentValues,
+    resetCollectionCurrentValue,
     updateRequest,
     markTabAsSaved,
   ]);

@@ -221,3 +221,102 @@ describe('executeTestScript', () => {
     ).toThrow('top-level');
   });
 });
+
+describe('collectionVariables and folderVariables APIs', () => {
+  const collectionCtx = {
+    collectionVariables: { base: 'https://api.example.com', typed: '42', secret: 'abc' },
+    collectionVariableTypes: { typed: 'number' },
+    folderVariables: { outer: 'outer-value', shared: 'inner-value' },
+  };
+
+  it('exposes collectionVariables.get with declared types applied', () => {
+    const result = executePreRequestScript(
+      [
+        `if (collectionVariables.get('base') !== 'https://api.example.com') { throw new Error('base'); }`,
+        `if (collectionVariables.get('typed') !== 42) { throw new Error('typed'); }`,
+        `if (collectionVariables.get('missing') !== '') { throw new Error('missing'); }`,
+      ].join('\n'),
+      { env: {}, request: baseRequest, ...collectionCtx },
+    );
+    // Untouched committed variables are not reported as overrides.
+    expect(result.collectionOverrides).toEqual({});
+  });
+
+  it('collectionVariables.set only reports touched keys with inferred types', () => {
+    const result = executePreRequestScript(
+      `collectionVariables.set('token', 'abc'); collectionVariables.set('n', 7);`,
+      { env: {}, request: baseRequest, ...collectionCtx },
+    );
+    expect(result.collectionOverrides).toEqual({ token: 'abc', n: '7' });
+    expect(result.collectionTypes).toEqual({ token: 'string', n: 'number' });
+    expect(result.collectionCleared).toEqual([]);
+  });
+
+  it('collectionVariables.has and clear work per key and for the whole scope', () => {
+    const result = executePreRequestScript(
+      [
+        `if (!collectionVariables.has('secret')) { throw new Error('has before clear'); }`,
+        `collectionVariables.clear('secret');`,
+        `if (collectionVariables.has('secret')) { throw new Error('has after clear'); }`,
+        `if (collectionVariables.get('secret') !== '') { throw new Error('get after clear'); }`,
+        `collectionVariables.clear();`,
+        `if (collectionVariables.has('base')) { throw new Error('clear() leaves base keys'); }`,
+      ].join('\n'),
+      { env: {}, request: baseRequest, ...collectionCtx },
+    );
+    expect(result.collectionCleared.sort()).toEqual(['base', 'secret', 'typed']);
+    // Cleared keys are absent from the overrides.
+    expect(result.collectionOverrides).toEqual({});
+  });
+
+  it('a set after clear revives the key', () => {
+    const result = executePreRequestScript(
+      [
+        `collectionVariables.clear('secret');`,
+        `collectionVariables.set('secret', 'new');`,
+        `if (collectionVariables.get('secret') !== 'new') { throw new Error('revived'); }`,
+      ].join('\n'),
+      { env: {}, request: baseRequest, ...collectionCtx },
+    );
+    expect(result.collectionOverrides).toEqual({ secret: 'new' });
+    expect(result.collectionCleared).toEqual([]);
+  });
+
+  it('folderVariables.get and set operate on the folder scope', () => {
+    const result = executePreRequestScript(
+      [
+        `if (folderVariables.get('shared') !== 'inner-value') { throw new Error('shared'); }`,
+        `folderVariables.set('generated', 'xy');`,
+      ].join('\n'),
+      { env: {}, request: baseRequest, ...collectionCtx },
+    );
+    expect(result.folderOverrides).toEqual({ generated: 'xy' });
+    expect(result.folderTypes).toEqual({ generated: 'string' });
+    expect(result.folderCleared).toEqual([]);
+  });
+
+  it('scopes are independent: collection set is invisible to folderVariables', () => {
+    const result = executePreRequestScript(
+      [
+        `collectionVariables.set('only', 'collection');`,
+        `if (folderVariables.get('only') !== '') { throw new Error('leaked into folder scope'); }`,
+      ].join('\n'),
+      { env: {}, request: baseRequest },
+    );
+    expect(result.collectionOverrides).toEqual({ only: 'collection' });
+    expect(result.folderOverrides).toEqual({});
+  });
+
+  it('test scripts can read and set collection and folder variables', () => {
+    const result = executeTestScript(
+      [
+        `test('read', () => { expect(collectionVariables.get('typed')).toBe(42); expect(folderVariables.get('outer')).toBe('outer-value'); });`,
+        `test('write', () => { collectionVariables.set('nextId', response.json().a); folderVariables.set('lastRun', 'now'); });`,
+      ].join('\n'),
+      { env: {}, response: baseResponse, request: baseRequest, ...collectionCtx },
+    );
+    expect(result.testResults.every((t) => t.passed)).toBe(true);
+    expect(result.collectionOverrides).toEqual({ nextId: '1' });
+    expect(result.folderOverrides).toEqual({ lastRun: 'now' });
+  });
+});

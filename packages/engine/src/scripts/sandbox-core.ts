@@ -19,6 +19,10 @@ export type PreRequestContext = {
   request: { method: string; url: string; headers?: Record<string, string>; body?: string };
   env: Record<string, string>;
   envTypes?: Record<string, EnvironmentVariableType>;
+  collectionVariables?: Record<string, string>;
+  collectionVariableTypes?: Record<string, EnvironmentVariableType>;
+  folderVariables?: Record<string, string>;
+  folderVariableTypes?: Record<string, EnvironmentVariableType>;
 };
 
 export type ScriptFormEntry = { key: string; value: string; type?: 'text' | 'file'; fileName?: string };
@@ -40,18 +44,40 @@ export type TestContext = {
   };
   env: Record<string, string>;
   envTypes?: Record<string, EnvironmentVariableType>;
+  collectionVariables?: Record<string, string>;
+  collectionVariableTypes?: Record<string, EnvironmentVariableType>;
+  folderVariables?: Record<string, string>;
+  folderVariableTypes?: Record<string, EnvironmentVariableType>;
 };
 
 export type PreRequestOutcome = {
   envOverrides: Record<string, string>;
   /** Inferred type per key in `envOverrides`. */
   envTypes: Record<string, EnvironmentVariableType>;
+  /** Keys the script set via `collectionVariables.set()` (touched keys only). */
+  collectionOverrides: Record<string, string>;
+  /** Inferred type per key in `collectionOverrides`. */
+  collectionTypes: Record<string, EnvironmentVariableType>;
+  /** Keys the script removed via `collectionVariables.clear()`. */
+  collectionCleared: string[];
+  /** Keys the script set via `folderVariables.set()` (touched keys only). */
+  folderOverrides: Record<string, string>;
+  /** Inferred type per key in `folderOverrides`. */
+  folderTypes: Record<string, EnvironmentVariableType>;
+  /** Keys the script removed via `folderVariables.clear()`. */
+  folderCleared: string[];
 };
 export type TestOutcome = {
   testResults: TestResult[];
   envOverrides: Record<string, string>;
   /** Inferred type per key in `envOverrides`. */
   envTypes: Record<string, EnvironmentVariableType>;
+  collectionOverrides: Record<string, string>;
+  collectionTypes: Record<string, EnvironmentVariableType>;
+  collectionCleared: string[];
+  folderOverrides: Record<string, string>;
+  folderTypes: Record<string, EnvironmentVariableType>;
+  folderCleared: string[];
 };
 
 // Shadowed globals prepended to every user script. These shadow the
@@ -203,16 +229,115 @@ function createEnvironment(env: Record<string, string>, declaredTypes?: Record<s
   };
 }
 
+/**
+ * Script-visible variables for one scope (collection or folder). Unlike the
+ * environment store, only keys the script actually touched are reported as
+ * overrides; cleared keys are tracked separately so the base value does not
+ * resurface in them.
+ */
+function createScopedVariables(
+  base: Record<string, string> | undefined,
+  declaredTypes: Record<string, EnvironmentVariableType> | undefined,
+) {
+  const store: Record<string, string> = { ...base };
+  const types: Record<string, EnvironmentVariableType> = {};
+  const touched = new Set<string>();
+  const cleared = new Set<string>();
+
+  return {
+    store,
+    types,
+    touched,
+    cleared,
+    get: (key: string): string | number | boolean => {
+      if (cleared.has(key)) return '';
+      const raw = store[key];
+      if (raw === undefined) return '';
+      return typedValue(raw, types[key] ?? declaredTypes?.[key]);
+    },
+    set: (key: string, value: unknown): void => {
+      store[key] = String(value);
+      types[key] = typeOfScriptValue(value);
+      touched.add(key);
+      cleared.delete(key);
+    },
+  };
+}
+
+type ScopedOutcome = {
+  overrides: Record<string, string>;
+  types: Record<string, EnvironmentVariableType>;
+  cleared: string[];
+};
+
+/** Touched keys only: committed values the script never wrote are excluded. */
+function scopedOutcome(scope: ReturnType<typeof createScopedVariables>): ScopedOutcome {
+  const overrides: Record<string, string> = {};
+  const types: Record<string, EnvironmentVariableType> = {};
+  for (const key of scope.touched) {
+    types[key] = scope.types[key];
+    if (!scope.cleared.has(key)) overrides[key] = scope.store[key];
+  }
+  return {
+    overrides,
+    types,
+    cleared: [...scope.cleared].filter((key) => Object.hasOwn(scope.store, key)),
+  };
+}
+
+/**
+ * The collection and folder variable APIs shared by pre-request and test
+ * scripts. `folderVariables` is read/write only by design; `clear` with no
+ * argument clears every visible variable (Postman semantics).
+ */
+function createScopedApis(context: PreRequestContext | TestContext) {
+  const collection = createScopedVariables(context.collectionVariables, context.collectionVariableTypes);
+  const folder = createScopedVariables(context.folderVariables, context.folderVariableTypes);
+  return {
+    collection,
+    folder,
+    collectionApi: {
+      get: collection.get,
+      set: collection.set,
+      has: (key: string): boolean => !collection.cleared.has(key) && Object.hasOwn(collection.store, key),
+      clear: (key?: string): void => {
+        for (const k of key === undefined ? Object.keys(collection.store) : [key]) {
+          collection.cleared.add(k);
+        }
+      },
+    },
+    folderApi: { get: folder.get, set: folder.set },
+  };
+}
+
 /** Execute a pre-request script. Throws on script errors. */
 export function executePreRequestScript(script: string, context: PreRequestContext): PreRequestOutcome {
   const { store, types, api } = createEnvironment(context.env, context.envTypes);
+  const { collection, folder, collectionApi, folderApi } = createScopedApis(context);
   const request = { ...context.request };
 
   // eslint-disable-next-line no-new-func
-  const fn = new Function('environment', 'request', `${SHADOWED_GLOBALS}\n${script}`);
-  fn(api, request);
+  const fn = new Function(
+    'environment',
+    'request',
+    'collectionVariables',
+    'folderVariables',
+    `${SHADOWED_GLOBALS}\n${script}`,
+  );
+  fn(api, request, collectionApi, folderApi);
 
-  return { envOverrides: store, envTypes: types };
+  const env = { envOverrides: store, envTypes: types };
+  const col = scopedOutcome(collection);
+  const fol = scopedOutcome(folder);
+  return {
+    ...env,
+    collectionOverrides: col.overrides,
+    collectionTypes: col.types,
+    collectionCleared: col.cleared,
+    folderOverrides: fol.overrides,
+    folderTypes: fol.types,
+    folderCleared: fol.cleared,
+  };
 }
 
 /** Execute a test script. Throws on script errors (outside test() blocks). */
@@ -220,6 +345,7 @@ export function executeTestScript(script: string, context: TestContext): TestOut
   const results: TestResult[] = [];
   const { response: responseCtx, request: requestCtx } = context;
   const { store, types, api } = createEnvironment(context.env, context.envTypes);
+  const { collection, folder, collectionApi, folderApi } = createScopedApis(context);
 
   const response = {
     status: responseCtx.status,
@@ -267,8 +393,29 @@ export function executeTestScript(script: string, context: TestContext): TestOut
   const expect = (actual: unknown): Expectation => createExpect(actual);
 
   // eslint-disable-next-line no-new-func
-  const fn = new Function('test', 'expect', 'response', 'request', 'environment', `${SHADOWED_GLOBALS}\n${script}`);
-  fn(test, expect, response, request, api);
+  const fn = new Function(
+    'test',
+    'expect',
+    'response',
+    'request',
+    'environment',
+    'collectionVariables',
+    'folderVariables',
+    `${SHADOWED_GLOBALS}\n${script}`,
+  );
+  fn(test, expect, response, request, api, collectionApi, folderApi);
 
-  return { testResults: results, envOverrides: store, envTypes: types };
+  const env = { envOverrides: store, envTypes: types };
+  const col = scopedOutcome(collection);
+  const fol = scopedOutcome(folder);
+  return {
+    testResults: results,
+    ...env,
+    collectionOverrides: col.overrides,
+    collectionTypes: col.types,
+    collectionCleared: col.cleared,
+    folderOverrides: fol.overrides,
+    folderTypes: fol.types,
+    folderCleared: fol.cleared,
+  };
 }

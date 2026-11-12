@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Collection, SavedRequest, Folder, SaveRequestInput, SyncPreviewResult, SyncApplyBody } from './types';
+import type { EnvironmentVariableType } from '../environments/types';
 import * as actions from './actions';
 
 type CollectionsState = {
@@ -24,6 +25,13 @@ type CollectionsState = {
   duplicateRequests: (requests: Array<{ collectionId: string; requestId: string }>) => Promise<void>;
   duplicateCollection: (id: string) => Promise<void>;
   updateCollection: (id: string, updates: Partial<Collection>) => Promise<void>;
+  updateCollectionCurrentValues: (
+    collectionId: string,
+    overrides: Record<string, string>,
+    types?: Record<string, EnvironmentVariableType>,
+    folderId?: string,
+  ) => Promise<void>;
+  resetCollectionCurrentValue: (collectionId: string, key: string, folderId?: string) => Promise<void>;
   updateRequest: (collectionId: string, requestId: string, updates: Partial<SavedRequest>) => Promise<void>;
   updateFolder: (collectionId: string, folderId: string, updates: Partial<Folder>) => Promise<void>;
   moveRequest: (sourceCollectionId: string, requestId: string, targetCollectionId: string, targetFolderId?: string, targetOrder?: number) => Promise<void>;
@@ -63,6 +71,10 @@ export const useCollectionsStore = create<CollectionsState>((set, get) => ({
   duplicateRequests: (requests) => actions.duplicateRequests(set, requests),
   duplicateCollection: (id) => actions.duplicateCollection(set, id),
   updateCollection: (id, updates) => actions.updateCollection(set, id, updates),
+  updateCollectionCurrentValues: (collectionId, overrides, types, folderId) =>
+    actions.updateCollectionCurrentValues(set, get, collectionId, overrides, types, folderId),
+  resetCollectionCurrentValue: (collectionId, key, folderId) =>
+    actions.resetCollectionCurrentValue(set, get, collectionId, key, folderId),
   updateRequest: (collectionId, requestId, updates) =>
     actions.updateRequest(set, collectionId, requestId, updates),
   updateFolder: (collectionId, folderId, updates) =>
