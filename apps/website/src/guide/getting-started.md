@@ -91,6 +91,7 @@ See [OAuth 2.0](/features/oauth) for the full guide.
 - [Workspaces](/features/workspaces)
 - [Collections & Folders](/features/collections)
 - [Environments](/features/environments)
+- [Collection Variables](/features/collection-variables)
 - [Git Integration](/features/git)
 - [OpenAPI Import & Sync](/features/openapi)
 - [Mock Server](/mock-server/)

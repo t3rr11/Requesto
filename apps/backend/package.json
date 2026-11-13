@@ -1,6 +1,6 @@
 {
   "name": "requesto-backend",
-  "version": "1.14.2",
+  "version": "1.15.0",
   "description": "Backend API proxy for Requesto",
   "main": "dist/server.js",
   "exports": {

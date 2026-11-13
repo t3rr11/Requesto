@@ -1,5 +1,12 @@
 export { ScratchWorkspaceIsolation } from '../isolation/scratch-workspace.ts';
-export { runCollections, type RunnerOptions, type SendFn, type ScriptEnvOverrides, type ScriptRunner } from './run.ts';
+export {
+  runCollections,
+  type RunnerOptions,
+  type SendFn,
+  type ScriptEnvOverrides,
+  type ScriptRunner,
+  type ScriptVarsContext,
+} from './run.ts';
 export {
   buildCollectionItems,
   buildWorkspaceItems,

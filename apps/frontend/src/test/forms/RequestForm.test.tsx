@@ -270,10 +270,15 @@ describe('RequestForm', () => {
     expect(screen.getByLabelText('Request method or type')).toHaveValue('graphql:get');
     expect(screen.queryByRole('combobox', { name: 'GraphQL transport' })).not.toBeInTheDocument();
     await user.type(screen.getByTestId('variable-aware-input'), 'https://api.example.com/graphql');
-    expect(screen.getByRole('tooltip', { name: 'Fetch schema for IntelliSense' })).toBeInTheDocument();
-    expect(screen.getByRole('tooltip', { name: 'Browse schema documentation' })).toBeInTheDocument();
-    await user.click(screen.getByLabelText('Fetch GraphQL schema'));
 
+    // Tooltips render on hover; only one is mounted at a time.
+    await user.hover(screen.getByLabelText('Fetch GraphQL schema'));
+    expect(screen.getByRole('tooltip', { name: 'Fetch schema for IntelliSense' })).toBeInTheDocument();
+
+    await user.hover(screen.getByLabelText('View GraphQL schema'));
+    expect(screen.getByRole('tooltip', { name: 'Browse schema documentation' })).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Fetch GraphQL schema'));
     await vi.waitFor(() => expect(onFetchGraphQLSchema).toHaveBeenCalledOnce());
     const viewSchema = screen.getByLabelText('View GraphQL schema');
     expect(viewSchema).not.toBeDisabled();

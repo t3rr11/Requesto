@@ -1,7 +1,10 @@
 import { CollectionRepository } from '../repositories/collection.repository';
+import { CollectionLocalRepository } from '../repositories/collection-local.repository';
+import { withCurrentValues, withoutCurrentValues } from '../utils/local-variables';
 import { AppError } from '../errors/app-error';
 import type { Collection, SavedRequest, Folder, GraphQLRequestConfig, RequestType } from '../models/collection';
 import { UNCATEGORIZED_COLLECTION_ID } from '../models/collection';
+import type { EnvironmentVariable, EnvironmentVariableType } from '../models/environment';
 import type { AuthConfig, BodyType, FormDataEntry } from '../models/proxy';
 
 export interface MoveRequestParams {
@@ -19,11 +22,44 @@ export interface MoveFolderParams {
   targetParentId?: string;
 }
 
+function folderDescendantIds(folders: Folder[], rootId: string): string[] {
+  const childrenOf = (parentId: string): string[] =>
+    folders.filter((f) => f.parentId === parentId).flatMap((child) => [child.id, ...childrenOf(child.id)]);
+  return childrenOf(rootId);
+}
+
 export class CollectionService {
-  constructor(private readonly repo: CollectionRepository) {}
+  constructor(
+    private readonly repo: CollectionRepository,
+    private readonly localRepo?: CollectionLocalRepository,
+  ) {}
 
   private isEmpty(collection: Collection): boolean {
     return collection.requests.length === 0 && (collection.folders ?? []).length === 0;
+  }
+
+  /**
+   * Merge current values (and their recorded types) from the local sidecar
+   * into a collection's variables.
+   */
+  private mergeCurrentValues(collection: Collection): Collection {
+    if (!this.localRepo) return collection;
+    const local = this.localRepo;
+    return {
+      ...collection,
+      variables: withCurrentValues(collection.variables, local.getForScope(collection.id)),
+    };
+  }
+
+  /**
+   * Remove runtime current values before writing so the committed collection
+   * file stays clean.
+   */
+  private stripCurrentValues(collection: Collection): Collection {
+    return {
+      ...collection,
+      variables: withoutCurrentValues(collection.variables),
+    };
   }
 
   private async pruneUncategorizedIfEmpty(collectionId: string): Promise<void> {
@@ -58,12 +94,20 @@ export class CollectionService {
     const uncategorized = all.find((c) => c.id === UNCATEGORIZED_COLLECTION_ID);
     if (uncategorized && this.isEmpty(uncategorized)) {
       await this.repo.delete(UNCATEGORIZED_COLLECTION_ID);
-      return all.filter((c) => c.id !== UNCATEGORIZED_COLLECTION_ID);
+      return all.filter((c) => c.id !== UNCATEGORIZED_COLLECTION_ID).map((c) => this.mergeCurrentValues(c));
     }
-    return all;
+    return all.map((c) => this.mergeCurrentValues(c));
   }
 
   async getById(id: string): Promise<Collection> {
+    const collection = await this.repo.getById(id);
+    if (!collection) {
+      throw AppError.notFound('Collection not found');
+    }
+    return this.mergeCurrentValues(collection);
+  }
+
+  async getForExport(id: string): Promise<Collection> {
     const collection = await this.repo.getById(id);
     if (!collection) {
       throw AppError.notFound('Collection not found');
@@ -82,15 +126,21 @@ export class CollectionService {
     return this.repo.create(newCollection);
   }
 
-  async update(id: string, updates: Partial<Pick<Collection, 'name' | 'description'>>): Promise<Collection> {
+  async update(
+    id: string,
+    updates: Partial<Pick<Collection, 'name' | 'description' | 'variables'>>,
+  ): Promise<Collection> {
     if (id === UNCATEGORIZED_COLLECTION_ID) {
       throw AppError.badRequest('The Uncategorized collection cannot be renamed.');
     }
-    const collection = await this.repo.update(id, updates);
+    const updatesWithVars = 'variables' in updates
+      ? { ...updates, variables: withoutCurrentValues(updates.variables) }
+      : updates;
+    const collection = await this.repo.update(id, updatesWithVars);
     if (!collection) {
       throw AppError.notFound('Collection not found');
     }
-    return collection;
+    return this.mergeCurrentValues(collection);
   }
 
   async delete(id: string): Promise<void> {
@@ -101,6 +151,7 @@ export class CollectionService {
     if (!deleted) {
       throw AppError.notFound('Collection not found');
     }
+    this.localRepo?.deleteCollection(id);
   }
 
   async addRequest(
@@ -310,11 +361,7 @@ export class CollectionService {
       }
     }
 
-    const getDescendantIds = (parentId: string): string[] => {
-      const children = sourceCollection.folders?.filter((f) => f.parentId === parentId) || [];
-      return children.flatMap((child) => [child.id, ...getDescendantIds(child.id)]);
-    };
-    const descendantIds = [folderId, ...getDescendantIds(folderId)];
+    const descendantIds = [folderId, ...folderDescendantIds(sourceCollection.folders ?? [], folderId)];
 
     const requestsToMove = sourceCollection.requests.filter(
       (r) => r.folderId && descendantIds.includes(r.folderId),
@@ -359,11 +406,12 @@ export class CollectionService {
 
     const updatedTarget: Collection = { ...targetCollection, folders: allFolders, requests: allRequests };
     await this.saveAll(updatedTarget);
+
     return movedFolder;
   }
 
   async importCollection(raw: unknown): Promise<Collection> {
-    const col = raw as { name?: string; description?: string; folders?: Folder[]; requests?: SavedRequest[] };
+    const col = raw as { name?: string; description?: string; variables?: EnvironmentVariable[]; folders?: Folder[]; requests?: SavedRequest[] };
     if (!col || !col.name) throw AppError.badRequest('Invalid collection format');
 
     const newCollectionId = `col-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -394,11 +442,12 @@ export class CollectionService {
       id: newCollectionId,
       name: col.name.trim(),
       description: col.description,
+      variables: col.variables,
       folders,
       requests,
     };
 
-    return this.repo.create(collection);
+    return this.repo.create(this.stripCurrentValues(collection));
   }
 
   async duplicateCollection(id: string): Promise<Collection> {
@@ -437,7 +486,7 @@ export class CollectionService {
       requests,
     };
 
-    return this.repo.create(duplicate);
+    return this.repo.create(this.stripCurrentValues(duplicate));
   }
 
   async moveCollection(id: string, targetOrder: number): Promise<Collection> {
@@ -462,6 +511,32 @@ export class CollectionService {
     } else {
       all.push(collection);
     }
-    await this.repo.saveAll(all);
+    await this.repo.saveAll(all.map((c) => this.stripCurrentValues(c)));
+  }
+
+  /**
+   * Persist current-value overrides to the local sidecar file.
+   * Called by pre-request scripts via `collection.set()`. `types`
+   * optionally records the type each value came in as (from the script
+   * sandbox).
+   */
+  async setCurrentValues(
+    collectionId: string,
+    overrides: Record<string, string>,
+    types?: Record<string, EnvironmentVariableType>,
+  ): Promise<void> {
+    const collection = await this.repo.getById(collectionId);
+    if (!collection) {
+      throw AppError.notFound('Collection not found');
+    }
+    this.localRepo?.setForScope(collectionId, overrides, types);
+  }
+
+  resetCurrentValues(collectionId: string): void {
+    this.localRepo?.resetForScope(collectionId);
+  }
+
+  resetCurrentValue(collectionId: string, key: string): void {
+    this.localRepo?.resetVariable(collectionId, key);
   }
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const environmentVariableSchema = z.object({
+export const environmentVariableSchema = z.object({
   key: z.string(),
   value: z.string(),
   enabled: z.boolean(),
@@ -18,23 +18,5 @@ export const setActiveEnvironmentSchema = z.object({
   environmentId: z.string().min(1, 'Environment ID is required'),
 });
 
-/** Imported Postman environment format */
-export const importEnvironmentSchema = z.object({
-  name: z.string(),
-  variables: z.array(environmentVariableSchema).optional(),
-  // Postman format wraps variables in `values` array
-  values: z
-    .array(
-      z.object({
-        key: z.string(),
-        value: z.string(),
-        enabled: z.boolean().optional(),
-        type: z.string().optional(),
-      }),
-    )
-    .optional(),
-});
-
 export type SaveEnvironmentDto = z.infer<typeof saveEnvironmentSchema>;
 export type SetActiveEnvironmentDto = z.infer<typeof setActiveEnvironmentSchema>;
-export type ImportEnvironmentDto = z.infer<typeof importEnvironmentSchema>;

@@ -1,5 +1,4 @@
 ﻿import type { ScriptFormEntry } from '../scripts/sandbox-core.ts';
-import { substituteInRequest, substituteInAuth } from 'requesto-backend/utils/variable-substitution';
 import { buildProxyRequest } from '../request/build-proxy-request.ts';
 import { getGraphQLResponseInfo } from '../request/graphql-envelope.ts';
 import { buildCollectionItems, resolveFolderIds } from './display.ts';
@@ -16,6 +15,14 @@ import type {
   TestResult,
   WarningKind
 } from '../types.ts';
+import {
+  effectiveVariablesWithOverrides,
+  mergeScriptOverrides,
+  scriptVariableRecords,
+  substituteInRequest,
+  substituteInAuth,
+  type ScriptScopeOverrides,
+} from 'requesto-backend/utils/variable-substitution';
 
 /** Request context passed to script runners. */
 export type ScriptRequestContext = { method: string; url: string; headers?: Record<string, string>; body?: string; formDataEntries?: ScriptFormEntry[] };
@@ -29,11 +36,31 @@ export type ScriptResponseContext = {
   duration: number;
 };
 
-/** Env variable overrides set by a script, with the type inferred per key. */
+/**
+ * Env variable overrides set by a script, with the type inferred per key.
+ * Collection overrides are scoped separately and only contain keys the
+ * script actually touched.
+ */
 export type ScriptEnvOverrides = {
   envOverrides: Record<string, string>;
   /** Type per key in `envOverrides`; keys without an entry keep their existing type. */
   envTypes?: Record<string, EnvironmentVariableType>;
+  envCleared?: string[];
+  collectionOverrides?: Record<string, string>;
+  collectionTypes?: Record<string, EnvironmentVariableType>;
+  collectionCleared?: string[];
+};
+
+/**
+ * Variable records and scope ids passed to script runners alongside the
+ * environment: the sandbox-visible `collectionVariables` values, plus the
+ * collection a script's `set` calls belong to so hosts can persist them to
+ * the right sidecar scope.
+ */
+export type ScriptVarsContext = {
+  collectionId?: string;
+  collectionVariables?: Record<string, string>;
+  collectionVariableTypes?: Record<string, EnvironmentVariableType>;
 };
 
 /**
@@ -47,6 +74,7 @@ export type ScriptRunner = {
     env: Record<string, string>,
     request: ScriptRequestContext,
     envTypes?: Record<string, EnvironmentVariableType>,
+    vars?: ScriptVarsContext,
   ): Promise<ScriptEnvOverrides>;
   runTest(
     script: string,
@@ -54,6 +82,7 @@ export type ScriptRunner = {
     request: ScriptRequestContext,
     env: Record<string, string>,
     envTypes?: Record<string, EnvironmentVariableType>,
+    vars?: ScriptVarsContext,
   ): Promise<{ testResults: TestResult[] } & ScriptEnvOverrides>;
 };
 
@@ -123,27 +152,32 @@ function isExcluded(collection: Collection, selectors: string[]): boolean {
   return lower.includes(collection.name.toLowerCase()) || lower.includes(collection.id.toLowerCase());
 }
 
-/** Merge script-set overrides into the live environment (in memory only).
- *  Keys not present in the environment are appended as new variables so
- *  `environment.set()` on a fresh key works in chained requests. Types are
- *  re-typed from the script value when provided. */
-function applyEnvOverrides(
+/** Values visible to scripts: the environment plus script-set overrides, with cleared keys removed. */
+function envRecordWithOverrides(env: Environment | null, overrides: ScriptScopeOverrides): Record<string, string> {
+  const record = { ...envRecord(env), ...overrides.values };
+  for (const key of overrides.cleared ?? []) delete record[key];
+  return record;
+}
+
+/** Declared types visible to scripts: env types plus types recorded for script-set values. */
+function envTypesWithOverrides(
   env: Environment | null,
-  overrides: ScriptEnvOverrides,
-): Environment | null {
-  const { envOverrides, envTypes } = overrides;
-  if (!env || Object.keys(envOverrides).length === 0) return env;
-  const variables = env.variables.map((v) =>
-    Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-      ? { ...v, currentValue: envOverrides[v.key], type: envTypes?.[v.key] ?? v.type }
-      : v,
-  );
-  for (const [key, value] of Object.entries(envOverrides)) {
-    if (!variables.some((v) => v.key === key)) {
-      variables.push({ key, value, currentValue: value, enabled: true, type: envTypes?.[key] ?? 'string' });
-    }
-  }
-  return { ...env, variables };
+  overrides: Record<string, EnvironmentVariableType>,
+): Record<string, EnvironmentVariableType> | undefined {
+  const types = { ...envTypesRecord(env), ...overrides };
+  return Object.keys(types).length > 0 ? types : undefined;
+}
+
+/** The sandbox-visible collection record for a request. */
+function varsContextFor(
+  collection: Collection,
+  collectionOverrides?: ScriptScopeOverrides,
+): ScriptVarsContext {
+  const records = scriptVariableRecords(collection, { collection: collectionOverrides });
+  return {
+    collectionId: collection.id,
+    ...records,
+  };
 }
 
 /**
@@ -190,12 +224,19 @@ function resolveStatus(
  * Run the given collections sequentially, mirroring the app's collection
  * runner: pre-request script → variable substitution → send → test script.
  * Environment changes made by scripts are chained in memory (never written
- * back to the workspace).
+ * back to the workspace). Collection variables are re-scoped per request:
+ * the environment is shared across collections, collection variables are
+ * not.
  */
 export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
   const results: RunRequestResult[] = [];
   const started = Date.now();
   let liveEnv = opts.environment;
+  let envScript: ScriptScopeOverrides = { values: {} };
+
+  // Collection variables are not shared across collections, so their
+  // script-set overrides reset when the run moves to the next one.
+  let collectionScript: ScriptScopeOverrides = { values: {} };
   let bailTriggered = false;
   let lastCollectionId: string | null = null;
 
@@ -227,6 +268,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
       if (collection.id !== lastCollectionId) {
         opts.onEvent?.({ type: 'collection-start', collectionId: collection.id, collectionName: collection.name });
         lastCollectionId = collection.id;
+        collectionScript = { values: {} };
       }
 
       const base: Omit<RunRequestResult, 'status' | 'response' | 'testResults'> = {
@@ -246,18 +288,33 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
         // 1. Build the proxy request (GraphQL requests are expanded here).
         let proxyReq = buildProxyRequest(item.request, opts.insecure);
 
-        // 2. Pre-request script: may set environment variables.
+        // 2. Pre-request script: may set environment or collection variables.
+        const vars = varsContextFor(collection, collectionScript);
         if (item.request.preRequestScript?.trim()) {
-          const overrides = await opts.scripts.runPreRequest(
+          const outcome = await opts.scripts.runPreRequest(
             item.request.preRequestScript,
-            envRecord(liveEnv),
+            envRecordWithOverrides(liveEnv, envScript),
             { method: proxyReq.method, url: proxyReq.url, headers: proxyReq.headers, body: proxyReq.body },
-            envTypesRecord(liveEnv),
+            envTypesWithOverrides(liveEnv, envScript.types ?? {}),
+            vars,
           );
-          liveEnv = applyEnvOverrides(liveEnv, overrides);
+          mergeScriptOverrides(envScript, {
+            values: outcome.envOverrides,
+            types: outcome.envTypes,
+            cleared: outcome.envCleared,
+          });
+          mergeScriptOverrides(collectionScript, {
+            values: outcome.collectionOverrides ?? {},
+            types: outcome.collectionTypes,
+            cleared: outcome.collectionCleared,
+          });
         }
 
-        // 3. Variable substitution with the live environment.
+        // 3. Variable substitution: env over this collection's own variables, with script-set values on top.
+        const scope = effectiveVariablesWithOverrides(liveEnv, collection, {
+          env: envScript,
+          collection: collectionScript,
+        });
         const substituted = substituteInRequest(
           {
             url: proxyReq.url,
@@ -266,9 +323,9 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
             bodyType: proxyReq.bodyType,
             formDataEntries: proxyReq.formDataEntries,
           },
-          liveEnv,
+          scope,
         );
-        const auth = substituteInAuth(proxyReq.auth, liveEnv);
+        const auth = substituteInAuth(proxyReq.auth, scope);
         proxyReq = { ...proxyReq, ...substituted, auth };
 
         // 4. Send.
@@ -278,7 +335,7 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
           signal: opts.signal,
         });
 
-        // 5. Test script: may set environment variables for later requests.
+        // 5. Test script: may set environment or collection variables for later requests.
         let testResults: RunRequestResult['testResults'] = [];
         if (item.request.testScript?.trim()) {
           const outcome = await opts.scripts.runTest(
@@ -297,11 +354,21 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
               body: proxyReq.body,
               formDataEntries: proxyReq.formDataEntries?.map(({ key, value, type, fileName }) => ({ key, value, type, fileName })),
             },
-            envRecord(liveEnv),
-            envTypesRecord(liveEnv),
+            envRecordWithOverrides(liveEnv, envScript),
+            envTypesWithOverrides(liveEnv, envScript.types ?? {}),
+            varsContextFor(collection, collectionScript),
           );
           testResults = outcome.testResults;
-          liveEnv = applyEnvOverrides(liveEnv, outcome);
+          mergeScriptOverrides(envScript, {
+            values: outcome.envOverrides,
+            types: outcome.envTypes,
+            cleared: outcome.envCleared,
+          });
+          mergeScriptOverrides(collectionScript, {
+            values: outcome.collectionOverrides ?? {},
+            types: outcome.collectionTypes,
+            cleared: outcome.collectionCleared,
+          });
         }
 
         const allPassed = testResults.every((t) => t.passed);

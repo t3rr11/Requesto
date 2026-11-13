@@ -1,8 +1,9 @@
 import { EnvironmentRepository } from '../repositories/environment.repository';
-import { EnvironmentLocalRepository, type LocalVariable } from '../repositories/environment-local.repository';
+import { EnvironmentLocalRepository } from '../repositories/environment-local.repository';
 import { substituteInAuth, substituteInRequest } from '../utils/variable-substitution';
+import { withCurrentValues, withoutCurrentValues } from '../utils/local-variables';
 import { AppError } from '../errors/app-error';
-import type { Environment, EnvironmentVariable, EnvironmentVariableType, EnvironmentsData } from '../models/environment';
+import type { Environment, EnvironmentVariableType, EnvironmentsData } from '../models/environment';
 import type { AuthConfig, ProxyRequest } from '../models/proxy';
 
 export class EnvironmentService {
@@ -14,23 +15,8 @@ export class EnvironmentService {
   /** Merge current values (and their recorded types) from the local sidecar into an environment's variables. */
   private mergeCurrentValues(env: Environment): Environment {
     if (!this.localRepo) return env;
-    const overrides = this.localRepo.getForEnvironment(env.id);
-    if (Object.keys(overrides).length === 0) return env;
-    const withType = (v: EnvironmentVariable, entry: LocalVariable): EnvironmentVariable =>
-      entry.type !== undefined ? { ...v, currentValue: entry.value, type: entry.type } : { ...v, currentValue: entry.value };
-    const variables = env.variables.map((v) => {
-      const entry = overrides[v.key];
-      return entry ? withType(v, entry) : v;
-    });
-    for (const [key, entry] of Object.entries(overrides)) {
-      if (!variables.some((v) => v.key === key)) {
-        variables.push({ key, value: '', currentValue: entry.value, enabled: true, ...(entry.type !== undefined && { type: entry.type }) });
-      }
-    }
-    return {
-      ...env,
-      variables,
-    };
+    const variables = withCurrentValues(env.variables, this.localRepo.getForEnvironment(env.id));
+    return variables === env.variables ? env : { ...env, variables };
   }
 
   getAll(): EnvironmentsData {
@@ -51,15 +37,20 @@ export class EnvironmentService {
     return env ? this.mergeCurrentValues(env) : undefined;
   }
 
+  getForExport(id: string): Environment {
+    const env = this.repo.findById(id);
+    if (!env) {
+      throw AppError.notFound('Environment not found');
+    }
+    return env;
+  }
+
   /**
    * Save initial values. `currentValue` is stripped before writing so the
    * committed file stays clean.
    */
   save(environment: Environment): Environment {
-    const cleanVars: EnvironmentVariable[] = environment.variables.map(
-      ({ currentValue: _stripped, ...rest }) => rest,
-    );
-    const clean = { ...environment, variables: cleanVars };
+    const clean = { ...environment, variables: withoutCurrentValues(environment.variables) };
     this.repo.save(clean);
     return this.mergeCurrentValues(clean);
   }
@@ -103,7 +94,6 @@ export class EnvironmentService {
     this.localRepo?.resetForEnvironment(envId);
   }
 
-  /** Reset a single variable's current value. */
   resetCurrentValue(envId: string, key: string): void {
     this.localRepo?.resetVariable(envId, key);
   }

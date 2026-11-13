@@ -13,6 +13,7 @@ const LOCAL_ONLY_FILES = [
   'oauth-secrets.json',
   'oauth-tokens.json',
   'environments.local.json',
+  'collections.local.json',
   'active-environment.json',
 ];
 

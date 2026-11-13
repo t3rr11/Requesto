@@ -433,10 +433,11 @@ export function CollectionsSidebar() {
 
       {isGitPanelOpen && (
         <div className="flex flex-col flex-none min-h-0 overflow-hidden" style={{ height: `${gitPanelHeight}px` }}>
-          <div
-            className="h-1 bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ns-resize transition-colors shrink-0"
+          <button
+            className="h-1 bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ns-resize! transition-colors shrink-0"
             onMouseDown={handleGitPanelResizeStart}
             title="Drag to resize"
+            tabIndex={-1}
           />
           <GitStatusBar onTogglePanel={toggleGitPanel} />
           <GitAccordion isOpen />
@@ -446,10 +447,11 @@ export function CollectionsSidebar() {
 
       <ConfirmDialog {...multiDeleteDialog.props} />
 
-      <div
-        className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize transition-colors"
+      <button
+        className="absolute top-0 right-0 w-1 h-full bg-gray-200 dark:bg-gray-700 hover:bg-orange-500 cursor-ew-resize! transition-colors"
         onMouseDown={handleResizeStart}
         title="Drag to resize"
+        tabIndex={-1}
       />
     </div>
   );

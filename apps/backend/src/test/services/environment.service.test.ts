@@ -235,4 +235,27 @@ describe('EnvironmentService', () => {
       expect(service.substituteInAuth(undefined)).toBeUndefined();
     });
   });
+
+  describe('getForExport', () => {
+    it('returns committed data without sidecar current values', () => {
+      const dir = mkdtempSync(join(tmpdir(), 'requesto-env-'));
+      try {
+        const env = makeEnv({ variables: [{ key: 'existing', value: 'initial', enabled: true }] });
+        const repo = mockRepo({ findById: vi.fn().mockReturnValue(env) });
+        const service = new EnvironmentService(repo, new EnvironmentLocalRepository(() => dir));
+        service.setCurrentValues(env.id, { existing: 'updated' });
+
+        expect(service.getForExport(env.id)).toBe(env);
+        expect(env.variables).toEqual([{ key: 'existing', value: 'initial', enabled: true }]);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('throws notFound when the environment does not exist', () => {
+      const repo = mockRepo({ findById: vi.fn().mockReturnValue(undefined) });
+      const service = new EnvironmentService(repo);
+      expect(() => service.getForExport('missing')).toThrow(AppError);
+    });
+  });
 });

@@ -9,6 +9,7 @@ import { registerEmptyBodyParser } from './utils/empty-body-parser';
 
 // Repositories
 import { CollectionRepository } from './repositories/collection.repository';
+import { CollectionLocalRepository } from './repositories/collection-local.repository';
 import { EnvironmentRepository } from './repositories/environment.repository';
 import { EnvironmentLocalRepository } from './repositories/environment-local.repository';
 import { OAuthRepository } from './repositories/oauth.repository';
@@ -86,6 +87,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const getLocalDir = () => workspaceRepo.getLocalDir();
 
   const collectionRepo = new CollectionRepository(getDataDir);
+  const collectionLocalRepo = new CollectionLocalRepository(getLocalDir);
   const environmentRepo = new EnvironmentRepository(getDataDir, getLocalDir);
   const environmentLocalRepo = new EnvironmentLocalRepository(getLocalDir);
   const oauthRepo = new OAuthRepository(getDataDir, getLocalDir);
@@ -95,7 +97,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   const mockEndpointRepo = new MockEndpointRepository(getDataDir, getLocalDir);
 
   // Instantiate service layer
-  const collectionService = new CollectionService(collectionRepo);
+  const collectionService = new CollectionService(collectionRepo, collectionLocalRepo);
   const environmentService = new EnvironmentService(environmentRepo, environmentLocalRepo);
   const historyService = new HistoryService(historyRepo);
   const oauthService = new OAuthService(oauthRepo);

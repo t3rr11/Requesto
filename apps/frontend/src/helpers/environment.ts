@@ -1,3 +1,4 @@
+import type { Collection } from '../store/collections/types';
 import type { Environment, EnvironmentVariable, EnvironmentVariableType } from '../store/environments/types';
 import type { AuthConfig, ProxyRequest } from '../store/request/types';
 
@@ -5,19 +6,166 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Replace `{{variableName}}` placeholders with values from the active environment.
- */
-export function substituteVariables(text: string, environment: Environment | null): string {
-  if (!environment || !text) return text;
+export type VariableScope = {
+  variables: EnvironmentVariable[];
+};
 
-  let result = text;
-  for (const variable of environment.variables) {
-    if (variable.enabled && variable.key) {
-      const pattern = new RegExp(`{{\\s*${escapeRegExp(variable.key)}\\s*}}`, 'g');
-      // currentValue (set by pre-request scripts) takes precedence over value (initial)
-      result = result.replace(pattern, variable.currentValue ?? variable.value ?? '');
+export type ScriptScopeOverrides = {
+  values: Record<string, string>;
+  types?: Record<string, EnvironmentVariableType>;
+  cleared?: string[];
+};
+
+export type ScriptOverrideSet = {
+  env?: ScriptScopeOverrides;
+  collection?: ScriptScopeOverrides;
+};
+
+/**
+ * Merge a script's overrides into an accumulator so the outcome order within
+ * a run decides the final state: a later `set` revives a key cleared earlier,
+ * a later `clear` drops a key set earlier. Mutates `target`.
+ */
+export function mergeScriptOverrides(
+  target: ScriptScopeOverrides,
+  source: { values: Record<string, string>; types?: Record<string, EnvironmentVariableType>; cleared?: string[] },
+): void {
+  const values = { ...target.values, ...source.values };
+  const cleared = new Set([...(target.cleared ?? []), ...(source.cleared ?? [])]);
+
+  // A set in this outcome revives a key cleared earlier, in the same or an earlier script.
+  for (const key of Object.keys(source.values)) cleared.delete(key);
+  for (const key of cleared) delete values[key];
+  target.values = values;
+  target.types = { ...target.types, ...source.types };
+  target.cleared = [...cleared];
+}
+
+/** Layer one scope's script overrides onto that scope's variable list. */
+function applyScriptOverrides(variables: EnvironmentVariable[], overrides?: ScriptScopeOverrides): EnvironmentVariable[] {
+  if (!overrides) return variables;
+  const cleared = new Set(overrides.cleared ?? []);
+  const applied = variables
+    .filter(v => v.enabled && v.key && !cleared.has(v.key))
+    .map(v =>
+      Object.prototype.hasOwnProperty.call(overrides.values, v.key)
+        ? { ...v, currentValue: overrides.values[v.key], type: overrides.types?.[v.key] ?? v.type }
+        : v,
+    );
+  for (const [key, value] of Object.entries(overrides.values)) {
+    if (!applied.some(v => v.key === key)) {
+      applied.push({ key, value, currentValue: value, enabled: true, type: overrides.types?.[key] ?? 'string' });
     }
+  }
+  return applied;
+}
+
+/**
+ * `effectiveVariables` with script-set overrides applied to their own scope
+ * before merging, so a script-set collection value still loses to an
+ * environment value of the same key.
+ */
+export function effectiveVariablesWithOverrides(
+  environment: Environment | null,
+  collection?: Collection | null,
+  overrides?: ScriptOverrideSet,
+): VariableScope {
+  const scopes: EnvironmentVariable[][] = [
+    applyScriptOverrides(collection?.variables ?? [], overrides?.collection),
+    applyScriptOverrides(environment?.variables ?? [], overrides?.env),
+  ];
+
+  const byKey = new Map<string, EnvironmentVariable>();
+  for (const variables of scopes) {
+    for (const variable of variables) {
+      if (!variable.enabled || !variable.key) continue;
+      byKey.set(variable.key, variable);
+    }
+  }
+  return { variables: [...byKey.values()] };
+}
+
+/**
+ * Merge variable scopes into one effective list, highest precedence last
+ * (later entries win per key): collection, then the active environment.
+ * Disabled variables are dropped so a lower scope can still resolve the key.
+ */
+export function effectiveVariables(
+  environment: Environment | null,
+  collection?: Collection | null,
+): VariableScope {
+  return effectiveVariablesWithOverrides(environment, collection);
+}
+
+/** Enabled values of one scope, with script-set overrides applied on top. */
+function scopeValuesRecord(
+  variables: EnvironmentVariable[],
+  overrides?: ScriptScopeOverrides,
+): Record<string, string> {
+  const cleared = new Set(overrides?.cleared ?? []);
+  const record: Record<string, string> = {};
+  for (const variable of variables) {
+    if (!variable.enabled || !variable.key || cleared.has(variable.key)) continue;
+    record[variable.key] =
+      overrides && Object.prototype.hasOwnProperty.call(overrides.values, variable.key)
+        ? overrides.values[variable.key]
+        : variable.currentValue ?? variable.value;
+  }
+  for (const [key, value] of Object.entries(overrides?.values ?? {})) {
+    if (!cleared.has(key)) record[key] = value;
+  }
+  return record;
+}
+
+/** Declared types of one scope, with script-recorded types layered on top. */
+function scopeTypesRecord(
+  variables: EnvironmentVariable[],
+  overrides?: ScriptScopeOverrides,
+): Record<string, EnvironmentVariableType> | undefined {
+  const types: Record<string, EnvironmentVariableType> = {};
+  for (const variable of variables) {
+    if (variable.enabled && variable.type) types[variable.key] = variable.type;
+  }
+  Object.assign(types, overrides?.types);
+  return Object.keys(types).length > 0 ? types : undefined;
+}
+
+/**
+ * The collection variable record a script sandbox sees: enabled values
+ * (current values applied), script-set overrides layered on top, cleared
+ * keys removed.
+ */
+export function scriptVariableRecords(
+  collection?: Collection | null,
+  overrides?: Pick<ScriptOverrideSet, 'collection'>,
+): {
+  collectionVariables: Record<string, string>;
+  collectionVariableTypes?: Record<string, EnvironmentVariableType>;
+} {
+  const collectionVars = collection?.variables ?? [];
+  return {
+    collectionVariables: scopeValuesRecord(collectionVars, overrides?.collection),
+    collectionVariableTypes: scopeTypesRecord(collectionVars, overrides?.collection),
+  };
+}
+
+/**
+ * Replace all `{{variableName}}` placeholders in a string with values
+ * from the active variable scope.
+ *
+ * Variable values may themselves reference other variables (e.g. a
+ * `baseUrl` variable set to `{{requestoServerUrl}}`); references are
+ * resolved recursively and cycles are left unresolved rather than
+ * looping forever.
+ */
+export function substituteVariables(text: string, scope: VariableScope | null): string {
+  if (!scope || !text) return text;
+
+  const values = getResolvedValues(scope);
+  let result = text;
+  for (const [key, entry] of values) {
+    const pattern = new RegExp(`{{\\s*${escapeRegExp(key)}\\s*}}`, 'g');
+    result = result.replace(pattern, entry.value);
   }
   return result;
 }
@@ -60,21 +208,66 @@ function typedJsonLiteral(
  * when the value cannot represent the type); other quoted placeholders get a
  * JSON-escaped string. Unquoted placeholders are inserted raw, unchanged.
  */
-export function substituteJsonVariables(text: string, environment: Environment | null): string {
-  if (!environment || !text) return text;
+export function substituteJsonVariables(text: string, scope: VariableScope | null): string {
+  if (!scope || !text) return text;
 
+  const values = getResolvedValues(scope);
   let result = text;
-  for (const variable of environment.variables) {
-    if (!variable.enabled || !variable.key) continue;
-    const keyPattern = escapeRegExp(variable.key);
-    const value = variable.currentValue ?? variable.value ?? '';
+  for (const [key, entry] of values) {
+    const keyPattern = escapeRegExp(key);
     const quoted = new RegExp(`"{{\\s*${keyPattern}\\s*}}"`, 'g');
-    const literal = typedJsonLiteral(value, variable.type);
-    result = result.replace(quoted, literal ?? JSON.stringify(value));
+    const literal = typedJsonLiteral(entry.value, entry.type);
+    result = result.replace(quoted, literal ?? JSON.stringify(entry.value));
     const plain = new RegExp(`{{\\s*${keyPattern}\\s*}}`, 'g');
-    result = result.replace(plain, value);
+    result = result.replace(plain, entry.value);
   }
   return result;
+}
+
+/**
+ * Variables as a key → { value, type } map with fully-resolved values,
+ * mirroring the backend host. Only enabled variables are included;
+ * `currentValue` (set by pre-request scripts) takes precedence over
+ * `value` (initial).
+ */
+function getResolvedValues(
+  scope: VariableScope,
+): Map<string, { value: string; type: EnvironmentVariableType | undefined }> {
+  const raw = new Map<string, { value: string; type: EnvironmentVariableType | undefined }>();
+  for (const variable of scope.variables) {
+    if (variable.enabled && variable.key) {
+      raw.set(variable.key, {
+        value: variable.currentValue ?? variable.value ?? '',
+        type: variable.type,
+      });
+    }
+  }
+
+  const resolved = new Map<string, { value: string; type: EnvironmentVariableType | undefined }>();
+  const visiting = new Set<string>();
+
+  const resolve = (key: string): { value: string; type: EnvironmentVariableType | undefined } => {
+    const memo = resolved.get(key);
+    if (memo !== undefined) return memo;
+    // Cycle: return the raw value so resolution terminates.
+    if (visiting.has(key)) {
+      const entry = raw.get(key);
+      return { value: entry?.value ?? '', type: entry?.type };
+    }
+    visiting.add(key);
+    const entry = raw.get(key) ?? { value: '', type: undefined as EnvironmentVariableType | undefined };
+    const value = entry.value.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (match, name: string) => {
+      const referenced = name.trim();
+      return raw.has(referenced) ? resolve(referenced).value : match;
+    });
+    visiting.delete(key);
+    const result = { value, type: entry.type };
+    resolved.set(key, result);
+    return result;
+  };
+
+  for (const key of raw.keys()) resolve(key);
+  return resolved;
 }
 
 /**
@@ -83,15 +276,15 @@ export function substituteJsonVariables(text: string, environment: Environment |
  * so its placeholders only exist in decoded form, where they need the
  * JSON-aware pass (typed values must end up unquoted in the JSON).
  */
-function substituteUrlVariables(url: string, environment: Environment | null): string {
-  const substituted = substituteVariables(url, environment);
-  if (!environment || !substituted.includes('=')) return substituted;
+function substituteUrlVariables(url: string, scope: VariableScope | null): string {
+  const substituted = substituteVariables(url, scope);
+  if (!scope || !substituted.includes('=')) return substituted;
 
   try {
     const parsed = new URL(substituted);
     const variables = parsed.searchParams.get('variables');
     if (variables && variables.includes('{{')) {
-      parsed.searchParams.set('variables', substituteJsonVariables(variables, environment));
+      parsed.searchParams.set('variables', substituteJsonVariables(variables, scope));
       return parsed.toString();
     }
   } catch {
@@ -107,10 +300,10 @@ function substituteUrlVariables(url: string, environment: Environment | null): s
  * `oauth.configId` is left untouched — it's a stable identifier resolved
  * server-side, not a user-entered credential.
  */
-export function substituteInAuth(auth: AuthConfig | undefined, environment: Environment | null): AuthConfig | undefined {
+export function substituteInAuth(auth: AuthConfig | undefined, scope: VariableScope | null): AuthConfig | undefined {
   if (!auth) return auth;
 
-  const sub = (v: string) => substituteVariables(v, environment);
+  const sub = (v: string) => substituteVariables(v, scope);
 
   switch (auth.type) {
     case 'basic':
@@ -139,28 +332,28 @@ export function substituteInAuth(auth: AuthConfig | undefined, environment: Envi
  * JSON bodies get JSON-aware substitution so typed variables are emitted
  * as unquoted numbers/booleans.
  */
-export function substituteInRequest(request: ProxyRequest, environment: Environment | null): typeof request {
-  if (!environment) return request;
+export function substituteInRequest(request: ProxyRequest, scope: VariableScope | null): typeof request {
+  if (!scope) return request;
 
   const jsonMode = request.bodyType === 'json' || (!request.bodyType && !!request.body);
   const bodySub = jsonMode ? substituteJsonVariables : substituteVariables;
 
   return {
     method: request.method,
-    url: substituteUrlVariables(request.url, environment),
+    url: substituteUrlVariables(request.url, scope),
     headers: request.headers
-      ? Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, environment)]))
+      ? Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k, substituteVariables(v, scope)]))
       : undefined,
-    body: request.body ? bodySub(request.body, environment) : undefined,
+    body: request.body ? bodySub(request.body, scope) : undefined,
     bodyType: request.bodyType,
     formDataEntries: request.formDataEntries
       ? request.formDataEntries.map(entry => ({
           ...entry,
-          key: substituteVariables(entry.key, environment),
-          value: entry.type === 'text' ? substituteVariables(entry.value, environment) : entry.value,
+          key: substituteVariables(entry.key, scope),
+          value: entry.type === 'text' ? substituteVariables(entry.value, scope) : entry.value,
         }))
       : undefined,
-    auth: substituteInAuth(request.auth, environment),
+    auth: substituteInAuth(request.auth, scope),
   };
 }
 
@@ -187,7 +380,7 @@ export function hasVariables(text: string): boolean {
  */
 export function getUndefinedVariables(
   request: { method: string; url: string; headers?: Record<string, string>; body?: string },
-  environment: Environment | null
+  scope: VariableScope | null
 ): string[] {
   const used = new Set<string>();
 
@@ -201,10 +394,10 @@ export function getUndefinedVariables(
     extractVariableNames(request.body).forEach(v => used.add(v));
   }
 
-  if (!environment) return Array.from(used);
+  if (!scope) return Array.from(used);
 
   const defined = new Set(
-    environment.variables
+    scope.variables
       .filter(v => v.enabled && v.key && (v.currentValue !== undefined || v.value !== undefined))
       .map(v => v.key),
   );

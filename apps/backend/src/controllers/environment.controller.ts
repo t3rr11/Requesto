@@ -60,13 +60,8 @@ const environmentController: FastifyPluginAsync<Options> = async (server, opts) 
     return reply.code(201).send({ success: true, environment: env });
   });
 
-  server.get<{ Params: { id: string } }>('/environments/:id/export', async (request, reply) => {
-    const data = environmentService.getAll();
-    const environment = data.environments.find((e) => e.id === request.params.id);
-    if (!environment) {
-      return reply.code(404).send({ error: 'Environment not found' });
-    }
-    return environment;
+  server.get<{ Params: { id: string } }>('/environments/:id/export', async (request, _reply) => {
+    return environmentService.getForExport(request.params.id);
   });
 
   /**

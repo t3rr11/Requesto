@@ -2,9 +2,9 @@ import { Worker } from 'node:worker_threads';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { PreRequestOutcome, TestOutcome, TestResult, ScriptFormEntry } from './sandbox-core.ts';
+import type { PreRequestOutcome, TestOutcome, ScriptFormEntry } from './sandbox-core.ts';
 import type { EnvironmentVariableType } from 'requesto-backend/models/environment';
-import type { ScriptRunner } from '../runner/run.ts';
+import type { ScriptRunner, ScriptVarsContext } from '../runner/run.ts';
 
 const SCRIPT_TIMEOUT_MS = 5000;
 
@@ -67,18 +67,35 @@ export async function runPreRequestScript(
   env: Record<string, string>,
   request: { method: string; url: string; headers?: Record<string, string>; body?: string },
   envTypes?: Record<string, EnvironmentVariableType>,
+  vars?: ScriptVarsContext,
 ): Promise<PreRequestOutcome> {
-  if (!script.trim()) return { envOverrides: {}, envTypes: {} };
+  if (!script.trim()) {
+    return {
+      envOverrides: {},
+      envTypes: {},
+      envCleared: [],
+      collectionOverrides: {},
+      collectionTypes: {},
+      collectionCleared: [],
+    };
+  }
 
   const result = await runInWorker({
     type: 'pre-request',
     script,
-    context: { env, envTypes, request },
+    context: { env, envTypes, request, ...vars },
   });
 
   if ('error' in result) throw new Error(result.error);
-  if ('envOverrides' in result) return { envOverrides: result.envOverrides, envTypes: result.envTypes };
-  return { envOverrides: {}, envTypes: {} };
+  if ('envOverrides' in result) return result;
+  return {
+    envOverrides: {},
+    envTypes: {},
+    envCleared: [],
+    collectionOverrides: {},
+    collectionTypes: {},
+    collectionCleared: [],
+  };
 }
 
 /**
@@ -92,24 +109,41 @@ export async function runTestScript(
   request: { method: string; url: string; headers?: Record<string, string>; body?: string; formDataEntries?: ScriptFormEntry[] },
   env: Record<string, string>,
   envTypes?: Record<string, EnvironmentVariableType>,
-): Promise<{ testResults: TestResult[]; envOverrides: Record<string, string>; envTypes: Record<string, EnvironmentVariableType> }> {
-  if (!script.trim()) return { testResults: [], envOverrides: {}, envTypes: {} };
+  vars?: ScriptVarsContext,
+): Promise<TestOutcome> {
+  if (!script.trim()) {
+    return {
+      testResults: [],
+      envOverrides: {},
+      envTypes: {},
+      envCleared: [],
+      collectionOverrides: {},
+      collectionTypes: {},
+      collectionCleared: [],
+    };
+  }
 
   const result = await runInWorker({
     type: 'test',
     script,
-    context: { env, envTypes, response, request },
+    context: { env, envTypes, response, request, ...vars },
   });
 
   if ('error' in result) throw new Error(result.error);
-  if ('testResults' in result) {
-    return { testResults: result.testResults, envOverrides: result.envOverrides, envTypes: result.envTypes ?? {} };
-  }
-  return { testResults: [], envOverrides: {}, envTypes: {} };
+  if ('testResults' in result) return result;
+  return {
+    testResults: [],
+    envOverrides: {},
+    envTypes: {},
+    envCleared: [],
+    collectionOverrides: {},
+    collectionTypes: {},
+    collectionCleared: [],
+  };
 }
 
 /** Script runner backed by Node worker threads; the default for headless runs. */
 export const nodeScriptRunner: ScriptRunner = {
-  runPreRequest: (script, env, request, envTypes) => runPreRequestScript(script, env, request, envTypes),
-  runTest: (script, response, request, env, envTypes) => runTestScript(script, response, request, env, envTypes),
+  runPreRequest: (script, env, request, envTypes, vars) => runPreRequestScript(script, env, request, envTypes, vars),
+  runTest: (script, response, request, env, envTypes, vars) => runTestScript(script, response, request, env, envTypes, vars),
 };

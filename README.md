@@ -12,12 +12,12 @@ A self-hostable API client. No accounts, no cloud, no telemetry.
 - **Full HTTP support**: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS
 - **Authentication**: Basic, Bearer, API Key, Digest, and OAuth 2.0 (Authorization Code, PKCE, Client Credentials, Implicit, Password)
 - **Environment variables**: Define variables per environment and reference them in URLs, headers, and bodies
+- **Collection variables**: Define variables on a collection, shared by every request in it (including folders); initial values are committed to git while script-set overrides stay local
 - **Collections & folders**: Organize requests with drag-and-drop, import and export as JSON
 - **Workspaces**: Isolate projects into separate workspaces, each with their own collections, environments, and OAuth configs
 - **Git integration**: Built-in git support with commit, push, pull, conflict resolution, and branch tracking
 - **OpenAPI import & sync**: Import OpenAPI v2/v3 specs to generate collections, then keep them in sync as the spec changes
 - **Mock server**: Create mock APIs with static responses or dynamic CRUD endpoints backed by a dataset, with a live request log
-- **Postman compatibility**: Import and export collections and environments in Postman v2.1.0 format
 - **Console logging**: Request/response logs with status codes, timing, and full payloads
 - **Dark/Light themes**: Dark-mode-first UI with a light mode toggle
 - **CORS-free**: Backend handles CORS so the frontend never hits cross-origin issues
@@ -138,6 +138,8 @@ Full documentation is available at [requesto.com.au](https://requesto.com.au).
 - **[Getting Started](https://requesto.com.au/guide/getting-started)** - First request, collections, environments
 - **[Download & Install](https://requesto.com.au/guide/download)** - Desktop, Docker, and source installation
 - **[Workspaces](https://requesto.com.au/features/workspaces)** - Isolate projects into separate workspaces
+- **[Environments](https://requesto.com.au/features/environments)** - Variable sets for dev, staging, and production
+- **[Collection Variables](https://requesto.com.au/features/collection-variables)** - Shared variables per collection, with local overrides
 - **[Git Integration](https://requesto.com.au/features/git)** - Built-in version control for workspaces
 - **[OpenAPI Import & Sync](https://requesto.com.au/features/openapi)** - Import and sync OpenAPI specs
 - **[Mock Server](https://requesto.com.au/mock-server/)** - Static and dynamic mock endpoints with a request log

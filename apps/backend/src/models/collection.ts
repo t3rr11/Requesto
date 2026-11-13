@@ -1,4 +1,5 @@
 import { AuthConfig, BodyType, FormDataEntry } from './proxy';
+import { EnvironmentVariable } from './environment';
 
 export interface Folder {
   id: string;
@@ -18,6 +19,7 @@ export interface Collection {
   name: string;
   description?: string;
   isSystem?: boolean;
+  variables?: EnvironmentVariable[];
   folders: Folder[];
   requests: SavedRequest[];
   openApiSpec?: OpenApiSpecLink;

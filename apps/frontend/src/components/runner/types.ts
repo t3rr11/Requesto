@@ -5,7 +5,14 @@ import type { RequestStatus as EngineRequestStatus, WarningKind } from 'requesto
 
 export type { DisplayItem } from 'requesto-engine/runner';
 export type RequestStatus = EngineRequestStatus | 'pending' | 'running';
-export type ExpandedTab = 'tests' | 'response';
+export type ExpandedTab = 'tests' | 'response' | 'variables';
+
+export type {
+  RunnerScriptOverrides,
+  RunnerVariableChange,
+  RunnerVariableChangeEvent,
+  RunnerVariablesState,
+} from '../../helpers/runner/variables';
 
 export type RequestRunResult = {
   request: SavedRequest;

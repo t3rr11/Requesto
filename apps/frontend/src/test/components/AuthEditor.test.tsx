@@ -3,14 +3,18 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { AuthEditor } from '../../components/AuthEditor';
 import type { AuthConfig } from '../../store/request/types';
 
-vi.mock('../../store/environments/store', () => ({
-  useEnvironmentStore: () => ({
+vi.mock('../../store/environments/store', () => {
+  const environmentsState = {
     environmentsData: {
       activeEnvironmentId: null,
       environments: [],
     },
-  }),
-}));
+  };
+  return {
+    useEnvironmentStore: (selector?: (state: typeof environmentsState) => unknown) =>
+      selector ? selector(environmentsState) : environmentsState,
+  };
+});
 
 vi.mock('../../store/oauth/store', () => ({
   useOAuthStore: () => ({

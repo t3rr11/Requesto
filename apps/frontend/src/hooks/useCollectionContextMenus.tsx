@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Trash2,
   Unlink,
+  Variable,
 } from 'lucide-react';
 import type { Collection, SavedRequest, SyncPreviewResult } from '../store/collections/types';
 import { useCollectionsStore } from '../store/collections/store';
@@ -48,6 +49,7 @@ export function useCollectionContextMenus(options: UseCollectionContextMenusOpti
   } = useItemContextMenu();
 
   const [runnerOpen, setRunnerOpen] = useState(false);
+  const [variablesOpen, setVariablesOpen] = useState(false);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncPreviewData, setSyncPreviewData] = useState<SyncPreviewResult | null>(null);
@@ -211,6 +213,11 @@ export function useCollectionContextMenus(options: UseCollectionContextMenusOpti
     setRunnerOpen(true);
   };
 
+  const handleVariablesFromContext = () => {
+    closeCollectionContextMenu();
+    setVariablesOpen(true);
+  };
+
   const handleViewDocsFromContext = () => {
     closeCollectionContextMenu();
     onOpenDocs(collectionContextMenu!.collectionId);
@@ -247,6 +254,7 @@ export function useCollectionContextMenus(options: UseCollectionContextMenusOpti
         ? [
             { label: 'Run Collection', icon: <Play className="w-4 h-4" />, onClick: handleRunCollectionFromContext },
             { label: 'View Documentation', icon: <BookOpen className="w-4 h-4" />, onClick: handleViewDocsFromContext },
+            { label: 'Variables', icon: <Variable className="w-4 h-4" />, onClick: handleVariablesFromContext },
             ...(collection.isSystem ? [] : [
               { label: 'New Folder', icon: <FolderPlus className="w-4 h-4" />, onClick: handleNewFolderFromContext },
               { label: 'Rename', icon: <FileText className="w-4 h-4" />, onClick: handleRenameCollectionFromContext },
@@ -277,6 +285,8 @@ export function useCollectionContextMenus(options: UseCollectionContextMenusOpti
     collectionMenuItems,
     runnerOpen,
     closeRunner: () => setRunnerOpen(false),
+    variablesOpen,
+    closeVariablesDialog: () => setVariablesOpen(false),
     syncDialogOpen,
     syncLoading,
     syncPreviewData,

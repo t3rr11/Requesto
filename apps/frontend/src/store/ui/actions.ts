@@ -16,6 +16,10 @@ export function setSidebarWidth(set: UISetState, width: number): void {
   set({ sidebarWidth: width });
 }
 
+export function setRunnerVariablesWidth(set: UISetState, width: number): void {
+  set({ runnerVariablesWidth: width });
+}
+
 // ── Panel dimensions ─────────────────────────────────────────────────────────
 
 export function setRequestPanelWidth(set: UISetState, width: number): void {

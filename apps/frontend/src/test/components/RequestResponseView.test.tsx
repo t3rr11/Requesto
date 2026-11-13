@@ -413,7 +413,7 @@ describe('RequestResponseView', () => {
   it('renders a resize handle', () => {
     const { container } = render(<RequestResponseView />);
 
-    const handle = container.querySelector('.cursor-ew-resize');
+    const handle = container.querySelector('[class*="cursor-ew-resize"]');
     expect(handle).toBeInTheDocument();
   });
 

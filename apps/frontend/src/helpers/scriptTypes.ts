@@ -204,8 +204,72 @@ type any = any;
 type void = void;
 `;
 
+/**
+ * Variable scopes shared by both script editors: `environment` and
+ * `collection` expose the same get/set/has/clear shape.
+ */
+const VARIABLE_SCOPE_TYPES = `
+/**
+ * Read and write variables in the active environment.
+ */
+declare const environment: {
+  /**
+   * Get an environment variable by key. Returns a Number or Boolean for
+   * variables of that type, or an empty string if the variable is not set.
+   *
+   * @example
+   * const token = environment.get("authToken");
+   */
+  get(key: string): string | number | boolean;
+  /**
+   * Set an environment variable. The value is available immediately for
+   * variable substitution in this request (e.g. in the URL or headers).
+   *
+   * @example
+   * environment.set("timestamp", Date.now().toString());
+   */
+  set(key: string, value: string | number | boolean): void;
+  /** Check whether a variable exists in the active environment. */
+  has(key: string): boolean;
+  /**
+   * Remove a variable's current value. Without a key, every visible
+   * variable is cleared.
+   */
+  clear(key?: string): void;
+};
+
+/**
+ * Read and write the variables of the request's collection.
+ */
+declare const collection: {
+  /**
+   * Get a collection variable by key. Returns a Number or Boolean for
+   * variables of that type, or an empty string if the variable is not set.
+   *
+   * @example
+   * const baseUrl = collection.get("baseUrl");
+   */
+  get(key: string): string | number | boolean;
+  /**
+   * Set a collection variable. The value is available immediately for
+   * variable substitution in this request and persists after the run.
+   *
+   * @example
+   * collection.set("page", 2);
+   */
+  set(key: string, value: string | number | boolean): void;
+  /** Check whether a collection variable exists. */
+  has(key: string): boolean;
+  /**
+   * Remove a collection variable's current value. Without a key, every
+   * visible variable is cleared.
+   */
+  clear(key?: string): void;
+};
+`;
+
 /** Injected into the "Tests" script editor. */
-export const TEST_SCRIPT_TYPES = MINIMAL_BUILTINS + `
+export const TEST_SCRIPT_TYPES = MINIMAL_BUILTINS + VARIABLE_SCOPE_TYPES + `
 interface Expectation<T> {
   /** Assert strict equality using Object.is */
   toBe(expected: T): void;
@@ -287,27 +351,7 @@ declare const request: {
 `;
 
 /** Injected into the "Pre-request" script editor. */
-export const PRE_REQUEST_SCRIPT_TYPES = MINIMAL_BUILTINS + `
-/** Read and write environment variables for the active environment. */
-declare const environment: {
-  /**
-   * Get an environment variable by key.
-   * Returns an empty string if the variable is not set.
-   *
-   * @example
-   * const token = environment.get("authToken");
-   */
-  get(key: string): string;
-  /**
-   * Set an environment variable. The value is available immediately for
-   * variable substitution in this request (e.g. in the URL or headers).
-   *
-   * @example
-   * environment.set("timestamp", Date.now().toString());
-   */
-  set(key: string, value: string): void;
-};
-
+export const PRE_REQUEST_SCRIPT_TYPES = MINIMAL_BUILTINS + VARIABLE_SCOPE_TYPES + `
 /** The outgoing HTTP request. Headers can be mutated before the request is sent. */
 declare const request: {
   /** HTTP method, e.g. "GET", "POST" */

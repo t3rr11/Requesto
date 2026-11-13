@@ -19,6 +19,7 @@ interface KeyValueEditorProps {
   addLabel?: string;
   bulkPlaceholder?: string;
   disabled?: boolean;
+  collectionId?: string;
 }
 
 function createEmptyRow(): KeyValueRow {
@@ -34,6 +35,7 @@ export function KeyValueEditor({
   addLabel = '+ Add Row',
   bulkPlaceholder,
   disabled = false,
+  collectionId,
 }: Readonly<KeyValueEditorProps>) {
   const [viewMode, setViewMode] = useState<'table' | 'bulk'>('table');
   const [bulkText, setBulkText] = useState('');
@@ -175,6 +177,7 @@ export function KeyValueEditor({
                     placeholder={valuePlaceholder}
                     className="w-full px-2 py-1 text-sm focus:ring-1 focus:ring-blue-500 bg-transparent border-none text-black dark:text-gray-200"
                     disabled={disabled}
+                    collectionId={collectionId}
                   />
                 </td>
                 <td className="py-1 px-3 text-right">

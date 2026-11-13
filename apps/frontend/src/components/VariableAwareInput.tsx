@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
-import { useEnvironmentStore } from '../store/environments/store';
+import { useState, useRef, useEffect } from 'react';
+import { useVariableScope } from '../hooks/useVariableScope';
 import { useVariableDetection } from '../hooks/useVariableDetection';
 import { VariableHighlight } from './variable-input/VariableHighlight';
 import { VariableSuggestions } from './variable-input/VariableSuggestions';
@@ -12,6 +12,7 @@ interface VariableAwareInputProps {
   disabled?: boolean;
   className?: string;
   type?: string;
+  collectionId?: string;
 }
 
 type TooltipState = {
@@ -21,6 +22,8 @@ type TooltipState = {
   variableKey: string;
   variableValue: string;
   isSecret: boolean;
+  sourceLabel?: string;
+  sourceName?: string;
 };
 
 const emptyTooltip: TooltipState = {
@@ -39,22 +42,14 @@ export function VariableAwareInput({
   disabled,
   className,
   type = 'text',
-}: VariableAwareInputProps) {
+  collectionId,
+}: Readonly<VariableAwareInputProps>) {
   const [tooltip, setTooltip] = useState<TooltipState>(emptyTooltip);
   const [manualSuggestions, setManualSuggestions] = useState(false);
   const [clickedVariableStart, setClickedVariableStart] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const { environmentsData } = useEnvironmentStore();
-
-  const activeEnvironment = useMemo(
-    () => environmentsData.environments.find(e => e.id === environmentsData.activeEnvironmentId),
-    [environmentsData.environments, environmentsData.activeEnvironmentId],
-  );
-  const enabledVariables = useMemo(
-    () => activeEnvironment?.variables.filter(v => v.enabled) ?? [],
-    [activeEnvironment],
-  );
+  const { variables: enabledVariables, getSource } = useVariableScope(collectionId);
 
   const { showSuggestions: autoShowSuggestions, currentVariable } = useVariableDetection(
     value,
@@ -136,6 +131,7 @@ export function VariableAwareInput({
     const variable = enabledVariables.find(v => v.key === varKey);
 
     if (variable) {
+      const source = getSource(varKey);
       setTooltip({
         show: true,
         x: rect.left,
@@ -143,6 +139,8 @@ export function VariableAwareInput({
         variableKey: variable.key,
         variableValue: variable.currentValue ?? variable.value,
         isSecret: variable.isSecret === true,
+        sourceLabel: source?.scope,
+        sourceName: source?.name,
       });
     }
   };
@@ -208,7 +206,8 @@ export function VariableAwareInput({
         variableKey={tooltip.variableKey}
         variableValue={tooltip.variableValue}
         isSecret={tooltip.isSecret}
-        environmentName={activeEnvironment?.name}
+        sourceLabel={tooltip.sourceLabel}
+        sourceName={tooltip.sourceName}
       />
 
       <VariableSuggestions

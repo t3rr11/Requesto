@@ -34,6 +34,13 @@ describe('ui store', () => {
     });
   });
 
+  describe('runner variables rail', () => {
+    it('sets rail width', () => {
+      useUIStore.getState().setRunnerVariablesWidth(360);
+      expect(useUIStore.getState().runnerVariablesWidth).toBe(360);
+    });
+  });
+
   describe('panel layout', () => {
     it('toggles layout between horizontal and vertical', () => {
       useUIStore.getState().togglePanelLayout();

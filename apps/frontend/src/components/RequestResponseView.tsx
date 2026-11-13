@@ -23,16 +23,18 @@ import {
   buildSavePayloadFromFormData,
   parseGraphQLIntrospectionResponse,
 } from '../helpers/request';
-import { substituteInRequest, getUndefinedVariables } from '../helpers/environment';
+import { effectiveVariables, effectiveVariablesWithOverrides, substituteInRequest, getUndefinedVariables, mergeScriptOverrides, scriptVariableRecords, type ScriptScopeOverrides } from '../helpers/environment';
 import { applyAuthForDisplay } from '../helpers/api/authPreview';
 import { runPreRequestScript, runTestScript } from '../helpers/scriptRunner';
+import type { PreRequestOutcome, TestOutcome } from 'requesto-engine/sandbox-core';
 import type { ProxyResponse, StreamingResponse } from '../store/request/types';
+import type { Tab } from '../store/tabs/types';
 import type { GraphQLSchema } from 'graphql';
 
 export function RequestResponseView() {
   const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab, setTabTestResults } = useTabsStore();
-  const { updateRequest } = useCollectionsStore();
-  const { environmentsData, updateCurrentValues } = useEnvironmentStore();
+  const { collections, updateRequest, updateCollectionCurrentValues, resetCollectionCurrentValue } = useCollectionsStore();
+  const { environmentsData, updateCurrentValues, resetCurrentValues } = useEnvironmentStore();
   const { sendRequest, sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
   const { showAlert } = useAlertStore();
@@ -60,6 +62,18 @@ export function RequestResponseView() {
     };
   }, []);
 
+  // Collection and active environment for the tab's saved request; merged
+  // into the substitution scope at send time.
+  const getVariableContext = useCallback((tab: Tab | null) => {
+    const activeEnv = environmentsData.environments.find(
+      e => e.id === environmentsData.activeEnvironmentId,
+    ) ?? null;
+    const collection = tab?.collectionId
+      ? collections.find(c => c.id === tab.collectionId) ?? null
+      : null;
+    return { activeEnv, collection };
+  }, [environmentsData, collections]);
+
   const handleSend = useCallback(async (formData: RequestFormData) => {
     const tab = getActiveTab();
     if (!tab) return;
@@ -76,46 +90,88 @@ export function RequestResponseView() {
       return;
     }
 
-    const activeEnv = environmentsData.environments.find(
-      e => e.id === environmentsData.activeEnvironmentId,
-    ) ?? null;
+    const { activeEnv, collection } = getVariableContext(tab);
+
+    // Script-set collection variable overrides, accumulated across the
+    // pre-request and test scripts of this send and applied to the
+    // substitution scope in memory.
+    const collectionScript: ScriptScopeOverrides = { values: {} };
+
+    // Persists script-set values (and resets cleared keys) to the sidecar
+    // immediately, the same lifecycle as `environment.set()` current values.
+    const applyScriptOutcome = async (outcome: PreRequestOutcome | TestOutcome) => {
+      mergeScriptOverrides(collectionScript, {
+        values: outcome.collectionOverrides,
+        types: outcome.collectionTypes,
+        cleared: outcome.collectionCleared,
+      });
+      if (!collection) return;
+      if (Object.keys(outcome.collectionOverrides).length > 0) {
+        await updateCollectionCurrentValues(
+          collection.id,
+          outcome.collectionOverrides,
+          ...(Object.keys(outcome.collectionTypes).length > 0 ? [outcome.collectionTypes] : []),
+        );
+      }
+      for (const key of outcome.collectionCleared) {
+        await resetCollectionCurrentValue(collection.id, key);
+      }
+    };
 
     // effectiveEnv starts as the current active environment, and may be updated
     // by the pre-request script before variable substitution runs.
     let effectiveEnv = activeEnv;
     if (formData.preRequestScript?.trim()) {
       try {
-        const { envOverrides, envTypes } = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest);
-        if (activeEnv && Object.keys(envOverrides).length > 0) {
-          const updatedVariables = activeEnv.variables.map(v =>
-            Object.prototype.hasOwnProperty.call(envOverrides, v.key)
-              ? { ...v, currentValue: envOverrides[v.key], type: envTypes[v.key] ?? v.type }
-              : v,
-          );
+        const outcome = await runPreRequestScript(formData.preRequestScript, activeEnv, rawRequest, {
+          collectionId: collection?.id,
+          ...scriptVariableRecords(collection, { collection: collectionScript }),
+        });
+        if (activeEnv && (Object.keys(outcome.envOverrides).length > 0 || outcome.envCleared.length > 0)) {
+          const updatedVariables = activeEnv.variables
+            .filter(v => !outcome.envCleared.includes(v.key))
+            .map(v =>
+              Object.prototype.hasOwnProperty.call(outcome.envOverrides, v.key)
+                ? { ...v, currentValue: outcome.envOverrides[v.key], type: outcome.envTypes[v.key] ?? v.type }
+                : v,
+            );
+
           // Also add any newly-introduced keys
-          Object.entries(envOverrides).forEach(([key, value]) => {
+          Object.entries(outcome.envOverrides).forEach(([key, value]) => {
             if (!updatedVariables.some(v => v.key === key)) {
-              updatedVariables.push({ key, value: '', currentValue: value, enabled: true, type: envTypes[key] ?? 'string' });
+              updatedVariables.push({ key, value: '', currentValue: value, enabled: true, type: outcome.envTypes[key] ?? 'string' });
             }
           });
           const updatedEnv = { ...activeEnv, variables: updatedVariables };
-          // Persist current values (and their types) to the local sidecar
-          await updateCurrentValues(activeEnv.id, envOverrides, envTypes);
+
+          if (Object.keys(outcome.envOverrides).length > 0) {
+            // Persist current values (and their types) to the local sidecar
+            await updateCurrentValues(activeEnv.id, outcome.envOverrides, outcome.envTypes);
+          }
+
+          // Persist cleared keys via the same endpoint the collection clear path uses
+          await Promise.all(
+            (outcome.envCleared ?? []).map(key => resetCurrentValues(activeEnv.id, key))
+          );
+
           // Use the updated env for this request's variable substitution
           effectiveEnv = updatedEnv;
         }
+        await applyScriptOutcome(outcome);
       } catch (err) {
         showAlert('Pre-request script error', err instanceof Error ? err.message : String(err), 'error');
       }
     }
 
-    const request = effectiveEnv ? substituteInRequest(rawRequest, effectiveEnv) : rawRequest;
+    const scope = effectiveVariablesWithOverrides(effectiveEnv, collection, {
+      collection: collectionScript,
+    });
 
-    if (effectiveEnv) {
-      const undefinedVars = getUndefinedVariables(rawRequest, effectiveEnv);
-      if (undefinedVars.length > 0) {
-        showAlert('Warning', `Undefined variables: ${undefinedVars.join(', ')}`, 'warning');
-      }
+    const request = substituteInRequest(rawRequest, scope);
+
+    const undefinedVars = getUndefinedVariables(rawRequest, scope);
+    if (undefinedVars.length > 0) {
+      showAlert('Warning', `Undefined variables: ${undefinedVars.join(', ')}`, 'warning');
     }
 
     const requestId = crypto.randomUUID();
@@ -172,18 +228,33 @@ export function RequestResponseView() {
       const isStreamingResponse = 'isStreaming' in response && response.isStreaming;
       if (formData.testScript?.trim() && !isStreamingResponse) {
         try {
-          const { testResults, envOverrides: testEnvOverrides, envTypes: testEnvTypes } = await runTestScript(formData.testScript, response as ProxyResponse, request, effectiveEnv);
-          setTabTestResults(tab.id, testResults);
-          if (effectiveEnv && Object.keys(testEnvOverrides).length > 0) {
-            await updateCurrentValues(effectiveEnv.id, testEnvOverrides, testEnvTypes);
+          const outcome = await runTestScript(
+            formData.testScript,
+            response as ProxyResponse,
+            request,
+            effectiveEnv,
+            {
+              collectionId: collection?.id,
+              ...scriptVariableRecords(collection, { collection: collectionScript }),
+            },
+          );
+          setTabTestResults(tab.id, outcome.testResults);
+          if (effectiveEnv) {
+            if (Object.keys(outcome.envOverrides).length > 0) {
+              await updateCurrentValues(effectiveEnv.id, outcome.envOverrides, outcome.envTypes);
+            }
+            await Promise.all(
+              (outcome.envCleared ?? []).map(key => resetCurrentValues(effectiveEnv.id, key))
+            );
           }
-          const passed = testResults.filter(r => r.passed).length;
+          await applyScriptOutcome(outcome);
+          const passed = outcome.testResults.filter(r => r.passed).length;
           addConsoleLog({
             id: `test-${Date.now()}`,
             requestId,
             timestamp: Date.now(),
             type: 'info',
-            message: `Tests: ${passed}/${testResults.length} passed`,
+            message: `Tests: ${passed}/${outcome.testResults.length} passed`,
           });
         } catch (err) {
           showAlert('Test script error', err instanceof Error ? err.message : String(err), 'error');
@@ -219,7 +290,7 @@ export function RequestResponseView() {
     }
   }, [
     getActiveTab,
-    environmentsData,
+    getVariableContext,
     sendStreamingRequest,
     touchTab,
     setTabLoading,
@@ -229,6 +300,8 @@ export function RequestResponseView() {
     addConsoleLog,
     showAlert,
     updateCurrentValues,
+    updateCollectionCurrentValues,
+    resetCollectionCurrentValue,
     updateRequest,
     markTabAsSaved,
   ]);
@@ -239,14 +312,13 @@ export function RequestResponseView() {
   }, []);
 
   const handleFetchGraphQLSchema = useCallback(async (formData: RequestFormData): Promise<GraphQLSchema> => {
-    const activeEnv = environmentsData.environments.find(
-      environment => environment.id === environmentsData.activeEnvironmentId,
-    ) ?? null;
+    const { activeEnv, collection } = getVariableContext(getActiveTab());
+    const scope = effectiveVariables(activeEnv, collection);
     const introspectionRequest = buildGraphQLIntrospectionRequest(formData);
-    const request = activeEnv ? substituteInRequest(introspectionRequest, activeEnv) : introspectionRequest;
+    const request = substituteInRequest(introspectionRequest, scope);
     const response = await sendRequest(request);
     return parseGraphQLIntrospectionResponse(response);
-  }, [environmentsData, sendRequest]);
+  }, [getActiveTab, getVariableContext, sendRequest]);
 
   const handleSave = useCallback(async () => {
     if (!activeTab || !formDataRef.current) return;
@@ -343,11 +415,12 @@ export function RequestResponseView() {
       </div>
 
       {/* Resize Handle */}
-      <div
+      <button
         className={`${
-          isHorizontal ? 'w-1 cursor-ew-resize hover:bg-orange-500' : 'h-1 cursor-ns-resize hover:bg-orange-500'
+          isHorizontal ? 'w-1 cursor-ew-resize! hover:bg-orange-500' : 'h-1 cursor-ns-resize! hover:bg-orange-500'
         } bg-gray-200 dark:bg-gray-700 transition-colors ${isResizing ? 'bg-orange-500' : ''}`}
         onMouseDown={handleResizeStart}
+        tabIndex={-1}
       />
 
       {/* Response Panel */}

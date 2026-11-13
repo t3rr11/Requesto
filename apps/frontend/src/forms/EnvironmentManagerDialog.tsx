@@ -1,8 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useEffect } from 'react';
 import { Globe, Plus } from 'lucide-react';
 import { useEnvironmentStore } from '../store/environments/store';
-import { useAlertStore } from '../store/alert/store';
 import { Dialog } from '../components/Dialog';
 import { EnvironmentList } from '../components/EnvironmentList';
 import { EnvironmentHeader } from '../components/EnvironmentHeader';
@@ -10,30 +8,22 @@ import { VariableEditor } from '../components/VariableEditor';
 import { EmptyState } from '../components/EmptyState';
 import { NewEnvironmentForm } from './NewEnvironmentForm';
 import { useDialog } from '../hooks/useDialog';
-import type { Environment, EnvironmentVariable } from '../store/environments/types';
-
-interface EnvironmentFormData {
-  variables: EnvironmentVariable[];
-}
+import { useEnvironmentVariablesEditor } from '../hooks/useEnvironmentVariablesEditor';
 
 interface EnvironmentManagerDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManagerDialogProps) {
-  const { environmentsData, loadEnvironments, saveEnvironment, updateEnvironment, updateCurrentValues, resetCurrentValues } =
-    useEnvironmentStore();
-  const { showAlert } = useAlertStore();
+export function EnvironmentManagerDialog({ isOpen, onClose }: Readonly<EnvironmentManagerDialogProps>) {
+  const { environmentsData, loadEnvironments } = useEnvironmentStore();
   const [selectedEnvId, setSelectedEnvId] = useState<string | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
-  const lastSavedRef = useRef<string>('');
   const newEnvDialog = useDialog();
 
   // Load environments when dialog opens
   useEffect(() => {
     if (isOpen) {
-      loadEnvironments();
+      void loadEnvironments();
     }
   }, [isOpen, loadEnvironments]);
 
@@ -46,32 +36,9 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
     setSelectedEnvId(defaultId);
   }, [isOpen, environmentsData.environments, environmentsData.activeEnvironmentId, selectedEnvId]);
 
-  const selectedEnvironment = environmentsData.environments.find(e => e.id === selectedEnvId);
-
-  const form = useForm<EnvironmentFormData>({
-    defaultValues: { variables: [] },
-  });
-
-  const { control, reset, watch, getValues, setValue } = form;
-
-  // Sync form with selected environment and snapshot the saved state
-  useEffect(() => {
-    if (selectedEnvironment) {
-      const vars = selectedEnvironment.variables;
-      reset({ variables: vars });
-      lastSavedRef.current = JSON.stringify(vars);
-      setHasChanges(false);
-    }
-  }, [selectedEnvId, selectedEnvironment, reset]);
-
-  // Watch for real changes by comparing to saved snapshot
-  useEffect(() => {
-    const subscription = watch(formValues => {
-      const current = JSON.stringify(formValues.variables ?? []);
-      setHasChanges(current !== lastSavedRef.current);
-    });
-    return () => subscription.unsubscribe();
-  }, [watch]);
+  const selectedEnvironment = environmentsData.environments.find(e => e.id === selectedEnvId) ?? null;
+  const { control, setValue, hasChanges, handleSave, handleNameChange, handleResetCurrentValue } =
+    useEnvironmentVariablesEditor(selectedEnvironment, isOpen);
 
   const handleAdd = () => {
     newEnvDialog.open();
@@ -81,71 +48,6 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
     setSelectedEnvId(id);
     newEnvDialog.close();
   };
-
-  const handleSave = useCallback(async () => {
-    if (!selectedEnvironment) return;
-    const formData = getValues();
-    const updatedEnv: Environment = {
-      ...selectedEnvironment,
-      variables: formData.variables,
-    };
-    try {
-      await saveEnvironment(updatedEnv);
-
-      // Persist current-value overrides to the local sidecar.
-      // Build a map of key -> currentValue for every variable that has one set.
-      const overrides: Record<string, string> = {};
-      formData.variables.forEach(v => {
-        if (v.key && v.currentValue !== undefined && v.currentValue !== '') {
-          overrides[v.key] = v.currentValue;
-        }
-      });
-      await updateCurrentValues(selectedEnvironment.id, overrides);
-
-      lastSavedRef.current = JSON.stringify(formData.variables);
-      setHasChanges(false);
-      showAlert('Environment saved', 'success');
-    } catch {
-      showAlert('Failed to save environment', 'error');
-    }
-  }, [selectedEnvironment, getValues, saveEnvironment, updateCurrentValues, showAlert]);
-
-  const handleNameChange = useCallback(
-    async (newName: string) => {
-      if (!selectedEnvironment) return;
-      try {
-        updateEnvironment({ ...selectedEnvironment, name: newName });
-        await saveEnvironment({ ...selectedEnvironment, name: newName });
-      } catch {
-        showAlert('Failed to rename environment', 'error');
-      }
-    },
-    [selectedEnvironment, updateEnvironment, saveEnvironment, showAlert]
-  );
-
-  // Keyboard shortcut: Ctrl+S to save
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        if (hasChanges && selectedEnvironment) {
-          handleSave();
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, hasChanges, selectedEnvironment, handleSave]);
-
-  // Reset selection state when dialog closes
-  useEffect(() => {
-    if (!isOpen) {
-      setSelectedEnvId(null);
-      setHasChanges(false);
-      lastSavedRef.current = '';
-    }
-  }, [isOpen]);
 
   const sidebar = (
     <EnvironmentList
@@ -173,7 +75,7 @@ export function EnvironmentManagerDialog({ isOpen, onClose }: EnvironmentManager
               <VariableEditor
                 control={control}
                 setValue={setValue}
-                onResetCurrentValue={selectedEnvId ? key => resetCurrentValues(selectedEnvId, key) : undefined}
+                onResetCurrentValue={handleResetCurrentValue}
               />
             </>
           ) : (

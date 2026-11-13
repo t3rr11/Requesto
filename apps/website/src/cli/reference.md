@@ -36,6 +36,9 @@ Precedence, highest first:
 3. `--var-file`
 4. `REQUESTO_VAR_*` environment variables
 5. The environment's committed values
+6. Collection variables
+
+Collection variables are defined on the collection itself (see [Collection Variables](/features/collection-variables)) and are committed with the collection file. Their local current values from `.requesto/local/collections.local.json` are merged in like the app does. Collection variables apply to every request in that collection whenever the environment does not override the key, and they resolve even when no environment is selected.
 
 ### Authentication
 

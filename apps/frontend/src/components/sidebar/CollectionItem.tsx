@@ -13,6 +13,7 @@ import { ContextMenu } from '../ContextMenu';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { SyncPreviewDialog } from '../SyncPreviewDialog';
 import { CollectionRunnerDialog } from '../CollectionRunnerDialog';
+import { CollectionVariablesDialog } from '../../forms/CollectionVariablesDialog';
 import { useCollectionContextMenus } from '../../hooks/useCollectionContextMenus';
 import { useItemActions } from '../../hooks/useItemActions';
 import { useItemDragDrop } from '../../hooks/useItemDragDrop';
@@ -66,6 +67,8 @@ export function CollectionItem({
     collectionMenuItems,
     runnerOpen,
     closeRunner,
+    variablesOpen,
+    closeVariablesDialog,
     syncDialogOpen,
     syncLoading,
     syncPreviewData,
@@ -299,6 +302,12 @@ export function CollectionItem({
         isOpen={runnerOpen}
         onClose={closeRunner}
         collections={[collection]}
+      />
+
+      <CollectionVariablesDialog
+        isOpen={variablesOpen}
+        onClose={closeVariablesDialog}
+        collection={collection}
       />
     </div>
   );

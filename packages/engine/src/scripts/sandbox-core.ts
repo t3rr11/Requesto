@@ -19,6 +19,8 @@ export type PreRequestContext = {
   request: { method: string; url: string; headers?: Record<string, string>; body?: string };
   env: Record<string, string>;
   envTypes?: Record<string, EnvironmentVariableType>;
+  collectionVariables?: Record<string, string>;
+  collectionVariableTypes?: Record<string, EnvironmentVariableType>;
 };
 
 export type ScriptFormEntry = { key: string; value: string; type?: 'text' | 'file'; fileName?: string };
@@ -40,18 +42,32 @@ export type TestContext = {
   };
   env: Record<string, string>;
   envTypes?: Record<string, EnvironmentVariableType>;
+  collectionVariables?: Record<string, string>;
+  collectionVariableTypes?: Record<string, EnvironmentVariableType>;
 };
 
 export type PreRequestOutcome = {
   envOverrides: Record<string, string>;
   /** Inferred type per key in `envOverrides`. */
   envTypes: Record<string, EnvironmentVariableType>;
+  /** Keys the script removed via `environment.clear()`. */
+  envCleared: string[];
+  /** Keys the script set via `collection.set()` (touched keys only). */
+  collectionOverrides: Record<string, string>;
+  /** Inferred type per key in `collectionOverrides`. */
+  collectionTypes: Record<string, EnvironmentVariableType>;
+  /** Keys the script removed via `collection.clear()`. */
+  collectionCleared: string[];
 };
 export type TestOutcome = {
   testResults: TestResult[];
   envOverrides: Record<string, string>;
   /** Inferred type per key in `envOverrides`. */
   envTypes: Record<string, EnvironmentVariableType>;
+  envCleared: string[];
+  collectionOverrides: Record<string, string>;
+  collectionTypes: Record<string, EnvironmentVariableType>;
+  collectionCleared: string[];
 };
 
 // Shadowed globals prepended to every user script. These shadow the
@@ -182,44 +198,114 @@ function typedValue(value: string, type: EnvironmentVariableType | undefined): s
   return value;
 }
 
-function createEnvironment(env: Record<string, string>, declaredTypes?: Record<string, EnvironmentVariableType>) {
-  const envStore: Record<string, string> = { ...env };
+/**
+ * Variable scope behind the `environment` and `collection` script APIs, which
+ * expose the same get/set/has/clear shape. `clear` with no key clears every
+ * visible variable (Postman semantics); cleared keys resolve to nothing and
+ * are tracked so hosts can reset their persisted values after the run.
+ */
+function createVariableScope(
+  base: Record<string, string> | undefined,
+  declaredTypes: Record<string, EnvironmentVariableType> | undefined,
+) {
+  const store: Record<string, string> = { ...base };
   // Types recorded per key set during this run, so callers can re-type variables.
-  const typeStore: Record<string, EnvironmentVariableType> = {};
+  const types: Record<string, EnvironmentVariableType> = {};
+  const touched = new Set<string>();
+  const cleared = new Set<string>();
+
   return {
-    store: envStore,
-    types: typeStore,
+    store,
+    types,
+    touched,
+    cleared,
     api: {
       get: (key: string): string | number | boolean => {
-        const raw = envStore[key];
+        if (cleared.has(key)) return '';
+        const raw = store[key];
         if (raw === undefined) return '';
-        return typedValue(raw, typeStore[key] ?? declaredTypes?.[key]);
+        return typedValue(raw, types[key] ?? declaredTypes?.[key]);
       },
       set: (key: string, value: unknown): void => {
-        envStore[key] = String(value);
-        typeStore[key] = typeOfScriptValue(value);
+        store[key] = String(value);
+        types[key] = typeOfScriptValue(value);
+        touched.add(key);
+        cleared.delete(key);
+      },
+      has: (key: string): boolean => !cleared.has(key) && Object.hasOwn(store, key),
+      clear: (key?: string): void => {
+        for (const k of key === undefined ? Object.keys(store) : [key]) {
+          cleared.add(k);
+        }
       },
     },
   };
 }
 
+type ScopedOutcome = {
+  overrides: Record<string, string>;
+  types: Record<string, EnvironmentVariableType>;
+  cleared: string[];
+};
+
+/** Cleared keys that exist in the scope: clearing an absent key is a no-op. */
+function clearedKeys(scope: ReturnType<typeof createVariableScope>): string[] {
+  return [...scope.cleared].filter((key) => Object.hasOwn(scope.store, key));
+}
+
+/** Touched keys only: committed values the script never wrote are excluded. */
+function touchedScopeOutcome(scope: ReturnType<typeof createVariableScope>): ScopedOutcome {
+  const overrides: Record<string, string> = {};
+  const types: Record<string, EnvironmentVariableType> = {};
+  for (const key of scope.touched) {
+    types[key] = scope.types[key];
+    if (!scope.cleared.has(key)) overrides[key] = scope.store[key];
+  }
+  return { overrides, types, cleared: clearedKeys(scope) };
+}
+
+/** Every visible key is reported: the environment scope persists its full copy. */
+function fullScopeOutcome(scope: ReturnType<typeof createVariableScope>): ScopedOutcome {
+  const overrides: Record<string, string> = {};
+  for (const [key, value] of Object.entries(scope.store)) {
+    if (!scope.cleared.has(key)) overrides[key] = value;
+  }
+  return { overrides, types: { ...scope.types }, cleared: clearedKeys(scope) };
+}
+
 /** Execute a pre-request script. Throws on script errors. */
 export function executePreRequestScript(script: string, context: PreRequestContext): PreRequestOutcome {
-  const { store, types, api } = createEnvironment(context.env, context.envTypes);
+  const env = createVariableScope(context.env, context.envTypes);
+  const collection = createVariableScope(context.collectionVariables, context.collectionVariableTypes);
   const request = { ...context.request };
 
   // eslint-disable-next-line no-new-func
-  const fn = new Function('environment', 'request', `${SHADOWED_GLOBALS}\n${script}`);
-  fn(api, request);
+  const fn = new Function(
+    'environment',
+    'request',
+    'collection',
+    `${SHADOWED_GLOBALS}\n${script}`,
+  );
+  fn(env.api, request, collection.api);
 
-  return { envOverrides: store, envTypes: types };
+  const envOutcome = fullScopeOutcome(env);
+  const col = touchedScopeOutcome(collection);
+  return {
+    envOverrides: envOutcome.overrides,
+    envTypes: envOutcome.types,
+    envCleared: envOutcome.cleared,
+    collectionOverrides: col.overrides,
+    collectionTypes: col.types,
+    collectionCleared: col.cleared,
+  };
 }
 
 /** Execute a test script. Throws on script errors (outside test() blocks). */
 export function executeTestScript(script: string, context: TestContext): TestOutcome {
   const results: TestResult[] = [];
   const { response: responseCtx, request: requestCtx } = context;
-  const { store, types, api } = createEnvironment(context.env, context.envTypes);
+  const env = createVariableScope(context.env, context.envTypes);
+  const collection = createVariableScope(context.collectionVariables, context.collectionVariableTypes);
 
   const response = {
     status: responseCtx.status,
@@ -234,7 +320,7 @@ export function executeTestScript(script: string, context: TestContext): TestOut
   try {
     params = Object.fromEntries(new URL(requestCtx.url).searchParams);
   } catch {
-    // Not an absolute URL — no query params can be parsed.
+    // Not an absolute URL, so no query params can be parsed.
   }
 
   const form: Record<string, string> = {};
@@ -267,8 +353,26 @@ export function executeTestScript(script: string, context: TestContext): TestOut
   const expect = (actual: unknown): Expectation => createExpect(actual);
 
   // eslint-disable-next-line no-new-func
-  const fn = new Function('test', 'expect', 'response', 'request', 'environment', `${SHADOWED_GLOBALS}\n${script}`);
-  fn(test, expect, response, request, api);
+  const fn = new Function(
+    'test',
+    'expect',
+    'response',
+    'request',
+    'environment',
+    'collection',
+    `${SHADOWED_GLOBALS}\n${script}`,
+  );
+  fn(test, expect, response, request, env.api, collection.api);
 
-  return { testResults: results, envOverrides: store, envTypes: types };
+  const envOutcome = fullScopeOutcome(env);
+  const col = touchedScopeOutcome(collection);
+  return {
+    testResults: results,
+    envOverrides: envOutcome.overrides,
+    envTypes: envOutcome.types,
+    envCleared: envOutcome.cleared,
+    collectionOverrides: col.overrides,
+    collectionTypes: col.types,
+    collectionCleared: col.cleared,
+  };
 }
