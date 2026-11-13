@@ -82,15 +82,23 @@ A few additional rules:
 
 ## Variable Autocomplete
 
-The `VariableAwareInput` fields throughout the app (URL bar, header values, etc.) show an autocomplete dropdown when you start typing a variable reference. It lists all variables from the active environment so you can pick the right name.
+The variable-aware input fields throughout the app (URL bar, header values, etc.) show an autocomplete dropdown when you start typing a variable reference. It lists all variables from the active environment plus the request's collection variables, so you can pick the right name.
 
 <ThemeImage src="/environments/autocomplete.png" alt="Variable autocomplete" />
+
+Hovering a <code v-pre>{{placeholder}}</code> shows the resolved value in a tooltip, along with which scope supplied it. Secret values stay masked.
 
 ## Switching Environments
 
 Use the **environment selector** dropdown in the tabs bar. Selecting a different environment changes which variables are substituted - you don't need to edit any requests.
 
 <ThemeImage src="/environments/selector-dropdown.png" alt="Environment selector dropdown" />
+
+## Collection Variables
+
+Environments are not the only variable scope. Each collection can carry its own variable list, shared by every request in it and resolved with a lower precedence than the active environment. Collection variables work even when no environment is selected, which makes them a good fit for structural defaults like a base URL or API version.
+
+See [Collection Variables](/features/collection-variables) for the full guide, including the resolution order and the `collection` scripting API.
 
 ## Initial Value and Current Value
 
@@ -112,6 +120,8 @@ Pre-request scripts and test scripts use `environment.set()` to update variables
 - Tokens, timestamps, and session IDs set by scripts stay local to your machine
 - The environment files under `.requesto/environments/` stay clean for git commits
 - Team members share the initial values in version control and manage their own current values locally
+
+The same applies to a collection's variables: `collection.set()` writes current values to `.requesto/local/collections.local.json`, keeping the collection file clean for git.
 
 See [Pre-request Scripts](/features/pre-request-scripts) for the full scripting API.
 

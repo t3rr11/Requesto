@@ -69,15 +69,24 @@ environment.set('timestamp', new Date().toISOString());
 // Compute a derived value from an existing variable
 const baseToken = environment.get('apiToken');
 environment.set('authHeader', 'Bearer ' + baseToken);
+
+// Collection variables: shared per collection, lower precedence than the environment
+if (!collection.has('baseUrl')) {
+  collection.set('baseUrl', 'https://api.example.com');
+}
+
+// Clear a stale script-set value so the committed initial value applies again
+environment.clear('authToken');
+collection.clear('lastRunAt');
 ```
 
-After the script runs, any variables set with `environment.set()` are applied before variable substitution happens. This means you can set <code v-pre>{{timestamp}}</code> in a header and the pre-request script will supply its value.
+After the script runs, any variables set with `environment.set()` or `collection.set()` are applied before variable substitution happens. This means you can set <code v-pre>{{timestamp}}</code> in a header and the pre-request script will supply its value. More pre-request and test examples, including extracting values from responses, are on the [Tests](/features/tests#examples) page.
 
 ## Execution Order
 
 1. Pre-request script runs
-2. Environment variables are updated with any overrides from the script
-3. Variable substitution replaces <code v-pre>{{placeholders}}</code> in the URL, headers, and body
+2. Environment and collection variables are updated with any overrides from the script
+3. Variable substitution replaces <code v-pre>{{placeholders}}</code> in the URL, headers, and body (environment variables win over collection variables)
 4. The request is sent
 
 ## Limitations

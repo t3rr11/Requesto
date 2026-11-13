@@ -381,6 +381,35 @@ test.describe('Environments', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Collection Variables
+// ---------------------------------------------------------------------------
+test.describe('Collection Variables', () => {
+  test.beforeAll(() => {
+    resetData();
+  });
+
+  test('collection variables dialog', async ({ appPage, takeDocScreenshot }) => {
+    // Right-click the GitHub API collection and choose Variables
+    await appPage.getByText('GitHub API').click({ button: 'right' });
+    await expect(appPage.getByText('Variables', { exact: true })).toBeVisible();
+    await appPage.getByText('Variables', { exact: true }).click();
+
+    const dialogHeading = appPage.locator('h2', { hasText: 'Collection Variables' });
+    await expect(dialogHeading).toBeVisible();
+
+    // Wait for the seeded variables to render in the editor table
+    await expect(appPage.locator('input[data-variable-name-input]').first()).toHaveValue('defaultPerPage');
+
+    await appPage.waitForTimeout(400);
+
+    await takeDocScreenshot('collection-variables', 'dialog');
+
+    // Close dialog
+    await appPage.keyboard.press('Escape');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // OAuth 2.0
 // ---------------------------------------------------------------------------
 test.describe('OAuth', () => {
@@ -958,6 +987,15 @@ test.describe('Collection Runner', () => {
     await appPage.waitForTimeout(600);
 
     await takeDocScreenshot('collection-runner', 'results');
+
+    // The request row auto-expanded with its Tests tab. Open the Variables tab
+    // to show the per-request view of script-made changes.
+    const variablesTab = appPage.getByRole('button', { name: /^Variables \(/ });
+    await expect(variablesTab).toBeVisible({ timeout: 5_000 });
+    await variablesTab.click();
+    await appPage.waitForTimeout(400);
+
+    await takeDocScreenshot('collection-runner', 'request-variables');
 
     // Close dialog
     await appPage.keyboard.press('Escape');

@@ -35,6 +35,12 @@ Clicking **New Folder** opens a dialog where you can enter the folder name and c
 
 New requests are added from the request editor's **Save** dialog - save into any collection or folder.
 
+## Collection Variables
+
+Each collection can carry its own key/value variables. They are stored in the collection's JSON file (so they are committed to git along with the collection) and resolve for every request in the collection, including requests inside folders, with a lower precedence than the active environment.
+
+Right-click the collection and choose **Variables** to manage them. See [Collection Variables](/features/collection-variables) for the full guide.
+
 ## Multi-Select and Bulk Actions
 
 Ctrl+click (or Shift+click) requests to multi-select them. You can then drag the selection between folders, or right-click for bulk **Duplicate (N)** and **Delete (N)** actions. Collections, folders, and individual requests can each be duplicated from their context menus.
@@ -47,7 +53,7 @@ Reorder requests and folders within a collection by dragging them. You can move 
 
 Right-click any collection, folder, or request in the sidebar:
 
-**Collections**: Run Collection, New Folder, Rename, Duplicate, Export, Sync from Spec / Unlink Spec (for [OpenAPI-linked collections](/features/openapi)), and Delete.
+**Collections**: Run Collection, View Documentation, Variables, New Folder, Rename, Duplicate, Export, Sync from Spec / Unlink Spec (for [OpenAPI-linked collections](/features/openapi)), and Delete.
 
 **Folders**: Run Folder, New Subfolder, Rename, Duplicate, Export, and Delete.
 

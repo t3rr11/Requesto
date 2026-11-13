@@ -161,6 +161,7 @@ export default defineConfig({
           { text: 'Request Documentation', link: '/features/documentation' },
           { text: 'Collection Runner', link: '/features/collection-runner' },
           { text: 'Environments', link: '/features/environments' },
+          { text: 'Collection Variables', link: '/features/collection-variables' },
           { text: 'Git Integration', link: '/features/git' },
           { text: 'OpenAPI Import & Sync', link: '/features/openapi' },
           { text: 'GraphQL', link: '/features/graphql' },

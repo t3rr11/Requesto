@@ -56,6 +56,23 @@
     "id": "col-test-github",
     "name": "GitHub API",
     "description": "GitHub REST API v3",
+    "variables": [
+      {
+        "key": "defaultPerPage",
+        "value": "30",
+        "type": "number",
+        "enabled": true,
+        "isSecret": false
+      },
+      {
+        "key": "previewToken",
+        "value": "ghp_sample_initial_token",
+        "currentValue": "ghp_sample_current_token",
+        "type": "string",
+        "enabled": true,
+        "isSecret": true
+      }
+    ],
     "folders": [],
     "requests": [
       {

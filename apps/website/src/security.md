@@ -39,6 +39,7 @@ data/
 │       └── local/                        # Local-only data (excluded from git)
 │           ├── history.json              # Last 100 request/response records
 │           ├── environments.local.json   # Current environment variable values
+│           ├── collections.local.json    # Current collection variable values
 │           ├── active-environment.json   # Your active environment selection
 │           ├── oauth-secrets.json        # OAuth client secrets
 │           └── oauth-tokens.json         # OAuth access/refresh tokens
@@ -56,6 +57,7 @@ Older layouts (data files at the workspace root, local files directly inside `.r
 ### What's stored in plaintext
 
 - Environment variable values (API keys, tokens, etc.) and their current values
+- Collection variable values and their current values
 - OAuth client secrets (server-side in `.requesto/local/oauth-secrets.json`, excluded from git)
 - OAuth access and refresh tokens (server-side in `.requesto/local/oauth-tokens.json`, excluded from git)
 - Request/response history including headers and bodies
@@ -68,7 +70,7 @@ There is no built-in encryption at rest. If your data directory contains sensiti
 - OAuth **client secrets** are stored in `.requesto/local/oauth-secrets.json`, which is excluded from git via the auto-generated `.requesto/.gitignore`. They are never sent to the frontend.
 - OAuth **access and refresh tokens** are persisted server-side in `.requesto/local/oauth-tokens.json` (also excluded from git). The frontend only receives a non-secret token status (such as expiry and a preview) - tokens themselves never reach the browser.
 - Request **history** is stored in `.requesto/local/history.json` so it stays local and is not committed to version control.
-- Environment **current values** (the values written at runtime, e.g. by pre-request scripts) live in `.requesto/local/environments.local.json`, separate from the initial values committed in `.requesto/environments/`.
+- Environment **current values** (the values written at runtime, e.g. by pre-request scripts) live in `.requesto/local/environments.local.json`, separate from the initial values committed in `.requesto/environments/`. Collection variable **current values** work the same way and live in `.requesto/local/collections.local.json`, separate from the initial values committed with the collection.
 - Your **active environment** selection is stored locally in `.requesto/local/active-environment.json` and is not committed. A fresh clone defaults to the first environment in the workspace order — make an environment the workspace default by moving it to the top.
 
 Everything in `.requesto/local/` is gitignored automatically; the rest of `.requesto/` (collections, environments, OAuth configs) is what gets committed when you use Requesto's git features.

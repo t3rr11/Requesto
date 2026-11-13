@@ -1,6 +1,6 @@
 ---
 title: Collection Runner
-description: Run all requests in a collection or folder sequentially in Requesto. View pass/fail test results, response details, and environment variable changes across the entire run.
+description: Run all requests in a collection or folder sequentially in Requesto. View pass/fail test results, response details, live variable values, and script-made variable changes across the entire run.
 ---
 
 # Collection Runner
@@ -33,7 +33,7 @@ Every run executes inside a temporary server-side workspace:
 2. The whole run happens inside it.
 3. Afterwards, even if the run fails or is stopped, your previous workspace is restored and the scratch workspace is deleted.
 
-Collections, environments and workspaces created or deleted by a run disappear with the scratch workspace. Script-set environment current values chain through the run and are saved to the original active environment after restoration, including when a run is stopped or a request fails. Current values are local and are not committed to git. If there is no active environment, script-set values are not persisted. The type a script records (from the value passed to `environment.set()`) is saved alongside the current value, so number/boolean variables keep behaving the same after a restart.
+Collections, environments and workspaces created or deleted by a run disappear with the scratch workspace. Script-set environment current values chain through the run and are saved to the original active environment after restoration, including when a run is stopped or a request fails. If there is no active environment, script-set environment values are not persisted. Script-set collection values are saved to the collection's sidecar the same way, and each collection only sees its own variables during the run. Current values are local and are not committed to git. The type a script records (from the value passed to `environment.set()` or `collection.set()`) is saved alongside the current value, so number/boolean variables keep behaving the same after a restart.
 
 The CLI supports the same behaviour with `--isolated <serverUrl>` (see [CLI Reference](/cli/reference#isolated-runs-isolated)); in pipelines you opt in there because the CLI can also target APIs that aren't Requesto servers.
 
@@ -66,12 +66,15 @@ In the CLI, `--no-warn-http-errors` turns the warning tier off and `--fail-on-wa
 
 ## Expanding Request Results
 
-Click a request row to expand it and see the response details. Expanded rows have two tabs:
+Click a request row to expand it and see the response details. Expanded rows have these tabs:
 
 - **Response** - status code, headers, body, and duration
 - **Tests** - individual test names and pass/fail status
+- **Variables** (only when the request's scripts changed variables) - every change this request's scripts made, in run order, with the previous value struck through, the scope it applied to (environment or a named collection), whether the pre-request or test phase made it, and secrets masked. Use it to see exactly which script set which value.
 
-Rows with test results, warnings, or errors expand automatically as each request finishes.
+Rows with test results, warnings, errors, or variable changes expand automatically as each request finishes.
+
+<ThemeImage src="/collection-runner/request-variables.png" alt="Per-request variables tab in the runner" />
 
 The runner uses the currently active environment for every request. GraphQL requests run as proper GraphQL (the saved query document and variables are sent), and pre-request scripts, test scripts, and environment chaining all apply to them as well.
 
@@ -82,6 +85,21 @@ Pre-request scripts and test scripts run for every request in the runner, just a
 Environment changes made by one script carry forward to subsequent requests in the same run. If a pre-request script calls `environment.set('token', value)`, that value is available to the next request's URL, headers, and scripts without any manual intervention.
 
 This lets you chain requests: authenticate, capture a token, then use it in follow-up calls.
+
+Collection variables chain the same way: a pre-request script calling `collection.set('baseUrl', value)` makes the value available to subsequent requests in that collection's run. In the workspace-wide runner (Run: All Collections), each collection only sees its own collection variables.
+
+## Variables Rail
+
+A **Variables** panel sits beside the results while the run is in progress. It shows the live value of every variable the run can see:
+
+- An **Environment** group with the active environment's variables, shared across the whole run
+- One group per included collection with that collection's own keys (keys the environment also defines stay in the environment group)
+
+Values changed by scripts are highlighted, show the pre-run value struck through next to the new value, and carry a tooltip with the full value plus which script and phase set it. Secret values stay masked with a reveal toggle, and typed variables show an icon next to the key (String, Number, or Boolean).
+
+<ThemeImage src="/collection-runner/results.png" alt="Runner results with the variables rail" />
+
+The rail is drag-resizable and can be collapsed to a slim strip that still shows how many variables were changed by scripts so far. Each collection group header has a pencil button that opens that collection's variables editor without closing the runner.
 
 ## Folder Groups
 
@@ -95,3 +113,4 @@ In the workspace-wide runner (Run: All Collections), each collection header has 
 
 - [Pre-request Scripts](/features/pre-request-scripts) - run JavaScript before each request
 - [Tests](/features/tests) - write assertions that validate each response
+- [Collection Variables](/features/collection-variables) - variables shared by every request in a collection

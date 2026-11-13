@@ -97,8 +97,25 @@ Read and write variables in the active environment. The same API as in pre-reque
 |--------|-------------|
 | `environment.get(key)` | Returns the current value of `key` - as a Number or Boolean when the variable has that type (falling back to the string when the value cannot represent it) - or an empty string |
 | `environment.set(key, value)` | Sets the current value of `key` |
+| `environment.has(key)` | Returns whether `key` exists in the active environment |
+| `environment.clear(key)` | Removes the current value of `key`; without a key, clears every visible variable in the active environment |
 
 `environment.set()` in a test script writes to the variable's current value, so you can pass a value extracted from a response (like a token or ID) to later requests. The value's type is inherited as well - `environment.set('count', 42)` marks `count` as a Number so it is sent unquoted in JSON bodies, while a string ID from a response stays a String and is sent quoted. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
+
+`environment.clear()` removes the current value only, so the committed initial value applies again on the next send.
+
+### `collection`
+
+Read and write the variables of the request's collection. The methods mirror `environment` exactly. See [Collection Variables](/features/collection-variables) for how collection variables work and where they sit in the resolution order.
+
+| Method | Description |
+|--------|-------------|
+| `collection.get(key)` | Returns the current value of `key` - typed like `environment.get` - or an empty string if the variable does not exist |
+| `collection.set(key, value)` | Sets the current value of `key` in the collection's variables |
+| `collection.has(key)` | Returns whether `key` exists in the collection's variables |
+| `collection.clear(key)` | Removes the current value of `key`; without a key, clears every visible collection variable |
+
+`collection.set()` writes to the variable's current value, stored in the gitignored collection sidecar so scripts never cause unintended git changes. An environment variable with the same key still wins. The value's type is inherited the same way as `environment.set()`.
 
 ## Examples
 
@@ -124,6 +141,21 @@ test('response is fast', () => {
 test('extract token', () => {
   const data = response.json();
   environment.set('authToken', data.token);
+});
+
+// Clear a script-set value so the committed initial value applies again
+test('reset the cached token', () => {
+  environment.clear('authToken');
+});
+
+// Read a variable from the request's collection
+test('collection supplies the api version', () => {
+  expect(collection.get('api_version')).toBe('v2');
+});
+
+// Write a collection variable for later requests (stored locally, not committed)
+test('record the run timestamp', () => {
+  collection.set('lastRunAt', new Date().toISOString());
 });
 
 // Assert a value sent with the request comes back in the response
