@@ -17,7 +17,6 @@ A self-hostable API client. No accounts, no cloud, no telemetry.
 - **Git integration**: Built-in git support with commit, push, pull, conflict resolution, and branch tracking
 - **OpenAPI import & sync**: Import OpenAPI v2/v3 specs to generate collections, then keep them in sync as the spec changes
 - **Mock server**: Create mock APIs with static responses or dynamic CRUD endpoints backed by a dataset, with a live request log
-- **Postman compatibility**: Import and export collections and environments in Postman v2.1.0 format
 - **Console logging**: Request/response logs with status codes, timing, and full payloads
 - **Dark/Light themes**: Dark-mode-first UI with a light mode toggle
 - **CORS-free**: Backend handles CORS so the frontend never hits cross-origin issues
