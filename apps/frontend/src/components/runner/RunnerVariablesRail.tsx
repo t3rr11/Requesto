@@ -16,6 +16,7 @@ interface RunnerVariablesRailProps {
   state: RunnerVariablesState;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
+  onEditEnvironment: () => void;
   onEditCollection: (collectionId: string) => void;
 }
 
@@ -85,7 +86,7 @@ function RunnerVariablesGroup({ title, onEdit, children }: Readonly<{ title: str
           {title}
         </span>
         {onEdit && (
-          <button type="button" onClick={onEdit} aria-label={`Edit collection variables for ${title}`} className={iconButton}>
+          <button type="button" onClick={onEdit} aria-label={`Edit variables for ${title}`} className={iconButton}>
             <Pencil className="w-3.5 h-3.5" />
           </button>
         )}
@@ -101,6 +102,7 @@ export function RunnerVariablesRail({
   state,
   isCollapsed,
   onToggleCollapsed,
+  onEditEnvironment,
   onEditCollection,
 }: Readonly<RunnerVariablesRailProps>) {
   const railRef = useRef<HTMLDivElement>(null);
@@ -183,7 +185,7 @@ export function RunnerVariablesRail({
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4">
         {envRows.length > 0 && (
-          <RunnerVariablesGroup title="Environment">
+          <RunnerVariablesGroup title="Environment" onEdit={onEditEnvironment}>
             {envRows.map(row => (
               <RunnerVariableRowItem
                 key={state.changes.env[row.key] ? `${row.key}-${state.changes.env[row.key].seq}` : row.key}

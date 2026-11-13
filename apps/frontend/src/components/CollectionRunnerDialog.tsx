@@ -18,6 +18,7 @@ import { RunnerFolderRow } from './runner/RunnerFolderRow';
 import { RunnerRequestRow } from './runner/RunnerRequestRow';
 import { RunnerVariablesRail } from './runner/RunnerVariablesRail';
 import { CollectionVariablesDialog } from '../forms/CollectionVariablesDialog';
+import { EnvironmentVariablesDialog } from '../forms/EnvironmentVariablesDialog';
 import type { CollectionRunnerDialogProps, RequestRunResult, ExpandedTab, RequestStatus, RunnerVariablesState } from './runner/types';
 import type { Environment, EnvironmentVariableType } from '../store/environments/types';
 
@@ -77,6 +78,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
   const [isolationError, setIsolationError] = useState<string | null>(null);
   const [variablesCollapsed, setVariablesCollapsed] = useState(false);
   const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [editingEnvironment, setEditingEnvironment] = useState(false);
   const [runVariables, setRunVariables] = useState<RunnerVariablesState>({ seq: 0, baseline: { env: {}, collections: {} }, overrides: { env: { values: {} }, collections: {} }, changes: { env: {}, collections: {} }, history: {} });
   const abortControllerRef = useRef<AbortController | null>(null);
   const isolationRef = useRef<RunnerIsolation | null>(null);
@@ -377,7 +379,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       isOpen={isOpen}
       onClose={handleClose}
       onCloseRequest={() => {
-        if (!editingCollection) handleClose();
+        if (!editingCollection && !editingEnvironment) handleClose();
       }}
       title={title}
       size="full"
@@ -482,10 +484,18 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
             state={runVariables}
             isCollapsed={variablesCollapsed}
             onToggleCollapsed={() => setVariablesCollapsed(prev => !prev)}
+            onEditEnvironment={() => setEditingEnvironment(true)}
             onEditCollection={setEditingCollectionId}
           />
         </div>
       </div>
+      {editingEnvironment && activeEnv && (
+        <EnvironmentVariablesDialog
+          isOpen
+          onClose={() => setEditingEnvironment(false)}
+          environment={activeEnv}
+        />
+      )}
       {editingCollection && (
         <CollectionVariablesDialog
           isOpen
