@@ -1,12 +1,12 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CollectionRunnerDialog } from '../../../components/CollectionRunnerDialog';
 import { useSettingsStore } from '../../../store/settings/store';
 import type { Collection } from '../../../store/collections/types';
 
 const mocks = vi.hoisted(() => ({
-  environment: null as { id: string; name: string; variables: { key: string; value: string; enabled: boolean }[] } | null,
+  environment: null as { id: string; name: string; variables: { key: string; value: string; enabled: boolean; type?: string }[] } | null,
   updateCurrentValues: vi.fn(),
   updateCollectionCurrentValues: vi.fn(),
   resetCollectionCurrentValue: vi.fn(),
@@ -84,8 +84,10 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeCollections()} />);
 
     expect(screen.getByText('Run: All Collections')).toBeInTheDocument();
-    expect(screen.getByText('First')).toBeInTheDocument();
-    expect(screen.getByText('Second')).toBeInTheDocument();
+
+    // Collection names appear in the results list and the variables rail.
+    expect(screen.getAllByText('First').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Second').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Root Request')).toBeInTheDocument();
     expect(screen.getByText('Nested Request')).toBeInTheDocument();
     expect(screen.getByText('Other Request')).toBeInTheDocument();
@@ -114,7 +116,10 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     );
 
     expect(screen.getByText('Run: First')).toBeInTheDocument();
-    expect(screen.queryByText('First')).not.toBeInTheDocument(); // no group header
+
+    // The results list has no group headers; the one remaining instance is
+    // the collection's group title in the variables rail.
+    expect(screen.getAllByText('First')).toHaveLength(1);
     expect(screen.getByText('Root Request')).toBeInTheDocument();
   });
 
@@ -233,6 +238,149 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     expect(mocks.sendRequest).toHaveBeenCalledTimes(1);
   });
 
+  describe('variables rail', () => {
+    it('groups environment variables once and collection variables per collection', async () => {
+      mocks.environment = { id: 'env-1', name: 'Local', variables: [{ key: 'known', value: 'env-value', enabled: true, type: 'number' }] };
+      const collections = makeCollections();
+      collections[0].variables = [{ key: 'host', value: 'base-host', enabled: true }];
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+
+      expect(screen.getByText('base-host')).toBeInTheDocument();
+      expect(screen.getAllByText('Environment')).toHaveLength(1);
+      expect(screen.getAllByText('env-value')).toHaveLength(1);
+      expect(screen.getByRole('img', { name: 'type: number' })).toBeInTheDocument();
+      expect(screen.getAllByText('First').length).toBeGreaterThanOrEqual(1); // collection row + rail group title
+      expect(screen.getAllByText('Second').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByRole('img', { name: 'type: string' })).toHaveLength(1);
+    });
+
+    it('has a drag handle to resize the rail', () => {
+      const collections = makeCollections();
+      collections[0].variables = [{ key: 'host', value: 'base-host', enabled: true }];
+      const { container } = render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+
+      // Query by attribute: the cursor class ends in a trailing '!'.
+      expect(container.querySelector('[class*="cursor-ew-resize"]')).not.toBeNull();
+    });
+
+    it('opens the collection variables dialog from a group header', async () => {
+      const collections = makeCollections();
+      collections[0].variables = [{ key: 'host', value: 'base-host', enabled: true }];
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /edit collection variables for First/i }));
+      expect(await screen.findByText('Collection Variables')).toBeInTheDocument();
+      expect(screen.getByText('base-host')).toBeInTheDocument(); // rail still shows the values
+    });
+
+    it('keeps the runner open when an outside click dismisses the variables dialog', async () => {
+      const collections = makeCollections();
+      collections[0].variables = [{ key: 'host', value: 'base-host', enabled: true }];
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+      await userEvent.click(screen.getByRole('button', { name: /edit collection variables for First/i }));
+      expect(await screen.findByText('Collection Variables')).toBeInTheDocument();
+
+      const backdrops = () => document.querySelectorAll('div.fixed.inset-0');
+      fireEvent.mouseDown(backdrops()[0]);
+      expect(screen.getByText('Run: All Collections')).toBeInTheDocument();
+      expect(screen.getByText('Collection Variables')).toBeInTheDocument();
+
+      fireEvent.mouseDown(backdrops()[backdrops().length - 1]);
+      await waitFor(() => expect(screen.queryByText('Collection Variables')).not.toBeInTheDocument());
+      expect(screen.getByText('Run: All Collections')).toBeInTheDocument();
+    });
+
+    it('collapses to a slim strip and expands again', async () => {
+      const collections = makeCollections();
+      collections[0].variables = [{ key: 'host', value: 'base-host', enabled: true }];
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Hide variables panel' }));
+      expect(screen.queryByText('base-host')).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Show variables panel' }));
+      expect(screen.getByText('base-host')).toBeInTheDocument();
+    });
+
+    it('updates live as scripts run and keeps the final values after the run', async () => {
+      mocks.runPreRequest.mockResolvedValue({
+        envOverrides: {},
+        collectionOverrides: { host: 'scripted' },
+      });
+      const collections = makeCollections();
+      collections[0].variables = [{ key: 'host', value: 'base', enabled: true }];
+      // Folder contents run before root-level requests, so script the nested one.
+      collections[0].requests[1].preRequestScript = 'pre';
+      mocks.sendRequest.mockImplementationOnce((_request, signal: AbortSignal) =>
+        new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new Error('aborted')))),
+      );
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+      expect(screen.getByText('base')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+      await waitFor(() => expect(screen.getByText('scripted')).toBeInTheDocument());
+      expect(document.querySelector('.runner-variable-flash')).not.toBeNull();
+      expect(screen.getByText('1 changed')).toBeInTheDocument();
+      await userEvent.hover(screen.getByText('scripted'));
+      expect(screen.getByText(/set by GET Nested Request/)).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /stop/i }));
+      await waitFor(() => expect(mocks.updateCollectionCurrentValues).toHaveBeenCalledWith('col-1', { host: 'scripted' }));
+      expect(screen.getByText('scripted')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /reset/i }));
+      await waitFor(() => expect(screen.getByText('base')).toBeInTheDocument());
+      await userEvent.hover(screen.getByText('base'));
+      expect(screen.queryByText(/set by/)).not.toBeInTheDocument();
+    });
+
+    it('keeps each request\'s script changes in its Variables tab, in order', async () => {
+      mocks.environment = { id: 'env-1', name: 'Local', variables: [] };
+      const collections = makeCollections();
+
+      // Folder requests run before root-level ones. The nested request's
+      // script creates the variable, the root request's script changes it
+      // again: both changes must survive (no last-writer-wins).
+      collections[0].requests[1].preRequestScript = 'one';
+      collections[0].requests[0].preRequestScript = 'two';
+      mocks.runPreRequest
+        .mockResolvedValueOnce({ envOverrides: { token: 'one' } })
+        .mockResolvedValueOnce({ envOverrides: { token: 'two' } });
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
+
+      await userEvent.click(screen.getByRole('button', { name: /run collection/i }));
+      await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
+
+      // First request to run: the script created the variable.
+      await userEvent.click(screen.getByText('Nested Request'));
+      await userEvent.click(screen.getByRole('button', { name: 'Variables (1)' }));
+
+      // Scope to the event row; the rail separately shows the live value.
+      const createdEvent = screen.getByText('Environment · pre-request script').closest('div');
+      expect(createdEvent).not.toBeNull();
+      expect(within(createdEvent as HTMLElement).getByText('one')).not.toHaveClass('line-through');
+      expect(within(createdEvent as HTMLElement).queryByText('two')).not.toBeInTheDocument();
+
+      // Second request: its script moved the value on from 'one' to 'two'.
+      await userEvent.click(screen.getByText('Nested Request')); // collapse again
+      await userEvent.click(screen.getByText('Root Request'));
+      await userEvent.click(screen.getByRole('button', { name: 'Variables (1)' }));
+      const changedEvent = screen.getByText('Environment · pre-request script').closest('div');
+      expect(changedEvent).not.toBeNull();
+      expect(within(changedEvent as HTMLElement).getByText('one')).toHaveClass('line-through');
+      expect(within(changedEvent as HTMLElement).getByText('two')).toBeInTheDocument();
+    });
+
+    it('shows every collection group so variables can be added, even when none resolve', async () => {
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeCollections()} />);
+
+      expect(screen.getAllByText('No variables yet')).toHaveLength(2);
+      expect(screen.getByRole('button', { name: 'Edit collection variables for First' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Edit collection variables for Second' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit collection variables for Second' }));
+      expect(await screen.findByText('Collection Variables')).toBeInTheDocument();
+    });
+  });
+
   describe('warnings and network errors', () => {
     function makeSingleRequestCollections(): Collection[] {
       return [
@@ -298,7 +446,7 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
       await waitFor(() => expect(mocks.teardown).toHaveBeenCalled());
 
       expect(screen.getByText('0 passed')).toBeInTheDocument();
-      expect(await screen.findByText('GraphQL errors: 2 — Not authorised')).toBeInTheDocument();
+      expect(await screen.findByText('GraphQL errors: 2 - Not authorised')).toBeInTheDocument();
       expect(screen.getByText('1 warnings')).toBeInTheDocument();
     });
 

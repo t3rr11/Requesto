@@ -9,11 +9,11 @@ interface RunnerCollectionRowProps {
   onToggleCheck?: (collectionId: string) => void;
 }
 
-/** Collapsible group header shown above each collection when running multiple collections. */
 export function RunnerCollectionRow({ name, isCollapsed, onToggle, collectionId, isChecked, onToggleCheck }: RunnerCollectionRowProps) {
   return (
     <div
-      className="flex items-center gap-2 pt-3 pb-1 mt-1 border-b border-gray-100 dark:border-gray-800 first:pt-0 cursor-pointer select-none group"
+      // EXPLAIN: 13px = card border + px-3, so the checkbox and chevron line up with the request cards below.
+      className="flex items-center gap-2 px-[13px] pt-3 pb-1 mt-1 border-b border-gray-100 dark:border-gray-800 first:pt-0 cursor-pointer select-none group"
       onClick={() => onToggle(collectionId)}
     >
       {onToggleCheck && (
@@ -26,9 +26,6 @@ export function RunnerCollectionRow({ name, isCollapsed, onToggle, collectionId,
           aria-label={`Include ${name} in this run`}
         />
       )}
-      {isCollapsed
-        ? <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
-        : <ChevronDown className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />}
       <Package className={`w-3.5 h-3.5 shrink-0 ${isChecked === false ? 'text-gray-300 dark:text-gray-600' : 'text-blue-500'}`} />
       <span className={`text-xs font-semibold uppercase tracking-wide group-hover:text-gray-900 dark:group-hover:text-gray-50 ${
         isChecked === false
@@ -36,6 +33,11 @@ export function RunnerCollectionRow({ name, isCollapsed, onToggle, collectionId,
           : 'text-gray-700 dark:text-gray-200'
       }`}>
         {name}
+      </span>
+      <span className="ml-auto w-4 shrink-0 flex justify-center">
+        {isCollapsed
+          ? <ChevronRight className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          : <ChevronDown className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />}
       </span>
     </div>
   );

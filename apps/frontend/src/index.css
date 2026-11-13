@@ -42,7 +42,7 @@ button {
   scrollbar-width: none;
 }
 
-/* Global scrollbar — light mode */
+/* Global scrollbar (light mode) */
 *:not(.scrollbar-hide) {
   scrollbar-width: thin;
   scrollbar-color: #d1d5db #f3f4f6;
@@ -71,7 +71,7 @@ button {
   background: #f3f4f6;
 }
 
-/* Global scrollbar — dark mode */
+/* Global scrollbar (dark mode) */
 .dark *:not(.scrollbar-hide) {
   scrollbar-width: thin;
   scrollbar-color: #4b5563 #1f2937;
@@ -100,7 +100,7 @@ button {
   background: #1f2937;
 }
 
-/* Event decoration: header spider — periodic/hover sway + click-to-crawl.
+/* Event decoration: header spider (periodic/hover sway + click-to-crawl).
    The crawl translate lives on the wrapper (.event-spider) and the sway
    animation on the inner svg (.event-spider-art): a running animation
    taints an element's transform and would suppress the crawl transition. */
@@ -140,6 +140,22 @@ button {
 
   .event-spider {
     transition: none;
+  }
+}
+
+/* Collection runner variables rail: brief highlight on rows a script just changed */
+@keyframes runner-variable-flash {
+  0% { background-color: rgb(59 130 246 / 0.18); }
+  100% { background-color: transparent; }
+}
+
+.runner-variable-flash {
+  animation: runner-variable-flash 1.2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runner-variable-flash {
+    animation: none;
   }
 }
 

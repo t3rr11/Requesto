@@ -6,7 +6,8 @@ import { useRequestStore } from '../store/request/store';
 import { runCollections, buildCollectionItems, buildWorkspaceItems } from 'requesto-engine/runner';
 import type { RunnerEvent, ScriptEnvOverrides, ScriptVarsContext } from 'requesto-engine/runner';
 import { browserScriptRunner } from '../helpers/scriptRunner';
-import { mergeScriptOverrides, type ScriptScopeOverrides } from '../helpers/environment';
+import { effectiveVariables, mergeScriptOverrides, type ScriptScopeOverrides } from '../helpers/environment';
+import { applyScriptOutcome } from '../helpers/runner/variables';
 import { createRunnerIsolation, type RunnerIsolation } from '../helpers/runner/isolation';
 import { networkErrorFromResponse } from '../helpers/runner/networkError';
 import { useSettingsStore } from '../store/settings/store';
@@ -15,7 +16,9 @@ import { RunnerToolbar } from './runner/RunnerToolbar';
 import { RunnerCollectionRow } from './runner/RunnerCollectionRow';
 import { RunnerFolderRow } from './runner/RunnerFolderRow';
 import { RunnerRequestRow } from './runner/RunnerRequestRow';
-import type { CollectionRunnerDialogProps, RequestRunResult, ExpandedTab, RequestStatus } from './runner/types';
+import { RunnerVariablesRail } from './runner/RunnerVariablesRail';
+import { CollectionVariablesDialog } from '../forms/CollectionVariablesDialog';
+import type { CollectionRunnerDialogProps, RequestRunResult, ExpandedTab, RequestStatus, RunnerVariablesState } from './runner/types';
 import type { Environment, EnvironmentVariableType } from '../store/environments/types';
 
 // The engine resolves OAuth server-side for the app (the proxy endpoint
@@ -29,7 +32,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
   const warnOnHttpErrors = useSettingsStore(s => s.warnOnHttpErrors);
 
   // The dialog renders even when closed (and the store's collections can be
-  // empty while loading or after a workspace switch) — never assume
+  // empty while loading or after a workspace switch); never assume
   // collections[0] exists.
   const first = collections[0];
   const multi = collections.length > 1;
@@ -72,8 +75,12 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
   const [collapsedCollections, setCollapsedCollections] = useState<Set<string>>(new Set());
   const [excludedCollections, setExcludedCollections] = useState<Set<string>>(new Set());
   const [isolationError, setIsolationError] = useState<string | null>(null);
+  const [variablesCollapsed, setVariablesCollapsed] = useState(false);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
+  const [runVariables, setRunVariables] = useState<RunnerVariablesState>({ seq: 0, baseline: { env: {}, collections: {} }, overrides: { env: { values: {} }, collections: {} }, changes: { env: {}, collections: {} }, history: {} });
   const abortControllerRef = useRef<AbortController | null>(null);
   const isolationRef = useRef<RunnerIsolation | null>(null);
+  const currentRequestRef = useRef<{ id: string; label: string } | null>(null);
 
   const activeEnv: Environment | null =
     environmentsData.environments.find(e => e.id === environmentsData.activeEnvironmentId) ?? null;
@@ -118,6 +125,27 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     [requests, excludedCollections],
   );
 
+  // EXPLAIN: the resolved values at run start become the baseline, so diffs survive the post-run persistence.
+  const buildVariablesState = useCallback((): RunnerVariablesState => {
+    return {
+      seq: 0,
+      baseline: {
+        env: Object.fromEntries(
+          effectiveVariables(activeEnv, null).variables.map(v => [v.key, v.currentValue ?? v.value ?? '']),
+        ),
+        collections: Object.fromEntries(includedCollections.map(collection => [
+          collection.id,
+          Object.fromEntries(
+            effectiveVariables(activeEnv, collection).variables.map(v => [v.key, v.currentValue ?? v.value ?? '']),
+          ),
+        ])),
+      },
+      overrides: { env: { values: {} }, collections: {} },
+      changes: { env: {}, collections: {} },
+      history: {},
+    };
+  }, [includedCollections, activeEnv]);
+
   const handleReset = useCallback(() => {
     setResults(requests.map(r => ({ request: r, status: 'pending', response: null, testResults: [] })));
     setExpandedRows(new Set());
@@ -125,7 +153,8 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     setCollapsedFolders(new Set());
     setCollapsedCollections(new Set());
     setExcludedCollections(new Set());
-  }, [requests]);
+    setRunVariables(buildVariablesState());
+  }, [requests, buildVariablesState]);
 
   const handleRun = useCallback(async () => {
     if (includedCollections.length === 0) return;
@@ -133,6 +162,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     abortControllerRef.current = abortController;
     setRunning(true);
     setIsolationError(null);
+    setRunVariables(buildVariablesState());
 
     // Excluded collections never emit events, so mark them skipped up front.
     setResults(requests.map(r =>
@@ -155,6 +185,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
 
     const handleEvent = (event: RunnerEvent) => {
       if (event.type === 'request-start') {
+        currentRequestRef.current = { id: event.request.id, label: `${event.request.method} ${event.request.name}` };
         setResults(prev => prev.map(r => (r.request.id === event.request.id ? { ...r, status: 'running' } : r)));
         return;
       }
@@ -191,7 +222,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     // Collection script-set values, attributed to their collection via the
     // vars context the engine passes to the script runners.
     const collectionOverrides = new Map<string, ScriptScopeOverrides>();
-    const recordOutcome = (outcome: ScriptEnvOverrides, vars?: ScriptVarsContext) => {
+    const recordOutcome = (outcome: ScriptEnvOverrides, vars: ScriptVarsContext | undefined, phase: 'pre' | 'test') => {
       Object.assign(overrides, outcome.envOverrides);
       Object.assign(types, outcome.envTypes ?? {});
       if (vars?.collectionId) {
@@ -203,6 +234,9 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
         });
         collectionOverrides.set(vars.collectionId, scope);
       }
+      // GOTCHA: attribution must be captured synchronously; state updaters run after React batches, by which time the ref may name the next request.
+      const touched = currentRequestRef.current;
+      setRunVariables(prev => applyScriptOutcome(prev, outcome, vars, phase, touched, activeEnv, includedCollections));
     };
     try {
       await runCollections({
@@ -225,12 +259,12 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
         scripts: {
           runPreRequest: async (script, env, request, envTypes, vars) => {
             const outcome = await browserScriptRunner.runPreRequest(script, env, request, envTypes, vars);
-            recordOutcome(outcome, vars);
+            recordOutcome(outcome, vars, 'pre');
             return outcome;
           },
           runTest: async (script, response, request, env, envTypes, vars) => {
             const outcome = await browserScriptRunner.runTest(script, response, request, env, envTypes, vars);
-            recordOutcome(outcome, vars);
+            recordOutcome(outcome, vars, 'test');
             return outcome;
           },
         },
@@ -282,7 +316,7 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       abortControllerRef.current = null;
       setRunning(false);
     }
-  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, updateCollectionCurrentValues, resetCollectionCurrentValue, warnOnHttpErrors, folderId]);
+  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, updateCollectionCurrentValues, resetCollectionCurrentValue, warnOnHttpErrors, folderId, buildVariablesState]);
 
   const handleStop = () => {
     abortControllerRef.current?.abort();
@@ -292,6 +326,10 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
     if (running) handleStop();
     onClose();
   };
+
+  const editingCollection = editingCollectionId
+    ? collections.find(c => c.id === editingCollectionId) ?? null
+    : null;
 
   const finished = results.filter(r => r.status !== 'pending' && r.status !== 'running' && r.status !== 'skipped');
   const passedCount = results.filter(r => r.status === 'passed').length;
@@ -313,91 +351,125 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
   const resultsByRequestId = new Map(results.map(r => [r.request.id, r]));
 
   return (
-    <Dialog isOpen={isOpen} onClose={handleClose} title={title} size="xl">
-      <RunnerToolbar
-        running={running}
-        requestCount={includedRequests.length}
-        finishedCount={finished.length}
-        passedCount={passedCount}
-        failedCount={failedCount}
-        errorCount={errorCount}
-        warnedCount={warnedCount}
-        totalTests={totalTests}
-        passedTests={passedTests}
-        onRun={handleRun}
-        onStop={handleStop}
-        onReset={handleReset}
-      />
-
-      {isolationError && (
-        <div className="mt-3 text-sm text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900 rounded px-3 py-2">
-          {isolationError}
+    <Dialog
+      isOpen={isOpen}
+      onClose={handleClose}
+      onCloseRequest={() => {
+        if (!editingCollection) handleClose();
+      }}
+      title={title}
+      size="full"
+      fullBleed
+    >
+      <div className="flex flex-col h-full">
+        <div className="px-6 pt-4 shrink-0">
+          <RunnerToolbar
+            running={running}
+            requestCount={includedRequests.length}
+            finishedCount={finished.length}
+            passedCount={passedCount}
+            failedCount={failedCount}
+            errorCount={errorCount}
+            warnedCount={warnedCount}
+            totalTests={totalTests}
+            passedTests={passedTests}
+            onRun={handleRun}
+            onStop={handleStop}
+            onReset={handleReset}
+          />
         </div>
-      )}
 
-      {requests.length === 0 ? (
-        <div className="py-16 text-center text-gray-400 dark:text-gray-500 text-sm">
-          {multi ? 'No requests in these collections' : 'No requests in this collection'}
-        </div>
-      ) : (
-        <div className="mt-4 space-y-1 overflow-y-auto max-h-[55vh]">
-          {displayItems.map(item => {
-            const collectionId = item.kind === 'collection'
-              ? item.collectionId
-              : item.kind === 'folder'
-                ? item.folder.collectionId
-                : item.request.collectionId;
-            const isExcluded = excludedCollections.has(collectionId);
-            const dimmed = isExcluded ? 'opacity-40 pointer-events-none' : undefined;
+        {isolationError && (
+          <div className="mx-6 mt-3 shrink-0 text-sm text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-900 rounded px-3 py-2">
+            {isolationError}
+          </div>
+        )}
 
-            if (item.kind === 'collection') {
-              return (
-                <RunnerCollectionRow
-                  key={`collection-${item.collectionId}`}
-                  name={item.name}
-                  collectionId={item.collectionId}
-                  isCollapsed={collapsedCollections.has(item.collectionId)}
-                  onToggle={handleToggleCollection}
-                  {...(multi && {
-                    isChecked: !isExcluded,
-                    onToggleCheck: handleToggleCollectionCheck,
-                  })}
-                />
-              );
-            }
-            if (!isVisible(item, collapsedFolders, collapsedCollections, allFolders)) return null;
-
-            if (item.kind === 'folder') {
-              return (
-                <div key={`folder-${item.folder.id}`} className={dimmed}>
-                  <RunnerFolderRow
-                    folder={item.folder}
-                    depth={item.depth}
-                    isCollapsed={collapsedFolders.has(item.folder.id)}
-                    onToggle={handleToggleFolder}
-                  />
-                </div>
-              );
-            }
-
-            const result = resultsByRequestId.get(item.request.id)
-              ?? { request: item.request, status: 'pending' as RequestStatus, response: null, testResults: [] };
-
-            return (
-              <div key={item.request.id} className={dimmed}>
-                <RunnerRequestRow
-                  result={result}
-                  idx={requestIndices.get(item.request.id) ?? 0}
-                  depth={item.depth}
-                  isExpanded={expandedRows.has(item.request.id)}
-                  activeTab={expandedTabs.get(item.request.id) ?? 'tests'}
-                  onToggleExpand={handleToggleExpand}
-                  onSetTab={handleSetTab}
-                />
+        <div className="flex flex-1 min-h-0 px-6 pb-6 pt-4">
+          <div className="flex-1 min-w-0 overflow-y-auto pr-4">
+            {requests.length === 0 ? (
+              <div className="py-16 text-center text-gray-400 dark:text-gray-500 text-sm">
+                {multi ? 'No requests in these collections' : 'No requests in this collection'}
               </div>
-            );
-          })}
+            ) : (
+              <div className="space-y-1">
+                {displayItems.map(item => {
+                  const collectionId = item.kind === 'collection'
+                    ? item.collectionId
+                    : item.kind === 'folder'
+                      ? item.folder.collectionId
+                      : item.request.collectionId;
+                  const isExcluded = excludedCollections.has(collectionId);
+                  const dimmed = isExcluded ? 'opacity-40 pointer-events-none' : undefined;
+
+                  if (item.kind === 'collection') {
+                    return (
+                      <RunnerCollectionRow
+                        key={`collection-${item.collectionId}`}
+                        name={item.name}
+                        collectionId={item.collectionId}
+                        isCollapsed={collapsedCollections.has(item.collectionId)}
+                        onToggle={handleToggleCollection}
+                        {...(multi && {
+                          isChecked: !isExcluded,
+                          onToggleCheck: handleToggleCollectionCheck,
+                        })}
+                      />
+                    );
+                  }
+                  if (!isVisible(item, collapsedFolders, collapsedCollections, allFolders)) return null;
+
+                  if (item.kind === 'folder') {
+                    return (
+                      <div key={`folder-${item.folder.id}`} className={dimmed}>
+                        <RunnerFolderRow
+                          folder={item.folder}
+                          depth={item.depth}
+                          isCollapsed={collapsedFolders.has(item.folder.id)}
+                          onToggle={handleToggleFolder}
+                        />
+                      </div>
+                    );
+                  }
+
+                  const result = resultsByRequestId.get(item.request.id)
+                    ?? { request: item.request, status: 'pending' as RequestStatus, response: null, testResults: [] };
+
+                  return (
+                    <div key={item.request.id} className={dimmed}>
+                      <RunnerRequestRow
+                        result={result}
+                        idx={requestIndices.get(item.request.id) ?? 0}
+                        depth={item.depth}
+                        isExpanded={expandedRows.has(item.request.id)}
+                        activeTab={expandedTabs.get(item.request.id) ?? 'tests'}
+                        variableChanges={runVariables.history[item.request.id] ?? []}
+                        onToggleExpand={handleToggleExpand}
+                        onSetTab={handleSetTab}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <RunnerVariablesRail
+            collections={includedCollections}
+            environment={activeEnv}
+            state={runVariables}
+            isCollapsed={variablesCollapsed}
+            onToggleCollapsed={() => setVariablesCollapsed(prev => !prev)}
+            onEditCollection={setEditingCollectionId}
+          />
         </div>
+      </div>
+      {editingCollection && (
+        <CollectionVariablesDialog
+          isOpen
+          onClose={() => setEditingCollectionId(null)}
+          collection={editingCollection}
+        />
       )}
     </Dialog>
   );

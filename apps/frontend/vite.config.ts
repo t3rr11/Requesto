@@ -11,21 +11,14 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [tailwindcss(), react()],
   base: './',
-  // The engine (a linked workspace package) imports the backend's CommonJS
-  // variable-substitution module. Linked packages are not pre-bundled by
-  // default, and a raw CJS file provides no named exports to the browser,
-  // so it must be pulled into dependency pre-bundling explicitly.
-  optimizeDeps: {
-    include: ['requesto-backend/utils/variable-substitution'],
-  },
+  // The engine imports the backend's variable-substitution module, whose
+  // exports map points at compiled CommonJS a browser import cannot use, so
+  // alias straight to the TypeScript source (type-only model imports bundle
+  // cleanly for the browser).
+  // GOTCHA: pre-bundling caches a snapshot Vite keeps serving after this
+  // module changes its API, breaking scripts at the next dev-server start.
   resolve: {
     alias: [
-      // Resolve the backend's variable-substitution module straight from
-      // source. The exports map points at the compiled CommonJS dist, and
-      // pre-bundling from dist captured a stale build (missing `inferType`)
-      // that the Vite cache then kept serving, breaking scripts at runtime.
-      // The source is pure TypeScript with type-only imports, so it bundles
-      // cleanly for the browser.
       {
         find: 'requesto-backend/utils/variable-substitution',
         replacement: path.resolve(here, '../backend/src/utils/variable-substitution.ts'),

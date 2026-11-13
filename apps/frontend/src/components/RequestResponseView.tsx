@@ -401,11 +401,12 @@ export function RequestResponseView() {
       </div>
 
       {/* Resize Handle */}
-      <div
+      <button
         className={`${
-          isHorizontal ? 'w-1 cursor-ew-resize hover:bg-orange-500' : 'h-1 cursor-ns-resize hover:bg-orange-500'
+          isHorizontal ? 'w-1 cursor-ew-resize! hover:bg-orange-500' : 'h-1 cursor-ns-resize! hover:bg-orange-500'
         } bg-gray-200 dark:bg-gray-700 transition-colors ${isResizing ? 'bg-orange-500' : ''}`}
         onMouseDown={handleResizeStart}
+        tabIndex={-1}
       />
 
       {/* Response Panel */}

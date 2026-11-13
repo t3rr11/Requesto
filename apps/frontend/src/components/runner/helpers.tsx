@@ -20,6 +20,17 @@ export function httpStatusColor(status: number): string {
   return 'text-red-600 dark:text-red-400';
 }
 
+export const MASKED = '••••••••';
+
+export function VariableDiffFrom({ from }: { from: string }) {
+  return (
+    <>
+      <span className="line-through text-gray-400 dark:text-gray-600">{from}</span>
+      <span className="mx-1 text-gray-400 dark:text-gray-600">{'->'}</span>
+    </>
+  );
+}
+
 /**
  * Whether a display item is visible given collapsed folders and (in
  * multi-collection runs) collapsed collections. A collapsed collection hides

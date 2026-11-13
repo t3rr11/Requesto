@@ -48,20 +48,21 @@ export function Dialog({ isOpen, onClose, onCloseRequest, title, children, foote
 
   useEffect(() => {
     if (isOpen) {
+      // EXPLAIN: a stacked dialog closing must restore the previous overflow, not unlock the page under an outer dialog.
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
       setVisible(true);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setAnimate(true));
       });
-      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
     } else {
       setAnimate(false);
       const timer = setTimeout(() => setVisible(false), 150);
-      document.body.style.overflow = 'unset';
       return () => clearTimeout(timer);
     }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
   }, [isOpen]);
 
   useEffect(() => {

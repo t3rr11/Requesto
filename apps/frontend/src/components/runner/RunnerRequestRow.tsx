@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 import { formatResponseBody, formatBytes, getGraphQLResponseInfo } from '../../helpers/response';
-import { statusIcon, httpStatusColor } from './helpers';
-import type { RequestRunResult, ExpandedTab } from './types';
+import { statusIcon, httpStatusColor, MASKED, VariableDiffFrom } from './helpers';
+import type { RequestRunResult, ExpandedTab, RunnerVariableChangeEvent } from './types';
 
 interface RunnerRequestRowProps {
   result: RequestRunResult;
@@ -9,6 +9,7 @@ interface RunnerRequestRowProps {
   depth: number;
   isExpanded: boolean;
   activeTab: ExpandedTab;
+  variableChanges: RunnerVariableChangeEvent[];
   onToggleExpand: (id: string) => void;
   onSetTab: (id: string, tab: ExpandedTab) => void;
 }
@@ -19,13 +20,21 @@ export function RunnerRequestRow({
   depth,
   isExpanded,
   activeTab,
+  variableChanges,
   onToggleExpand,
   onSetTab,
-}: RunnerRequestRowProps) {
+}: Readonly<RunnerRequestRowProps>) {
   const { request, status, response, testResults, error, warning, warningKind, duration } = result;
   const hasDetails = response !== null || !!error;
+  const tabs: Array<{ id: ExpandedTab; label: string }> = [
+    { id: 'tests', label: `Tests${testResults.length > 0 ? ` (${testResults.length})` : ''}` },
+    { id: 'response', label: 'Response' },
+    ...(variableChanges.length > 0
+      ? [{ id: 'variables' as const, label: `Variables (${variableChanges.length})` }]
+      : []),
+  ];
   const warnBanner = warningKind === 'graphql-errors' && response
-    ? `GraphQL errors: ${getGraphQLResponseInfo(response)?.errors.length ?? 1} — ${warning ?? ''}`
+    ? `GraphQL errors: ${getGraphQLResponseInfo(response)?.errors.length ?? 1} - ${warning ?? ''}`
     : warning;
   const indent = depth * 16;
 
@@ -39,15 +48,6 @@ export function RunnerRequestRow({
         className={`flex items-center gap-3 px-3 py-2 ${hasDetails ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''}`}
         onClick={() => hasDetails && onToggleExpand(request.id)}
       >
-        {/* Expand toggle */}
-        <span className="w-4 shrink-0">
-          {hasDetails
-            ? (isExpanded
-                ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />)
-            : null}
-        </span>
-
         {/* Status icon */}
         {statusIcon(status)}
 
@@ -102,6 +102,15 @@ export function RunnerRequestRow({
             {testResults.filter(t => t.passed).length}/{testResults.length}
           </span>
         )}
+
+        {/* Expand toggle */}
+        {hasDetails && (
+          <span className="w-4 shrink-0 flex justify-center">
+            {isExpanded
+              ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+              : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+          </span>
+        )}
       </div>
 
       {/* Expanded details */}
@@ -109,26 +118,19 @@ export function RunnerRequestRow({
         <div className="border-t border-gray-100 dark:border-gray-800">
           {/* Tab bar */}
           <div className="flex border-b border-gray-100 dark:border-gray-800 px-3">
-            <button
-              className={`text-xs py-2 px-2 font-medium border-b-2 -mb-px ${
-                activeTab === 'tests'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-              onClick={() => onSetTab(request.id, 'tests')}
-            >
-              Tests{testResults.length > 0 ? ` (${testResults.length})` : ''}
-            </button>
-            <button
-              className={`text-xs py-2 px-2 font-medium border-b-2 -mb-px ${
-                activeTab === 'response'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-              onClick={() => onSetTab(request.id, 'response')}
-            >
-              Response
-            </button>
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`text-xs py-2 px-2 font-medium border-b-2 -mb-px ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+                onClick={() => onSetTab(request.id, tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           <div className="px-4 py-3 space-y-2">
@@ -159,7 +161,7 @@ export function RunnerRequestRow({
                         {t.name}
                       </span>
                       {!t.passed && t.error && (
-                        <span className="text-gray-500 dark:text-gray-500 font-mono">— {t.error}</span>
+                        <span className="text-gray-500 dark:text-gray-500 font-mono">- {t.error}</span>
                       )}
                     </div>
                   ))}
@@ -167,6 +169,35 @@ export function RunnerRequestRow({
               ) : (
                 <p className="text-xs text-gray-400 dark:text-gray-500 italic">No tests defined</p>
               )
+            )}
+
+            {/* Variables panel */}
+            {activeTab === 'variables' && (
+              <div className="space-y-1">
+                {variableChanges.map(event => {
+                  const secret = event.isSecret ? MASKED : undefined;
+                  return (
+                    <div key={`${event.seq}-${event.key}`} className="flex items-center gap-2 text-xs">
+                      <span className="font-mono font-medium text-gray-700 dark:text-gray-200 shrink-0">
+                        {event.key}
+                      </span>
+                      <span className="font-mono truncate min-w-0">
+                        {secret !== undefined ? (
+                          <span className="text-gray-500 dark:text-gray-400">{secret}</span>
+                        ) : (
+                          <>
+                            {event.from !== undefined && <VariableDiffFrom from={event.from} />}
+                            <span className="text-gray-700 dark:text-gray-300">{event.to}</span>
+                          </>
+                        )}
+                      </span>
+                      <span className="ml-auto shrink-0 text-gray-400 dark:text-gray-500">
+                        {event.scopeLabel} · {event.phase === 'pre' ? 'pre-request' : 'test'} script
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
 
             {/* Response panel */}
@@ -188,7 +219,7 @@ export function RunnerRequestRow({
                         </pre>
                         {truncated && (
                           <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                            Preview truncated — showing first {formatBytes(PREVIEW_LIMIT)} of {formatBytes(response.body.length)}.
+                            Preview truncated, showing first {formatBytes(PREVIEW_LIMIT)} of {formatBytes(response.body.length)}.
                           </p>
                         )}
                       </>
