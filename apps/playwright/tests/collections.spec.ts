@@ -43,7 +43,6 @@ test.describe('Collections CRUD', () => {
 
     // Fill in the form
     await dialog.locator('#collection-name').fill('My Test Collection');
-    await dialog.locator('#collection-description').fill('A collection created by Playwright tests');
 
     // Submit
     await dialog.getByRole('button', { name: 'Create Collection' }).click();

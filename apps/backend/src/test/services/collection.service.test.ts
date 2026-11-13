@@ -606,7 +606,7 @@ describe('CollectionService current values (local sidecar)', () => {
       getById: vi.fn().mockResolvedValue(col),
     });
     const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { base: 'https://current.example.com' });
+    await service.setCurrentValues('col-1', { base: 'https://current.example.com' });
 
     const expectedCollection = [makeVar('base', 'https://initial.example.com', { currentValue: 'https://current.example.com' })];
 
@@ -620,11 +620,38 @@ describe('CollectionService current values (local sidecar)', () => {
     const col = makeCollection();
     const repo = mockRepo({ getById: vi.fn().mockResolvedValue(col) });
     const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { generated: '123' }, { generated: 'number' });
+    await service.setCurrentValues('col-1', { generated: '123' }, { generated: 'number' });
 
     expect((await service.getById('col-1')).variables).toEqual([
       { key: 'generated', value: '', currentValue: '123', enabled: true, type: 'number' },
     ]);
+  });
+
+  it('refuses to persist current values for a collection that does not exist', async () => {
+    const repo = mockRepo();
+    const service = new CollectionService(repo, localRepo);
+
+    await expect(service.setCurrentValues('missing', { base: 'current' })).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    expect(localRepo.getForScope('missing')).toEqual({});
+  });
+
+  it('getForExport returns committed data without sidecar current values', async () => {
+    const col = makeCollection({
+      variables: [makeVar('base', 'https://initial.example.com')],
+    });
+    const repo = mockRepo({ getById: vi.fn().mockResolvedValue(col) });
+    const service = new CollectionService(repo, localRepo);
+    await service.setCurrentValues('col-1', { base: 'https://current.example.com' });
+
+    await expect(service.getForExport('col-1')).resolves.toBe(col);
+    expect(col.variables?.[0].currentValue).toBeUndefined();
+  });
+
+  it('getForExport throws notFound when the collection does not exist', async () => {
+    const service = new CollectionService(mockRepo(), localRepo);
+    await expect(service.getForExport('missing')).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('strips current values before saving so the committed file stays clean', async () => {
@@ -657,8 +684,8 @@ describe('CollectionService current values (local sidecar)', () => {
   it('removes sidecar data when a collection is deleted', async () => {
     const repo = mockRepo({ delete: vi.fn().mockResolvedValue(true) });
     const service = new CollectionService(repo, localRepo);
-    service.setCurrentValues('col-1', { base: 'current' });
-    service.setCurrentValues('col-2', { other: 'current' });
+    localRepo.setForScope('col-1', { base: 'current' });
+    localRepo.setForScope('col-2', { other: 'current' });
 
     await service.delete('col-1');
     expect(localRepo.getForScope('col-1')).toEqual({});

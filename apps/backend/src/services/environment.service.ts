@@ -37,6 +37,14 @@ export class EnvironmentService {
     return env ? this.mergeCurrentValues(env) : undefined;
   }
 
+  getForExport(id: string): Environment {
+    const env = this.repo.findById(id);
+    if (!env) {
+      throw AppError.notFound('Environment not found');
+    }
+    return env;
+  }
+
   /**
    * Save initial values. `currentValue` is stripped before writing so the
    * committed file stays clean.

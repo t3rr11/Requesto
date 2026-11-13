@@ -58,7 +58,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
     '/collections/:id/current-values',
     async (request, _reply) => {
       const { overrides, types } = setCurrentValuesSchema.parse(request.body);
-      collectionService.setCurrentValues(request.params.id, overrides, types);
+      await collectionService.setCurrentValues(request.params.id, overrides, types);
       return { success: true };
     },
   );
@@ -195,8 +195,7 @@ const collectionController: FastifyPluginAsync<Options> = async (server, opts) =
   );
 
   server.get<{ Params: { id: string } }>('/collections/:id/export', async (request, _reply) => {
-    const collection = await collectionService.getById(request.params.id);
-    return collection;
+    return collectionService.getForExport(request.params.id);
   });
 
   server.post<{ Params: { id: string } }>('/collections/:id/sync-openapi/preview', async (request, _reply) => {

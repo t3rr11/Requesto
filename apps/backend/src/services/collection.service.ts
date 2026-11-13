@@ -107,6 +107,14 @@ export class CollectionService {
     return this.mergeCurrentValues(collection);
   }
 
+  async getForExport(id: string): Promise<Collection> {
+    const collection = await this.repo.getById(id);
+    if (!collection) {
+      throw AppError.notFound('Collection not found');
+    }
+    return collection;
+  }
+
   async create(name: string, description?: string): Promise<Collection> {
     const newCollection: Collection = {
       id: `col-${Date.now()}-${Math.random().toString(36).substring(7)}`,
@@ -512,11 +520,15 @@ export class CollectionService {
    * optionally records the type each value came in as (from the script
    * sandbox).
    */
-  setCurrentValues(
+  async setCurrentValues(
     collectionId: string,
     overrides: Record<string, string>,
     types?: Record<string, EnvironmentVariableType>,
-  ): void {
+  ): Promise<void> {
+    const collection = await this.repo.getById(collectionId);
+    if (!collection) {
+      throw AppError.notFound('Collection not found');
+    }
     this.localRepo?.setForScope(collectionId, overrides, types);
   }
 

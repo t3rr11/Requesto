@@ -594,3 +594,77 @@ describe('effectiveVariablesWithOverrides and scriptVariableRecords', () => {
     expect(records.collectionVariableTypes).toBeUndefined();
   });
 });
+
+// GOTCHA: Fixtures mirrored in apps/backend/src/test/utils/variable-substitution.test.ts; keep in sync.
+describe('recursive variable references', () => {
+  it('resolves a variable whose value references another variable', () => {
+    const scope = {
+      variables: [
+        { key: 'HOST', value: 'api.example.com', enabled: true },
+        { key: 'BASE_URL', value: 'https://{{HOST}}/v1', enabled: true },
+      ],
+    };
+    expect(substituteVariables('{{BASE_URL}}/users', scope)).toBe('https://api.example.com/v1/users');
+  });
+
+  it('resolves references across scopes through the merged list', () => {
+    const collection: Collection = {
+      id: 'col-1',
+      name: 'Collection',
+      folders: [],
+      requests: [],
+      variables: [
+        { key: 'API_HOST', value: 'collection.example', enabled: true },
+        { key: 'BASE_URL', value: 'https://{{API_HOST}}', enabled: true },
+      ],
+    };
+
+    // The environment shadows API_HOST, so the reference resolves to the env value.
+    const environment: Environment = {
+      id: 'env-1',
+      name: 'Env',
+      variables: [{ key: 'API_HOST', value: 'env.example', enabled: true }],
+    };
+    const scope = effectiveVariables(environment, collection);
+    expect(substituteVariables('{{BASE_URL}}', scope)).toBe('https://env.example');
+  });
+
+  it('leaves cycles unresolved instead of looping forever', () => {
+    const scope = {
+      variables: [
+        { key: 'A', value: '<{{B}}>', enabled: true },
+        { key: 'B', value: '<{{A}}>', enabled: true },
+      ],
+    };
+    const result = substituteVariables('{{A}}', scope);
+
+    // The cycle point keeps its raw {{B}} reference; the outer pass nests it
+    // but never re-expands {{A}} into itself.
+    expect(result).toContain('{{B}}');
+    expect(result).not.toContain('{{A}}');
+  });
+
+  it('resolves self-references to the raw value', () => {
+    const scope = {
+      variables: [{ key: 'LOOP', value: 'x{{LOOP}}y', enabled: true }],
+    };
+    expect(substituteVariables('{{LOOP}}', scope)).toBe('xx{{LOOP}}yy');
+  });
+
+  it('leaves references to unknown variables raw', () => {
+    const scope = {
+      variables: [{ key: 'BASE_URL', value: 'https://{{MISSING}}', enabled: true }],
+    };
+    expect(substituteVariables('{{BASE_URL}}', scope)).toBe('https://{{MISSING}}');
+  });
+
+  it('resolves recursively inside JSON bodies with type awareness', () => {
+    const scope = {
+      variables: [
+        { key: 'COUNT', value: '3', type: 'number' as const, enabled: true },
+        { key: 'BODY_N', value: '{{COUNT}}', type: 'number' as const, enabled: true },
+      ],
+    };
+    expect(substituteJsonVariables('{"n": "{{BODY_N}}"}', scope)).toBe('{"n": 3}');
+  });
+});

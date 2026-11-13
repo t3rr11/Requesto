@@ -1,9 +1,11 @@
 ﻿import fs from 'node:fs';
 import path from 'node:path';
 import { CollectionRepository } from 'requesto-backend/repositories/collection.repository';
+import { CollectionLocalRepository } from 'requesto-backend/repositories/collection-local.repository';
 import { EnvironmentRepository } from 'requesto-backend/repositories/environment.repository';
 import { EnvironmentLocalRepository } from 'requesto-backend/repositories/environment-local.repository';
 import { HistoryRepository } from 'requesto-backend/repositories/history.repository';
+import { withCurrentValues } from 'requesto-backend/utils/local-variables';
 import { EnvironmentService } from 'requesto-backend/services/environment.service';
 import { HistoryService } from 'requesto-backend/services/history.service';
 import { OAuthService } from 'requesto-backend/services/oauth.service';
@@ -31,6 +33,7 @@ export class CliWorkspace {
   readonly proxyService: ProxyService;
 
   private readonly collectionRepo: CollectionRepository;
+  private readonly collectionLocalRepo: CollectionLocalRepository;
   private readonly envService: EnvironmentService;
 
   constructor(dataDir: string, opts: WorkspaceOptions) {
@@ -41,6 +44,7 @@ export class CliWorkspace {
     const getLocalDir = () => this.localDir;
 
     this.collectionRepo = new CollectionRepository(getDataDir);
+    this.collectionLocalRepo = new CollectionLocalRepository(getLocalDir);
     const envRepo = new EnvironmentRepository(getDataDir, getLocalDir);
     const envLocalRepo = new EnvironmentLocalRepository(getLocalDir);
     this.oauthRepo = new CliOAuthRepository(getDataDir, getLocalDir, opts);
@@ -51,9 +55,14 @@ export class CliWorkspace {
     this.proxyService = new ProxyService(this.envService, new HistoryService(historyRepo), this.oauthService);
   }
 
-  /** All collections in workspace order. */
+  /** All collections in workspace order, with sidecar current values merged like the client. */
   async getCollections(): Promise<Collection[]> {
-    return this.collectionRepo.getAll();
+    const collections = await this.collectionRepo.getAll();
+    return collections.map(c => {
+      const overrides = this.collectionLocalRepo.getForScope(c.id);
+      if (Object.keys(overrides).length === 0) return c;
+      return { ...c, variables: withCurrentValues(c.variables, overrides) };
+    });
   }
 
   /** All environments (with local current values merged, like the client). */

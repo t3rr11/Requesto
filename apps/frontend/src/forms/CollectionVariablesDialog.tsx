@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldPath, type PathValue } from 'react-hook-form';
 import type { Collection } from '../store/collections/types';
 import type { EnvironmentVariable, EnvironmentVariableType } from '../store/environments/types';
 import { useCollectionsStore } from '../store/collections/store';
@@ -22,6 +22,8 @@ export function CollectionVariablesDialog({ isOpen, onClose, collection }: Reado
   const { showAlert } = useAlertStore();
   const [hasChanges, setHasChanges] = useState(false);
   const lastSavedRef = useRef<string>('');
+  const dirtyRef = useRef(false);
+  const loadedCollectionIdRef = useRef<string | null>(null);
 
   const form = useForm<CollectionVariablesFormData>({
     defaultValues: { variables: [] },
@@ -32,16 +34,21 @@ export function CollectionVariablesDialog({ isOpen, onClose, collection }: Reado
   // Sync form with the collection's variables and snapshot the saved state.
   // Clone the rows so the form never mutates the store's arrays.
   useEffect(() => {
+    if (dirtyRef.current && loadedCollectionIdRef.current === collection.id) return;
+    loadedCollectionIdRef.current = collection.id;
     reset({ variables: (collection.variables ?? []).map(v => ({ ...v })) });
     lastSavedRef.current = JSON.stringify(collection.variables ?? []);
     setHasChanges(false);
+    dirtyRef.current = false;
   }, [collection, reset]);
 
   // Watch for real changes by comparing to saved snapshot
   useEffect(() => {
     const subscription = watch(formValues => {
       const current = JSON.stringify(formValues.variables ?? []);
-      setHasChanges(current !== lastSavedRef.current);
+      const dirty = current !== lastSavedRef.current;
+      setHasChanges(dirty);
+      dirtyRef.current = dirty;
     });
     return () => subscription.unsubscribe();
   }, [watch]);
@@ -49,6 +56,18 @@ export function CollectionVariablesDialog({ isOpen, onClose, collection }: Reado
   const handleSave = useCallback(async () => {
     const formData = getValues();
     const variables = formData.variables;
+
+    // Keys whose sidecar override must not survive this save: the variable
+    // row was deleted, or its current value was blanked. Without this, the
+    // override resurrects the variable (as an empty read-back entry) on the
+    // next load, even after an app restart.
+    const staleKeys = (collection.variables ?? [])
+      .filter(v => v.key && v.currentValue !== undefined && v.currentValue !== '')
+      .map(v => v.key)
+      .filter(key => {
+        const row = variables.find(v => v.key === key);
+        return !row || row.currentValue === undefined || row.currentValue === '';
+      });
 
     // Persist current-value overrides to the local sidecar.
     // Build a map of key -> currentValue for every variable that has one set,
@@ -64,22 +83,36 @@ export function CollectionVariablesDialog({ isOpen, onClose, collection }: Reado
     });
 
     try {
+      // Reset stale overrides before the reload `updateCollection` triggers,
+      // so the sidecar merge cannot resurrect them in memory.
+      await Promise.all(staleKeys.map(key => resetCollectionCurrentValue(collection.id, key)));
       await updateCollection(collection.id, { variables });
       await updateCollectionCurrentValues(collection.id, overrides, types);
 
       lastSavedRef.current = JSON.stringify(variables);
       setHasChanges(false);
+      dirtyRef.current = false;
+      loadedCollectionIdRef.current = null; // let the next store update re-sync the form
       showAlert('Variables saved', 'success');
     } catch {
       showAlert('Failed to save collection variables', 'error');
     }
-  }, [collection.id, getValues, updateCollection, updateCollectionCurrentValues, showAlert]);
+  }, [collection.id, collection.variables, getValues, updateCollection, updateCollectionCurrentValues, resetCollectionCurrentValue, showAlert]);
 
+  // Clear the row's current value in the form too, so the editor reflects the
+  // reset even while the form has other unsaved edits.
   const handleResetCurrentValue = useCallback(
     (key: string) => {
       void resetCollectionCurrentValue(collection.id, key);
+      const idx = getValues().variables.findIndex(v => v.key === key);
+      if (idx >= 0) {
+        setValue(
+          `variables.${idx}.currentValue` as FieldPath<CollectionVariablesFormData>,
+          '' as PathValue<CollectionVariablesFormData, FieldPath<CollectionVariablesFormData>>,
+        );
+      }
     },
-    [collection.id, resetCollectionCurrentValue]
+    [collection.id, resetCollectionCurrentValue, getValues, setValue]
   );
 
   // Keyboard shortcut: Ctrl+S to save
@@ -101,6 +134,8 @@ export function CollectionVariablesDialog({ isOpen, onClose, collection }: Reado
   useEffect(() => {
     if (!isOpen) {
       setHasChanges(false);
+      dirtyRef.current = false;
+      loadedCollectionIdRef.current = null;
       lastSavedRef.current = '';
     }
   }, [isOpen]);

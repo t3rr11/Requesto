@@ -150,18 +150,22 @@ export function scriptVariableRecords(
 }
 
 /**
- * Replace `{{variableName}}` placeholders with values from the active variable scope.
+ * Replace all `{{variableName}}` placeholders in a string with values
+ * from the active variable scope.
+ *
+ * Variable values may themselves reference other variables (e.g. a
+ * `baseUrl` variable set to `{{requestoServerUrl}}`); references are
+ * resolved recursively and cycles are left unresolved rather than
+ * looping forever.
  */
 export function substituteVariables(text: string, scope: VariableScope | null): string {
   if (!scope || !text) return text;
 
+  const values = getResolvedValues(scope);
   let result = text;
-  for (const variable of scope.variables) {
-    if (variable.enabled && variable.key) {
-      const pattern = new RegExp(`{{\\s*${escapeRegExp(variable.key)}\\s*}}`, 'g');
-      // currentValue (set by pre-request scripts) takes precedence over value (initial)
-      result = result.replace(pattern, variable.currentValue ?? variable.value ?? '');
-    }
+  for (const [key, entry] of values) {
+    const pattern = new RegExp(`{{\\s*${escapeRegExp(key)}\\s*}}`, 'g');
+    result = result.replace(pattern, entry.value);
   }
   return result;
 }
@@ -207,18 +211,63 @@ function typedJsonLiteral(
 export function substituteJsonVariables(text: string, scope: VariableScope | null): string {
   if (!scope || !text) return text;
 
+  const values = getResolvedValues(scope);
   let result = text;
-  for (const variable of scope.variables) {
-    if (!variable.enabled || !variable.key) continue;
-    const keyPattern = escapeRegExp(variable.key);
-    const value = variable.currentValue ?? variable.value ?? '';
+  for (const [key, entry] of values) {
+    const keyPattern = escapeRegExp(key);
     const quoted = new RegExp(`"{{\\s*${keyPattern}\\s*}}"`, 'g');
-    const literal = typedJsonLiteral(value, variable.type);
-    result = result.replace(quoted, literal ?? JSON.stringify(value));
+    const literal = typedJsonLiteral(entry.value, entry.type);
+    result = result.replace(quoted, literal ?? JSON.stringify(entry.value));
     const plain = new RegExp(`{{\\s*${keyPattern}\\s*}}`, 'g');
-    result = result.replace(plain, value);
+    result = result.replace(plain, entry.value);
   }
   return result;
+}
+
+/**
+ * Variables as a key → { value, type } map with fully-resolved values,
+ * mirroring the backend host. Only enabled variables are included;
+ * `currentValue` (set by pre-request scripts) takes precedence over
+ * `value` (initial).
+ */
+function getResolvedValues(
+  scope: VariableScope,
+): Map<string, { value: string; type: EnvironmentVariableType | undefined }> {
+  const raw = new Map<string, { value: string; type: EnvironmentVariableType | undefined }>();
+  for (const variable of scope.variables) {
+    if (variable.enabled && variable.key) {
+      raw.set(variable.key, {
+        value: variable.currentValue ?? variable.value ?? '',
+        type: variable.type,
+      });
+    }
+  }
+
+  const resolved = new Map<string, { value: string; type: EnvironmentVariableType | undefined }>();
+  const visiting = new Set<string>();
+
+  const resolve = (key: string): { value: string; type: EnvironmentVariableType | undefined } => {
+    const memo = resolved.get(key);
+    if (memo !== undefined) return memo;
+    // Cycle: return the raw value so resolution terminates.
+    if (visiting.has(key)) {
+      const entry = raw.get(key);
+      return { value: entry?.value ?? '', type: entry?.type };
+    }
+    visiting.add(key);
+    const entry = raw.get(key) ?? { value: '', type: undefined as EnvironmentVariableType | undefined };
+    const value = entry.value.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (match, name: string) => {
+      const referenced = name.trim();
+      return raw.has(referenced) ? resolve(referenced).value : match;
+    });
+    visiting.delete(key);
+    const result = { value, type: entry.type };
+    resolved.set(key, result);
+    return result;
+  };
+
+  for (const key of raw.keys()) resolve(key);
+  return resolved;
 }
 
 /**
