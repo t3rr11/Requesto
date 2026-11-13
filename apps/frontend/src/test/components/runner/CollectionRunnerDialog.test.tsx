@@ -271,7 +271,7 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
       collections[0].variables = [{ key: 'host', value: 'base-host', enabled: true }];
       render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
 
-      await userEvent.click(screen.getByRole('button', { name: /edit collection variables for First/i }));
+      await userEvent.click(screen.getByRole('button', { name: /edit variables for First/i }));
       expect(await screen.findByText('Collection Variables')).toBeInTheDocument();
       expect(screen.getByText('base-host')).toBeInTheDocument(); // rail still shows the values
     });
@@ -280,7 +280,7 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
       const collections = makeCollections();
       collections[0].variables = [{ key: 'host', value: 'base-host', enabled: true }];
       render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={collections} />);
-      await userEvent.click(screen.getByRole('button', { name: /edit collection variables for First/i }));
+      await userEvent.click(screen.getByRole('button', { name: /edit variables for First/i }));
       expect(await screen.findByText('Collection Variables')).toBeInTheDocument();
 
       const backdrops = () => document.querySelectorAll('div.fixed.inset-0');
@@ -377,10 +377,35 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
       render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeCollections()} />);
 
       expect(screen.getAllByText('No variables yet')).toHaveLength(2);
-      expect(screen.getByRole('button', { name: 'Edit collection variables for First' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Edit collection variables for Second' })).toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: 'Edit collection variables for Second' }));
+      expect(screen.getByRole('button', { name: 'Edit variables for First' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Edit variables for Second' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit variables for Second' }));
       expect(await screen.findByText('Collection Variables')).toBeInTheDocument();
+    });
+
+    it('opens the environment variables dialog from the environment group header', async () => {
+      mocks.environment = { id: 'env-1', name: 'Local', variables: [{ key: 'token', value: 'pre', enabled: true }] };
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeCollections()} />);
+
+      await userEvent.click(screen.getByRole('button', { name: 'Edit variables for Environment' }));
+      expect(await screen.findByText('Environment Variables')).toBeInTheDocument();
+      expect(screen.getByText('Local')).toBeInTheDocument(); // header names the environment
+    });
+
+    it('keeps the runner open when an outside click dismisses the environment dialog', async () => {
+      mocks.environment = { id: 'env-1', name: 'Local', variables: [{ key: 'token', value: 'pre', enabled: true }] };
+      render(<CollectionRunnerDialog isOpen onClose={() => {}} collections={makeCollections()} />);
+      await userEvent.click(screen.getByRole('button', { name: 'Edit variables for Environment' }));
+      expect(await screen.findByText('Environment Variables')).toBeInTheDocument();
+
+      const backdrops = () => document.querySelectorAll('div.fixed.inset-0');
+      fireEvent.mouseDown(backdrops()[0]);
+      expect(screen.getByText('Run: All Collections')).toBeInTheDocument();
+      expect(screen.getByText('Environment Variables')).toBeInTheDocument();
+
+      fireEvent.mouseDown(backdrops()[backdrops().length - 1]);
+      await waitFor(() => expect(screen.queryByText('Environment Variables')).not.toBeInTheDocument());
+      expect(screen.getByText('Run: All Collections')).toBeInTheDocument();
     });
   });
 
