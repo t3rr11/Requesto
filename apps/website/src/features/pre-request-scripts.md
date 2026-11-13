@@ -25,10 +25,29 @@ Read and write variables in the active environment.
 |--------|-------------|
 | `environment.get(key)` | Returns the current value of `key` - as a Number or Boolean when the variable has that type (falling back to the string when the value cannot represent it) - or an empty string if the variable does not exist |
 | `environment.set(key, value)` | Sets the current value of `key` in the active environment |
+| `environment.has(key)` | Returns whether `key` exists in the active environment |
+| `environment.clear(key)` | Removes the current value of `key`; without a key, clears every visible variable in the active environment |
 
 `environment.set()` writes to the variable's **current value**, which is a local override stored separately from the committed environment files under `.requesto/environments/`. This means scripts never cause unintended git changes. See [Environments: Initial Value and Current Value](/features/environments#initial-value-and-current-value) for details.
 
 The type of the value is inherited too: `environment.set('count', 42)` marks `count` as a Number and `environment.set('flag', true)` as a Boolean, so they are sent unquoted in JSON bodies and GraphQL variables. A string stays a String even when it looks numeric - `environment.set('appId', json.data.application.id)` where the API returns `"1001"` keeps `appId` a String, so GraphQL `ID` variables are not accidentally sent as numbers. See [Variable Types and JSON Bodies](/features/environments#variable-types-and-json-bodies).
+
+`environment.clear()` removes the current value only, so the committed initial value applies again on the next send.
+
+### `collection`
+
+Read and write the variables of the request's collection. The methods mirror `environment` exactly.
+
+| Method | Description |
+|--------|-------------|
+| `collection.get(key)` | Returns the current value of `key` - typed like `environment.get` - or an empty string if the variable does not exist |
+| `collection.set(key, value)` | Sets the current value of `key` in the collection's variables |
+| `collection.has(key)` | Returns whether `key` exists in the collection's variables |
+| `collection.clear(key)` | Removes the current value of `key`; without a key, clears every visible collection variable |
+
+`collection.set()` also writes to the variable's **current value**, stored in the gitignored collection sidecar so scripts never cause unintended git changes. An environment variable with the same key still wins: a script-set collection value only applies when the active environment does not define that key.
+
+In the collection runner, each collection only sees its own variables.
 
 ### `request`
 

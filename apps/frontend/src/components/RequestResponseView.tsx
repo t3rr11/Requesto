@@ -34,7 +34,7 @@ import type { GraphQLSchema } from 'graphql';
 export function RequestResponseView() {
   const { getActiveTab, setTabResponse, setTabLoading, setTabError, markTabAsSaved, touchTab, setTabTestResults } = useTabsStore();
   const { collections, updateRequest, updateCollectionCurrentValues, resetCollectionCurrentValue } = useCollectionsStore();
-  const { environmentsData, updateCurrentValues } = useEnvironmentStore();
+  const { environmentsData, updateCurrentValues, resetCurrentValues } = useEnvironmentStore();
   const { sendRequest, sendStreamingRequest, addConsoleLog } = useRequestStore();
   const { panelLayout, requestPanelWidth, requestPanelHeight, setRequestPanelWidth, setRequestPanelHeight } = useUIStore();
   const { showAlert } = useAlertStore();
@@ -127,12 +127,14 @@ export function RequestResponseView() {
           collectionId: collection?.id,
           ...scriptVariableRecords(collection, { collection: collectionScript }),
         });
-        if (activeEnv && Object.keys(outcome.envOverrides).length > 0) {
-          const updatedVariables = activeEnv.variables.map(v =>
-            Object.prototype.hasOwnProperty.call(outcome.envOverrides, v.key)
-              ? { ...v, currentValue: outcome.envOverrides[v.key], type: outcome.envTypes[v.key] ?? v.type }
-              : v,
-          );
+        if (activeEnv && (Object.keys(outcome.envOverrides).length > 0 || outcome.envCleared.length > 0)) {
+          const updatedVariables = activeEnv.variables
+            .filter(v => !outcome.envCleared.includes(v.key))
+            .map(v =>
+              Object.prototype.hasOwnProperty.call(outcome.envOverrides, v.key)
+                ? { ...v, currentValue: outcome.envOverrides[v.key], type: outcome.envTypes[v.key] ?? v.type }
+                : v,
+            );
 
           // Also add any newly-introduced keys
           Object.entries(outcome.envOverrides).forEach(([key, value]) => {
@@ -142,8 +144,15 @@ export function RequestResponseView() {
           });
           const updatedEnv = { ...activeEnv, variables: updatedVariables };
 
-          // Persist current values (and their types) to the local sidecar
-          await updateCurrentValues(activeEnv.id, outcome.envOverrides, outcome.envTypes);
+          if (Object.keys(outcome.envOverrides).length > 0) {
+            // Persist current values (and their types) to the local sidecar
+            await updateCurrentValues(activeEnv.id, outcome.envOverrides, outcome.envTypes);
+          }
+
+          // Persist cleared keys via the same endpoint the collection clear path uses
+          await Promise.all(
+            (outcome.envCleared ?? []).map(key => resetCurrentValues(activeEnv.id, key))
+          );
 
           // Use the updated env for this request's variable substitution
           effectiveEnv = updatedEnv;
@@ -230,8 +239,13 @@ export function RequestResponseView() {
             },
           );
           setTabTestResults(tab.id, outcome.testResults);
-          if (effectiveEnv && Object.keys(outcome.envOverrides).length > 0) {
-            await updateCurrentValues(effectiveEnv.id, outcome.envOverrides, outcome.envTypes);
+          if (effectiveEnv) {
+            if (Object.keys(outcome.envOverrides).length > 0) {
+              await updateCurrentValues(effectiveEnv.id, outcome.envOverrides, outcome.envTypes);
+            }
+            await Promise.all(
+              (outcome.envCleared ?? []).map(key => resetCurrentValues(effectiveEnv.id, key))
+            );
           }
           await applyScriptOutcome(outcome);
           const passed = outcome.testResults.filter(r => r.passed).length;

@@ -344,7 +344,7 @@ export async function updateCollection(set: SetState, id: string, updates: Parti
  * local sidecar file (never committed to git), and update the in-memory
  * state so the UI reflects the new values immediately. `types` optionally
  * records the type each value came in as (from script
- * `collectionVariables.set()`).
+ * `collection.set()`).
  */
 export async function updateCollectionCurrentValues(
   set: SetState,

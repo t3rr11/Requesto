@@ -102,7 +102,11 @@ export function applyScriptOutcome(
   const seq = state.seq + 1;
   const env: ScriptScopeOverrides = { values: {} };
   mergeScriptOverrides(env, state.overrides.env);
-  mergeScriptOverrides(env, { values: outcome.envOverrides, types: outcome.envTypes });
+  mergeScriptOverrides(env, {
+    values: outcome.envOverrides,
+    types: outcome.envTypes,
+    cleared: outcome.envCleared,
+  });
 
   const collectionScopes: Record<string, ScriptScopeOverrides> = { ...state.overrides.collections };
   const collectionId = vars?.collectionId;
@@ -160,7 +164,7 @@ export function applyScriptOutcome(
 
     const envBefore = rowsByKey(environment, null, { env: state.overrides.env });
     const envAfter = rowsByKey(environment, null, { env });
-    for (const key of Object.keys(outcome.envOverrides)) {
+    for (const key of [...Object.keys(outcome.envOverrides ?? {}), ...(outcome.envCleared ?? [])]) {
       recordEvent(key, envBefore.get(key), envAfter.get(key), 'Environment', 'env');
     }
 

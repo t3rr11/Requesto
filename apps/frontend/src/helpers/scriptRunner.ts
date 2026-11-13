@@ -10,6 +10,7 @@ type WorkerResponse = PreRequestOutcome | TestOutcome | { error: string };
 const EMPTY_OVERRIDES: PreRequestOutcome = {
   envOverrides: {},
   envTypes: {},
+  envCleared: [],
   collectionOverrides: {},
   collectionTypes: {},
   collectionCleared: [],

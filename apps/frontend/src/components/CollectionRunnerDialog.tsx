@@ -26,7 +26,7 @@ import type { Environment, EnvironmentVariableType } from '../store/environments
 const noopOAuthResolver = async () => ({ accessToken: '', tokenType: 'Bearer' });
 
 export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId }: CollectionRunnerDialogProps) {
-  const { environmentsData, updateCurrentValues } = useEnvironmentStore();
+  const { environmentsData, updateCurrentValues, resetCurrentValues } = useEnvironmentStore();
   const { updateCollectionCurrentValues, resetCollectionCurrentValue } = useCollectionsStore();
   const { sendRequest } = useRequestStore();
   const warnOnHttpErrors = useSettingsStore(s => s.warnOnHttpErrors);
@@ -216,15 +216,17 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       }
     };
 
-    const overrides: Record<string, string> = Object.create(null);
-    const types: Record<string, EnvironmentVariableType> = Object.create(null);
-
-    // Collection script-set values, attributed to their collection via the
-    // vars context the engine passes to the script runners.
+    // Environment script-set values, accumulated for persistence after the
+    // run. Collection script-set values are attributed to their collection
+    // via the vars context the engine passes to the script runners.
+    const envScript: ScriptScopeOverrides = { values: {} };
     const collectionOverrides = new Map<string, ScriptScopeOverrides>();
     const recordOutcome = (outcome: ScriptEnvOverrides, vars: ScriptVarsContext | undefined, phase: 'pre' | 'test') => {
-      Object.assign(overrides, outcome.envOverrides);
-      Object.assign(types, outcome.envTypes ?? {});
+      mergeScriptOverrides(envScript, {
+        values: outcome.envOverrides,
+        types: outcome.envTypes,
+        cleared: outcome.envCleared,
+      });
       if (vars?.collectionId) {
         const scope = collectionOverrides.get(vars.collectionId) ?? { values: {} };
         mergeScriptOverrides(scope, {
@@ -276,15 +278,22 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       if (isolationRef.current) {
         try {
           await isolationRef.current.teardown();
-          if (activeEnv && Object.keys(overrides).length > 0) {
+          if (activeEnv) {
             try {
               // Only pass types when scripts recorded one, so value-only
               // persists keep their two-argument shape.
-              await updateCurrentValues(
-                activeEnv.id,
-                overrides,
-                ...(Object.keys(types).length > 0 ? [types as Record<string, EnvironmentVariableType>] : []),
-              );
+              if (Object.keys(envScript.values).length > 0) {
+                await updateCurrentValues(
+                  activeEnv.id,
+                  envScript.values,
+                  ...(envScript.types && Object.keys(envScript.types).length > 0
+                    ? [envScript.types as Record<string, EnvironmentVariableType>]
+                    : []),
+                );
+              }
+              await Promise
+                .all((envScript.cleared ?? [])
+                .map(key => resetCurrentValues(activeEnv.id, key)));
             } catch (err) {
               throw new Error(`Could not save runner current values: ${err instanceof Error ? err.message : String(err)}`);
             }
@@ -316,7 +325,20 @@ export function CollectionRunnerDialog({ isOpen, onClose, collections, folderId 
       abortControllerRef.current = null;
       setRunning(false);
     }
-  }, [includedCollections, excludedCollections, requests, activeEnv, sendRequest, updateCurrentValues, updateCollectionCurrentValues, resetCollectionCurrentValue, warnOnHttpErrors, folderId, buildVariablesState]);
+  }, [
+    includedCollections,
+    excludedCollections,
+    requests,
+    activeEnv,
+    sendRequest,
+    updateCurrentValues,
+    resetCurrentValues,
+    updateCollectionCurrentValues,
+    resetCollectionCurrentValue,
+    warnOnHttpErrors,
+    folderId,
+    buildVariablesState
+  ]);
 
   const handleStop = () => {
     abortControllerRef.current?.abort();

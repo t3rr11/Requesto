@@ -82,6 +82,56 @@ describe('executePreRequestScript', () => {
     expect(result.envTypes.n).toBe('number');
   });
 
+  it('environment.has and clear work per key', () => {
+    const result = executePreRequestScript(
+      [
+        `if (!environment.has('token')) { throw new Error('has before clear'); }`,
+        `environment.clear('token');`,
+        `if (environment.has('token')) { throw new Error('has after clear'); }`,
+        `if (environment.get('token') !== '') { throw new Error('get after clear'); }`,
+      ].join('\n'),
+      { env: { token: 'abc', other: 'x' }, request: baseRequest },
+    );
+
+    // Cleared keys are excluded from the overrides and reported for persistence.
+    expect(result.envCleared).toEqual(['token']);
+    expect(result.envOverrides).toEqual({ other: 'x' });
+  });
+
+  it('environment.clear() without a key clears the whole scope', () => {
+    const result = executePreRequestScript(
+      [
+        `environment.clear();`,
+        `if (environment.has('token')) { throw new Error('clear() leaves keys'); }`,
+      ].join('\n'),
+      { env: { token: 'abc', other: 'x' }, request: baseRequest },
+    );
+    expect(result.envCleared.sort()).toEqual(['other', 'token']);
+    expect(result.envOverrides).toEqual({});
+  });
+
+  it('environment.clear of an absent key is a no-op', () => {
+    const result = executePreRequestScript(`environment.clear('nope');`, {
+      env: { token: 'abc' },
+      request: baseRequest,
+    });
+    expect(result.envCleared).toEqual([]);
+    expect(result.envOverrides).toEqual({ token: 'abc' });
+  });
+
+  it('a set after clear revives the environment key', () => {
+    const result = executePreRequestScript(
+      [
+        `environment.clear('token');`,
+        `environment.set('token', 'new');`,
+        `if (environment.get('token') !== 'new') { throw new Error('revived'); }`,
+      ].join('\n'),
+      { env: { token: 'abc' }, request: baseRequest },
+    );
+    expect(result.envOverrides).toEqual({ token: 'new' });
+    expect(result.envCleared).toEqual([]);
+  });
+
   it('cannot reach Node or browser globals', () => {
     expect(() =>
       executePreRequestScript(`process.exit(1);`, { env: {}, request: baseRequest }),
@@ -222,18 +272,18 @@ describe('executeTestScript', () => {
   });
 });
 
-describe('collectionVariables API', () => {
+describe('collection API', () => {
   const collectionCtx = {
     collectionVariables: { base: 'https://api.example.com', typed: '42', secret: 'abc' },
     collectionVariableTypes: { typed: 'number' },
   };
 
-  it('exposes collectionVariables.get with declared types applied', () => {
+  it('exposes collection.get with declared types applied', () => {
     const result = executePreRequestScript(
       [
-        `if (collectionVariables.get('base') !== 'https://api.example.com') { throw new Error('base'); }`,
-        `if (collectionVariables.get('typed') !== 42) { throw new Error('typed'); }`,
-        `if (collectionVariables.get('missing') !== '') { throw new Error('missing'); }`,
+        `if (collection.get('base') !== 'https://api.example.com') { throw new Error('base'); }`,
+        `if (collection.get('typed') !== 42) { throw new Error('typed'); }`,
+        `if (collection.get('missing') !== '') { throw new Error('missing'); }`,
       ].join('\n'),
       { env: {}, request: baseRequest, ...collectionCtx },
     );
@@ -241,9 +291,9 @@ describe('collectionVariables API', () => {
     expect(result.collectionOverrides).toEqual({});
   });
 
-  it('collectionVariables.set only reports touched keys with inferred types', () => {
+  it('collection.set only reports touched keys with inferred types', () => {
     const result = executePreRequestScript(
-      `collectionVariables.set('token', 'abc'); collectionVariables.set('n', 7);`,
+      `collection.set('token', 'abc'); collection.set('n', 7);`,
       { env: {}, request: baseRequest, ...collectionCtx },
     );
     expect(result.collectionOverrides).toEqual({ token: 'abc', n: '7' });
@@ -251,15 +301,15 @@ describe('collectionVariables API', () => {
     expect(result.collectionCleared).toEqual([]);
   });
 
-  it('collectionVariables.has and clear work per key and for the whole scope', () => {
+  it('collection.has and clear work per key and for the whole scope', () => {
     const result = executePreRequestScript(
       [
-        `if (!collectionVariables.has('secret')) { throw new Error('has before clear'); }`,
-        `collectionVariables.clear('secret');`,
-        `if (collectionVariables.has('secret')) { throw new Error('has after clear'); }`,
-        `if (collectionVariables.get('secret') !== '') { throw new Error('get after clear'); }`,
-        `collectionVariables.clear();`,
-        `if (collectionVariables.has('base')) { throw new Error('clear() leaves base keys'); }`,
+        `if (!collection.has('secret')) { throw new Error('has before clear'); }`,
+        `collection.clear('secret');`,
+        `if (collection.has('secret')) { throw new Error('has after clear'); }`,
+        `if (collection.get('secret') !== '') { throw new Error('get after clear'); }`,
+        `collection.clear();`,
+        `if (collection.has('base')) { throw new Error('clear() leaves base keys'); }`,
       ].join('\n'),
       { env: {}, request: baseRequest, ...collectionCtx },
     );
@@ -271,9 +321,9 @@ describe('collectionVariables API', () => {
   it('a set after clear revives the key', () => {
     const result = executePreRequestScript(
       [
-        `collectionVariables.clear('secret');`,
-        `collectionVariables.set('secret', 'new');`,
-        `if (collectionVariables.get('secret') !== 'new') { throw new Error('revived'); }`,
+        `collection.clear('secret');`,
+        `collection.set('secret', 'new');`,
+        `if (collection.get('secret') !== 'new') { throw new Error('revived'); }`,
       ].join('\n'),
       { env: {}, request: baseRequest, ...collectionCtx },
     );
@@ -284,8 +334,8 @@ describe('collectionVariables API', () => {
   it('test scripts can read and set collection variables', () => {
     const result = executeTestScript(
       [
-        `test('read', () => { expect(collectionVariables.get('typed')).toBe(42); });`,
-        `test('write', () => { collectionVariables.set('nextId', response.json().a); });`,
+        `test('read', () => { expect(collection.get('typed')).toBe(42); });`,
+        `test('write', () => { collection.set('nextId', response.json().a); });`,
       ].join('\n'),
       { env: {}, response: baseResponse, request: baseRequest, ...collectionCtx },
     );

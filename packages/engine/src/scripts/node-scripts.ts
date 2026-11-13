@@ -73,6 +73,7 @@ export async function runPreRequestScript(
     return {
       envOverrides: {},
       envTypes: {},
+      envCleared: [],
       collectionOverrides: {},
       collectionTypes: {},
       collectionCleared: [],
@@ -90,6 +91,7 @@ export async function runPreRequestScript(
   return {
     envOverrides: {},
     envTypes: {},
+    envCleared: [],
     collectionOverrides: {},
     collectionTypes: {},
     collectionCleared: [],
@@ -114,6 +116,7 @@ export async function runTestScript(
       testResults: [],
       envOverrides: {},
       envTypes: {},
+      envCleared: [],
       collectionOverrides: {},
       collectionTypes: {},
       collectionCleared: [],
@@ -132,6 +135,7 @@ export async function runTestScript(
     testResults: [],
     envOverrides: {},
     envTypes: {},
+    envCleared: [],
     collectionOverrides: {},
     collectionTypes: {},
     collectionCleared: [],

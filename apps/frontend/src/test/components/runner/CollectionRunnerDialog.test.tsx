@@ -8,6 +8,7 @@ import type { Collection } from '../../../store/collections/types';
 const mocks = vi.hoisted(() => ({
   environment: null as { id: string; name: string; variables: { key: string; value: string; enabled: boolean; type?: string }[] } | null,
   updateCurrentValues: vi.fn(),
+  resetCurrentValues: vi.fn(),
   updateCollectionCurrentValues: vi.fn(),
   resetCollectionCurrentValue: vi.fn(),
   sendRequest: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock('../../../store/environments/store', () => ({
   useEnvironmentStore: () => ({
     environmentsData: { activeEnvironmentId: mocks.environment?.id ?? null, environments: mocks.environment ? [mocks.environment] : [] },
     updateCurrentValues: mocks.updateCurrentValues,
+    resetCurrentValues: mocks.resetCurrentValues,
   }),
 }));
 
@@ -70,6 +72,7 @@ describe('CollectionRunnerDialog (multi-collection)', () => {
     mocks.setup.mockResolvedValue(undefined);
     mocks.teardown.mockResolvedValue(undefined);
     mocks.updateCurrentValues.mockResolvedValue(undefined);
+    mocks.resetCurrentValues.mockResolvedValue(undefined);
     mocks.updateCollectionCurrentValues.mockResolvedValue(undefined);
     mocks.resetCollectionCurrentValue.mockResolvedValue(undefined);
     mocks.sendRequest.mockResolvedValue({ status: 200, statusText: 'OK', headers: {}, body: '{}', bodyEncoding: 'utf8', duration: 1 });

@@ -247,7 +247,7 @@ describe('runCollections', () => {
     expect(sent).toEqual(['http://from-script/x']);
   });
 
-  it('resolves collectionVariables.set in the same request and chains to later requests', async () => {
+  it('resolves collection.set in the same request and chains to later requests', async () => {
     const col: Collection = {
       id: 'c1',
       name: 'API',
@@ -261,12 +261,12 @@ describe('runCollections', () => {
           url: '{{host}}/one',
           collectionId: 'c1',
           preRequestScript: [
-            `if (collectionVariables.get('host') !== 'http://base.test') { throw new Error('get: ' + collectionVariables.get('host')); }`,
-            `collectionVariables.set('host', 'http://script.test');`,
+            `if (collection.get('host') !== 'http://base.test') { throw new Error('get: ' + collection.get('host')); }`,
+            `collection.set('host', 'http://script.test');`,
           ].join('\n'),
           testScript: [
             `test('pre-request set visible to test script', () => {`,
-            `  expect(collectionVariables.get('host')).toBe('http://script.test');`,
+            `  expect(collection.get('host')).toBe('http://script.test');`,
             `});`,
           ].join('\n'),
         },
@@ -302,7 +302,7 @@ describe('runCollections', () => {
             method: 'GET',
             url: '{{host}}/one',
             collectionId: 'c1',
-            testScript: `collectionVariables.set('host', 'http://scripted-one.test');`,
+            testScript: `collection.set('host', 'http://scripted-one.test');`,
           },
           { id: 'r1b', name: 'A again', method: 'GET', url: '{{host}}/one', collectionId: 'c1' },
         ],
@@ -342,7 +342,7 @@ describe('runCollections', () => {
           method: 'GET',
           url: '{{token}}',
           collectionId: 'c1',
-          preRequestScript: `collectionVariables.set('token', 'from-collection-script');`,
+          preRequestScript: `collection.set('token', 'from-collection-script');`,
         },
       ],
     };
@@ -375,7 +375,7 @@ describe('runCollections', () => {
           body: '{"n": "{{n}}"}',
           bodyType: 'json',
           collectionId: 'c1',
-          preRequestScript: `collectionVariables.clear('token'); collectionVariables.set('n', 21);`,
+          preRequestScript: `collection.clear('token'); collection.set('n', 21);`,
         },
       ],
     };
@@ -394,6 +394,38 @@ describe('runCollections', () => {
     // is unquoted in the JSON body per its inferred type.
     expect(sent[0].url).toBe('http://x.local/{{token}}');
     expect(JSON.parse(sent[0].body!)).toEqual({ n: 21 });
+  });
+
+  it('drops an environment variable cleared by a script for later requests', async () => {
+    const col: Collection = {
+      id: 'c1',
+      name: 'API',
+      folders: [],
+      requests: [
+        {
+          id: 'r1',
+          name: 'A',
+          method: 'GET',
+          url: 'http://x.local',
+          collectionId: 'c1',
+          preRequestScript: `environment.clear('token');`,
+        },
+        { id: 'r2', name: 'B', method: 'GET', url: '{{token}}', collectionId: 'c1' },
+      ],
+    };
+    const sent: string[] = [];
+    await runCollections({
+      collections: [col],
+      environment: { id: 'e', name: 'env', variables: [{ key: 'token', value: 'from-env', enabled: true }] },
+      oauthResolver: async () => ({ accessToken: 't', tokenType: 'Bearer' }),
+      scripts: nodeScriptRunner,
+      send: async (req) => {
+        sent.push(req.url);
+        return okResponse;
+      },
+    });
+    // The cleared variable no longer resolves in the next request.
+    expect(sent).toEqual(['http://x.local', '{{token}}']);
   });
 
   it('chains script values across collections into GraphQL GET and POST requests', async () => {

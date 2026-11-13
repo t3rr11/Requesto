@@ -45,6 +45,7 @@ export type ScriptEnvOverrides = {
   envOverrides: Record<string, string>;
   /** Type per key in `envOverrides`; keys without an entry keep their existing type. */
   envTypes?: Record<string, EnvironmentVariableType>;
+  envCleared?: string[];
   collectionOverrides?: Record<string, string>;
   collectionTypes?: Record<string, EnvironmentVariableType>;
   collectionCleared?: string[];
@@ -151,12 +152,11 @@ function isExcluded(collection: Collection, selectors: string[]): boolean {
   return lower.includes(collection.name.toLowerCase()) || lower.includes(collection.id.toLowerCase());
 }
 
-/** Values visible to scripts: the environment plus script-set overrides. */
-function envRecordWithOverrides(
-  env: Environment | null,
-  overrides: Record<string, string>,
-): Record<string, string> {
-  return { ...envRecord(env), ...overrides };
+/** Values visible to scripts: the environment plus script-set overrides, with cleared keys removed. */
+function envRecordWithOverrides(env: Environment | null, overrides: ScriptScopeOverrides): Record<string, string> {
+  const record = { ...envRecord(env), ...overrides.values };
+  for (const key of overrides.cleared ?? []) delete record[key];
+  return record;
 }
 
 /** Declared types visible to scripts: env types plus types recorded for script-set values. */
@@ -293,12 +293,16 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
         if (item.request.preRequestScript?.trim()) {
           const outcome = await opts.scripts.runPreRequest(
             item.request.preRequestScript,
-            envRecordWithOverrides(liveEnv, envScript.values),
+            envRecordWithOverrides(liveEnv, envScript),
             { method: proxyReq.method, url: proxyReq.url, headers: proxyReq.headers, body: proxyReq.body },
             envTypesWithOverrides(liveEnv, envScript.types ?? {}),
             vars,
           );
-          mergeScriptOverrides(envScript, { values: outcome.envOverrides, types: outcome.envTypes });
+          mergeScriptOverrides(envScript, {
+            values: outcome.envOverrides,
+            types: outcome.envTypes,
+            cleared: outcome.envCleared,
+          });
           mergeScriptOverrides(collectionScript, {
             values: outcome.collectionOverrides ?? {},
             types: outcome.collectionTypes,
@@ -350,12 +354,16 @@ export async function runCollections(opts: RunnerOptions): Promise<RunSummary> {
               body: proxyReq.body,
               formDataEntries: proxyReq.formDataEntries?.map(({ key, value, type, fileName }) => ({ key, value, type, fileName })),
             },
-            envRecordWithOverrides(liveEnv, envScript.values),
+            envRecordWithOverrides(liveEnv, envScript),
             envTypesWithOverrides(liveEnv, envScript.types ?? {}),
             varsContextFor(collection, collectionScript),
           );
           testResults = outcome.testResults;
-          mergeScriptOverrides(envScript, { values: outcome.envOverrides, types: outcome.envTypes });
+          mergeScriptOverrides(envScript, {
+            values: outcome.envOverrides,
+            types: outcome.envTypes,
+            cleared: outcome.envCleared,
+          });
           mergeScriptOverrides(collectionScript, {
             values: outcome.collectionOverrides ?? {},
             types: outcome.collectionTypes,

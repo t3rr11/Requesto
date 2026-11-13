@@ -508,7 +508,7 @@ export class CollectionService {
 
   /**
    * Persist current-value overrides to the local sidecar file.
-   * Called by pre-request scripts via `collectionVariables.set()`. `types`
+   * Called by pre-request scripts via `collection.set()`. `types`
    * optionally records the type each value came in as (from the script
    * sandbox).
    */
