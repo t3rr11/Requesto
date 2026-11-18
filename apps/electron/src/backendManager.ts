@@ -1,11 +1,11 @@
 import { app } from 'electron';
-import { fork } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
-import { isDev, BACKEND_PORT } from './constants';
+import { fork } from 'node:child_process';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
 import { state } from './state';
 import { showErrorWindow } from './errorWindow';
 import { shouldShowBackendCrashDialog } from './backendExitDecision';
+import { isDev, BACKEND_PORT, BACKEND_STARTUP_TIMEOUT_MS } from './constants';
 
 async function probeBackendHealth(): Promise<boolean> {
   try {
@@ -14,6 +14,16 @@ async function probeBackendHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+function showBackendCrashWindow(code: number | null, signal: NodeJS.Signals | null): void {
+  const signalText = signal ? ` | Signal: ${signal}` : '';
+  showErrorWindow({
+    title: 'Backend Crashed',
+    message: 'The backend process exited unexpectedly. Please restart the application.',
+    detail: `Exit code: ${code}${signalText}`,
+    severity: 'fatal',
+  });
 }
 
 export function startBackend(): void {
@@ -56,6 +66,10 @@ export function startBackend(): void {
 
   state.backendProcess.on('error', error => {
     console.error('Backend process error:', error);
+
+    // Stop the readiness wait loop; the fork never spawned.
+    state.backendProcess = null;
+
     showErrorWindow({
       title: 'Backend Failed to Start',
       message: 'The backend process encountered an error and could not start.',
@@ -66,9 +80,8 @@ export function startBackend(): void {
 
   state.backendProcess.on('exit', (code, signal) => {
     console.log('Backend process exited with code:', code, 'signal:', signal);
-    // Clear the process handle immediately so any duplicate exit events don't double-fire,
-    // but leave `state.backendReady` intact — the async health probe below depends on knowing
-    // whether the server ever came up before this exit signal arrived.
+
+    // Stop the readiness wait loop; the backend process is no longer running.
     state.backendProcess = null;
 
     // Decide synchronously when possible; otherwise re-probe health and decide.
@@ -83,12 +96,7 @@ export function startBackend(): void {
           })
         ) {
           state.backendReady = false;
-          showErrorWindow({
-            title: 'Backend Crashed',
-            message: 'The backend process exited unexpectedly. Please restart the application.',
-            detail: `Exit code: ${code}${signal ? `  |  Signal: ${signal}` : ''}`,
-            severity: 'fatal',
-          });
+          showBackendCrashWindow(code, signal);
         } else {
           console.log('Backend exit ignored: a healthy server is still responding.');
         }
@@ -96,19 +104,9 @@ export function startBackend(): void {
       return;
     }
 
-    if (
-      shouldShowBackendCrashDialog({
-        exitCode: code,
-        isQuitting: state.isQuitting,
-        backendReady: false,
-      })
-    ) {
-      showErrorWindow({
-        title: 'Backend Crashed',
-        message: 'The backend process exited unexpectedly. Please restart the application.',
-        detail: `Exit code: ${code}${signal ? `  |  Signal: ${signal}` : ''}`,
-        severity: 'fatal',
-      });
+    // Any exit before the server was ready is a startup failure.
+    if (!state.isQuitting) {
+      showBackendCrashWindow(code, signal);
     }
   });
 }
@@ -121,15 +119,39 @@ export function stopBackend(): void {
   state.backendReady = false;
 }
 
-export async function waitForBackend(maxAttempts = 30): Promise<boolean> {
-  for (let i = 0; i < maxAttempts; i++) {
-    if (await probeBackendHealth()) {
-      console.log('Backend is ready!');
-      return true;
-    }
-    await new Promise(resolve => setTimeout(resolve, 500));
+const POLL_INTERVAL_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function pollBackend(elapsedMs: number, timeoutMs: number): Promise<boolean> {
+  if (await probeBackendHealth()) {
+    console.log('Backend is ready!');
+    return true;
   }
 
-  console.error('Backend failed to start within timeout');
-  return false;
+  // The process died, its exit handler shows the error window, so stop waiting.
+  if (!isDev && !state.backendProcess) {
+    console.error('Backend process exited before becoming ready');
+    return false;
+  }
+
+  if (elapsedMs > 0 && elapsedMs % 10_000 === 0) {
+    console.log(`Still waiting for backend to start... ${elapsedMs / 1000}s`);
+  }
+
+  if (elapsedMs + POLL_INTERVAL_MS >= timeoutMs) {
+    console.error('Backend failed to start within timeout');
+    return false;
+  }
+
+  await sleep(POLL_INTERVAL_MS);
+  return pollBackend(elapsedMs + POLL_INTERVAL_MS, timeoutMs);
+}
+
+export function waitForBackend(
+  timeoutMs: number = BACKEND_STARTUP_TIMEOUT_MS,
+): Promise<boolean> {
+  return pollBackend(0, timeoutMs);
 }
