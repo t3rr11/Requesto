@@ -12,6 +12,10 @@ try {
 export const isDev = !app.isPackaged;
 export const BACKEND_PORT = 4747;
 
+// Generous timeout for cold first launch, where antivirus scanning and disk
+// I/O make backend startup several times slower than warm launches.
+export const BACKEND_STARTUP_TIMEOUT_MS = 2 * 60 * 1000;
+
 // Driven by .env.local — never hardcode true in source.
 export const SIMULATE_BACKEND_FAILURE = process.env.SIMULATE_BACKEND_FAILURE === 'true';
 export const SIMULATE_UPDATE_AVAILABLE = process.env.SIMULATE_UPDATE_AVAILABLE === 'true';

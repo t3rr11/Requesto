@@ -23,25 +23,23 @@ app.whenReady().then(async () => {
 
   startBackend();
 
-  // Wait for backend to be ready in production
-  if (!isDev || SIMULATE_BACKEND_FAILURE) {
-    const backendReady = SIMULATE_BACKEND_FAILURE ? false : await waitForBackend();
-    if (!backendReady) {
-      closeSplashScreen();
+  const backendReady = SIMULATE_BACKEND_FAILURE ? false : await waitForBackend();
+  if (!backendReady) {
+    closeSplashScreen();
+    // A dead process already got its own "Backend Crashed" window from the
+    // exit handler; a still-running process is a genuine timeout.
+    const isGenuineTimeout = SIMULATE_BACKEND_FAILURE || isDev || state.backendProcess !== null;
+    if (!state.isQuitting && isGenuineTimeout) {
       showErrorWindow({
         title: 'Backend Timed Out',
         message: 'The backend server failed to start within the expected time. Please restart the application.',
         hint: 'If this keeps happening, try reinstalling Requesto.',
         severity: 'fatal',
       });
-      return;
     }
-    state.backendReady = true;
-  } else {
-    // Dev mode trusts the externally-managed backend (started outside Electron via `npm run dev`),
-    // so we mark it ready without probing.
-    state.backendReady = true;
+    return;
   }
+  state.backendReady = true;
 
   createWindow();
 
@@ -70,6 +68,8 @@ app.whenReady().then(async () => {
       createWindow();
     }
   });
+}).catch(error => {
+  console.error('Error during app startup:', error);
 });
 
 app.on('window-all-closed', () => {
