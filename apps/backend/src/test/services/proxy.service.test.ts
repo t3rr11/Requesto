@@ -2,6 +2,7 @@ import http from 'node:http';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { AddressInfo } from 'node:net';
 import { ProxyService } from '../../services/proxy.service';
+import type { ProxyRequest } from '../../models/proxy';
 import type { EnvironmentService } from '../../services/environment.service';
 import type { HistoryService } from '../../services/history.service';
 import {
@@ -264,5 +265,113 @@ describe('ProxyService.executeRequest body encoding', () => {
     const dispositionKey = Object.keys(result.headers).find((k) => k.toLowerCase() === 'content-disposition');
     expect(dispositionKey).toBeDefined();
     expect(result.headers[dispositionKey!]).toContain('report.pdf');
+  });
+});
+
+describe('ProxyService form-data body building', () => {
+  /** Echo server: replies with the received content-type and raw body (base64). */
+  let echoServer: TestServerHandle;
+
+  beforeAll(async () => {
+    const httpServer = http.createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            contentType: req.headers['content-type'] ?? '',
+            bodyBase64: Buffer.concat(chunks).toString('base64'),
+          })
+        );
+      });
+    });
+
+    echoServer = await new Promise((resolve) => {
+      httpServer.listen(0, '127.0.0.1', () => {
+        const port = (httpServer.address() as AddressInfo).port;
+        resolve({
+          url: `http://127.0.0.1:${port}`,
+          close: () =>
+            new Promise<void>((r) => {
+              httpServer.close(() => r());
+            }),
+        });
+      });
+    });
+  });
+
+  afterAll(async () => {
+    await echoServer.close();
+  });
+
+  async function postFormEntries(formDataEntries: ProxyRequest['formDataEntries']) {
+    const { environmentService, historyService } = makeProxyServiceDeps();
+    const service = new ProxyService(environmentService, historyService);
+
+    const result = await service.executeRequest({
+      method: 'POST',
+      url: `${echoServer.url}/upload`,
+      bodyType: 'form-data',
+      formDataEntries,
+    });
+
+    const echo = JSON.parse(result.body) as { contentType: string; bodyBase64: string };
+    return { contentType: echo.contentType, rawBody: Buffer.from(echo.bodyBase64, 'base64') };
+  }
+
+  it('sends text entries as multipart parts with the boundary content-type', async () => {
+    const { contentType, rawBody } = await postFormEntries([
+      { id: '1', key: 'field1', value: 'value1', type: 'text', enabled: true },
+      { id: '2', key: 'field2', value: 'value2', type: 'text', enabled: true },
+    ]);
+
+    expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
+    expect(rawBody.toString('utf-8')).toContain('name="field1"');
+    expect(rawBody.toString('utf-8')).toContain('value1');
+    expect(rawBody.toString('utf-8')).toContain('name="field2"');
+    expect(rawBody.toString('utf-8')).toContain('value2');
+  });
+
+  it('sends file entries as binary parts with filename and content-type', async () => {
+    // Binary payload that must survive the base64 data URL round-trip.
+    const fileBytes = Buffer.from([0x00, 0xff, 0x80, 0x1a, 0x50, 0x4e, 0x47]);
+    const { contentType, rawBody } = await postFormEntries([
+      { id: '1', key: 'field1', value: 'text', type: 'text', enabled: true },
+      {
+        id: '2',
+        key: 'upload',
+        value: '',
+        type: 'file',
+        fileName: 'logo.png',
+        fileContent: `data:image/png;base64,${fileBytes.toString('base64')}`,
+        enabled: true,
+      },
+    ]);
+
+    expect(contentType).toMatch(/^multipart\/form-data; boundary=/);
+    const utf8Body = rawBody.toString('utf-8');
+    expect(utf8Body).toContain('name="field1"');
+    expect(utf8Body).toContain('name="upload"; filename="logo.png"');
+    expect(utf8Body).toContain('Content-Type: image/png');
+
+    // The file bytes arrive byte-identical.
+    expect(rawBody.indexOf(fileBytes)).toBeGreaterThan(-1);
+  });
+
+  it('rejects file entries without valid file content', async () => {
+    const { environmentService, historyService } = makeProxyServiceDeps();
+    const service = new ProxyService(environmentService, historyService);
+
+    await expect(
+      service.executeRequest({
+        method: 'POST',
+        url: `${echoServer.url}/upload`,
+        bodyType: 'form-data',
+        formDataEntries: [
+          { id: '1', key: 'upload', value: 'C:/missing.png', type: 'file', fileName: 'missing.png', enabled: true },
+        ],
+      })
+    ).rejects.toThrow('File field "upload" has no file attached');
   });
 });

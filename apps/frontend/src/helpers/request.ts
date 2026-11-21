@@ -2,7 +2,6 @@ import type { ProxyRequest, ProxyResponse, AuthConfig, FormDataEntry } from '../
 import type { RequestFormData } from '../forms/schemas/requestFormSchema';
 import type { TabRequest } from '../store/tabs/types';
 import type { GraphQLRequestConfig, RequestSaveDraft } from '../store/collections/types';
-import { buildUrlWithParams } from './url';
 import { encodeGraphQLGetUrl } from 'requesto-engine/runner';
 import {
   buildClientSchema,
@@ -31,13 +30,16 @@ export function buildHeadersFromFormData(headers: RequestFormData['headers']): R
  * Convert form data into a TabRequest for syncing with the tab store.
  * Preserves raw body and formDataEntries without filtering so users don't
  * lose in-progress data when switching between body types.
+ *
+ * The form's `url` field always holds the full URL including the query
+ * string (kept in sync with the params table), so it is used as-is.
  */
 export function buildTabRequestFromFormData(formData: RequestFormData): TabRequest {
   const requestType = formData.requestType ?? 'http';
   const request: TabRequest = {
     requestType,
     method: requestType === 'graphql' ? (formData.graphqlTransport ?? 'post').toUpperCase() : (formData.method || 'GET'),
-    url: buildUrlWithParams(formData.url, formData.params),
+    url: formData.url,
     headers: buildHeadersFromFormData(formData.headers),
     auth: formData.auth as AuthConfig,
     preRequestScript: formData.preRequestScript,
@@ -137,7 +139,7 @@ function buildGraphQLRequest(formData: RequestFormData): ProxyRequest {
     }
     return {
       method: 'GET',
-      url: encodeGraphQLGetUrl(buildUrlWithParams(formData.url, formData.params), document, variables),
+      url: encodeGraphQLGetUrl(formData.url, document, variables),
       headers,
       auth: formData.auth as AuthConfig,
     };
@@ -150,7 +152,7 @@ function buildGraphQLRequest(formData: RequestFormData): ProxyRequest {
   };
   return {
     method: 'POST',
-    url: buildUrlWithParams(formData.url, formData.params),
+    url: formData.url,
     headers,
     body: JSON.stringify(body),
     bodyType: 'json',
@@ -165,7 +167,7 @@ export function buildGraphQLIntrospectionRequest(formData: RequestFormData): Pro
 
   return {
     method: 'POST',
-    url: buildUrlWithParams(formData.url, formData.params),
+    url: formData.url,
     headers,
     body: JSON.stringify({
       query: getIntrospectionQuery({ descriptions: true, schemaDescription: true }),
@@ -208,7 +210,8 @@ export function parseGraphQLIntrospectionResponse(response: ProxyResponse): Grap
 
 /**
  * Convert a fully-populated RequestFormData into a ProxyRequest ready to send.
- * Merges params into the URL, extracts enabled headers, and filters body vs form-data
+ * The form's `url` field already contains the query string (kept in sync with
+ * the params table), extracts enabled headers, and filters body vs form-data
  * appropriately for the active body type.
  */
 export function buildRequestFromFormData(formData: RequestFormData): ProxyRequest {
@@ -216,9 +219,11 @@ export function buildRequestFromFormData(formData: RequestFormData): ProxyReques
     return buildGraphQLRequest(formData);
   }
 
+  assertFormDataEntriesAreSendable(formData);
+
   return {
     method: formData.method,
-    url: buildUrlWithParams(formData.url, formData.params),
+    url: formData.url,
     headers: buildHeadersFromFormData(formData.headers),
     body: formData.bodyType === 'json' ? (formData.body || undefined) : undefined,
     bodyType: formData.bodyType,
@@ -228,6 +233,22 @@ export function buildRequestFromFormData(formData: RequestFormData): ProxyReques
         : undefined,
     auth: formData.auth as AuthConfig,
   };
+}
+
+/**
+ * Fail fast on form-data entries the backend cannot send, so the user gets a
+ * clear alert instead of a server-side 400. Only file entries require extra
+ * data: an attached file must have been read into a base64 data URL.
+ */
+function assertFormDataEntriesAreSendable(formData: RequestFormData): void {
+  if (formData.bodyType !== 'form-data') return;
+
+  const missingFile = formData.formDataEntries.find(
+    entry => entry.enabled && entry.key.trim() && entry.type === 'file' && !entry.fileContent
+  );
+  if (missingFile) {
+    throw new Error(`File field "${missingFile.key}" has no file attached. Choose a file or switch it to Text.`);
+  }
 }
 
 /**
@@ -261,7 +282,7 @@ export function buildSavePayloadFromFormData(formData: RequestFormData): Request
       (formData.requestType ?? 'http') === 'graphql'
         ? (formData.graphqlTransport ?? 'post').toUpperCase()
         : formData.method,
-    url: buildUrlWithParams(formData.url, formData.params),
+    url: formData.url,
     headers: buildHeadersFromFormData(formData.headers),
     auth,
     preRequestScript: formData.preRequestScript,

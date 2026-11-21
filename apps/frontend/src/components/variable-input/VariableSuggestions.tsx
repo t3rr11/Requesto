@@ -32,6 +32,7 @@ export const VariableSuggestions = forwardRef<HTMLDivElement, VariableSuggestion
             <Button
               key={variable.key}
               type="button"
+              onMouseDown={event => event.preventDefault()}
               onClick={() => onInsert(variable.key)}
               variant="ghost"
               size="md"

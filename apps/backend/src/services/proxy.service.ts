@@ -13,6 +13,13 @@ import type { Environment } from '../models/environment';
 import type { ProxyRequest, ProxyResponse, FormDataEntry, BodyType } from '../models/proxy';
 
 /**
+ * Thrown when the outgoing request cannot be constructed from the submitted
+ * payload (e.g. a multipart file entry without file content). Controllers map
+ * this to a 400 so the UI shows what is wrong instead of a generic 500.
+ */
+export class RequestBuildError extends Error {}
+
+/**
  * Optional per-call overrides for `executeRequest`. Used by the headless CLI
  * to control substitution and token resolution; omit for the default
  * behaviour (active workspace environment + service-level OAuth resolver).
@@ -51,15 +58,26 @@ function methodSupportsBody(method: string): boolean {
   return ['post', 'put', 'patch'].includes(method.toLowerCase());
 }
 
+/**
+ * File content must be a base64 data URL (`data:<mime>;base64,<payload>`)
+ * for the backend to decode it into a Buffer part.
+ */
+const DATA_URL_PATTERN = /^data:([^;]+);base64,(.+)$/;
+
 function buildFormDataBody(entries: FormDataEntry[]): FormData {
   const form = new FormData();
   for (const entry of entries) {
-    if (entry.type === 'file' && entry.fileContent) {
-      const match = entry.fileContent.match(/^data:([^;]+);base64,(.+)$/);
-      if (match) {
-        const buffer = Buffer.from(match[2], 'base64');
-        form.append(entry.key, buffer, { filename: entry.fileName || 'file', contentType: match[1] });
+    if (entry.type === 'file') {
+      // File parts must carry their content as a base64 data URL; anything
+      // else would silently degrade into a plain text part, so fail loudly.
+      const match = DATA_URL_PATTERN.exec(entry.fileContent ?? '');
+      if (!match) {
+        throw new RequestBuildError(
+          `File field "${entry.key}" has no file attached. Choose a file or switch it to Text.`
+        );
       }
+      const buffer = Buffer.from(match[2], 'base64');
+      form.append(entry.key, buffer, { filename: entry.fileName || 'file', contentType: match[1] });
     } else {
       form.append(entry.key, entry.value);
     }
@@ -167,7 +185,7 @@ export class ProxyService {
 
     // When an explicit environment is provided via options (key present) use
     // it for substitution; otherwise fall back to the workspace's active env.
-    const hasEnvOverride = Object.prototype.hasOwnProperty.call(opts, 'environment');
+    const hasEnvOverride = Object.hasOwn(opts, 'environment');
     const effectiveEnv = hasEnvOverride ? (opts.environment ?? null) : this.environmentService.getActive();
 
     const substituted = substituteInRequest({ url, headers, body, bodyType, formDataEntries }, effectiveEnv);

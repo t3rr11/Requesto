@@ -1,6 +1,6 @@
 import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import axios from 'axios';
-import { ProxyService } from '../services/proxy.service';
+import { ProxyService, RequestBuildError } from '../services/proxy.service';
 import { HistoryService } from '../services/history.service';
 import { InteractiveAuthRequiredError } from '../services/oauth.service';
 import type { ProxyRequest } from '../models/proxy';
@@ -84,6 +84,9 @@ const proxyController: FastifyPluginAsync<Options> = async (server, opts) => {
             code: 'OAUTH_INTERACTIVE_REQUIRED',
             configId: error.configId,
           });
+        }
+        if (error instanceof RequestBuildError) {
+          return reply.code(400).send({ error: error.message });
         }
         throw error;
       }
