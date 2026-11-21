@@ -1,5 +1,6 @@
 import { Menu, shell, dialog, app } from 'electron';
 import { state } from './state';
+import { isDev } from './constants';
 
 export function createAppMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -41,6 +42,14 @@ export function createAppMenu(): void {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
+        { type: 'separator' },
+        {
+          label: 'Open in Browser',
+          toolTip: 'Opens the app in your default browser',
+          click: async () => {
+            await shell.openExternal(isDev ? 'http://localhost:5173' : 'http://localhost:4747');
+          },
+        },
       ],
     },
     {
@@ -63,7 +72,7 @@ export function createAppMenu(): void {
           label: 'About Requesto',
           click: () => {
             const version = app.getVersion();
-            dialog.showMessageBox(state.mainWindow!, {
+            void dialog.showMessageBox(state.mainWindow!, {
               type: 'info',
               title: 'About Requesto',
               message: `Requesto v${version}`,
