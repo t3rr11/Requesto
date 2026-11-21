@@ -22,17 +22,29 @@ export const requestFormSchema = z.object({
   ),
   body: z.string(),
   bodyType: z.enum(['json', 'form-data', 'x-www-form-urlencoded']),
-  formDataEntries: z.array(
-    z.object({
-      id: z.string(),
-      key: z.string(),
-      value: z.string(),
-      type: z.enum(['text', 'file']),
-      fileName: z.string().optional(),
-      fileContent: z.string().optional(),
-      enabled: z.boolean(),
-    })
-  ),
+  formDataEntries: z
+    .array(
+      z.object({
+        id: z.string(),
+        key: z.string(),
+        value: z.string(),
+        type: z.enum(['text', 'file']),
+        fileName: z.string().optional(),
+        fileContent: z.string().optional(),
+        enabled: z.boolean(),
+      })
+    )
+    .superRefine((entries, ctx) => {
+      entries.forEach((entry, index) => {
+        if (entry.type === 'file' && entry.fileContent && !/^data:[^;]+;base64,/.test(entry.fileContent)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [index, 'fileContent'],
+            message: `File field "${entry.key}" has invalid file content`,
+          });
+        }
+      });
+    }),
   preRequestScript: z.string().optional(),
   testScript: z.string().optional(),
   documentation: z.string().optional(),

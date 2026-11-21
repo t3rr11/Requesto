@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import Editor, { type Monaco } from '@monaco-editor/react';
 import { Button } from '../components/Button';
 import { KeyValueEditor } from '../components/KeyValueEditor';
+import { FormDataEditor } from '../components/FormDataEditor';
 import { VariableAwareInput } from '../components/VariableAwareInput';
 import { AuthEditor } from '../components/AuthEditor';
 import { TabStrip } from '../components/TabStrip';
@@ -12,7 +13,7 @@ import { AlertTriangle, BookOpen, ExternalLink, Pencil, Plus, RefreshCw, Trash2 
 import type { AuthConfig, FormDataEntry } from '../store/request/types';
 import { useThemeStore } from '../store/theme/store';
 import { useTabsStore } from '../store/tabs/store';
-import { extractParamsFromUrl } from '../helpers/url';
+import { mergeParamsFromUrl, setUrlQueryParams } from '../helpers/url';
 import { buildTabRequestFromFormData, getGraphQLOperations } from '../helpers/request';
 import { parseCurlCommand } from '../helpers/curl';
 import { useAlertStore } from '../store/alert/store';
@@ -176,12 +177,12 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
   useEffect(() => {
     if (!currentTab) return;
     const tabReq = currentTab.request;
-    const { baseUrl, params: urlParams } = extractParamsFromUrl(tabReq.url || '');
+    const params = mergeParamsFromUrl(tabReq.url || '', []);
 
     reset({
       requestType: tabReq.requestType ?? 'http',
       method: tabReq.method || 'GET',
-      url: baseUrl,
+      url: tabReq.url || '',
       headers:
         tabReq.headers && Object.keys(tabReq.headers).length > 0
           ? Object.entries(tabReq.headers).map(([key, value]) => ({
@@ -191,15 +192,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
               enabled: true,
             }))
           : [{ id: Date.now().toString(), key: '', value: '', enabled: true }],
-      params:
-        urlParams.length > 0
-          ? urlParams.map(p => ({
-              id: `${p.key}-${Date.now()}`,
-              key: p.key,
-              value: p.value,
-              enabled: true,
-            }))
-          : [{ id: (Date.now() + 1000).toString(), key: '', value: '', enabled: true }],
+      params,
       body: tabReq.body || '',
       bodyType: tabReq.bodyType || 'json',
       formDataEntries:
@@ -291,10 +284,12 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         showAlert('Could not parse curl command', 'error');
         return;
       }
+
+      const fullUrl = setUrlQueryParams(parsed.url, parsed.params);
       setValue('method', parsed.method, { shouldDirty: true });
-      setValue('url', parsed.url, { shouldDirty: true });
+      setValue('url', fullUrl, { shouldDirty: true });
       setValue('headers', parsed.headers, { shouldDirty: true });
-      setValue('params', parsed.params, { shouldDirty: true });
+      setValue('params', mergeParamsFromUrl(fullUrl, []), { shouldDirty: true });
       setValue('body', parsed.body, { shouldDirty: true });
       setValue('bodyType', parsed.bodyType, { shouldDirty: true });
       setValue('formDataEntries', parsed.formDataEntries, { shouldDirty: true });
@@ -303,34 +298,16 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
       return;
     }
 
-    const { baseUrl, params: extractedParams } = extractParamsFromUrl(newUrl);
-
-    if (extractedParams.length > 0) {
-      const existingParamKeys = new Set(params.map(p => p.key));
-      const newParams = [...params];
-
-      extractedParams.forEach(extracted => {
-        if (!existingParamKeys.has(extracted.key)) {
-          newParams.push({
-            id: crypto.randomUUID(),
-            key: extracted.key,
-            value: extracted.value,
-            enabled: true,
-          });
-        }
-      });
-
-      setValue('params', newParams, { shouldDirty: true });
-      setValue('url', baseUrl, { shouldDirty: true });
-    } else {
-      setValue('url', newUrl, { shouldDirty: true });
-    }
+    setValue('url', newUrl, { shouldDirty: true });
+    setValue('params', mergeParamsFromUrl(newUrl, getValues('params')), { shouldDirty: true });
   };
 
   const handleHeadersChange = (newHeaders: RequestFormData['headers']) =>
     setValue('headers', newHeaders, { shouldDirty: true });
-  const handleParamsChange = (newParams: RequestFormData['params']) =>
+  const handleParamsChange = (newParams: RequestFormData['params']) => {
     setValue('params', newParams, { shouldDirty: true });
+    setValue('url', setUrlQueryParams(getValues('url'), newParams), { shouldDirty: true });
+  };
   const handleAuthChange = (newAuth: AuthConfig) =>
     setValue('auth', newAuth as RequestFormData['auth'], { shouldDirty: true });
   const handleBodyTypeChange = (newBodyType: RequestFormData['bodyType']) =>
@@ -609,11 +586,27 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
               </div>
             )}
 
-            {(bodyType === 'form-data' || bodyType === 'x-www-form-urlencoded') && (
+            {bodyType === 'form-data' && (
+              <FormDataEditor
+                items={formDataEntries}
+                onItemsChange={handleFormDataEntriesChange}
+                disabled={loading}
+                collectionId={currentTab?.collectionId}
+              />
+            )}
+
+            {bodyType === 'x-www-form-urlencoded' && (
               <KeyValueEditor
                 items={formDataEntries}
                 onItemsChange={items =>
-                  handleFormDataEntriesChange(items.map(item => ({ ...item, type: 'text' as const })))
+                  handleFormDataEntriesChange(
+                    items.map(item => ({
+                      ...item,
+                      type: 'text' as const,
+                      fileName: undefined,
+                      fileContent: undefined
+                    }))
+                  )
                 }
                 delimiter="="
                 keyPlaceholder="Field"
@@ -664,7 +657,7 @@ export function RequestForm({ onSend, onCancel, onChange, onFetchGraphQLSchema, 
         {activeTab === 'tests' && (
           <div className="h-full flex flex-col gap-3 min-h-50">
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-              Runs after the response is received.
+              <span>Runs after the response is received.</span>
               <a
                 href="https://requesto.com.au/features/tests.html#writing-tests"
                 target="_blank"

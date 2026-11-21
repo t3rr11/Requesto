@@ -61,6 +61,34 @@ vi.mock('../../components/KeyValueEditor', () => ({
     <div data-testid="key-value-editor">
       <span>{items.length} items</span>
       <button onClick={() => onItemsChange([...items, { id: 'new', key: '', value: '', enabled: true }])}>Add</button>
+      <button
+        onClick={() =>
+          onItemsChange(items.map((item, index) => (index === 0 ? { ...item, key: 'debug', value: '1' } : item)))
+        }
+      >
+        Fill First Row
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock('../../components/FormDataEditor', () => ({
+  FormDataEditor: ({
+    items,
+    onItemsChange,
+  }: {
+    items: Array<{ id: string; key: string; value: string; type: string; enabled: boolean }>;
+    onItemsChange: (items: Array<{ id: string; key: string; value: string; type: string; enabled: boolean }>) => void;
+  }) => (
+    <div data-testid="form-data-editor">
+      <span>{items.length} items</span>
+      <button
+        onClick={() =>
+          onItemsChange([...items, { id: 'new', key: '', value: '', type: 'text', enabled: true }])
+        }
+      >
+        Add
+      </button>
     </div>
   ),
 }));
@@ -386,14 +414,13 @@ describe('RequestForm', () => {
     expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
   });
 
-  it('switches to KeyValueEditor when Form Data is selected', async () => {
+  it('switches to FormDataEditor when Form Data is selected', async () => {
     const user = userEvent.setup();
     renderForm();
 
     await user.click(screen.getByText(/body/i));
     await user.click(screen.getByLabelText('Form Data'));
-    const editors = screen.getAllByTestId('key-value-editor');
-    expect(editors.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('form-data-editor')).toBeInTheDocument();
     expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument();
   });
 
@@ -407,5 +434,49 @@ describe('RequestForm', () => {
     const editors = screen.getAllByTestId('key-value-editor');
     expect(editors.length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByTestId('monaco-editor')).not.toBeInTheDocument();
+  });
+
+  it('keeps the query string in the URL field while typing and mirrors it into params', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const urlInput = screen.getByTestId('variable-aware-input');
+    await user.type(urlInput, 'https://api.example.com?foo=bar');
+
+    expect(urlInput).toHaveValue('https://api.example.com?foo=bar');
+    expect(screen.getByTestId('key-value-editor')).toHaveTextContent('2 items');
+  });
+
+  it('removes params from the table when their query string is deleted from the URL', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const urlInput = screen.getByTestId('variable-aware-input');
+    await user.type(urlInput, 'https://api.example.com?foo=bar');
+    expect(screen.getByTestId('key-value-editor')).toHaveTextContent('2 items');
+
+    await user.clear(urlInput);
+    expect(screen.getByTestId('key-value-editor')).toHaveTextContent('1 items');
+  });
+
+  it('mirrors params table edits into the URL query string', async () => {
+    const user = userEvent.setup();
+    renderForm();
+
+    const urlInput = screen.getByTestId('variable-aware-input');
+    await user.type(urlInput, 'https://api.example.com');
+
+    await user.click(screen.getByText('Fill First Row'));
+    expect(urlInput).toHaveValue('https://api.example.com?debug=1');
+  });
+
+  it('imports a pasted curl command including its query params', async () => {
+    renderForm();
+
+    const urlInput = screen.getByTestId('variable-aware-input');
+    fireEvent.change(urlInput, { target: { value: 'curl https://example.com?x=1' } });
+
+    expect(urlInput).toHaveValue('https://example.com?x=1');
+    expect(screen.getByTestId('key-value-editor')).toHaveTextContent('2 items');
   });
 });

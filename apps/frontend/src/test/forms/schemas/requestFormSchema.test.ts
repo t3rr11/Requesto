@@ -99,4 +99,32 @@ describe('requestFormSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('accepts file entries with base64 data URL content', () => {
+    const result = requestFormSchema.safeParse({
+      ...validData,
+      formDataEntries: [
+        { id: '1', key: 'upload', value: '', type: 'file', fileName: 'a.png', fileContent: 'data:image/png;base64,aGVsbG8=', enabled: true },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts file entries that have no content yet (file not chosen)', () => {
+    const result = requestFormSchema.safeParse({
+      ...validData,
+      formDataEntries: [{ id: '1', key: 'upload', value: '', type: 'file', enabled: true }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects file entries whose content is not a base64 data URL', () => {
+    const result = requestFormSchema.safeParse({
+      ...validData,
+      formDataEntries: [
+        { id: '1', key: 'upload', value: '', type: 'file', fileName: 'a.png', fileContent: 'C:/Users/me/a.png', enabled: true },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
 });

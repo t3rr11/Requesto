@@ -54,6 +54,7 @@ export function VariableAwareInput({
   const { showSuggestions: autoShowSuggestions, currentVariable } = useVariableDetection(
     value,
     inputRef,
+    suggestionsRef,
   );
   const showSuggestions = autoShowSuggestions || manualSuggestions;
 
