@@ -31,8 +31,9 @@ test.describe('Environment Variables', () => {
   });
 
   test('open environment manager and view variables', async ({ appPage, takeScreenshot }) => {
-    // Click the Manage Environments button (settings icon next to env selector)
-    await appPage.getByTitle('Manage Environments').click();
+    // Open the environment manager from the header environment switcher dropdown
+    await appPage.getByTestId('environment-switcher').click();
+    await appPage.getByText('Manage Environments...').click();
 
     // The environment manager dialog should open
     const dialogHeading = appPage.locator('h2', { hasText: 'Manage Environments' });
@@ -58,7 +59,8 @@ test.describe('Environment Variables', () => {
 
   test('create a new environment with variables', async ({ appPage, takeScreenshot }) => {
     // Open environment manager
-    await appPage.getByTitle('Manage Environments').click();
+    await appPage.getByTestId('environment-switcher').click();
+    await appPage.getByText('Manage Environments...').click();
 
     const dialogHeading = appPage.locator('h2', { hasText: 'Manage Environments' });
     await expect(dialogHeading).toBeVisible();
@@ -107,7 +109,8 @@ test.describe('Environment Variables', () => {
 
   test('edit environment variables', async ({ appPage, takeScreenshot }) => {
     // Open environment manager
-    await appPage.getByTitle('Manage Environments').click();
+    await appPage.getByTestId('environment-switcher').click();
+    await appPage.getByText('Manage Environments...').click();
 
     const dialogHeading = appPage.locator('h2', { hasText: 'Manage Environments' });
     await expect(dialogHeading).toBeVisible();
@@ -130,7 +133,8 @@ test.describe('Environment Variables', () => {
 
   test('delete an environment', async ({ appPage }) => {
     // Open environment manager
-    await appPage.getByTitle('Manage Environments').click();
+    await appPage.getByTestId('environment-switcher').click();
+    await appPage.getByText('Manage Environments...').click();
 
     const dialogHeading = appPage.locator('h2', { hasText: 'Manage Environments' });
     await expect(dialogHeading).toBeVisible();

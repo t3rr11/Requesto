@@ -6,7 +6,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTabsStore } from '../store/tabs/store';
 import { ConfirmDialog } from './ConfirmDialog';
-import { EnvironmentSelectorCompact } from './EnvironmentSelector';
 
 interface SortableTabProps {
   tabId: string;
@@ -272,10 +271,6 @@ export function TabsBar() {
           >
             <Plus size={18} />
           </button>
-
-          <div className="shrink-0 flex items-center px-2 border-l border-gray-300 dark:border-gray-600 h-full">
-            <EnvironmentSelectorCompact />
-          </div>
         </div>
       </DndContext>
 

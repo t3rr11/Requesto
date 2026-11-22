@@ -327,7 +327,8 @@ test.describe('Environments', () => {
   });
 
   test('manage environments dialog', async ({ appPage, takeDocScreenshot }) => {
-    await appPage.getByTitle('Manage Environments').click();
+    await appPage.getByTestId('environment-switcher').click();
+    await appPage.getByText('Manage Environments...').click();
 
     const dialogHeading = appPage.locator('h2', { hasText: 'Manage Environments' });
     await expect(dialogHeading).toBeVisible();
@@ -343,7 +344,8 @@ test.describe('Environments', () => {
 
   test('variable editor table', async ({ appPage, takeDocScreenshot }) => {
     // Open the Manage Environments dialog
-    await appPage.getByTitle('Manage Environments').click();
+    await appPage.getByTestId('environment-switcher').click();
+    await appPage.getByText('Manage Environments...').click();
 
     const dialogHeading = appPage.locator('h2', { hasText: 'Manage Environments' });
     await expect(dialogHeading).toBeVisible();

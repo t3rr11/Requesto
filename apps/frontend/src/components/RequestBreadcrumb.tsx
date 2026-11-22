@@ -33,14 +33,12 @@ export function RequestBreadcrumb({ savedRequestId }: Readonly<RequestBreadcrumb
   return (
     <>
       <div className="flex items-center gap-2 truncate text-sm text-gray-600 dark:text-gray-400 min-w-0 flex-1 @container">
-        <span className="truncate @max-[260px]:hidden">Collections</span>
         {collectionName && (
           <>
-            <span className="@max-[260px]:hidden"><ChevronRight size={12} /></span>
             <span className="truncate @max-[200px]:hidden">{collectionName}</span>
+            <span className="@max-[200px]:hidden"><ChevronRight size={12} /></span>
           </>
         )}
-        <span className="@max-[200px]:hidden"><ChevronRight size={12} /></span>
         {canRename ? (
           <button
             type="button"
