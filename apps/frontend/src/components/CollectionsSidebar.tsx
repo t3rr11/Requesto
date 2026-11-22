@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Folder as FolderIcon, FolderPlus, Import, Play, Search, X, FileText, Braces, BookOpen } from 'lucide-react';
+import { Folder as FolderIcon, FolderPlus, Play, Search, X, FileText, Braces, BookOpen, Download, Ellipsis } from 'lucide-react';
 import { useUIStore } from '../store/ui/store';
 import { useGitStore } from '../store/git/store';
 import { useCollectionsStore } from '../store/collections/store';
@@ -69,6 +69,7 @@ export function CollectionsSidebar() {
     collections,
     loading,
     importCollection,
+    exportAllCollections,
     updateCollection,
     updateRequest,
     updateFolder,
@@ -121,8 +122,8 @@ export function CollectionsSidebar() {
   const renameCollectionDialog = useDialogWithData<RenameCollectionData>();
   const renameFolderDialog = useDialogWithData<RenameFolderData>();
   const newFolderDialog = useDialogWithData<NewFolderData>();
-  const [importMenuPos, setImportMenuPos] = useState<{ x: number; y: number } | null>(null);
-  const importButtonRef = useRef<HTMLButtonElement>(null);
+  const [actionsMenuPos, setActionsMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
   const [docsDialogOpen, setDocsDialogOpen] = useState(false);
   const [docsInitialNodeId, setDocsInitialNodeId] = useState<string | null>(null);
 
@@ -178,10 +179,20 @@ export function CollectionsSidebar() {
 
   const handleImportClick = () => fileInputRef.current?.click();
 
-  const handleImportMenuOpen = () => {
-    if (importButtonRef.current) {
-      const rect = importButtonRef.current.getBoundingClientRect();
-      setImportMenuPos({ x: rect.left, y: rect.bottom + 4 });
+  const handleActionsMenuOpen = () => {
+    if (actionsButtonRef.current) {
+      const rect = actionsButtonRef.current.getBoundingClientRect();
+      setActionsMenuPos({ x: rect.right - 180, y: rect.bottom + 4 });
+    }
+  };
+
+  const handleExportAll = async () => {
+    if (collections.length === 0) return;
+    try {
+      await exportAllCollections();
+      showAlert(`Exported ${collections.length} collection${collections.length === 1 ? '' : 's'} to file`, 'success');
+    } catch {
+      showAlert('Failed to export collections', 'error');
     }
   };
 
@@ -190,7 +201,7 @@ export function CollectionsSidebar() {
     if (!file) return;
     try {
       await importCollection(file);
-      showAlert('Collection imported successfully', 'success');
+      showAlert('Imported successfully', 'success');
     } catch {
       showAlert('Failed to import collection. Please check the file format.', 'error');
     }
@@ -205,35 +216,54 @@ export function CollectionsSidebar() {
       className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col relative flex-none min-h-0"
       style={{ width: `${sidebarWidth}px` }}
     >
-      <div className="px-4 pb-4 pt-2 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
+      <div className="px-4 pb-4 pt-2 border-b border-gray-200 dark:border-gray-700 @container">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collections</h2>
-          <div className="flex gap-1.5">
-            <Button
-              onClick={() => setRunnerOpen(true)}
-              variant="icon"
-              size="sm"
-              title="Run All Collections"
-              disabled={collections.length === 0}
-            >
-              <Play className="w-4 h-4" />
-            </Button>
-            <Button onClick={newCollectionDialog.open} variant="icon" size="sm" title="New Collection">
-              <FolderPlus className="w-4 h-4" />
-            </Button>
-            <Button ref={importButtonRef} onClick={handleImportMenuOpen} variant="icon" size="sm" title="Import">
-              <Import className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={handleViewDocs}
-              variant="icon"
-              size="sm"
-              title="View Documentation"
-              disabled={collections.length === 0}
-            >
-              <BookOpen className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button
+            ref={actionsButtonRef}
+            onClick={handleActionsMenuOpen}
+            variant="icon"
+            size="sm"
+            title="More actions"
+          >
+            <Ellipsis className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <Button
+            onClick={newCollectionDialog.open}
+            variant="primary"
+            size="sm"
+            title="New Collection"
+            className="min-w-0 px-1!"
+          >
+            <FolderPlus className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              New <span className="@max-[300px]:hidden">Collection</span>
+            </span>
+          </Button>
+          <Button
+            onClick={handleViewDocs}
+            variant="secondary"
+            size="sm"
+            title="Workspace Documentation"
+            disabled={collections.length === 0}
+            className="min-w-0 px-1!"
+          >
+            <BookOpen className="w-4 h-4 shrink-0" />
+            <span className="truncate">Docs</span>
+          </Button>
+          <Button
+            onClick={() => setRunnerOpen(true)}
+            variant="secondary"
+            size="sm"
+            title="Run All Collections"
+            disabled={collections.length === 0}
+            className="min-w-0 px-1!"
+          >
+            <Play className="w-4 h-4 shrink-0" />
+            <span className="truncate">Test</span>
+          </Button>
         </div>
         <input
           ref={fileInputRef}
@@ -242,7 +272,7 @@ export function CollectionsSidebar() {
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
-        <div className="relative mt-2">
+        <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
           <input
             ref={searchInputRef}
@@ -412,18 +442,23 @@ export function CollectionsSidebar() {
         placeholder="Enter folder name..."
       />
 
-      {importMenuPos && (
+      {actionsMenuPos && (
         <ContextMenu
-          position={importMenuPos}
-          onClose={() => setImportMenuPos(null)}
+          position={actionsMenuPos}
+          onClose={() => setActionsMenuPos(null)}
           items={[
             {
-              label: 'Import Collection',
+              label: 'Import from File',
               icon: <FileText className="w-4 h-4" />,
               onClick: handleImportClick,
             },
             {
-              label: 'OpenAPI Spec',
+              label: 'Export to File',
+              icon: <Download className="w-4 h-4" />,
+              onClick: () => void handleExportAll(),
+            },
+            {
+              label: 'Import from OpenAPI Spec',
               icon: <Braces className="w-4 h-4" />,
               onClick: () => importOpenApiDialog.open(),
             },
