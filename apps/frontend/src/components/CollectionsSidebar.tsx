@@ -232,15 +232,13 @@ export function CollectionsSidebar() {
         <div className="grid grid-cols-3 gap-2 mb-3">
           <Button
             onClick={newCollectionDialog.open}
-            variant="primary"
+            variant="secondary"
             size="sm"
             title="New Collection"
             className="min-w-0 px-1!"
           >
             <FolderPlus className="w-4 h-4 shrink-0" />
-            <span className="truncate">
-              New <span className="@max-[300px]:hidden">Collection</span>
-            </span>
+            <span className="truncate">New</span>
           </Button>
           <Button
             onClick={handleViewDocs}
