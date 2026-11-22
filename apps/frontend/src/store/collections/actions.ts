@@ -503,17 +503,31 @@ export async function importOpenApiCollection(
   }
 }
 
-export async function importCollection(set: SetState, file: File): Promise<Collection> {
+async function postImportCollection(collection: Collection): Promise<void> {
+  const res = await fetch(`${API_BASE}/collections/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ collection }),
+  });
+  if (!res.ok) throw new Error(`Failed to import collection "${collection.name ?? 'unnamed'}"`);
+}
+
+export async function importCollection(set: SetState, file: File): Promise<Collection | null> {
   try {
-    const collection = await readJSONFile(file) as Collection;
+    const parsed = await readJSONFile(file) as Collection | { collections: Collection[] };
 
-    const res = await fetch(`${API_BASE}/collections/import`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ collection }),
-    });
-    if (!res.ok) throw new Error('Failed to import collection');
+    // Multiple collections export (workspace export)
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as { collections?: unknown }).collections)) {
+      const wrapped = parsed as { collections: Collection[] };
+      if (wrapped.collections.length === 0) throw new Error('Export file contains no collections');
+      await Promise.all(wrapped.collections.map(postImportCollection));
+      await loadCollections(set);
+      return null;
+    }
 
+    // Single collection export
+    const collection = parsed as Collection;
+    await postImportCollection(collection);
     await loadCollections(set);
     return collection;
   } catch (error) {
@@ -532,6 +546,34 @@ export async function exportCollection(collectionId: string): Promise<void> {
     downloadJSON(collection, filename);
   } catch (error) {
     console.error('Failed to export collection:', error);
+    throw error;
+  }
+}
+
+export async function exportAllCollections(): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/collections`);
+    if (!res.ok) throw new Error('Failed to load collections for export');
+    const collections: { id: string }[] = await res.json();
+    if (collections.length === 0) throw new Error('No collections to export');
+
+    const exported = await Promise.all(
+      collections.map(async ({ id }) => {
+        const exportRes = await fetch(`${API_BASE}/collections/${id}/export`);
+        if (!exportRes.ok) throw new Error('Failed to export collection');
+        return exportRes.json() as Promise<Collection>;
+      })
+    );
+
+    const workspaceExport = {
+      format: 'requesto-collections',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      collections: exported,
+    };
+    downloadJSON(workspaceExport, 'requesto-collections.json');
+  } catch (error) {
+    console.error('Failed to export collections:', error);
     throw error;
   }
 }
