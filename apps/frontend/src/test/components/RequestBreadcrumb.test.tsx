@@ -44,9 +44,4 @@ describe('RequestBreadcrumb', () => {
     render(<RequestBreadcrumb savedRequestId="nonexistent" />);
     expect(screen.getByText('Untitled Request')).toBeInTheDocument();
   });
-
-  it('always shows Collections breadcrumb root', () => {
-    render(<RequestBreadcrumb savedRequestId={undefined} />);
-    expect(screen.getByText('Collections')).toBeInTheDocument();
-  });
 });

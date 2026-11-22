@@ -27,7 +27,7 @@ Authorization: Bearer sk_abc123
 
 <ThemeImage src="/environments/manage-dialog.png" alt="Manage Environments dialog" />
 
-Open the **Manage Environments** dialog from the gear icon next to the environment selector in the tabs bar (or via **Manage Environments** in the selector dropdown).
+Open the **Manage Environments** dialog from the **environment switcher** in the header, next to the workspace switcher.
 
 **Sidebar actions:**
 - **New Environment** - creates an empty environment
@@ -90,7 +90,7 @@ Hovering a <code v-pre>{{placeholder}}</code> shows the resolved value in a tool
 
 ## Switching Environments
 
-Use the **environment selector** dropdown in the tabs bar. Selecting a different environment changes which variables are substituted - you don't need to edit any requests.
+Use the **environment switcher** in the header, next to the workspace switcher. Selecting a different environment changes which variables are substituted - you don't need to edit any requests.
 
 <ThemeImage src="/environments/selector-dropdown.png" alt="Environment selector dropdown" />
 

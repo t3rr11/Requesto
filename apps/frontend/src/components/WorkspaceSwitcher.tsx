@@ -12,7 +12,11 @@ interface WorkspaceSwitcherProps {
   variant?: 'sidebar' | 'header';
 }
 
-export function WorkspaceSwitcher({ onManageWorkspaces, onAddWorkspace, variant = 'sidebar' }: WorkspaceSwitcherProps) {
+export function WorkspaceSwitcher({
+  onManageWorkspaces,
+  onAddWorkspace,
+  variant = 'sidebar',
+}: Readonly<WorkspaceSwitcherProps>) {
   const { registry, switchWorkspace, updateWorkspace } = useWorkspaceStore();
   const { showAlert } = useAlertStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -23,9 +27,7 @@ export function WorkspaceSwitcher({ onManageWorkspaces, onAddWorkspace, variant 
 
   const activeWorkspace = registry.workspaces.find(w => w.id === registry.activeWorkspaceId);
 
-  const filtered = registry.workspaces.filter(w =>
-    w.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = registry.workspaces.filter(w => w.name.toLowerCase().includes(search.toLowerCase()));
 
   useEffect(() => {
     if (!isOpen) return;
@@ -94,7 +96,7 @@ export function WorkspaceSwitcher({ onManageWorkspaces, onAddWorkspace, variant 
       {isOpen && (
         <div className="absolute left-0 top-full mt-1 z-50 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1">
           {/* Search */}
-          <div className="px-2 pb-1">
+          <div className="px-2 py-1">
             <div className="flex items-center gap-1 px-2 py-1 border border-gray-200 dark:border-gray-600 rounded text-sm bg-gray-50 dark:bg-gray-700">
               <Search className="w-3 h-3 text-gray-400" />
               <input
@@ -103,10 +105,13 @@ export function WorkspaceSwitcher({ onManageWorkspaces, onAddWorkspace, variant 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search workspaces..."
-                className="flex-1 bg-transparent outline-none text-xs text-gray-700 dark:text-gray-300"
+                className="flex-1 bg-transparent outline-none text-xs text-gray-700 dark:text-gray-300 py-0.5"
               />
               {search && (
-                <button onClick={() => setSearch('')} className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600">
+                <button
+                  onClick={() => setSearch('')}
+                  className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                >
                   <X className="w-3 h-3 text-gray-400" />
                 </button>
               )}
@@ -125,31 +130,29 @@ export function WorkspaceSwitcher({ onManageWorkspaces, onAddWorkspace, variant 
                   key={workspace.id}
                   className="group flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <>
-                    <button
-                      onClick={() => handleSwitch(workspace.id)}
-                      className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-left min-w-0"
-                    >
-                      {workspace.id === registry.activeWorkspaceId ? (
-                        <Check className="w-4 h-4 text-blue-500 shrink-0" />
-                      ) : (
-                        <span className="w-4 h-4 shrink-0" />
-                      )}
-                      <span className="truncate">{workspace.name}</span>
-                      {workspace.isGitRepo && (
-                        <span title="Git repository">
-                          <GitBranch className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={e => handleStartRename(e, workspace.id, workspace.name)}
-                      className="p-1 mr-2 rounded opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
-                      title="Rename"
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </button>
-                  </>
+                  <button
+                    onClick={() => handleSwitch(workspace.id)}
+                    className="flex-1 flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 text-left min-w-0"
+                  >
+                    {workspace.id === registry.activeWorkspaceId ? (
+                      <Check className="w-4 h-4 text-blue-500 shrink-0" />
+                    ) : (
+                      <span className="w-4 h-4 shrink-0" />
+                    )}
+                    <span className="truncate">{workspace.name}</span>
+                    {workspace.isGitRepo && (
+                      <span title="Git repository">
+                        <GitBranch className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" />
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={e => handleStartRename(e, workspace.id, workspace.name)}
+                    className="p-1 mr-2 rounded opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+                    title="Rename"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
                 </div>
               ))
             )}

@@ -8,6 +8,7 @@ import { EventHeaderDecoration } from './EventHeaderDecoration';
 import { HelpContent } from './HelpContent';
 import { SettingsDialog } from './SettingsDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { EnvironmentSwitcher } from './EnvironmentSwitcher';
 import { WorkspaceManagerDialog } from './WorkspaceManagerDialog';
 import { AddWorkspaceDialog, type AddWorkspaceMode } from './AddWorkspaceDialog';
 import { useNavigate, useLocation } from 'react-router';
@@ -16,7 +17,6 @@ import {
   Sun,
   Columns2,
   Rows2,
-  Terminal,
   HelpCircle,
   PanelLeftClose,
   ArrowDownToLine,
@@ -29,7 +29,7 @@ import {
 const DOCS_URL = 'https://requesto.com.au/search';
 
 export function Header() {
-  const { isSidebarOpen, toggleSidebar, isConsoleOpen, toggleConsole, panelLayout, togglePanelLayout } = useUIStore();
+  const { isSidebarOpen, toggleSidebar, panelLayout, togglePanelLayout } = useUIStore();
   const { isDarkMode, toggleTheme } = useThemeStore();
   const { status: updateStatus, setDialogOpen: setUpdateDialogOpen } = useUpdateStore();
   const helpDialog = useDialog();
@@ -70,6 +70,10 @@ export function Header() {
             onAddWorkspace={openAddWorkspace}
             variant="header"
           />
+
+          <span className="h-5 w-px bg-white/20 dark:bg-gray-600" aria-hidden="true" />
+
+          <EnvironmentSwitcher />
         </div>
 
         <div className="flex gap-2">
@@ -145,15 +149,6 @@ export function Header() {
             className="text-white hover:bg-blue-500! dark:hover:bg-gray-700! hover:text-white!"
           >
             {panelLayout === 'horizontal' ? <Rows2 className="w-5 h-5" /> : <Columns2 className="w-5 h-5" />}
-          </Button>
-          <Button
-            onClick={toggleConsole}
-            variant="icon"
-            size="sm"
-            title={isConsoleOpen ? 'Hide Console' : 'Show Console'}
-            className={`text-white hover:text-white! ${isConsoleOpen ? 'bg-blue-500 dark:bg-gray-700' : 'hover:bg-blue-500! dark:hover:bg-gray-700!'}`}
-          >
-            <Terminal className="w-5 h-5" />
           </Button>
           <Button
             onClick={() => openSettings()}

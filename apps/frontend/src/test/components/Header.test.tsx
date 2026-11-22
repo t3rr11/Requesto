@@ -4,7 +4,6 @@ import { MemoryRouter } from 'react-router';
 import { Header } from '../../components/Header';
 
 const mockToggleSidebar = vi.fn();
-const mockToggleConsole = vi.fn();
 const mockTogglePanelLayout = vi.fn();
 const mockOpenSettings = vi.fn();
 const mockCloseSettings = vi.fn();
@@ -13,12 +12,10 @@ const mockSetSettingsTab = vi.fn();
 // Selector-aware mock so components using `useUIStore(s => s.x)` get the field
 const mockUIState = {
   isSidebarOpen: true,
-  isConsoleOpen: false,
   panelLayout: 'vertical',
   isSettingsOpen: false,
   settingsTab: 'general',
   toggleSidebar: mockToggleSidebar,
-  toggleConsole: mockToggleConsole,
   togglePanelLayout: mockTogglePanelLayout,
   openSettings: mockOpenSettings,
   closeSettings: mockCloseSettings,
@@ -35,6 +32,13 @@ vi.mock('../../store/theme/store', () => ({
   useThemeStore: () => ({
     isDarkMode: false,
     toggleTheme: mockToggleTheme,
+  }),
+}));
+
+vi.mock('../../store/environments/store', () => ({
+  useEnvironmentStore: () => ({
+    environmentsData: { activeEnvironmentId: null, environments: [] },
+    setActiveEnvironment: vi.fn(),
   }),
 }));
 
@@ -69,11 +73,9 @@ describe('Header', () => {
     expect(mockToggleTheme).toHaveBeenCalledOnce();
   });
 
-  it('toggles console on button click', () => {
+  it('renders the environment switcher', () => {
     renderHeader();
-    const consoleBtn = screen.getByTitle('Show Console');
-    fireEvent.click(consoleBtn);
-    expect(mockToggleConsole).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('environment-switcher')).toBeInTheDocument();
   });
 
   it('toggles panel layout on button click', () => {
