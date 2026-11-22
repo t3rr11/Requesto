@@ -90,10 +90,10 @@ test.describe('UI Features', () => {
   });
 
   test('toggle console panel', async ({ appPage, takeScreenshot }) => {
-    // Show console if hidden
-    const showConsole = appPage.getByTitle('Show Console');
-    if (await showConsole.isVisible().catch(() => false)) {
-      await showConsole.click();
+    // Show console via the collapsed console bar if hidden
+    const consoleBar = appPage.locator('.fixed.bottom-0.shadow-lg');
+    if (await consoleBar.isVisible().catch(() => false)) {
+      await consoleBar.click();
       await appPage.waitForTimeout(300);
     }
 
@@ -102,10 +102,10 @@ test.describe('UI Features', () => {
 
     await takeScreenshot('ui', 'console-open');
 
-    // Hide console
-    const hideConsole = appPage.getByTitle('Hide Console');
-    if (await hideConsole.isVisible().catch(() => false)) {
-      await hideConsole.click();
+    // Hide console via the open panel's header bar
+    const consoleHeader = appPage.locator('.fixed.bottom-0.shadow-2xl > .cursor-pointer');
+    if (await consoleHeader.isVisible().catch(() => false)) {
+      await consoleHeader.click();
       await appPage.waitForTimeout(300);
     }
 

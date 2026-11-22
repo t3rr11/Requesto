@@ -9,7 +9,7 @@ Import OpenAPI v2 (Swagger) or v3 specs to generate collections automatically. O
 
 ## Importing a Spec
 
-Click the **Import** button in the sidebar header and select **OpenAPI Spec**.
+Open the **⋯ (More actions)** menu in the sidebar header and choose **Import from OpenAPI Spec**.
 
 <ThemeImage src="/openapi/import-dialog.png" alt="OpenAPI import dialog" />
 

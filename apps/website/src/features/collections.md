@@ -63,9 +63,9 @@ Right-click any collection, folder, or request in the sidebar:
 
 ## Import & Export
 
-**Import**: Click the upload icon in the sidebar header and pick **Import Collection**, then select a JSON file. The collection is added to the sidebar.
+**Import**: Open the **⋯ (More actions)** menu in the sidebar header and choose **Import from File**, then select a JSON file. Requesto export files can contain a single collection or your whole workspace's collections - both import the same way, and every imported collection gets fresh IDs so nothing collides.
 
-**Export**: Right-click a collection, folder, or request and choose **Export**. The exported JSON includes all nested folders and requests.
+**Export**: Open the **⋯** menu and choose **Export to File** to download every collection in the workspace as a single `requesto-collections.json` file that imports back as-is. To export just one thing, right-click a collection, folder, or request and choose **Export** - the exported JSON includes all nested folders and requests.
 
 Environment import and export works the same way from the environment manager (see [Environments](/features/environments)).
 
@@ -95,7 +95,7 @@ The search box at the top of the sidebar filters collections, folders, and reque
 
 ## Collection Runner
 
-Run all requests in a collection or folder sequentially. Right-click a collection and choose **Run Collection**, or right-click a folder and choose **Run Folder**.
+Run all requests in a collection or folder sequentially. Right-click a collection and choose **Run Collection**, or right-click a folder and choose **Run Folder**. To run every collection in the workspace, click the **Test** button in the sidebar header.
 
 The runner dialog shows each request with its pass/fail status, response details, and test results. Pre-request scripts and test scripts run for every request, and environment changes chain forward through the run.
 

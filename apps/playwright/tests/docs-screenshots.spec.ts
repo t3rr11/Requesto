@@ -189,19 +189,19 @@ test.describe('Getting Started', () => {
 
     await waitForResponseBody(appPage, 'Leanne Graham');
 
-    // Open console
-    const showConsole = appPage.getByTitle('Show Console');
-    if (await showConsole.isVisible().catch(() => false)) {
-      await showConsole.click();
+    // Open the console via the collapsed console bar at the bottom of the window
+    const consoleBar = appPage.locator('.fixed.bottom-0.shadow-lg');
+    if (await consoleBar.isVisible().catch(() => false)) {
+      await consoleBar.click();
       await appPage.waitForTimeout(300);
     }
 
     await takeDocScreenshot('getting-started', 'interface-overview');
 
     // Close console for clean state
-    const hideConsole = appPage.getByTitle('Hide Console');
-    if (await hideConsole.isVisible().catch(() => false)) {
-      await hideConsole.click();
+    const consoleHeader = appPage.locator('.fixed.bottom-0.shadow-2xl > .cursor-pointer');
+    if (await consoleHeader.isVisible().catch(() => false)) {
+      await consoleHeader.click();
       await appPage.waitForTimeout(300);
     }
   });
@@ -502,10 +502,10 @@ test.describe('Console', () => {
     // Wait for the response body to render, not just the status badge
     await waitForResponseBody(appPage, 'octocat');
 
-    // Open console
-    const showConsole = appPage.getByTitle('Show Console');
-    if (await showConsole.isVisible().catch(() => false)) {
-      await showConsole.click();
+    // Open the console via the collapsed console bar at the bottom of the window
+    const consoleBar = appPage.locator('.fixed.bottom-0.shadow-lg');
+    if (await consoleBar.isVisible().catch(() => false)) {
+      await consoleBar.click();
       await appPage.waitForTimeout(300);
     }
 
@@ -524,10 +524,10 @@ test.describe('Console', () => {
     // Wait for the response body to render, not just the status badge
     await waitForResponseBody(appPage, 'octocat');
 
-    // Open console
-    const showConsole = appPage.getByTitle('Show Console');
-    if (await showConsole.isVisible().catch(() => false)) {
-      await showConsole.click();
+    // Open the console via the collapsed console bar at the bottom of the window
+    const consoleBar = appPage.locator('.fixed.bottom-0.shadow-lg');
+    if (await consoleBar.isVisible().catch(() => false)) {
+      await consoleBar.click();
       await appPage.waitForTimeout(300);
     }
 
@@ -745,9 +745,9 @@ test.describe('OpenAPI Docs', () => {
   test('openapi import dialog', async ({ appPage, takeDocScreenshot }) => {
     const specPath = path.join(FIXTURES_DIR, 'openapi-spec.json').replace(/\\/g, '/');
 
-    // Open the import dropdown, then click "OpenAPI Spec"
-    await appPage.getByTitle('Import').click();
-    await appPage.getByText('OpenAPI Spec').click();
+    // Open the sidebar actions menu, then click "Import from OpenAPI Spec"
+    await appPage.getByTitle('More actions').click();
+    await appPage.getByText('Import from OpenAPI Spec').click();
 
     const dialogHeading = appPage.locator('h2', { hasText: 'Import from OpenAPI' });
     await expect(dialogHeading).toBeVisible();

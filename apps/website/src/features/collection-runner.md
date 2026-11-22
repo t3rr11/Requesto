@@ -11,7 +11,7 @@ Run all requests in a collection or folder in sequence. The runner executes each
 
 Right-click any collection in the sidebar and choose **Run Collection**. To run only a subset of requests, right-click a folder and choose **Run Folder**.
 
-To run every collection in the workspace in one go, use the **Run All Collections** button (play icon) in the sidebar header next to *New Collection* and *Import*. Requests run in collection order and environment chaining carries across collections.
+To run every collection in the workspace in one go, click the **Test** button in the sidebar action bar (alongside **New Collection** and **Docs**). Requests run in collection order and environment chaining carries across collections.
 
 <ThemeImage src="/collection-runner/dialog.png" alt="Collection runner dialog" />
 

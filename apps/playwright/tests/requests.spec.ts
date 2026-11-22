@@ -150,10 +150,10 @@ test.describe('Request Execution', () => {
   });
 
   test('view request details in console panel', async ({ appPage, takeScreenshot }) => {
-    // Open the console panel
-    const consoleToggle = appPage.getByTitle('Show Console');
-    if (await consoleToggle.isVisible()) {
-      await consoleToggle.click();
+    // Open the console via the collapsed console bar at the bottom of the window
+    const consoleBar = appPage.locator('.fixed.bottom-0.shadow-lg');
+    if (await consoleBar.isVisible()) {
+      await consoleBar.click();
     }
 
     // Expand GitHub API and send a request

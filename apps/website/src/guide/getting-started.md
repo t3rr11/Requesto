@@ -35,12 +35,12 @@ Head to the [Download & Install](/guide/download) page first.
 
 Environments let you swap between configs (dev, staging, prod) without editing requests.
 
-1. Open the **environment selector** in the tabs bar and choose **Manage Environments** (gear icon)
+1. Open the **environment switcher** in the header (next to the workspace switcher) and choose **Manage Environments...**
 2. Create a new environment (e.g. "Development")
 3. Add variables as key-value pairs:
    - `base_url` → `http://localhost:3000`
    - `api_key` → `your-key-here`
-4. Select the environment from the dropdown in the tabs bar
+4. Select the environment from the switcher in the header
 5. Use variables in requests with <code v-pre>{{base_url}}</code> syntax - they're substituted before sending
 
 Variables work in URLs, headers, query parameters, request bodies, form-data entries, and auth fields.
@@ -74,11 +74,11 @@ See [OAuth 2.0](/features/oauth) for the full guide.
 
 <ThemeImage src="/getting-started/interface-overview.png" alt="Full interface overview" />
 
-**Header**: Workspace switcher, a **Collections / Mock Server** switch, settings (gear icon), theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, update badge, and help. Collections and the [Mock Server](/mock-server/) are the two main views.
+**Header**: Workspace switcher and environment switcher, a **Collections / Mock Server** switch, settings (gear icon), theme toggle, console toggle, layout toggle (horizontal/vertical split), sidebar toggle, update badge, and help. Collections and the [Mock Server](/mock-server/) are the two main views.
 
-**Sidebar** (left): Your collections, folders, and saved requests, plus an environments panel. Search box filters by name and URL.
+**Sidebar** (left): Your collections, folders, and saved requests, with a Git status bar along the bottom. The search box filters by name and URL.
 
-**Tabs bar**: Open request tabs. An orange dot means unsaved changes. The environment selector (with its gear icon for managing environments) is here too.
+**Tabs bar**: Open request tabs. An orange dot means unsaved changes.
 
 **Request panel**: URL bar, method dropdown, and tabs for Params, Headers, Body (Monaco editor), Auth, Tests, Pre-request Script, and Docs (markdown documentation for the endpoint).
 

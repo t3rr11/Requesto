@@ -14,9 +14,9 @@ test.describe('OpenAPI Import & Sync', () => {
     test('import OpenAPI spec via UI', async ({ appPage, takeScreenshot }) => {
       const specPath = path.join(FIXTURES_DIR, 'openapi-spec.json').replace(/\\/g, '/');
 
-      // Open the import dropdown, then click "OpenAPI Spec"
-      await appPage.getByTitle('Import').click();
-      await appPage.getByText('OpenAPI Spec').click();
+      // Open the sidebar actions menu, then click "Import from OpenAPI Spec"
+      await appPage.getByTitle('More actions').click();
+      await appPage.getByText('Import from OpenAPI Spec').click();
 
       const dialogHeading = appPage.locator('h2', { hasText: 'Import from OpenAPI' });
       await expect(dialogHeading).toBeVisible();
