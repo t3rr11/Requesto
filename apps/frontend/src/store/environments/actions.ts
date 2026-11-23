@@ -25,7 +25,7 @@ async function deleteEnvironmentApi(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete environment');
 }
 
-async function setActiveEnvironmentApi(id: string): Promise<void> {
+async function setActiveEnvironmentApi(id: string | null): Promise<void> {
   const res = await fetch(`${API_BASE}/environments/active`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -53,7 +53,7 @@ export async function loadEnvironments(set: SetState): Promise<void> {
   }
 }
 
-export async function setActiveEnvironment(set: SetState, id: string): Promise<void> {
+export async function setActiveEnvironment(set: SetState, id: string | null): Promise<void> {
   try {
     await setActiveEnvironmentApi(id);
     await loadEnvironments(set);

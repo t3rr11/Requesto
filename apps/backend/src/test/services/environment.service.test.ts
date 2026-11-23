@@ -174,6 +174,13 @@ describe('EnvironmentService', () => {
       const service = new EnvironmentService(repo);
       expect(() => service.setActive('env-1')).not.toThrow();
     });
+
+    it('accepts null to clear the active environment without throwing', () => {
+      const repo = mockRepo({ setActive: vi.fn().mockReturnValue(true) });
+      const service = new EnvironmentService(repo);
+      expect(() => service.setActive(null)).not.toThrow();
+      expect(repo.setActive).toHaveBeenCalledWith(null);
+    });
   });
 
   describe('getActive', () => {

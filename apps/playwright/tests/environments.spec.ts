@@ -12,6 +12,33 @@ test.describe('Environment Variables', () => {
     await takeScreenshot('environments', 'active-environment');
   });
 
+  test('selecting "No Environment" clears the active environment without API errors', async ({
+    appPage,
+    takeScreenshot,
+  }) => {
+    const apiErrors: string[] = [];
+    appPage.on('response', res => {
+      if (res.url().includes('/api/environments/active') && res.status() >= 400) {
+        apiErrors.push(`${res.status()} ${res.url()}`);
+      }
+    });
+
+    // Open the dropdown and pick "No Environment"
+    await appPage.getByTestId('environment-switcher').click();
+    await appPage.getByText('No Environment').click();
+
+    // The switcher falls back to its empty-state title
+    await expect(appPage.getByTitle('Select environment')).toBeVisible();
+    expect(apiErrors).toEqual([]);
+
+    await takeScreenshot('environments', 'no-environment-selected');
+
+    // The cleared selection persists across a reload
+    await appPage.reload();
+    await appPage.waitForSelector('text=Sample API', { timeout: 10_000 });
+    await expect(appPage.getByTitle('Select environment')).toBeVisible();
+  });
+
   test('switch active environment via dropdown', async ({ appPage, takeScreenshot }) => {
     // Click the environment dropdown trigger
     const envButton = appPage.getByText('Development').first();

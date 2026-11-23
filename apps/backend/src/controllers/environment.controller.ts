@@ -45,9 +45,8 @@ const environmentController: FastifyPluginAsync<Options> = async (server, opts) 
     return { success: true };
   });
 
-  server.post<{ Body: { id: string } }>('/environments/active', async (request, _reply) => {
-    const { id } = request.body;
-    environmentService.setActive(id);
+  server.post<{ Body: { id?: string | null } }>('/environments/active', async (request, _reply) => {
+    environmentService.setActive(request.body.id ?? null);
     return { success: true };
   });
 

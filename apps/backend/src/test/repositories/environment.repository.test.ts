@@ -157,6 +157,31 @@ describe('EnvironmentRepository', () => {
     expect(success).toBe(false);
   });
 
+  it('setActive(null) records an explicit "No Environment" selection', () => {
+    const env1 = makeEnv({ name: 'E1' });
+    const env2 = makeEnv({ name: 'E2' });
+    repo.save(env1);
+    repo.save(env2);
+    repo.setActive(env2.id);
+
+    const success = repo.setActive(null);
+
+    expect(success).toBe(true);
+    expect(repo.getAll().activeEnvironmentId).toBeNull();
+    expect(repo.getActive()).toBeNull();
+    expect(readActiveSelection(tmpDir)).toEqual({ activeEnvironmentId: null });
+  });
+
+  it('an explicit "No Environment" selection is replaced when another environment is picked', () => {
+    const env1 = makeEnv({ name: 'E1' });
+    repo.save(env1);
+    repo.setActive(null);
+
+    repo.setActive(env1.id);
+
+    expect(repo.getAll().activeEnvironmentId).toBe(env1.id);
+  });
+
   it('replaceAll writes all environments, removes missing ones and preserves order', () => {
     const env1 = makeEnv({ name: 'Env 1' });
     const env2 = makeEnv({ name: 'Env 2' });

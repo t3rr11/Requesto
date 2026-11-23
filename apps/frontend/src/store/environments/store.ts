@@ -7,7 +7,7 @@ type EnvironmentState = {
   loading: boolean;
 
   loadEnvironments: () => Promise<void>;
-  setActiveEnvironment: (id: string) => Promise<void>;
+  setActiveEnvironment: (id: string | null) => Promise<void>;
   saveEnvironment: (environment: Environment) => Promise<void>;
   deleteEnvironment: (id: string) => Promise<void>;
   addEnvironment: (environment: Environment) => void;
