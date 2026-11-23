@@ -33,3 +33,7 @@ export function getActiveEventTheme(date: Date = new Date(), events: EventTheme[
     }) ?? null
   );
 }
+
+export function getEventThemeById(id: string, events: EventTheme[] = EVENT_THEMES): EventTheme | null {
+  return events.find(event => event.id === id) ?? null;
+}

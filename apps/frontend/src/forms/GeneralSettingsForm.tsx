@@ -15,8 +15,6 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
   const setInsecureTls = useSettingsStore(s => s.setInsecureTls);
   const saveRequestOnSend = useSettingsStore(s => s.saveRequestOnSend);
   const setSaveRequestOnSend = useSettingsStore(s => s.setSaveRequestOnSend);
-  const disableEventThemes = useSettingsStore(s => s.disableEventThemes);
-  const setDisableEventThemes = useSettingsStore(s => s.setDisableEventThemes);
   const warnOnHttpErrors = useSettingsStore(s => s.warnOnHttpErrors);
   const setWarnOnHttpErrors = useSettingsStore(s => s.setWarnOnHttpErrors);
 
@@ -30,7 +28,6 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
     defaultValues: {
       insecureTls,
       saveRequestOnSend,
-      disableEventThemes,
       warnOnHttpErrors,
     },
   });
@@ -40,7 +37,6 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
   const onSubmit = (data: SettingsFormData) => {
     setInsecureTls(data.insecureTls);
     setSaveRequestOnSend(data.saveRequestOnSend);
-    setDisableEventThemes(data.disableEventThemes);
     setWarnOnHttpErrors(data.warnOnHttpErrors);
     onSuccess();
   };
@@ -110,25 +106,6 @@ export function GeneralSettingsForm({ onSuccess, onCancel }: Readonly<SettingsFo
               Show an amber warning in the collection runner when a request with no failing
               tests returns an HTTP 4xx/5xx status or a GraphQL errors envelope. Warnings
               never fail a run.
-            </span>
-          </span>
-        </label>
-
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 mt-8">Appearance</h3>
-
-        <label className="flex items-start gap-3 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            {...register('disableEventThemes')}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500"
-          />
-          <span className="flex-1">
-            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-              Disable holiday &amp; event themes
-            </span>
-            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              Revert to the standard look during holiday periods and events (e.g. themed header decorations),
-              regardless of the date.
             </span>
           </span>
         </label>

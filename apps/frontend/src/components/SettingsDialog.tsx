@@ -1,6 +1,7 @@
-import { Database, Key, Settings as SettingsIcon } from 'lucide-react';
+import { Database, Key, Palette, Settings as SettingsIcon } from 'lucide-react';
 import { Dialog } from './Dialog';
 import { GeneralSettingsForm } from '../forms/GeneralSettingsForm';
+import { AppearanceSettingsForm } from '../forms/AppearanceSettingsForm';
 import { GraphQLSchemasSettings } from '../forms/settings/GraphQLSchemasSettings';
 import { OAuthManagerContent } from '../forms/OAuthManagerContent';
 import { useUIStore } from '../store/ui/store';
@@ -15,6 +16,7 @@ type SettingsSection = {
 
 const SECTIONS: SettingsSection[] = [
   { id: 'general', label: 'General', icon: <SettingsIcon className="w-4 h-4" />, group: 'Application' },
+  { id: 'appearance', label: 'Appearance', icon: <Palette className="w-4 h-4" />, group: 'Application' },
   { id: 'graphql-schemas', label: 'GraphQL Schemas', icon: <Database className="w-4 h-4" />, group: 'Workspace' },
   { id: 'oauth-configs', label: 'OAuth Configs', icon: <Key className="w-4 h-4" />, group: 'Workspace' },
 ];
@@ -81,6 +83,12 @@ export function SettingsDialog() {
         {activeTab === 'general' && (
           <div className="flex-1 min-w-0 flex min-h-0">
             <GeneralSettingsForm onSuccess={closeSettings} onCancel={closeSettings} />
+          </div>
+        )}
+
+        {activeTab === 'appearance' && (
+          <div className="flex-1 min-w-0 flex min-h-0">
+            <AppearanceSettingsForm onSuccess={closeSettings} onCancel={closeSettings} />
           </div>
         )}
 

@@ -139,7 +139,7 @@ export function CobwebDecoration() {
       <Cobweb className="absolute top-0 right-0 -scale-x-100 text-white opacity-20" />
       <button
         onClick={handleSpiderClick}
-        className={`event-spider pointer-events-auto absolute top-0 left-100 z-10 ${
+        className={`event-spider pointer-events-auto absolute top-0 left-138 z-10 hidden min-[1200px]:block ${
           spiderUp ? 'event-spider-up' : ''
         }`}
         tabIndex={-1}

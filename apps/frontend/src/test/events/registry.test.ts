@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getActiveEventTheme } from '../../events/registry';
+import { getActiveEventTheme, getEventThemeById } from '../../events/registry';
 import type { EventTheme } from '../../events/types';
 
 const halloween: EventTheme = {
@@ -56,5 +56,15 @@ describe('getActiveEventTheme', () => {
     const active = getActiveEventTheme(new Date(2026, 9, 4));
     expect(active).toMatchObject({ id: 'halloween', headerDecoration: 'cobweb' });
     expect(getActiveEventTheme(new Date(2026, 8, 15))).toBeNull();
+  });
+});
+
+describe('getEventThemeById', () => {
+  it('finds a registered event by id', () => {
+    expect(getEventThemeById('halloween')).toMatchObject({ id: 'halloween', name: 'Halloween' });
+  });
+
+  it('returns null for an unknown or removed event id', () => {
+    expect(getEventThemeById('christmas')).toBeNull();
   });
 });

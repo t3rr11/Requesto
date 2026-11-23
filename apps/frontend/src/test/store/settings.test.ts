@@ -41,6 +41,24 @@ describe('settings store', () => {
     expect(parsed.state.disableEventThemes).toBe(true);
   });
 
+  it('defaults overrideEventTheme to null (auto)', () => {
+    expect(useSettingsStore.getState().overrideEventTheme).toBeNull();
+  });
+
+  it('persists overrideEventTheme via setter', () => {
+    useSettingsStore.getState().setOverrideEventTheme('halloween');
+    expect(useSettingsStore.getState().overrideEventTheme).toBe('halloween');
+    const raw = localStorage.getItem('requesto-settings-storage');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.overrideEventTheme).toBe('halloween');
+  });
+
+  it('resets overrideEventTheme back to auto via null', () => {
+    useSettingsStore.getState().setOverrideEventTheme('halloween');
+    useSettingsStore.getState().setOverrideEventTheme(null);
+    expect(useSettingsStore.getState().overrideEventTheme).toBeNull();
+  });
+
   it('defaults warnOnHttpErrors to true (opt-out)', () => {
     expect(useSettingsStore.getState().warnOnHttpErrors).toBe(true);
   });
