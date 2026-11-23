@@ -9,6 +9,7 @@ export const EVENT_THEMES: EventTheme[] = [
     id: 'halloween',
     name: 'Halloween',
     headerDecoration: 'cobweb',
+    hangingOrnament: 'spider',
     start: '10-01',
     end: '10-31',
   },

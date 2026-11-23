@@ -5,6 +5,7 @@ import { useDialog, useDialogWithData } from '../hooks/useDialog';
 import { Button } from './Button';
 import { Dialog } from './Dialog';
 import { EventHeaderDecoration } from './EventHeaderDecoration';
+import { EventHangingOrnament } from './events/EventHangingOrnament';
 import { HelpContent } from './HelpContent';
 import { SettingsDialog } from './SettingsDialog';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -74,6 +75,10 @@ export function Header() {
           <span className="h-5 w-px bg-white/20 dark:bg-gray-600" aria-hidden="true" />
 
           <EnvironmentSwitcher />
+
+          <span className="relative h-0 w-0 self-start -mt-3" aria-hidden="true">
+            <EventHangingOrnament />
+          </span>
         </div>
 
         <div className="flex gap-2">
