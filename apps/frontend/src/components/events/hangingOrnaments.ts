@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import type { EventHangingOrnamentKind } from '../../events/types';
 import { SpiderOrnament } from './SpiderOrnament';
+import { SurfingSantaOrnament } from './SurfingSantaOrnament';
 
 /**
  * Maps a hanging ornament kind (declared by an event in src/events/registry.ts)
@@ -9,4 +10,5 @@ import { SpiderOrnament } from './SpiderOrnament';
  */
 export const HANGING_ORNAMENTS: Record<EventHangingOrnamentKind, ComponentType> = {
   spider: SpiderOrnament,
+  'surfing-santa': SurfingSantaOrnament,
 };

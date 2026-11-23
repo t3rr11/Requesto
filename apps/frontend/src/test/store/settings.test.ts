@@ -3,7 +3,7 @@ import { useSettingsStore } from '../../store/settings/store';
 
 describe('settings store', () => {
   beforeEach(() => {
-    useSettingsStore.setState({ insecureTls: false, warnOnHttpErrors: true });
+    useSettingsStore.setState({ insecureTls: false, warnOnHttpErrors: true, reduceMotion: false });
   });
 
   it('defaults insecureTls to false', () => {
@@ -39,6 +39,18 @@ describe('settings store', () => {
     const raw = localStorage.getItem('requesto-settings-storage');
     const parsed = JSON.parse(raw!);
     expect(parsed.state.disableEventThemes).toBe(true);
+  });
+
+  it('defaults reduceMotion to false (opt-in)', () => {
+    expect(useSettingsStore.getState().reduceMotion).toBe(false);
+  });
+
+  it('persists reduceMotion via setter', () => {
+    useSettingsStore.getState().setReduceMotion(true);
+    expect(useSettingsStore.getState().reduceMotion).toBe(true);
+    const raw = localStorage.getItem('requesto-settings-storage');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.reduceMotion).toBe(true);
   });
 
   it('defaults overrideEventTheme to null (auto)', () => {

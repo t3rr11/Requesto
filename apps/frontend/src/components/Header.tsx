@@ -76,7 +76,7 @@ export function Header() {
 
           <EnvironmentSwitcher />
 
-          <span className="relative h-0 w-0 self-start -mt-3" aria-hidden="true">
+          <span className="relative w-0 self-stretch -my-2" aria-hidden="true">
             <EventHangingOrnament />
           </span>
         </div>

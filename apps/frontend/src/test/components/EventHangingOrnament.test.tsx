@@ -4,6 +4,7 @@ import { useEventTheme } from '../../hooks/useEventTheme';
 import type { EventTheme } from '../../events/types';
 import { EventHangingOrnament } from '../../components/events/EventHangingOrnament';
 import { SpiderOrnament } from '../../components/events/SpiderOrnament';
+import { SurfingSantaOrnament } from '../../components/events/SurfingSantaOrnament';
 
 vi.mock('../../hooks/useEventTheme', () => ({
   useEventTheme: vi.fn(),
@@ -16,6 +17,15 @@ const halloweenWithSpider: EventTheme = {
   hangingOrnament: 'spider',
   start: '10-01',
   end: '10-31',
+};
+
+const christmasWithSanta: EventTheme = {
+  id: 'christmas',
+  name: 'Christmas',
+  headerDecoration: 'waves',
+  hangingOrnament: 'surfing-santa',
+  start: '11-22',
+  end: '12-27',
 };
 
 const halloweenWithoutOrnament: EventTheme = {
@@ -48,6 +58,46 @@ describe('EventHangingOrnament', () => {
     const { container } = render(<EventHangingOrnament />);
     expect(container.querySelector('.event-spider')).not.toBeNull();
     expect(container.querySelector('.event-spider-art')).not.toBeNull();
+  });
+
+  it('renders the surfing Santa for the christmas event', () => {
+    vi.mocked(useEventTheme).mockReturnValue(christmasWithSanta);
+    const { container } = render(<EventHangingOrnament />);
+    expect(container.querySelector('.event-santa')).not.toBeNull();
+  });
+});
+
+describe('SurfingSantaOrnament', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('is knocked off when clicked, jumps back on after the delay and ignores clicks meanwhile', () => {
+    vi.useFakeTimers();
+    const { container } = render(<SurfingSantaOrnament />);
+    const santa = container.querySelector('.event-santa') as HTMLElement;
+    expect(container.querySelector('.event-santa-rider')?.getAttribute('class')).not.toMatch(/wiped-out|jumping/);
+
+    fireEvent.click(santa);
+    expect(container.querySelector('.event-santa-wiped-out')).not.toBeNull();
+    expect(container.querySelector('.event-santa-board-rocked')).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    fireEvent.click(santa);
+    expect(container.querySelector('.event-santa-wiped-out')).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(container.querySelector('.event-santa-jumping')).not.toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(container.querySelector('.event-santa-jumping')).toBeNull();
+    expect(container.querySelector('.event-santa-wiped-out')).toBeNull();
   });
 });
 

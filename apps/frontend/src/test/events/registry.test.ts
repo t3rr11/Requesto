@@ -57,6 +57,13 @@ describe('getActiveEventTheme', () => {
     expect(active).toMatchObject({ id: 'halloween', headerDecoration: 'cobweb' });
     expect(getActiveEventTheme(new Date(2026, 8, 15))).toBeNull();
   });
+
+  it('uses the real christmas window (Nov 22 to Dec 27) from the registry', () => {
+    expect(getActiveEventTheme(new Date(2026, 10, 21))).toBeNull();
+    expect(getActiveEventTheme(new Date(2026, 10, 22))).toMatchObject({ id: 'christmas', headerDecoration: 'waves' });
+    expect(getActiveEventTheme(new Date(2026, 11, 27))).toMatchObject({ id: 'christmas' });
+    expect(getActiveEventTheme(new Date(2026, 11, 28))).toBeNull();
+  });
 });
 
 describe('getEventThemeById', () => {
@@ -65,6 +72,6 @@ describe('getEventThemeById', () => {
   });
 
   it('returns null for an unknown or removed event id', () => {
-    expect(getEventThemeById('christmas')).toBeNull();
+    expect(getEventThemeById('easter')).toBeNull();
   });
 });

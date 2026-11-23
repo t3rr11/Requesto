@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useEventTheme } from '../../hooks/useEventTheme';
+import { EVENT_THEMES } from '../../events/registry';
 import { useSettingsStore } from '../../store/settings/store';
 
 describe('useEventTheme', () => {
@@ -27,7 +28,7 @@ describe('useEventTheme', () => {
 
     // Either the real date window is active or there is nothing active today.
     if (expected) {
-      expect(expected.id).toBe('halloween');
+      expect(EVENT_THEMES.map(event => event.id)).toContain(expected.id);
     } else {
       expect(expected).toBeNull();
     }
@@ -39,7 +40,7 @@ describe('useEventTheme', () => {
     const { result } = renderHook(() => useEventTheme());
     const active = result.current;
     if (active) {
-      expect(active.id).toBe('halloween');
+      expect(EVENT_THEMES.map(event => event.id)).toContain(active.id);
     }
   });
 });

@@ -10,7 +10,7 @@ describe('AppearanceSettingsForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    useSettingsStore.setState({ disableEventThemes: false, overrideEventTheme: null });
+    useSettingsStore.setState({ disableEventThemes: false, overrideEventTheme: null, reduceMotion: false });
   });
 
   it('defaults to auto (date-based) with no override persisted', () => {
@@ -60,6 +60,19 @@ describe('AppearanceSettingsForm', () => {
     await user.click(screen.getByText('Save Settings'));
     await vi.waitFor(() => {
       expect(useSettingsStore.getState().disableEventThemes).toBe(true);
+      expect(mockOnSuccess).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('persists the reduce motion toggle on submit', async () => {
+    const user = userEvent.setup();
+    render(<AppearanceSettingsForm onSuccess={mockOnSuccess} onCancel={mockOnCancel} />);
+    const checkbox = screen.getByRole('checkbox', { name: /reduce motion/i });
+    expect(checkbox).not.toBeChecked();
+    await user.click(checkbox);
+    await user.click(screen.getByText('Save Settings'));
+    await vi.waitFor(() => {
+      expect(useSettingsStore.getState().reduceMotion).toBe(true);
       expect(mockOnSuccess).toHaveBeenCalledOnce();
     });
   });

@@ -1,7 +1,7 @@
-export type EventHeaderDecorationKind = 'cobweb';
+export type EventHeaderDecorationKind = 'cobweb' | 'waves';
 
-/** Interactive ornament hanging from the header for an event theme. */
-export type EventHangingOrnamentKind = 'spider';
+/** Interactive ornament anchored in the header for an event theme. */
+export type EventHangingOrnamentKind = 'spider' | 'surfing-santa';
 
 export type EventTheme = {
   /** Stable identifier, e.g. "halloween". */
@@ -14,9 +14,10 @@ export type EventTheme = {
   headerDecoration: EventHeaderDecorationKind;
 
   /**
-   * Interactive ornament hanging from the header's top edge in the gap after
-   * the environment selector, e.g. a spider for Halloween or a surfing Santa
-   * for Christmas. Optional, themes without one omit the field.
+   * Interactive ornament anchored in the header after the environment
+   * selector, e.g. a spider hanging from the top edge for Halloween or a
+   * surfing Santa riding the bottom edge for Christmas. Optional, themes
+   * without one omit the field.
    */
   hangingOrnament?: EventHangingOrnamentKind;
 

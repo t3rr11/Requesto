@@ -10,6 +10,7 @@ export type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export const appearanceSchema = z.object({
   disableEventThemes: z.boolean(),
+  reduceMotion: z.boolean(),
   overrideEventTheme: z.string(),
 });
 

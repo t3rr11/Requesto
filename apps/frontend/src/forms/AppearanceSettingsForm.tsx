@@ -23,6 +23,8 @@ export function AppearanceSettingsForm({ onSuccess, onCancel }: Readonly<Appeara
   const setDisableEventThemes = useSettingsStore(s => s.setDisableEventThemes);
   const overrideEventTheme = useSettingsStore(s => s.overrideEventTheme);
   const setOverrideEventTheme = useSettingsStore(s => s.setOverrideEventTheme);
+  const reduceMotion = useSettingsStore(s => s.reduceMotion);
+  const setReduceMotion = useSettingsStore(s => s.setReduceMotion);
 
   const {
     register,
@@ -33,6 +35,7 @@ export function AppearanceSettingsForm({ onSuccess, onCancel }: Readonly<Appeara
     resolver: zodResolver(appearanceSchema),
     defaultValues: {
       disableEventThemes,
+      reduceMotion,
       overrideEventTheme: overrideEventTheme ?? AUTO_OVERRIDE,
     },
   });
@@ -41,6 +44,7 @@ export function AppearanceSettingsForm({ onSuccess, onCancel }: Readonly<Appeara
 
   const onSubmit = (data: AppearanceFormData) => {
     setDisableEventThemes(data.disableEventThemes);
+    setReduceMotion(data.reduceMotion);
     setOverrideEventTheme(data.overrideEventTheme === AUTO_OVERRIDE ? null : data.overrideEventTheme);
     onSuccess();
   };
@@ -85,6 +89,22 @@ export function AppearanceSettingsForm({ onSuccess, onCancel }: Readonly<Appeara
             <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Revert to the standard look during holiday periods and events (e.g. themed header decorations),
               regardless of the date or the selection above.
+            </span>
+          </span>
+        </label>
+
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mt-6 mb-3">Motion</h3>
+
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            {...register('reduceMotion')}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500"
+          />
+          <span className="flex-1">
+            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">Reduce motion</span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              Disable animations and transitions throughout the app, including holiday decorations.
             </span>
           </span>
         </label>

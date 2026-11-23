@@ -7,6 +7,7 @@ import { useGitStore } from './store/git/store';
 import { useThemeStore } from './store/theme/store';
 import { useUpdateStore } from './store/update/store';
 import { useGitAutoRefresh } from './hooks/useGitAutoRefresh';
+import { useReduceMotion } from './hooks/useReduceMotion';
 import { Header } from './components/Header';
 import { ToastContainer } from './components/ToastContainer';
 import { UpdateDialog } from './components/UpdateDialog';
@@ -53,6 +54,7 @@ function App() {
   }, [isDarkMode]);
 
   useGitAutoRefresh();
+  useReduceMotion();
 
   useEffect(() => {
     const api = window.electronAPI?.update;

@@ -7,6 +7,7 @@ type SettingsState = Settings & {
   setInsecureTls: (value: boolean) => void;
   setSaveRequestOnSend: (value: boolean) => void;
   setDisableEventThemes: (value: boolean) => void;
+  setReduceMotion: (value: boolean) => void;
   setOverrideEventTheme: (value: string | null) => void;
   setWarnOnHttpErrors: (value: boolean) => void;
 };
@@ -20,6 +21,8 @@ export const useSettingsStore = create<SettingsState>()(
       setSaveRequestOnSend: (value) => actions.setSaveRequestOnSend(set, value),
       disableEventThemes: false,
       setDisableEventThemes: (value) => actions.setDisableEventThemes(set, value),
+      reduceMotion: false,
+      setReduceMotion: (value) => actions.setReduceMotion(set, value),
       overrideEventTheme: null,
       setOverrideEventTheme: (value) => actions.setOverrideEventTheme(set, value),
       warnOnHttpErrors: true,

@@ -13,6 +13,14 @@ export const EVENT_THEMES: EventTheme[] = [
     start: '10-01',
     end: '10-31',
   },
+  {
+    id: 'christmas',
+    name: 'Christmas',
+    headerDecoration: 'waves',
+    hangingOrnament: 'surfing-santa',
+    start: '11-22',
+    end: '12-27',
+  },
 ];
 
 function getMonthDay(date: Date): string {

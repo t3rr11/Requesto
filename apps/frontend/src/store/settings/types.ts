@@ -22,6 +22,14 @@ export type Settings = {
   disableEventThemes: boolean;
 
   /**
+   * When true, UI animations and transitions are disabled app-wide (a
+   * `reduce-motion` class is set on the document root). Complements the OS
+   * "prefers-reduced-motion" preference, which event decorations already
+   * respect. Off by default — opt-in.
+   */
+  reduceMotion: boolean;
+
+  /**
    * Force a specific holiday & event theme on regardless of the date, e.g. to
    * preview decorations outside their normal window. Null means auto: the
    * date-based window in the event registry decides. Ignored when
