@@ -143,6 +143,152 @@ button {
   }
 }
 
+/* Event decoration: christmas header waves + surfing Santa.
+   Waves are a tiled SVG drifting one tile width per cycle so the loop is
+   seamless; the tile width is set per layer via --wave-tile. Santa stays
+   static while surfing; clicking him rocks the board and flips him into the
+   sea, and later he flips back onto the board from the same side. */
+.event-waves {
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  background-size: var(--wave-tile) 14px;
+}
+
+.event-waves-back {
+  --wave-tile: 200px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='14'%3E%3Cpath d='M0 7 Q50 -1 100 7 T200 7 V14 H0 Z' fill='white' fill-opacity='0.12'/%3E%3C/svg%3E");
+  animation: event-waves-drift 16s linear infinite;
+}
+
+.event-waves-front {
+  --wave-tile: 140px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='14'%3E%3Cpath d='M0 9 Q35 3 70 9 T140 9 V14 H0 Z' fill='white' fill-opacity='0.2'/%3E%3C/svg%3E");
+  animation: event-waves-drift 12s linear infinite reverse;
+}
+
+.dark .event-waves {
+  opacity: 0.6;
+}
+
+@keyframes event-waves-drift {
+  from { background-position-x: 0; }
+  to { background-position-x: var(--wave-tile); }
+}
+
+.event-santa {
+  cursor: pointer;
+}
+
+/* Idle sway: the whole rig rocks gently on the swell. Only applied while
+   surfing so it doesn't fight the wipeout / jump animations. */
+.event-santa-sway {
+  transform-origin: center bottom;
+  animation: event-santa-sway 4.5s ease-in-out infinite;
+}
+
+@keyframes event-santa-sway {
+  0%, 100% { transform: translateY(0) rotate(-2.5deg); }
+  50% { transform: translateY(-1.5px) rotate(2.5deg); }
+}
+
+.event-santa-rider,
+.event-santa-board,
+.event-santa-drop {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.event-santa-wiped-out {
+  animation: event-santa-wipeout 1.7s ease-in-out forwards;
+}
+
+.event-santa-jumping {
+  animation: event-santa-jump 0.9s ease-out forwards;
+}
+
+/* Santa leans back as the board rocks, is launched over it, tumbles
+   and sinks below the waterline (clipped by the svg). */
+@keyframes event-santa-wipeout {
+  0%, 20% { transform: translate(0, 0) rotate(0deg); }
+  32% { transform: translate(-2px, 0) rotate(-10deg); }
+  50% { transform: translate(10px, -26px) rotate(140deg); }
+  70% { transform: translate(22px, -14px) rotate(280deg); }
+  100% { transform: translate(34px, 26px) rotate(400deg); }
+}
+
+@keyframes event-santa-jump {
+  0% { transform: translate(34px, 26px) rotate(40deg); }
+  60% { transform: translate(10px, -24px) rotate(-180deg); }
+  100% { transform: translate(0, 0) rotate(-360deg); }
+}
+
+.event-santa-board-rocked {
+  animation: event-santa-board-rock 1.7s ease-out forwards;
+}
+
+.event-santa-board-landing {
+  animation: event-santa-board-land 0.9s ease-out forwards;
+}
+
+@keyframes event-santa-board-rock {
+  0%, 25% { transform: rotate(0deg) translateY(0); }
+  40% { transform: rotate(-12deg) translateY(2px); }
+  65% { transform: rotate(7deg) translateY(-1px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+
+@keyframes event-santa-board-land {
+  0%, 70% { transform: translateY(0); }
+  85% { transform: translateY(2px); }
+  100% { transform: translateY(0); }
+}
+
+.event-santa-drop {
+  opacity: 0;
+  animation: event-santa-drop 1s ease-out 0.55s forwards;
+}
+
+.event-santa-drop-1 { --drop-x: 14px; --drop-y: -22px; }
+.event-santa-drop-2 { --drop-x: 24px; --drop-y: -12px; animation-delay: 0.6s; }
+.event-santa-drop-3 { --drop-x: 5px; --drop-y: -16px; animation-delay: 0.65s; }
+
+@keyframes event-santa-drop {
+  0% { transform: translate(0, 0); opacity: 0.9; }
+  60% { transform: translate(var(--drop-x), var(--drop-y)); opacity: 0.8; }
+  100% { transform: translate(calc(var(--drop-x) * 1.3), calc(var(--drop-y) + 22px)); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-waves-back,
+  .event-waves-front,
+  .event-santa-sway,
+  .event-santa-drop,
+  .event-santa-board-rocked,
+  .event-santa-board-landing,
+  .event-santa-jumping {
+    animation: none;
+  }
+
+  .event-santa-wiped-out {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Reduce motion setting (see useReduceMotion): collapses every animation and
+   transition to a single instant frame. Loading spinners are left alone so
+   in-progress work stays visible. */
+.reduce-motion *:not(.animate-spin),
+.reduce-motion *:not(.animate-spin)::before,
+.reduce-motion *:not(.animate-spin)::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+
 /* Collection runner variables rail: brief highlight on rows a script just changed */
 @keyframes runner-variable-flash {
   0% { background-color: rgb(59 130 246 / 0.18); }

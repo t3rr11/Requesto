@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import type { EventHeaderDecorationKind } from '../../events/types';
 import { CobwebDecoration } from './CobwebDecoration';
+import { WavesDecoration } from './WavesDecoration';
 
 /**
  * Maps a header decoration kind (declared by an event in src/events/registry.ts)
@@ -9,4 +10,5 @@ import { CobwebDecoration } from './CobwebDecoration';
  */
 export const HEADER_DECORATIONS: Record<EventHeaderDecorationKind, ComponentType> = {
   cobweb: CobwebDecoration,
+  waves: WavesDecoration,
 };

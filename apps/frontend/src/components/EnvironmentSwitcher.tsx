@@ -39,7 +39,7 @@ export function EnvironmentSwitcher() {
     setSearch('');
   };
 
-  const handleSelect = (envId: string) => {
+  const handleSelect = (envId: string | null) => {
     void setActiveEnvironment(envId);
     closeDropdown();
   };
@@ -107,7 +107,7 @@ export function EnvironmentSwitcher() {
               <p className="px-3 py-2 text-xs text-gray-400 dark:text-gray-500 text-center">No matching environments</p>
             ) : (
               <button
-                onClick={() => handleSelect('')}
+                onClick={() => handleSelect(null)}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-left"
               >
                 {!environmentsData.activeEnvironmentId ? (

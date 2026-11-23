@@ -63,7 +63,7 @@ export class EnvironmentService {
     this.localRepo?.deleteEnvironment(id);
   }
 
-  setActive(id: string): void {
+  setActive(id: string | null): void {
     const success = this.repo.setActive(id);
     if (!success) {
       throw AppError.notFound('Environment not found');

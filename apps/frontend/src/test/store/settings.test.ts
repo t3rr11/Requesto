@@ -3,7 +3,7 @@ import { useSettingsStore } from '../../store/settings/store';
 
 describe('settings store', () => {
   beforeEach(() => {
-    useSettingsStore.setState({ insecureTls: false, warnOnHttpErrors: true });
+    useSettingsStore.setState({ insecureTls: false, warnOnHttpErrors: true, reduceMotion: false });
   });
 
   it('defaults insecureTls to false', () => {
@@ -39,6 +39,36 @@ describe('settings store', () => {
     const raw = localStorage.getItem('requesto-settings-storage');
     const parsed = JSON.parse(raw!);
     expect(parsed.state.disableEventThemes).toBe(true);
+  });
+
+  it('defaults reduceMotion to false (opt-in)', () => {
+    expect(useSettingsStore.getState().reduceMotion).toBe(false);
+  });
+
+  it('persists reduceMotion via setter', () => {
+    useSettingsStore.getState().setReduceMotion(true);
+    expect(useSettingsStore.getState().reduceMotion).toBe(true);
+    const raw = localStorage.getItem('requesto-settings-storage');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.reduceMotion).toBe(true);
+  });
+
+  it('defaults overrideEventTheme to null (auto)', () => {
+    expect(useSettingsStore.getState().overrideEventTheme).toBeNull();
+  });
+
+  it('persists overrideEventTheme via setter', () => {
+    useSettingsStore.getState().setOverrideEventTheme('halloween');
+    expect(useSettingsStore.getState().overrideEventTheme).toBe('halloween');
+    const raw = localStorage.getItem('requesto-settings-storage');
+    const parsed = JSON.parse(raw!);
+    expect(parsed.state.overrideEventTheme).toBe('halloween');
+  });
+
+  it('resets overrideEventTheme back to auto via null', () => {
+    useSettingsStore.getState().setOverrideEventTheme('halloween');
+    useSettingsStore.getState().setOverrideEventTheme(null);
+    expect(useSettingsStore.getState().overrideEventTheme).toBeNull();
   });
 
   it('defaults warnOnHttpErrors to true (opt-out)', () => {

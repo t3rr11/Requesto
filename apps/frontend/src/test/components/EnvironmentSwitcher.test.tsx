@@ -42,4 +42,11 @@ describe('EnvironmentSwitcher', () => {
     fireEvent.click(screen.getAllByText('Development')[0]);
     expect(mockSetActiveEnvironment).toHaveBeenCalledWith('env-2');
   });
+
+  it('calls setActiveEnvironment(null) when selecting No Environment', () => {
+    render(<EnvironmentSwitcher />);
+    fireEvent.click(screen.getByTestId('environment-switcher'));
+    fireEvent.click(screen.getByText('No Environment'));
+    expect(mockSetActiveEnvironment).toHaveBeenCalledWith(null);
+  });
 });

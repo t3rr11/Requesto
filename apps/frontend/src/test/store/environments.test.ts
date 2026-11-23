@@ -48,6 +48,18 @@ describe('environments store', () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
+  it('clears the active environment by posting a null id', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ activeEnvironmentId: null, environments: [] }),
+    });
+    await useEnvironmentsStore.getState().setActiveEnvironment(null);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[0][1].body).toBe(JSON.stringify({ id: null }));
+    expect(useEnvironmentsStore.getState().environmentsData.activeEnvironmentId).toBeNull();
+  });
+
   it('adds environment locally', () => {
     const env = { id: 'env3', name: 'Staging', variables: [] };
     useEnvironmentsStore.getState().addEnvironment(env as any);

@@ -9,8 +9,17 @@ export const EVENT_THEMES: EventTheme[] = [
     id: 'halloween',
     name: 'Halloween',
     headerDecoration: 'cobweb',
+    hangingOrnament: 'spider',
     start: '10-01',
     end: '10-31',
+  },
+  {
+    id: 'christmas',
+    name: 'Christmas',
+    headerDecoration: 'waves',
+    hangingOrnament: 'surfing-santa',
+    start: '11-22',
+    end: '12-27',
   },
 ];
 
@@ -32,4 +41,8 @@ export function getActiveEventTheme(date: Date = new Date(), events: EventTheme[
       return today >= event.start || today <= event.end;
     }) ?? null
   );
+}
+
+export function getEventThemeById(id: string, events: EventTheme[] = EVENT_THEMES): EventTheme | null {
+  return events.find(event => event.id === id) ?? null;
 }

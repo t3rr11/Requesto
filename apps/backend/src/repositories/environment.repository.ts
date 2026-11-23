@@ -12,7 +12,9 @@ import { resolveUniqueFileName } from '../utils/slug';
  * The active environment is a per-user preference: it lives in the gitignored
  * `local/active-environment.json`. When no selection is stored (e.g. a fresh
  * clone), the first environment in the workspace order is active — users make
- * an environment "workspace default" by moving it to the top.
+ * an environment "workspace default" by moving it to the top. An explicit
+ * `activeEnvironmentId: null` in that file records a deliberate "No
+ * Environment" choice from the environment switcher and disables substitution.
  */
 export class EnvironmentRepository extends BaseRepository {
   constructor(
@@ -104,12 +106,21 @@ export class EnvironmentRepository extends BaseRepository {
   }
 
   /**
-   * Resolve the active environment id: the user's local selection when it
-   * still exists, otherwise the first environment in the workspace order.
+   * Resolve the active environment id:
+   * - an explicit cleared selection (user picked "No Environment"): null
+   * - a stored selection that still exists: that id
+   * - otherwise (no preference yet, or a stale selection): the first
+   *   environment in the workspace order.
    */
   private resolveActiveEnvironmentId(environments: Environment[]): string | null {
     const selection = this.getLocalSelection();
-    if (selection && environments.some((e) => e.id === selection)) return selection;
+    if (selection === null) {
+      // Distinguish "no preference yet" from an explicit cleared selection.
+      const data = this.readJson<Record<string, unknown>>(this.getActiveFile(), {});
+      if ('activeEnvironmentId' in data) return null;
+      return environments[0]?.id ?? null;
+    }
+    if (environments.some((e) => e.id === selection)) return selection;
     return environments[0]?.id ?? null;
   }
 
@@ -141,13 +152,22 @@ export class EnvironmentRepository extends BaseRepository {
 
     // Clear a stale personal selection — resolve falls back to the first environment
     if (this.getLocalSelection() === id) {
-      this.ensureDir(this.getLocalDir());
-      this.writeJson(this.getActiveFile(), { activeEnvironmentId: null });
+      fs.rmSync(this.getActiveFile(), { force: true });
     }
     return true;
   }
 
-  setActive(id: string): boolean {
+  /**
+   * Store the active selection in the local (gitignored) sidecar file.
+   * Null (or empty string) records an explicit "No Environment" choice;
+   * an unknown id returns false and leaves the stored selection untouched.
+   */
+  setActive(id: string | null): boolean {
+    if (id === null || id === '') {
+      this.ensureDir(this.getLocalDir());
+      this.writeJson(this.getActiveFile(), { activeEnvironmentId: null });
+      return true;
+    }
     const exists = this.readEnvironments().some((e) => e.id === id);
     if (!exists) return false;
     this.ensureDir(this.getLocalDir());
@@ -188,13 +208,14 @@ export class EnvironmentRepository extends BaseRepository {
     }
     writeOrderSection(this.getDataDir(), 'environments', data.environments.map((e) => e.id));
 
-    // Persist the active selection locally; a missing/unknown id falls back to first
+    // Persist the active selection locally. An unknown id clears the stored
+    // selection (leaving "no preference"), which resolves to the first
+    // environment — an explicit "No Environment" choice is never assumed here.
     this.ensureDir(this.getLocalDir());
-    this.writeJson(this.getActiveFile(), {
-      activeEnvironmentId:
-        data.activeEnvironmentId && keepIds.has(data.activeEnvironmentId)
-          ? data.activeEnvironmentId
-          : null,
-    });
+    const activeId = data.activeEnvironmentId;
+    this.writeJson(
+      this.getActiveFile(),
+      activeId && keepIds.has(activeId) ? { activeEnvironmentId: activeId } : {},
+    );
   }
 }

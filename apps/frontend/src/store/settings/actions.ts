@@ -14,6 +14,14 @@ export function setDisableEventThemes(set: SettingsSetState, value: boolean): vo
   set({ disableEventThemes: value });
 }
 
+export function setReduceMotion(set: SettingsSetState, value: boolean): void {
+  set({ reduceMotion: value });
+}
+
+export function setOverrideEventTheme(set: SettingsSetState, value: string | null): void {
+  set({ overrideEventTheme: value });
+}
+
 export function setWarnOnHttpErrors(set: SettingsSetState, value: boolean): void {
   set({ warnOnHttpErrors: value });
 }

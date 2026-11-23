@@ -1,9 +1,9 @@
+import { Page } from '@playwright/test';
 import { test, expect, resetData } from '../helpers/test-fixtures';
 
-function isEventWindowNow(): boolean {
-  const now = new Date();
-  const monthDay = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  return monthDay >= '10-01' && monthDay <= '10-31';
+async function openAppearanceSettings(appPage: Page) {
+  await appPage.getByTitle('Settings').click();
+  await appPage.getByRole('button', { name: 'Appearance' }).click();
 }
 
 test.describe('Event themes', () => {
@@ -11,40 +11,44 @@ test.describe('Event themes', () => {
     resetData();
   });
 
-  test('shows event header decoration during the event window and honours the opt-out', async ({
+  test('forces the event theme on via the Appearance override and honours the opt-out', async ({
     appPage,
     takeScreenshot,
   }) => {
-    const expected = isEventWindowNow();
+    // Force the Halloween theme on regardless of the current date
+    await openAppearanceSettings(appPage);
+    await appPage.getByLabel('Holiday theme').selectOption('halloween');
+    await appPage.getByRole('button', { name: 'Save Settings' }).click();
+
     const decoration = appPage.locator('.event-header-decoration');
-    const count = await decoration.count();
+    await expect(decoration).toHaveCount(1);
+    await takeScreenshot('events', 'halloween-header-dark');
 
-    if (expected) {
-      expect(count).toBe(1);
-      await takeScreenshot('events', 'halloween-header-dark');
+    // Close-up of the decorated header
+    await takeScreenshot('events', 'halloween-header-closeup');
 
-      // Close-up of the decorated header
-      await takeScreenshot('events', 'halloween-header-closeup');
-
-      // Light mode
-      const lightToggle = appPage.getByTitle('Switch to Light Mode');
-      if (await lightToggle.isVisible().catch(() => false)) {
-        await lightToggle.click();
-        await appPage.waitForTimeout(300);
-        await takeScreenshot('events', 'halloween-header-light');
-        await appPage.getByTitle('Switch to Dark Mode').click();
-        await appPage.waitForTimeout(300);
-      }
-
-      // Opt out via settings — applies on Save
-      await appPage.getByTitle('Settings').click();
-      const checkbox = appPage.getByRole('checkbox', { name: /Disable holiday & event themes/i });
-      await expect(checkbox).toBeVisible();
-      await checkbox.check();
-      await appPage.getByRole('button', { name: 'Save Settings' }).click();
-      await expect(decoration).toHaveCount(0);
-    } else {
-      expect(count).toBe(0);
+    // Light mode
+    const lightToggle = appPage.getByTitle('Switch to Light Mode');
+    if (await lightToggle.isVisible().catch(() => false)) {
+      await lightToggle.click();
+      await appPage.waitForTimeout(300);
+      await takeScreenshot('events', 'halloween-header-light');
+      await appPage.getByTitle('Switch to Dark Mode').click();
+      await appPage.waitForTimeout(300);
     }
+
+    // The opt-out takes precedence over the override
+    await openAppearanceSettings(appPage);
+    const checkbox = appPage.getByRole('checkbox', { name: /Disable holiday & event themes/i });
+    await expect(checkbox).toBeVisible();
+    await checkbox.check();
+    await appPage.getByRole('button', { name: 'Save Settings' }).click();
+    await expect(decoration).toHaveCount(0);
+
+    // Reset to auto with the opt-out off so later tests start from defaults
+    await openAppearanceSettings(appPage);
+    await checkbox.uncheck();
+    await appPage.getByLabel('Holiday theme').selectOption('');
+    await appPage.getByRole('button', { name: 'Save Settings' }).click();
   });
 });
